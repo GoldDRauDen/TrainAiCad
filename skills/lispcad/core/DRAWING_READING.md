@@ -2,6 +2,8 @@
 
 Source: approved V4.3 production baseline. This file preserves the portable contract, execution pipeline, drawing interpretation rules, and Japanese drawing terminology.
 
+**Modular compatibility note:** inherited V4.3 wording such as “this document” refers to the complete approved LISPCAD rule set loaded through `AI_ENTRYPOINT.md`. The single-file portable form remains `../portable/SKILL_LISPCAD_CURRENT.md`.
+
 ## 0. Portable Skill Contract — Mandatory for Every AI / Every Chat
 
 ### 0.1 Standalone / Session-Independent Design
