@@ -72,13 +72,6 @@ When the actual Thickness ($t$) or Bend Length ($L$) does **not** exactly match 
 - **Out-of-Range**: If $t$ or $L$ exceeds the largest tabulated value for that material, do **not** guess. Set `is_flagged = true` and annotate `"OUT OF TABLE RANGE - CONFIRM NOBI WITH SHOP"` in Magenta (Color 6) per Section 4.4.
 - This rule applies uniformly across all four material tables in Section 7.3.
 
-### 4.9 Stepped / Notched Flanges *(restored from V1)*
-For flanges stepping inward before joining the body:
-- $Y_{\text{flange\_flat}} = L_{\text{flange\_nominal}} - N_y$
-- $Y_{\text{bend}} = Y_{\text{flange\_flat}}$
-- $Y_{\text{notch}} = Y_{\text{flange\_flat}} + L_{\text{notch\_gap}}$
-- $Y_{\text{body\_flat}} = L_{\text{body\_nominal}}$ (untouched)
-
 ### 4.10 Corner Reliefs *(restored from V1)*
 - **Intersection Only**: Create corner reliefs ONLY where two bend lines from perpendicular axes cross.
 - **Geometry**: Retract longer edge by material thickness $t$, create slit inward by $t + 0.2$, and draw diagonal slit to bend line intersection.
