@@ -2,10 +2,10 @@
 
 ## Scope
 
-Use together with the applicable mode. This module contains only topology-specific specialization.
+Use together with the applicable mode.
 
-Approved specialization from V4.3:
-- For U/open-center material, bend lines must exist only on material legs and must not continue through the central void.
-- All datum, face-order, containment, and bend calculations remain governed by core validation and `../modes/BEND_UNFOLD.md`.
+This module currently adds no duplicate calculation rule. For U/open-center parts, apply the bend-line material-domain and containment rules from:
+- `../core/VALIDATION.md`
+- `../modes/BEND_UNFOLD.md` when bends are present.
 
 No additional U-specific universal rule has been approved yet.
