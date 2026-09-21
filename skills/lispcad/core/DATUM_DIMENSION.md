@@ -1,0 +1,105 @@
+# LISPCAD Core — Datum & Dimension Semantics
+
+Source: approved V4.3 production baseline. These rules apply across all topology and mode modules.
+
+## 4. Dimension Authority, Tolerance Rules & Nobi Logic
+
+### 4.1 Dimension Precedence System
+When dimension conflicts occur, strictly follow this hierarchy (higher overrides lower):
+1. Latest Revision Note / Cloud
+2. Red Handwritten Correction on Drawing
+3. Explicit Numerical Callout
+4. Detail View Callout
+5. Section View Callout
+6. Projection Alignment
+7. Implied DXF Geometry
+8. Visual Estimation
+
+### 4.2 Datum Lock & Extension Line Integrity *(expanded V3.1 — anti-error safeguard)*
+- To prevent feature displacement errors (such as misassociating extension lines across parallel dimension chains), notch/cutout/hole positions ($X$, $Y$) MUST be calculated strictly from the actual datum edge or datum feature proven by the dimension extension lines.
+- **Never** add or subtract adjacent flange widths, hole-edge offsets, neighboring dimension values, or bounding-box offsets unless the drawing shows that they belong to one continuous dimension string.
+- Every critical feature coordinate MUST be traceable as an explicit expression from a proven datum, e.g. `Y = 0 + 10 + 35 = 45`. If no valid trace exists, apply Section 4.4 instead of inferring the coordinate.
+
+#### 4.2.1 Dimension-String Classification — MUST classify before arithmetic
+Before using any dimension numerically, classify it as one of the following:
+
+1. **Baseline / Common-Datum Dimension**: Multiple dimensions share the same extension-line origin. Values are measured independently from the common datum and MUST NOT be summed merely because they are drawn next to each other.
+2. **Continuous Chain Dimension**: The end witness/extension line of one dimension is the proven start witness/extension line of the next. Only this type may be accumulated sequentially.
+3. **Step / Local Feature Dimension**: A dimension defines the distance between two local contour levels, notch walls, hole centers, or other local features. It is not cumulative with a neighboring chain unless the extension lines explicitly connect the nodes.
+4. **Overall Dimension**: The total width/height is primarily a closure check. It may validate a chain sum but MUST NOT be used to redistribute or invent missing intermediate dimensions.
+5. **Ordinate / Coordinate Dimension**: A coordinate is measured directly from its stated zero datum; do not convert it into a chain unless the drawing explicitly defines one.
+
+#### 4.2.2 Datum Graph Rules
+- Treat extension-line endpoints as graph nodes and dimensions as graph edges. A coordinate is valid only when there is a connected, explicit path from the selected datum node to the target feature node.
+- Parallel dimension strings at different offsets on the drawing are independent until a shared extension-line node is proven. Visual alignment alone is not connectivity.
+- **Hole-center chains and contour/step chains must not be mixed** merely because they are nearby. A hole row offset (for example 10 mm from an edge) cannot become the origin for a separate 153 mm or 54 mm contour/feature dimension unless the extension lines prove the same origin.
+- If two dimensions visually touch but their witness lines terminate on different geometry, classify them separately.
+- Use the overall size only as a closure test: if `sum(chain segments) != overall`, mark the chain `FLAGGED` and re-read the extension lines; do not force-fit the numbers.
+
+#### 4.2.3 Required Datum Trace Record
+For every hole row, notch, step, or repeated feature pattern, retain a trace record containing: `axis`, `datum entity`, `dimension type`, `equation`, and `result`. This trace must be auditable in Stage 1 for any feature that was previously ambiguous or that disagrees with a reference DXF.
+
+#### 4.2.4 Dimension Endpoint Identity — MUST NOT Borrow a Neighboring Endpoint
+Every dimension endpoint/witness line must be tagged by the **actual geometry it terminates on** before arithmetic. At minimum distinguish: `OUTER_EDGE`, `CONTOUR_EDGE/STEP`, `HOLE_CENTER`, `CENTERLINE`, `THEORETICAL_SHARP_CORNER`, and `REFERENCE_DATUM`.
+
+- Two parallel dimensions drawn beside each other may terminate on different targets even when they share the same axis or appear visually aligned. Never reuse the endpoint of a neighboring dimension without proving the witness line lands on the same node.
+- A hole-center dimension and a contour-edge dimension are different graph edges even if their values are printed in the same local area.
+- Example pattern: if one horizontal dimension is from a step to the **outer edge** and an adjacent dimension is between two **hole centers**, do not subtract both from the same right-side X coordinate.
+- Example pattern: if vertical dimensions `389` and `404` terminate respectively at a hole center and a step ledge, they define two different Y nodes; they are not interchangeable.
+- Record the endpoint identity in the datum trace whenever a crowded drawing contains multiple nearby extension lines.
+
+#### 4.2.5 Contour Topology First — Dimensions Assign Coordinates, They Do Not Invent the Shape
+Before solving numerical coordinates, trace the visible manufacturing boundary as an ordered topology: outer corners, protrusions, recesses, steps, notches, vertical/horizontal segments, chamfers, and radii.
+
+- An overall width/height gives the bounding extent only. It does **not** imply that the part is a full rectangle over that entire extent.
+- First establish which contour segments actually exist and how they connect; only then assign coordinates from dimensions.
+- A local step can make the maximum width exist only over part of the height. Do not extend that maximum-width edge through a region where the drawing visibly steps inward.
+- If the visible outline and the assumed rectangular base disagree, the visible outline wins subject to explicit dimensions/callouts.
+- For complex stepped profiles, create an ordered contour trace such as `edge -> C -> vertical -> R -> ledge -> vertical ...` before converting it to LWPOLYLINE vertices/bulges.
+
+#### 4.2.6 Reference Dimensions Still Require a Proven Datum
+A parenthesized/reference dimension is **not automatically a coordinate from the global origin**. `Reference` means no mid-tolerance adjustment; its extension-line origin and target still control how the coordinate is calculated.
+
+- If a reference value `(276.5)` is measured from a hole-center row at `Y=10`, then the target is `Y=10+276.5=286.5`, not `Y=276.5`.
+- Apply Section 4.2 datum tracing exactly as for a normal dimension; only the tolerance treatment differs.
+- **Formed-view reference dimensions are not flat-pattern dimensions by default.** A parenthesized/参考 overall shown on a bent Front/Side/Section view describes that formed view unless its witness lines explicitly belong to a Development/Flat Pattern view.
+- Do NOT use a formed-view reference overall as the unfolded blank length merely because its numeric value is close to the expected flat length. Derive flat length from the proven ordered flange/body chain, ID→OD conversion where required, and Nobi deductions. Use the formed-view reference only for the geometry/view it actually dimensions.
+- If a formed-view reference value conflicts with a fully proven unfold equation, classify the issue as `REFERENCE/FORMED-DIMENSION ERROR` or source conflict; do not force the flat equation to equal the reference value.
+
+#### 4.2.7 Local-Face Datum → Global Flat Datum Mapping
+Features dimensioned on a bent flange/face MUST be transformed from the **local face coordinate system** into the **global unfolded blank coordinate system** before AutoLISP coordinates are emitted.
+
+1. Assign each formed face an ordered identity along the unfold path: `FACE_1 -> BEND_1 -> FACE_2 -> ...`.
+2. Establish the flat start/end coordinates of that face from the sequential OD/Nobi equations in Section 4.7.
+3. Preserve the dimension direction. If local coordinate `u` is measured from the face start datum, use `U_flat = FACE_START_flat + u`. If it is measured from the opposite/free edge, use `U_flat = FACE_END_flat - u`.
+4. A feature coordinate printed on a formed face MUST NOT be copied directly as a global flat coordinate unless the face datum is proven to coincide with the global flat datum.
+5. Record `face_id`, `local datum`, `local equation`, and `global flat equation` in the datum trace for holes/slots/notches that cross a bend mapping.
+
+This rule applies independently on both axes. Projection alignment may identify which face a feature belongs to, but may not replace the required unfold transform.
+
+#### 4.2.8 Bend Sequence / Face Order Is Non-Commutative
+The total flat length equation may be numerically unchanged when two flange lengths are swapped, but **bend positions, feature transforms, and material topology are not**. Therefore:
+
+- Determine the ordered face sequence from the visible formed topology, bend callouts, section/detail views, and proven witness-line connectivity before calculating bend-line coordinates.
+- Do not validate bend order merely because `sum(OD) - sum(Nobi)` matches the overall blank length.
+- Double bend lines MUST be positioned from the ordered sequence in Section 4.7 and MUST exist only over material regions that actually cross that bend. For U-shaped, legged, stepped, or cut-away parts, split/trim bend lines around voids; never draw a bend line continuously through empty space.
+- If two face orders remain equally plausible after explicit trace exhaustion, STOP and ask the user. Magenta is not permission to choose an arbitrary bend order.
+
+### 4.3 Mid-Tolerance Strategy (Tolerance Calculation)
+For coordinates governed by asymmetric tolerances or limit dimensions, calculate the flat pattern feature position using the **Mid-Tolerance Value**:
+
+$$X_{\text{mid}} = X_{\text{nominal}} + \frac{\text{Tolerance}_{\text{upper}} + \text{Tolerance}_{\text{lower}}}{2}$$
+
+- **Example**: A dimension specified as $50.0^{+0.2}_{+0.1}\text{ mm}$ is computed as:
+  $$X_{\text{mid}} = 50.0 + \frac{0.2 + 0.1}{2} = 50.15\text{ mm}$$
+- **Symmetric Tolerances** ($\pm 0.1\text{ mm}$): Mid-tolerance equals nominal value.
+- **Reference Dimensions** (参考 / marked as reference, no tolerance band): Do NOT apply mid-tolerance adjustment — use nominal value as-is (see Section 6, term "Reference").
+
+### 4.4 Ambiguous, Unclear, or Missing Dimension Handling
+- **Flag only after explicit-trace exhaustion**: A crowded/overlapping print is not automatically ambiguous. Before flagging, zoom/re-read the witness lines and test all explicit dimension paths, endpoint identities, feature diameters, feature counts, projection relationships, and overall closure. If the PDF contains a unique trace, use it; do not use Magenta as an escape from difficult dimension parsing.
+- **Magenta is not permission to invent topology**: Use estimated/Magenta geometry only when the entity identity and contour/feature topology are already certain but a numeric dimension remains unreadable/ambiguous. If multiple topologies, feature types, or bend orders are possible, STOP and ask the user rather than fabricating a bounding rectangle, generic slot, or arbitrary flange order.
+- **Integer Value Enforcement applies only to estimated/assumed values**: Any truly estimated dimension MUST be rounded to the nearest integer (e.g., `256` or `258`, never `256.4`). Explicit dimensions and deterministic formula results (for example `182.70`, `159.26`, or a Nobi-derived bend coordinate) MUST retain their calculated precision and MUST NOT be rounded to an integer merely because another part of the same feature/part is flagged.
+- **Known/unknown separation**: Flagging an unresolved feature does not authorize changing dimensions that are already proven. Keep all proven edges, lengths, hole sizes, and coordinates exact; isolate only the unresolved quantity/entity.
+- **No bounding-box substitution**: A known overall width/height may be reported as a bounding extent, but MUST NOT be emitted as a closed rectangular outline unless the contour trace proves that all four rectangle edges actually exist.
+- **Color Code 6 (Magenta)**: Assign DXF Group `(62 . 6)` to any line, circle, or polyline whose size/position was estimated or ambiguous.
+- **Adjacent Text Annotation**: Add a `TEXT` entity on DXF Group `(62 . 6)` immediately adjacent to the ambiguous feature (e.g., `"(ESTIMATED GEOMETRY - CHECK DRAWING)"` or `"(M6 OR M8)"`).
