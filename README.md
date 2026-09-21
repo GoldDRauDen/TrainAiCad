@@ -4,24 +4,67 @@ TrainAiCad là môi trường huấn luyện và calibration AI theo quy trình 
 
 Người dùng cung cấp công việc, bản vẽ, kết quả chuẩn và sửa các lỗi của AI. AI phải phân tích nguyên nhân, rút ra lesson và đề xuất các quy tắc có thể tái sử dụng.
 
-Mỗi lesson chỉ được đưa vào skill sau khi người dùng trực tiếp phê duyệt.
+Mỗi lesson chỉ được đưa vào production skill sau khi người dùng trực tiếp phê duyệt.
 
-GitHub không phải môi trường training. Repository chỉ lưu các **production skills đã được xác nhận**, regression cases và tài liệu cần thiết để một AI mới có thể đọc repo và thực hiện công việc đúng quy trình mà không cần lịch sử hội thoại trước đó.
+GitHub **không phải môi trường training**. Repository này chỉ lưu production skills đã được xác nhận, shared references, regression cases và tài liệu cần thiết để một AI mới có thể thực hiện công việc mà không cần lịch sử hội thoại trước đó.
 
-## Workflow
+## Production entry point
+
+AI bắt đầu tại:
+
+`AI_ENTRYPOINT.md`
+
+## Architecture
+
+```text
+TrainAiCad/
+├── README.md
+├── AI_ENTRYPOINT.md
+├── skills/
+│   └── lispcad/
+│       ├── core/
+│       │   ├── DRAWING_READING.md
+│       │   ├── DATUM_DIMENSION.md
+│       │   ├── VALIDATION.md
+│       │   └── CAD_OUTPUT.md
+│       ├── modes/
+│       │   ├── FLAT_NO_BEND.md
+│       │   └── BEND_UNFOLD.md
+│       ├── topology/
+│       │   ├── U_PROFILE.md
+│       │   ├── L_PROFILE.md
+│       │   ├── STEPPED_PROFILE.md
+│       │   └── MULTI_FACE_PROFILE.md
+│       ├── features/
+│       │   ├── HOLES_TAPS.md
+│       │   ├── SLOTS.md
+│       │   ├── CHAMFER_RADIUS.md
+│       │   └── FORMING_FEATURES.md
+│       ├── portable/
+│       │   └── SKILL_LISPCAD_CURRENT.md
+│       └── versions/
+│           └── V4.3/
+├── references/
+│   ├── NOBI_TABLES.md
+│   ├── THREAD_PILOT_TABLE.md
+│   └── MATERIAL_RULES.md
+└── regression/
+    ├── datum/
+    ├── bend/
+    ├── topology/
+    └── features/
+```
+
+## Operating model
 
 1. Train/calibrate trong dự án TrainAiCad.
 2. AI phân tích lỗi và đề xuất lesson/rule.
 3. Người dùng trực tiếp phê duyệt từng lesson.
-4. Chỉ lesson đã được phê duyệt mới được chuẩn hóa thành production skill hoặc regression case.
-5. Production skill được cập nhật lên repository theo version.
-6. AI khác phải có thể đọc repository và thực hiện công việc mà không cần lịch sử hội thoại cũ.
+4. Chỉ lesson đã phê duyệt mới được cập nhật vào production module hoặc regression case.
+5. Core chứa rule dùng chung; module chỉ chứa specialization để tránh duplicate rule.
+6. Portable skill là bản single-file để mang sang môi trường không đọc được toàn repo.
+7. Immutable version snapshots được giữ trong `skills/lispcad/versions/`.
 
-## Repository principle
-
-- Repo này **không** lưu training thô hoặc lesson chưa được duyệt.
-- Không tự động biến một case riêng lẻ thành universal rule.
-- Không cập nhật production skill nếu chưa có phê duyệt trực tiếp từ người dùng.
-- Mỗi thay đổi production cần giữ khả năng regression và truy vết version.
+## Approval rule
 
 **No approved lesson, no production skill update.**
