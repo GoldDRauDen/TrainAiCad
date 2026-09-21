@@ -53,22 +53,8 @@ The primary AutoLISP command MUST be **`c:DRAW`**. It constructs a dynamic DCL s
 )
 ```
 
-#### 8.4.1 Canonical Slot Spec — No Ambiguous `len` Parameter
-Inside `HOLES`, slots MUST use one of these canonical forms:
 
-```lisp
-(x y (SLOTX L_TOTAL W))
-(x y (SLOTY L_TOTAL W))
-```
-
-- `L_TOTAL` = total end-to-end slot length.
-- `W` = slot width and diameter of each semicircular end.
-- Internal helper geometry must use center offset `(L_TOTAL - W) / 2`.
-- If the drawing supplies center-to-center / tangent length `C`, convert before storage: `L_TOTAL = C + W`.
-- Reject/flag any slot where `L_TOTAL < W`, or where source length semantics are not proven.
-- Do not use a generic helper argument named only `len` unless the function contract explicitly states `len = L_TOTAL`; ambiguous helper semantics are prohibited.
-
----
+Slot-specific storage semantics are canonical in `../features/SLOTS.md`; do not duplicate them here.
 
 ## 9. Output Contract & Response Structure
 
