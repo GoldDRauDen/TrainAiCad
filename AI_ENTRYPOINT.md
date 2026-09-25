@@ -26,10 +26,11 @@ If classification is uncertain, load all plausible modules. If production-safe g
 The historical immutable baseline remains:
 `skills/lispcad/versions/V4.3/SKILL_LISPCAD_V4_3_PORTABLE.md`.
 
-**Current approved release V4.5 (520924-19; approved L09–L10):**
+**Current approved release V4.6 (520924-19; approved single-slit correction):**
 - Immutable V4.4 historical snapshot: `skills/lispcad/versions/V4.4/SKILL_LISPCAD_V4_4_PORTABLE.md`.
-- Immutable current V4.5 snapshot: `skills/lispcad/versions/V4.5/SKILL_LISPCAD_V4_5_PORTABLE.md`.
+- Immutable historical V4.5 snapshot: `skills/lispcad/versions/V4.5/SKILL_LISPCAD_V4_5_PORTABLE.md`.
+- Immutable current V4.6 snapshot: `skills/lispcad/versions/V4.6/SKILL_LISPCAD_V4_6_PORTABLE.md`.
 - Portable active single-file: `skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md`.
-- Modular core/feature/mode files and `references/MATERIAL_RULES.md` must implement the same V4.5 rules. SUS430 uses SS Nobi but SUS/他 Laser R, holes and White Piercing; Cu/Brass t6 uses R0.5 and t>6 no automatic Laser R.
-- V4.5 preserves all V4.4 rules and only adds approved L09–L10. V4.4 explicitly supersedes V4.3 blanket DXF-only R0.5 omission, universal hole Ø≥t warning, and green-by-default Piasu POINT. V4.3 remains intact for audit; **do not apply a conflicting historical rule as current**.
-- Production updates require direct user approval; unknown J leader / shop relief construction is not production skill knowledge.
+- Modular core/feature/mode files and `references/MATERIAL_RULES.md` must implement the same V4.6 rules, including `055958`: ONE Section 4.10 slit composed of 2 LINE + 1 ARC R0.5 at one location; no slit method/count FLAG. SUS430 uses SS Nobi but SUS/他 Laser R, holes and White Piercing; Cu/Brass t6 uses R0.5 and t>6 no automatic Laser R.
+- V4.6 retains all V4.5 rules and corrects only the user-approved `055958` three-entity / one-feature mistake. V4.5 preserves all V4.4 rules and only adds approved L09–L10. V4.4 explicitly supersedes V4.3 blanket DXF-only R0.5 omission, universal hole Ø≥t warning, and green-by-default Piasu POINT. V4.3 remains intact for audit; **do not apply a conflicting historical rule as current**.
+- Production updates require direct user approval; the `055957` exact special J leader and OTHER unapproved constructions are not production skill knowledge; the ONE `055958` slit is already covered by Section 4.10.
