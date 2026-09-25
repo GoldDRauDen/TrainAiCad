@@ -81,4 +81,4 @@ An explicit PDF R/C still takes priority **at that corner**, including t>6. This
 
 ## Scope separation
 
-This sheet governs **hole capability and automatic material-based laser corner R only**. Nobi/bend allowance still comes from approved Nobi tables and handwritten corrections. Special J marks and shop-specific relief geometry require their own explicit drawing evidence; the three reliefs of `055958` remain unresolved and MUST NOT be inferred from this workbook.
+This sheet governs **hole capability and automatic material-based laser corner R only**. Nobi/bend allowance still comes from approved Nobi tables and handwritten corrections. The user-approved **ONE** Green slit in `055958` is governed by **Section 4.10**, not the automatic material Laser R table: the reference DXF has 2 LINEs + 1 local ARC R0.5 joined as one feature. Its old method/count FLAG is resolved. Special J marks and OTHER unapproved shop reliefs require their own explicit drawing evidence.
