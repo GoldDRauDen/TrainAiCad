@@ -1,6 +1,6 @@
 # Nobi Allowance Reference Tables
 
-Source: approved V4.3 production baseline.
+Source: approved V4.3 Nobi values, with approved L09 material-routing clarification on 2026-09-25. **SUS430 uses SS/SUS430/BRASS Nobi ONLY; use workbook group SUS, 他 for Laser R, hole limits and White Piercing in `references/MATERIAL_RULES.md`. All Nobi numbers remain unchanged.**
 
 ### 7.3 Nobi Allowance Standards Tables *(fully restored from V1 — including the previously-dropped Copper table and all intermediate L-brackets)*
 
