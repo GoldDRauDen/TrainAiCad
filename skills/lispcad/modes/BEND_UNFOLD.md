@@ -72,9 +72,14 @@ When the actual Thickness ($t$) or Bend Length ($L$) does **not** exactly match 
 - **Out-of-Range**: If $t$ or $L$ exceeds the largest tabulated value for that material, do **not** guess. Set `is_flagged = true` and annotate `"OUT OF TABLE RANGE - CONFIRM NOBI WITH SHOP"` in Magenta (Color 6) per Section 4.4.
 - This rule applies uniformly across all four material tables in Section 7.3.
 
-### 4.10 Corner Reliefs *(restored from V1)*
-- **Intersection Only**: Create corner reliefs ONLY where two bend lines from perpendicular axes cross.
-- **Geometry**: Retract longer edge by material thickness $t$, create slit inward by $t + 0.2$, and draw diagonal slit to bend line intersection.
-- **Offset Value**: Read from drawing. If unspecified, record `offset = null` and flag missing dimensions per Section 4.4.
+### 4.10 Corner Reliefs — two distinct mechanisms (V4.4)
+
+**Standard crossing-bend slit relief** (original V4.3 rule, only when two perpendicular bend lines cross):
+- Retract longer edge by `t`; slit inward by `t + 0.2`; diagonal slit to bend-line intersection; read any drawing-specific offset or FLAG if unknown.
+
+**Opposite-fold fixed-outside R=t relief** (approved calibration `055962`):
+- When **two outer edges fold in different directions** and both outside dimensions must remain unchanged, create an `R=t` escape relief at their intersection without shortening either outside dimension. This is a distinct topology/operation from the standard slit relief and from material-table automatic laser fillets. Determine its exact tangency and retained-material side from the real bend/edge topology; if those are unclear, do not invent them.
+- In `055962`, `t=2 mm` gives the two confirmed R2 reliefs. A separately observed R2 on an unbent corner is NOT automatically this relief.
+- Three green shop relief objects in `055958` are **not yet defined by an approved construction method**; keep them FLAGGED and do not generalize from reference DXF coordinates.
 
 ---
