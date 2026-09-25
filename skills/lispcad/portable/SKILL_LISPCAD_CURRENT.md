@@ -1,5 +1,5 @@
 
-# SKILL_LISPCAD V4.5 PORTABLE: Drawing-First Sheet Metal Flat Pattern Extractor & AutoLISP Generator
+# SKILL_LISPCAD V4.6 PORTABLE: Drawing-First Sheet Metal Flat Pattern Extractor & AutoLISP Generator
 
 
 ## 0. Portable Skill Contract — Mandatory for Every AI / Every Chat
@@ -312,7 +312,7 @@ $$X_{\text{mid}} = X_{\text{nominal}} + \frac{\text{Tolerance}_{\text{upper}} + 
 - **DXF-only shop radius beyond the table:** a PDF-unmarked radius that does **not** follow an approved material rule may be omitted as a separate later shop operation only with direct user approval or an approved shop specification. Otherwise source conflict/FLAG. Do not infer an arbitrary R from thickness.
 - **Callout topology and count:** a leader is evidence of target corner class, not global scope; identify the candidate equivalent corners by their material topology and count (`6-C5`, `2-C10`, `4-R5` etc). Distinct R and C families MUST match their own n-calls.
 - **Geometry:** bake an explicit R into polyline tangent points/bulges (for a CCW 90° arc, `bulge=tan(90°/4)=0.41421356` with sign from actual sweep). A straight C replaces the corner with two tangent-offset vertices and bulge 0. A sharp interior U-notch stays sharp unless the PDF explicitly requires an interior R or an approved material rule for that particular class applies.
-- **Relief is not Laser R:** an `R=t` relief at two oppositely folding edges whose outside extents must remain unchanged is a manufacturing clearance with distinct topology. Do not spread Laser R to reliefs and do not infer three special reliefs of `055958` (method pending).
+- **Relief is not Laser R:** an `R=t` relief at two oppositely folding edges whose outside extents must remain unchanged is a manufacturing clearance with distinct topology. Do not spread Laser R to reliefs. `055958` contains **ONE** confirmed Section 4.10 slit relief composed of two connected LINEs and one local ARC R0.5; the arc is not a second relief or a material-table automatic Laser R.
 
 ### Material-table validation
 Record source material, thickness, chosen worksheet row, eligible corner class, R/C overrides, and each generated automatic radius; compare PDF and ground-truth DXF *after* this classification. A DXF R0.5 that matches the approved material table is expected and must not be excluded from regression comparisons.
@@ -372,7 +372,7 @@ For flanges stepping inward before joining the body:
 **Opposite-fold fixed-outside R=t relief** (approved calibration `055962`):
 - When **two outer edges fold in different directions** and both outside dimensions must remain unchanged, create an `R=t` escape relief at their intersection without shortening either outside dimension. This is a distinct topology/operation from the standard slit relief and from material-table automatic laser fillets. Determine its exact tangency and retained-material side from the real bend/edge topology; if those are unclear, do not invent them.
 - In `055962`, `t=2 mm` gives the two confirmed R2 reliefs. A separately observed R2 on an unbent corner is NOT automatically this relief.
-- Three green shop relief objects in `055958` are **not yet defined by an approved construction method**; keep them FLAGGED and do not generalize from reference DXF coordinates.
+- **`055958` (approved Q47/Q48): EXACTLY ONE standard Section 4.10 slit relief.** Its verified standalone DXF has three Green entities on Layer `0`, joined at endpoints: `LINE 55A` → `ARC 55B R0.5` → `LINE 55C`. Count **ONE connected machining feature**, NOT three reliefs. Its approved method is the existing crossing-bend slit rule (retract the longer edge by `t`, cut inward `t+0.2`, then diagonal to the proved bend intersection). The local `ARC R0.5` is **specific to this example**, not a mandatory arc for other slits or an automatic material-table Laser R. The old **slit method/count FLAG is RESOLVED**; customer-unconfirmed sizes and any independent datum/geometry FLAG remain. Never hardcode these reference coordinates as a universal construction.
 
 ---
 
@@ -392,6 +392,7 @@ Before emitting AutoLISP code, run the following automated checks:
 - **Chain Closure Check**: Where an overall width/height is present, verify that the proven chain closes to the overall dimension. A closure failure is a semantic FAIL even if the CAD polyline itself is perfectly closed.
 - **Reference DXF Comparison Check**: When Section 2.4 is active, compare feature coordinates and topology against the master DXF after PDF interpretation. Apply the approved material-table auto Laser R first; a matching DXF R0.5/R2 must not be excluded solely because PDF omitted R/C. Omit only explicitly confirmed downstream shop-only differences.
 - **Feature Count Closure Check**: For every explicit quantity callout (`n-Ø`, `n-M*`, `n-slot`, `n-R`, `n-C`, repeated notch family, etc.), the generated family count MUST equal `n`. Thread-to-pilot conversion changes diameter representation, not the required count. Missing or extra members are FAIL, not WARN.
+- **Connected primitives are not separate manufacturing features (approved `055958` regression)**: Count by proved topology, actual manufacturing operation, and endpoint connectivity, **not** by the number of same-colored DXF LINE/ARC entities. One approved `055958` Section 4.10 slit contains Green `LINE 55A` + `ARC 55B R0.5` + `LINE 55C`, which meet at their endpoints: feature count **1**, constituent entity count **3**. Common color alone does not prove that unrelated entities form one feature. The local R0.5 in this specific case is not a universal requirement of all slit reliefs. Remove only this slit method/count FLAG; independently uncertain customer sizes/datum still FLAG.
 - **Feature Family Isolation Check**: Keep each family (`Ø5.5`, `M4→Ø3.3`, `M5→Ø4.2`, slots, cutouts, etc.) independently counted and datum-traced. Do not use one family's centerline/dimension to create or position another family without explicit evidence.
 - **Local-Face → Flat Transform Check**: Every feature dimensioned on a bent face must have a proven Section 4.2.7 transform into global flat coordinates. Copying a local formed-face coordinate directly into the flat pattern is FAIL.
 - **Bend Sequence Check**: Verify face order independently of total-length closure. Matching overall blank length does not PASS bend order. Bend coordinates must follow the proven sequence in Sections 4.2.8 and 4.7.
@@ -578,7 +579,7 @@ An explicit PDF R/C still takes priority **at that corner**, including t>6. This
 
 #### Scope separation
 
-This sheet governs **hole capability and automatic material-based laser corner R only**. Nobi/bend allowance still comes from approved Nobi tables and handwritten corrections. Special J marks and shop-specific relief geometry require their own explicit drawing evidence; the three reliefs of `055958` remain unresolved and MUST NOT be inferred from this workbook.
+This sheet governs **hole capability and automatic material-based laser corner R only**. Nobi/bend allowance still comes from approved Nobi tables and handwritten corrections. The user-approved **ONE** Green slit in `055958` is governed by **Section 4.10**, not the automatic material Laser R table: the reference DXF has 2 LINEs + 1 local ARC R0.5 joined as one feature. Its old method/count FLAG is resolved. Special J marks and OTHER unapproved shop reliefs require their own explicit drawing evidence.
 
 ### 7.3 Nobi Allowance Standards Tables
 
@@ -943,6 +944,8 @@ These cases were calibrated against a user-approved reference DXF. They are conc
 
 ## Appendix E — Approved calibration 520924-19 (2026-09-25)
 
+**V4.6 approved Q47/Q48 correction:** The separately uploaded `055958.dxf` contains **ONE** Section 4.10 Green slit at one location, constructed as connected `LINE 55A + ARC 55B R0.5 + LINE 55C`. The user confirms the standard Section 4.10 method. Distinguish three primitives from one relief; clear only the erroneous relief construction/count FLAG, retaining customer dimensions and unrelated FLAGS. The local R0.5 arc is a case-specific shape, NOT an obligatory part of all slit reliefs.
+
 **Approved L09–L10 extension (V4.5):** SUS430 Nobi → SS/SUS430/BRASS; SUS430 Laser R, holes, White Piercing → SUS/他 (t6 R0.5, min hole t/2 inherited, White Piercing 〇 capability only). Cu/Brass t6 → automatic exterior R0.5, t>6 → no auto R, 5<t<6 → higher t6 row R0.5. Preserve original Excel blank and independent hole/White Piercing parameters. Pending J/relief/unknown dimensions remain FLAGGED.
 
 Use the user's declared merged-DXF ordering by descending global Y to map `055915, 055916, 055955, 055956, 055957, 055958, 055959, 055962, 055963, 055964`. Always interpret the PDF first; reference DXF is comparison, not a source for missing PDF numeric values.
@@ -950,11 +953,11 @@ Use the user's declared merged-DXF ordering by descending global Y to map `05591
 - `055915/055916`: four Ø13 and basic contours matched reference; protect existing passing behavior.
 - `055955/055956` (SS t9): eligible uncalled-out outside corners must include material Laser R2, including two R2 on `055955`. M4 pilot Ø3.3 < t/2=4.5 => POINT ByLayer, no capacity FLAG. Unconfirmed center dimensions remain independently Magenta FLAG.
 - `055957`: retain-inner-panel instruction does NOT request a second detached cutout. Special J/POINT only when the PDF has the applicable indication. User confirms a rare J exists, but the exact leader scope is deferred; do not back-solve it from DXF.
-- `055958`: the PDF specifies **R50** (previous R60 OCR was wrong). Prior Lisp shifted ten hole centers by 45.32 mm because of wrong datum/face transform. Two customer-unconfirmed positions remain Magenta. Three green shop reliefs are pending a user-approved construction method: no automatic invented topology.
+- `055958`: the PDF specifies **R50** (previous R60 OCR was wrong). Prior Lisp shifted ten hole centers by 45.32 mm because of wrong datum/face transform. Two customer-unconfirmed positions remain Magenta. ONE confirmed Section 4.10 Green slit relief (connected `LINE 55A + ARC 55B R0.5 + LINE 55C` in standalone DXF). Three CAD entities were wrongly counted as three independent reliefs. Close only this slit method/count FLAG; customer-unconfirmed dimensions remain Magenta FLAGGED.
 - `055959`: 22-hole count and overall blank can pass while one lower-left contour edge is wrong by 5 mm. Three customer-unconfirmed positions still Magenta.
 - `055962`: two confirmed R2 = t2 *opposite-fold reliefs* preserve both outside dimensions; laser R at unrelated outer corners and bend-line material-domain trimming are independent checks.
 - `055963/055964`: verify PIERCING scope or approved effective pilot capacity for M6; a DXF POINT is not itself PDF proof. Unproven R5 on `055964` remains Magenta.
-- Unknown numeric-only locations on known topology may be previewed as integer-rounded Magenta geometry and must be FLAGGED. Neither `055957` J endpoints nor `055958` special relief construction is a newly approved universal method.
+- Unknown numeric-only locations on known topology may be previewed as integer-rounded Magenta geometry and must be FLAGGED. The `055957` J endpoints remain deferred. The ONE `055958` slit uses approved Section 4.10, and its local DXF ARC R0.5 must not be generalized to every slit.
 
 ---
 
@@ -962,14 +965,14 @@ Use the user's declared merged-DXF ordering by descending global Y to map `05591
 
 ### B.1 Minimum Package
 For cross-chat / cross-AI use, the minimum package is this single file:
-- `SKILL_LISPCAD_V4_5_PORTABLE.md`
+- `SKILL_LISPCAD_V4_6_PORTABLE.md`
 
 It already contains the formulas, Nobi tables, CAD schema, output contract, datum rules, C/R rules, DXF calibration protocol, and regression cases required for execution.
 
 ### B.2 Recommended Invocation Text
 At the start of a new AI/chat, the operator should provide this file and issue an instruction equivalent to:
 
-> Read `SKILL_LISPCAD_V4_5_PORTABLE.md` completely before processing drawings. Treat Sections 0–9 and all appendices as mandatory. Focus first on the drawing field, dimensions/witness lines, handwritten corrections/Nobi, barcode, material, and thickness. Keep Stage 1 compact; prioritize production-safe geometry and ask when evidence is not unique.
+> Read `SKILL_LISPCAD_V4_6_PORTABLE.md` completely before processing drawings. Treat Sections 0–9 and all appendices as mandatory. Focus first on the drawing field, dimensions/witness lines, handwritten corrections/Nobi, barcode, material, and thickness. Keep Stage 1 compact; prioritize production-safe geometry and ask when evidence is not unique.
 
 ### B.3 Audit-Only Exception
 If the user explicitly asks only to compare, audit, or produce a report and says **not to regenerate AutoLISP**, the audit request overrides the normal Stage 2 generation requirement for that turn. The AI must still apply all interpretation and verification rules and produce a structured Stage 1-style report.
@@ -979,13 +982,19 @@ If the user explicitly asks only to compare, audit, or produce a report and says
 - It cannot, by itself, permanently retrain or alter the base weights of every AI/model.
 - Therefore all validated learning that must persist must be represented explicitly in this portable specification, regression appendices, or user-supplied companion references.
 
-### B.5 V4.5 approved L09–L10 extension (2026-09-25)
+### B.5 V4.6 approved `055958` single-slit correction (2026-09-25)
+
+- Exactly ONE existing Section 4.10 crossing-bend slit relief in `055958`, built in the supplied DXF from two Green LINEs and one Green ARC R0.5 joined at endpoints. The prior 'three reliefs' were three CAD primitives of one operation.
+- Add mandatory entity-to-feature counting by connectivity and function; don't apply local example's R0.5 to all reliefs.
+- Clear only the obsolete `055958` slit method/count FLAG; leave `055957` special J and customer-unconfirmed sizes unresolved. V4.5 and earlier snapshots remain immutable.
+
+### B.6 V4.5 approved L09–L10 extension (2026-09-25)
 
 - SUS430 routing by process: SS Nobi; SUS/他 Laser R, hole minimum and White Piercing.
 - Cu/Brass Laser R: t6 R0.5, t>6 no auto R; 5<t<6 upwards-select t6/R0.5. These are direct approved overrides to an unchanged historical blank Excel source cell.
 - The portable Section 7.2 includes original source table and clearly separated approved operational clarifications. Historical snapshots are unchanged.
 
-### B.6 V4.4 approved 520924-19 release
+### B.7 V4.4 approved 520924-19 release
 
 - Replaced unconditional DXF-only R0.5 omission with PDF-first, workbook-governed auto Laser R0.5/R2/R3 at eligible, uncalled-out corners.
 - Replaced one-size-fits-all minimum-hole warning with scoped PIERCING, Ø<t/2, inherited Excel material thresholds, pilot-table M conversion and POINT color rules.
@@ -993,7 +1002,7 @@ If the user explicitly asks only to compare, audit, or produce a report and says
 - Embedded the full approved Excel table in Section 7.2; no hidden dependency on uploaded spreadsheet.
 - V4.3 and V4.2 entries below are historical; where they conflict, these V4.4-approved rules govern.
 
-### B.7 V4.3 Portability Change Log (historical only)
+### B.8 V4.3 Portability Change Log (historical only)
 - Added **Drawing-Field Focus Mode**: prioritize main geometry, dimensions/witness lines, handwritten corrections/Nobi, barcode, material, and thickness; ignore unrelated title-block/administrative text unless it resolves a production conflict.
 - Added **user-marked ROI priority**: when the operator boxes/crops/highlights the drawing field, inspect that region first and only read necessary metadata/notes outside it.
 - Added mandatory drawing read order: contour topology → feature inventory/counts → datum graph → bend/face mapping → handwritten evidence → metadata lock → CAD generation.
