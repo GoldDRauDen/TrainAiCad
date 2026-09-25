@@ -43,17 +43,25 @@ TrainAiCad/
 │       ├── portable/
 │       │   └── SKILL_LISPCAD_CURRENT.md
 │       └── versions/
-│           └── V4.3/
+│           ├── V4.3/  (immutable baseline)
+│           └── V4.4/  (approved 520924-19)
 ├── references/
 │   ├── NOBI_TABLES.md
 │   ├── THREAD_PILOT_TABLE.md
-│   └── MATERIAL_RULES.md
+│   └── MATERIAL_RULES.md  (complete approved 2026-07-30 workbook transcription)
 └── regression/
     ├── datum/
     ├── bend/
     ├── topology/
     └── features/
 ```
+
+## Active approved production release (2026-09-25)
+
+- **V4.4** from approved `520924-19` calibration is active. Read `AI_ENTRYPOINT.md` and the required modular files, or take the standalone `skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md`.
+- Historical `skills/lispcad/versions/V4.3/` is unchanged. The immutable approved `skills/lispcad/versions/V4.4/` has the complete portable source including the 2026-07-30 Excel capability table.
+- Material capability and automatic R: `references/MATERIAL_RULES.md`. Approved tests: `regression/features/520924-19_APPROVED.md`.
+- **No Lisp/DXF was regenerated** for this skill-release operation; unapproved construction of `055958` shop relief and the exact special J in `055957` remain pending.
 
 ## Operating model
 
