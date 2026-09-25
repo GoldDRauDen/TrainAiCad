@@ -44,7 +44,8 @@ TrainAiCad/
 │       │   └── SKILL_LISPCAD_CURRENT.md
 │       └── versions/
 │           ├── V4.3/  (immutable baseline)
-│           └── V4.4/  (approved 520924-19)
+│           ├── V4.4/  (immutable approved L01–L08)
+│           └── V4.5/  (immutable approved L09–L10)
 ├── references/
 │   ├── NOBI_TABLES.md
 │   ├── THREAD_PILOT_TABLE.md
@@ -58,8 +59,8 @@ TrainAiCad/
 
 ## Active approved production release (2026-09-25)
 
-- **V4.4** from approved `520924-19` calibration is active. Read `AI_ENTRYPOINT.md` and the required modular files, or take the standalone `skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md`.
-- Historical `skills/lispcad/versions/V4.3/` is unchanged. The immutable approved `skills/lispcad/versions/V4.4/` has the complete portable source including the 2026-07-30 Excel capability table.
+- **V4.5** from approved `520924-19` calibration (L09–L10) is active. Read `AI_ENTRYPOINT.md` and the required modular files, or take the standalone `skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md`.
+- Historical `skills/lispcad/versions/V4.3/` is unchanged. Immutable approved V4.4 and V4.5 snapshots preserve their complete portable sources. V4.5 adds process-specific SUS430 mapping and the Cu/Brass t6 boundary clarification, retaining the original Excel transcription.
 - Material capability and automatic R: `references/MATERIAL_RULES.md`. Approved tests: `regression/features/520924-19_APPROVED.md`.
 - **No Lisp/DXF was regenerated** for this skill-release operation; unapproved construction of `055958` shop relief and the exact special J in `055957` remain pending.
 
