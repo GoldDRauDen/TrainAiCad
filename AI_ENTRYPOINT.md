@@ -11,9 +11,9 @@ This is the mandatory starting point for an AI using the modular LISPCAD product
    - `modes/BEND_UNFOLD.md`
 4. Load every applicable topology module. A part may match more than one topology.
 5. Load every applicable feature module.
-6. Load only the shared reference tables required by the selected modules.
-7. Apply validation before emitting production CAD/AutoLISP.
-8. Use `regression/` to verify behavior when a case touches a known failure class.
+6. Load every applicable shared reference; `references/MATERIAL_RULES.md` is mandatory for any part with holes or uncalled-out eligible laser corners. Load Nobi/Thread Pilot tables when those features occur.
+7. Apply validation before emitting production CAD/AutoLISP. A user-requested partial numeric preview is Magenta + FLAG and **not** production PASS; never invent unknown topology or bend sequence.
+8. Use `regression/` for all known failure classes; `regression/features/520924-19_APPROVED.md` is the approved new regression suite.
 
 ## Selection rule
 
@@ -23,10 +23,12 @@ If classification is uncertain, load all plausible modules. If production-safe g
 
 ## Migration safety
 
-The immutable baseline is:
-`skills/lispcad/versions/V4.3/SKILL_LISPCAD_V4_3_PORTABLE.md`
+The historical immutable baseline remains:
+`skills/lispcad/versions/V4.3/SKILL_LISPCAD_V4_3_PORTABLE.md`.
 
-The portable current copy is:
-`skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md`
-
-During this modularization release, if a modular file conflicts semantically with the immutable V4.3 baseline, STOP and report the conflict. Do not silently weaken or reinterpret the approved V4.3 rule.
+**Current approved release V4.4 (520924-19):**
+- Immutable V4.4 snapshot: `skills/lispcad/versions/V4.4/SKILL_LISPCAD_V4_4_PORTABLE.md`.
+- Portable active single-file: `skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md`.
+- Modular core/feature/mode files and `references/MATERIAL_RULES.md` must implement the same V4.4 rules.
+- V4.4 explicitly supersedes V4.3 blanket DXF-only R0.5 omission, universal hole Ø≥t warning, and green-by-default Piasu POINT. V4.3 remains intact for audit; **do not apply a conflicting historical rule as current**.
+- Production updates require direct user approval; unknown J leader / shop relief construction is not production skill knowledge.
