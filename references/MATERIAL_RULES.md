@@ -30,15 +30,41 @@
 | 25 | Cu / Brass (銅・真ちゅう) | — | 5 | outside corner ≤90° | R0.5 | ≥ t/2 | × |
 | 26 | Cu / Brass; ※ケガキ不可 | 6 | — | outside corner ≤90° | — [UNSPECIFIED] | ≥ t | × |
 
-The `※ケガキ不可` remark on the Cu/Brass last row means scribing/marking unavailable there; it does not specify a laser radius. The worksheet says `※3` at SS t≥19 but has no supplied explanatory text; **ignore only the annotation, retain R3** per approval. `無` explicitly means **no automatic laser fillet**. A blank R cell is **unknown**, not `無`.
+The `※ケガキ不可` remark on the Cu/Brass last row means scribing/marking unavailable there; it does not specify a laser radius. The worksheet says `※3` at SS t≥19 but has no supplied explanatory text; **ignore only the annotation, retain R3** per approval. `無` explicitly means **no automatic laser fillet**. A blank R cell is **unknown in the original Excel transcription**; the separately approved L10 defines the Cu/Brass t6 R0.5 and t>6 NO-auto-R operation.
+
+## L09 — Approved SUS430 process-specific routing (2026-09-25)
+
+**SUS430 has DIFFERENT lookup groups by manufacturing process; never apply a single SS or SUS group to all operations.**
+
+| Process | Authoritative group |
+|---|---|
+| Nobi / bend deduction | **SS, SUS430, BRASS** in `references/NOBI_TABLES.md` (portable Section 7.3); numeric values unchanged |
+| Laser R | Workbook **SUS, 他** |
+| Cut-hole minimum | Workbook **SUS, 他**; hole-limit blanks inherit only within this group |
+| 白ピアス / White Piercing capability | Workbook **SUS, 他**; 〇 is capability, not a request for a POINT |
+
+**Regression:** SUS430 t6 uses SS/SUS430 Nobi but SUS/他 row 11 for auto Laser **R0.5** on eligible uncalled-out outside corners ≤90°, inherited min cut-hole diameter **t/2** from SUS/他 row 10, and White Piercing **〇** from row 11. Using SS t6 Laser R2 for SUS430 is incorrect. Other unmapped alloys still require clarification.
+
+## L10 — Approved Cu / Brass boundary at t6 (2026-09-25)
+
+**The original Excel row-26 Laser R cell remains BLANK in the transcription below. This separately approved production override does not claim that the workbook itself printed R0.5 or 無.**
+
+| Real thickness | Automatic Laser R at eligible uncalled-out outside corners ≤90° |
+|---|---|
+| `0<t≤5` mm | R0.5 from original row 25 |
+| `5<t<6` mm | Approved next-higher row t6 → **R0.5** |
+| `t=6` mm | **R0.5** per direct user clarification |
+| `t>6` mm | **NONE**: do not add an automatic Laser R |
+
+An explicit PDF R/C still takes priority **at that corner**, including t>6. This does not prohibit separately proven bend relief. The original row-26 minimum cut-hole **≥t**, White Piercing **×** and `※ケガキ不可` remain unchanged; do not generalize the Laser R override to other processes.
 
 ## Approved lookup algorithm
 
-1. Lock the explicit drawing material group and real thickness `t`. Never silently equate `SUS430` and the SS group without an approved material mapping; ambiguous alloys require a question/FLAG.
+1. Lock the drawing material and thickness `t`. **SUS430 is explicitly mapped by L09: SS/SUS430/BRASS Nobi, but SUS/他 Laser R, holes and White Piercing.** Other ambiguous alloy groups without an approved mapping still require a question/FLAG.
 2. Find a row containing `t` in its stated Min–Max range. A first row with blank Min covers positive t up to its Max; for AL the next blank-Min row ending at 6 covers t>0.5 through 6 (the preceding row handles t≤0.5). If several rows with open Min are candidates, choose the most specific applicable row.
 3. If t falls between two explicit ranges, use the **next higher thickness row** (no interpolation). For a nonfinal row that has Min but blank Max, treat only its specified Min as explicit; for intermediate t choose the next higher row. A **last** row with a Min and no Max covers that Min and all greater thicknesses. Outside the material's defined ranges, or with no unambiguous row, ASK; do not invent a range.
 4. For a BLANK **hole-capacity** cell, inherit the last nonblank hole-capacity value above it **within the same material group only**. Do not inherit Laser R or White Piercing cells; their values are row-specific.
-5. Determine laser R only at corners belonging to the row's corner class. A PDF-specific R or C at that corner overrides the Excel R. Where Excel specifies R0.5/R2/R3 and PDF has no explicit R/C, bake it automatically into the actual contour; keep convex vs concave classification and do not blindly round internal notches. `R=t` bend-intersection relief is a separate feature class and must never be mistaken for material-table laser R.
+5. Apply the approved L09 process split and L10 Cu/Brass thickness override first; then determine laser R only at corners belonging to the row's corner class. A PDF-specific R or C at that corner overrides the Excel R. Where Excel specifies R0.5/R2/R3 and PDF has no explicit R/C, bake it automatically into the actual contour; keep convex vs concave classification and do not blindly round internal notches. `R=t` bend-intersection relief is a separate feature class and must never be mistaken for material-table laser R.
 6. Calculate the **effective cut diameter** from an explicit drawing Ø when present, otherwise the pilot diameter from approved thread table 7.1 for a proved tapped M feature. PIERCING arrow/note scoped to that feature family => `POINT` ByLayer regardless of capacity. PIERCING plus THROUGH HOLE => `POINT` Color 3. Ø < t/2 => `POINT` ByLayer without a capacity FLAG. Else when effective Ø is below Excel minimum => `POINT` ByLayer without a capacity FLAG; otherwise `CIRCLE` ByLayer. An ambiguous feature identity => temporary `CIRCLE` Color 6 + FLAG; geometry/position uncertainty produces a separate independent FLAG.
 7. White Piercing `〇` and `×` are **machine-capability indicators**, never instructions to turn every hole into POINT; follow the explicit PDF PIERCING for the specified feature group even if worksheet is `×`, without a capacity-only FLAG. User-approved PROCESS POINT Color 3 is restricted to explicit `PIERCING + THROUGH HOLE`; other POINTs default ByLayer on Layer 0.
 8. Document the selected Excel row and any upward-thickness selection for ambiguous/nonstandard thickness; preserve unrelated dimensional/customer-approval FLAGs.
@@ -50,6 +76,8 @@ The `※ケガキ不可` remark on the Cu/Brass last row means scribing/marking 
 - SUS t15–16 => minimum cut hole Ø10, independent of the unconditional POINT rule for Ø < t/2.
 - AL t5 => minimum cut hole 0.8t = Ø4. Ø3 with no PIERCING => POINT ByLayer with no capacity FLAG, although Ø3 is not < t/2.
 - SS t19+ => laser R3 with inside/outside-corner scope as printed; ignore unexplained `※3` notation, not the R3 value.
+- L09 SUS430 t6: SS Nobi, SUS/他 Laser R0.5, SUS/他 inherited min hole t/2, 白ピアス 〇 as capacity only.
+- L10 Cu/Brass t6: R0.5 at eligible outside corner; t>6 NO automatic Laser R; at 5<t<6 use next-higher t6 row with R0.5.
 
 ## Scope separation
 
