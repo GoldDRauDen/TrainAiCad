@@ -1,15 +1,10 @@
-# LISPCAD Feature — Forming Features
+# LISPCAD Feature — Forming & Center Markings
 
-Source: approved V4.3 production baseline.
+Approved calibration 520924-19, 2026-09-25.
 
-### 3.2 3D Forming Features Mapping (To 2D Flat Pattern)
-For 3D forming operations (which cannot be cut directly as flat outlines), map geometry into 2D laser manufacturing layers:
+### 3.2 3D formed-feature mapping to 2D manufacturing
 
-1. **Scribe / Marking Lines (Kegaki - Color 1 / Red)**:
-   - Features: **Louver**, **Emboss**, **Dimple Outline**, **Rib**, **Gusset**, **Bridge**, **Half Shear**, **Hem**, **Curl**, **Lance Cut Line**.
-   - CAD Representation: DXF Group `(62 . 1)` on Layer `"0"`. Indicates marking/bending reference for press operators.
-2. **Pilot / Piercing Points (Piasu - Color 3 / Green)**:
-   - Features: **Dimple Center Point**, **Burring Pilot Hole**, **Lance Piercing Point**, **Spot Welding Location**.
-   - CAD Representation: DXF Group `(62 . 3)` on Layer `"0"`. Indicates laser piercing center location.
-
----
+- `Kegaki` / formed reference and explicitly required marking lines: Layer 0, Color 1 (Red), `LINE` or explicit `LWPOLYLINE` as the applicable drawing requires. Features include louver, emboss, dimple outline, rib, gusset, bridge, half shear, hem, curl and lance marks. Respect restrictions such as `※ケガキ不可` where listed by the material table.
+- Manufacturing center `POINT`: Layer 0, **ByLayer by default**. Only a PDF-scoped **PIERCING + THROUGH HOLE** center is Color 3 (Green). Explicit PIERCING *without* THROUGH HOLE and material-capacity POINTs remain ByLayer. A provisional estimated center/type is Color 6 (Magenta) with an independent FLAG.
+- Relief slits and other LINE geometry whose color is explicitly specified Green retain their LINE-specific legend; this does not permit arbitrary green POINTs. Do not create a circle of radius 0.5 to stand in for an AutoCAD `POINT` when the source requires POINT.
+- The unusual `J`/POINT set requires an applicable explicit PDF J indication. It is not a universal shop feature and is not inferred merely because the reference DXF contains a J.
