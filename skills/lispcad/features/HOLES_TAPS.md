@@ -9,6 +9,8 @@ Approved calibration 520924-19, 2026-09-25. Uses `../../../references/MATERIAL_R
 
 ## 3.3 Approved POINT / CIRCLE decision (first matching rule)
 
+**L09:** For **SUS430**, apply **SUS, 他** rows to cut-hole minimum and 白ピアス capability, independently of SS/SUS430/BRASS Nobi. At t6 the inherited minimum hole threshold is t/2 and White Piercing is 〇 (capability only).
+
 1. If the PDF explicitly applies `PIERCING + THROUGH HOLE` to a feature family: `POINT` on Layer 0, DXF color 3 (Green); Ø/M only in Stage 1 report, not CAD.
 2. Else if the PDF applies `PIERCING`: `POINT` on Layer 0, ByLayer (no explicit color 3/6), regardless of the worksheet's `白ピアス 〇/×` or nominal diameter. That worksheet column is machine **capability**, NOT drawing intent; a `×` does not suppress the explicit PIERCING POINT or create a capacity-only FLAG.
 3. Else, if the effective cut-hole diameter `d < t/2`: `POINT` ByLayer with **no capacity FLAG**. This holds even without a worksheet row. Strict inequality: `d = t/2` proceeds to the worksheet test.
