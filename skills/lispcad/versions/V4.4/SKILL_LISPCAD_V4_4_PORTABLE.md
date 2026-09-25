@@ -148,7 +148,7 @@ This mode is activated ONLY when the user explicitly states that a supplied DXF 
 
 #### 2.4.3 Approved material-table Laser R takes precedence over old DXF-only R0.5 exception
 
-The V4.3 unconditional rule to omit uncalled-out DXF-only R0.5 is superseded. Read the approved `references/MATERIAL_RULES.md` and apply automatic Laser R0.5, R2 and R3 to **eligible, uncalled-out** corners according to material/thickness and corner class. Explicit PDF R or C at a corner always overrides its material-table auto R. A shop-added R not prescribed by the PDF or approved table may be omitted only with direct user confirmation or an approved shop specification; otherwise FLAG a source conflict. This rule never authorizes inventing contour topology, flattening a relief into a fillet, or silently adjusting explicitly dimensioned PDF geometry.
+The V4.3 unconditional rule to omit uncalled-out DXF-only R0.5 is superseded. Read the approved material table embedded in Section 7.2 (modular reference: `references/MATERIAL_RULES.md`) and apply automatic Laser R0.5, R2 and R3 to **eligible, uncalled-out** corners according to material/thickness and corner class. Explicit PDF R or C at a corner always overrides its material-table auto R. A shop-added R not prescribed by the PDF or approved table may be omitted only with direct user confirmation or an approved shop specification; otherwise FLAG a source conflict. This rule never authorizes inventing contour topology, flattening a relief into a fillet, or silently adjusting explicitly dimensioned PDF geometry.
 
 #### 2.4.4 Calibration / Portable Learning Discipline
 - Every reference-DXF comparison is an **anti-regression calibration case**: record the semantic reason for each corrected mismatch, not merely the corrected coordinate. Validated general rules belong in this portable skill file.
@@ -177,14 +177,12 @@ For 3D forming operations (which cannot be cut directly as flat outlines), map g
    - CAD Representation: DXF Group `(62 . 1)` on Layer `"0"`. Indicates marking/bending reference for press operators.
 2. **Piercing and ordinary manufacturing POINTs**: ByLayer on Layer 0 by default; Green (Color 3) ONLY for PDF-scoped `PIERCING + THROUGH HOLE`. A temporary unproved center/type is Magenta + FLAG. Relief slits use their own LINE-color rules.
 
-## 3.3 Approved POINT/CIRCLE routing and special J
-
 ## 3.3 Approved POINT / CIRCLE decision (first matching rule)
 
 1. If the PDF explicitly applies `PIERCING + THROUGH HOLE` to a feature family: `POINT` on Layer 0, DXF color 3 (Green); Ø/M only in Stage 1 report, not CAD.
 2. Else if the PDF applies `PIERCING`: `POINT` on Layer 0, ByLayer (no explicit color 3/6), regardless of the worksheet's `白ピアス 〇/×` or nominal diameter. That worksheet column is machine **capability**, NOT drawing intent; a `×` does not suppress the explicit PIERCING POINT or create a capacity-only FLAG.
 3. Else, if the effective cut-hole diameter `d < t/2`: `POINT` ByLayer with **no capacity FLAG**. This holds even without a worksheet row. Strict inequality: `d = t/2` proceeds to the worksheet test.
-4. Else look up the applicable material/thickness row of `references/MATERIAL_RULES.md` (the approved `Rule_Bo_R&Hole.xlsx` transcription). If `d` is below that row's inherited minimum hole diameter: `POINT` ByLayer, **no capacity FLAG** even without PIERCING. Otherwise draw `CIRCLE` ByLayer at the effective cut diameter.
+4. Else look up the applicable material/thickness row in Section 7.2 (modular reference: `references/MATERIAL_RULES.md`) (the approved `Rule_Bo_R&Hole.xlsx` transcription). If `d` is below that row's inherited minimum hole diameter: `POINT` ByLayer, **no capacity FLAG** even without PIERCING. Otherwise draw `CIRCLE` ByLayer at the effective cut diameter.
 5. If the worksheet cannot resolve the material/thickness/limit or the output type remains unproved and `d >= t/2`, use a **provisional `CIRCLE` Color 6 (Magenta) plus FLAG**; never assert production readiness. For a proved tapped `M*` callout, obtain provisional `d` from the approved thread pilot table (e.g. M4 Ø3.3, M5 Ø4.2, M6 Ø5.0), except where the PDF explicitly overrides it.
 
 The precedence above is per **feature family**, never per whole sheet. No numeric capacity FLAG is warranted when a higher-priority explicit PIERCING or verified capability rule definitively selects POINT. Independent uncertainty about quantity, center coordinates, PDF legibility, handwritten instructions or customer approval **continues to require FLAG**. If feature identity/topology is unresolved, do not invent a hole or switch type merely to fill an output.
@@ -495,7 +493,6 @@ For laser cutting, threaded holes (marked `M*`) MUST be output as pilot holes us
 | **M48** | 5.00 | 43.00 | 21.500 |
 
 ### 7.2 Approved workbook: material laser R, hole capacity, White Piercing
-
 
 **Approved from user-supplied** `Rule_Bo_R&Hole.xlsx`, worksheet `Bo_R_Hole`, dated `2026.07.30`; calibration `520924-19`, approved 2026-09-25. This complete transcription is portable: do not require the original spreadsheet or past chat.
 
