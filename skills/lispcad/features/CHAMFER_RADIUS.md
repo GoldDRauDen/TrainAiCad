@@ -1,17 +1,18 @@
-# LISPCAD Feature — Chamfer / Radius
+# LISPCAD Feature — Chamfer / Radius / Automatic Laser R
 
-Source: approved V4.3 production baseline.
+Approved calibration 520924-19, 2026-09-25. Governing table: `../../../references/MATERIAL_RULES.md`. The old V4.3 unconditional DXF-only R0.5 exclusion is SUPERSEDED when this approved table prescribes a radius.
 
 ### 4.5 Corner Filleting & Chamfer Baking
-- **No Global Polyline Fillets**: Do NOT apply global fillet operations to outer boundaries containing internal notches.
-- **Corner Topology Classification First**: Before applying any `C` or `R` callout, classify the target corner relative to the **material region** as:
-  - **Convex / outside corner (góc lồi)**: material interior angle $< 180^\circ$.
-  - **Concave / re-entrant corner (góc lõm)**: material interior angle $> 180^\circ$.
-  Do not decide this from screen direction alone; use boundary orientation and which side of the boundary contains material.
-- **Leader Arrow = Representative Feature, not blind global scope**: The leader/arrow location is primary evidence for the intended corner class. For callouts such as `6-C5`, `2-C10`, or `8-R10`, identify equivalent candidate corners by topology, symmetry, repeated geometry, and callout count. The final number of assigned corners MUST match the `n-` quantity. If more than one plausible assignment remains, flag and ask; do not spread the callout to arbitrary nearby corners.
-- **Do Not Merge Feature Types**: `C` is a straight chamfer and `R` is an arc/fillet. Never encode a chamfer as a bulged arc or an R as a straight bevel.
-- **Outer Corner Fillets**: Apply fillet radius ($R$) ONLY to vertices explicitly supported by the callout/topology assignment. Bake fillets into polyline bulges:
-  $$\text{bulge} = \tan\left(\frac{\text{turn\_angle}}{4}\right) \quad (\text{for } 90^\circ, \text{bulge} \approx 0.41421356)$$
-- **Internal Corners Default to R0**: Internal corners of $U$-shaped notches, tabs, or slots MUST remain sharp ($R=0$) unless explicitly specified. When an internal $R$ is present, record it in `internal_fillets`.
-- **Chamfers**: Bake chamfers by replacing the corner vertex with two distinct vertices offset back along adjacent edges by chamfer size $C$, with bulge $0.0$.
-- **Reference-DXF R0.5 Exception**: In Section 2.4 ground-truth mode, an uncalled-out `R0.5` that exists only in the DXF is a confirmed later shop addition and MUST be ignored for generation/comparison. Preserve the PDF corner as R0 unless the PDF itself explicitly specifies R0.5 or the current user explicitly overrides this rule for the job.
+
+- **No global FILLET command** or global outline fillet pass: trace real topology before arithmetic.
+- Classify each target by **material interior angle**: convex/outside `<180°`; concave/re-entrant `>180°`. The term `outside corner ≤90°` in the workbook describes a convex exterior corner of the stated angle; do not apply the rule to similarly drawn inner corners.
+- **Order of authority per CORNER**: drawing-specific revision/red correction → explicit PDF R/C callout (with applicable quantity) → approved workbook automatic Laser R (if the PDF has NO R/C instruction for that corner). A PDF C remains a straight chamfer and must never silently become R2/R0.5. Where a PDF R/C overrides a material table at one corner, still use automatic Laser R at other eligible uncalled-out corners.
+- Workbook automatic laser radii: SS up to t5 as tabulated R0.5 for exterior ≤90°; SS t6–9 R2; SUS/other or AL rows with R0.5 for exterior ≤90°; Cu/Brass t≤5 R0.5 exterior ≤90°; SS t≥19 R3 at stated inside/outside corner class including the sheet's chamfer-language **only when there is no conflicting PDF-specific R/C**. Honor exact row/range lookup, and `無` means no automatic radius. A blank R is UNKNOWN, not automatically R0. Ignore unexplained `※3` annotation but do use the workbook's R3.
+- **Two R2 of part `055955` are required in generated geometry** under the SS t9 material-table rule; this explicitly reverses the earlier hypothesis to omit them as downstream shop additions. Never treat the old DXF-only R0.5 omission as a reason to omit a radius required by the current approved table.
+- **DXF-only shop radius beyond the table:** a PDF-unmarked radius that does **not** follow an approved material rule may be omitted as a separate later shop operation only with direct user approval or an approved shop specification. Otherwise source conflict/FLAG. Do not infer an arbitrary R from thickness.
+- **Callout topology and count:** a leader is evidence of target corner class, not global scope; identify the candidate equivalent corners by their material topology and count (`6-C5`, `2-C10`, `4-R5` etc). Distinct R and C families MUST match their own n-calls.
+- **Geometry:** bake an explicit R into polyline tangent points/bulges (for a CCW 90° arc, `bulge=tan(90°/4)=0.41421356` with sign from actual sweep). A straight C replaces the corner with two tangent-offset vertices and bulge 0. A sharp interior U-notch stays sharp unless the PDF explicitly requires an interior R or an approved material rule for that particular class applies.
+- **Relief is not Laser R:** an `R=t` relief at two oppositely folding edges whose outside extents must remain unchanged is a manufacturing clearance with distinct topology. Do not spread Laser R to reliefs and do not infer three special reliefs of `055958` (method pending).
+
+### Material-table validation
+Record source material, thickness, chosen worksheet row, eligible corner class, R/C overrides, and each generated automatic radius; compare PDF and ground-truth DXF *after* this classification. A DXF R0.5 that matches the approved material table is expected and must not be excluded from regression comparisons.
