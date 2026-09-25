@@ -1,5 +1,5 @@
 
-# SKILL_LISPCAD V4.3 PORTABLE: Drawing-First Sheet Metal Flat Pattern Extractor & AutoLISP Generator
+# SKILL_LISPCAD V4.4 PORTABLE: Drawing-First Sheet Metal Flat Pattern Extractor & AutoLISP Generator
 
 
 ## 0. Portable Skill Contract — Mandatory for Every AI / Every Chat
@@ -80,7 +80,7 @@ This is the default operating mode for production Lisp generation. The AI MUST s
 
 **User-marked ROI rule:** If the user crops, boxes, highlights, or otherwise identifies the drawing region to inspect, treat that marked region as the primary geometry ROI. Still read barcode, material, thickness, and applicable handwritten/revision notes outside the ROI when the user has explicitly indicated them or they are necessary to resolve the part. Do not let unrelated content outside the marked ROI distract from geometry extraction.
 
-**Quality rule:** A short answer is preferred, but never by skipping geometric verification. Execute the full internal checks in Sections 4–5, then report only the information needed by the operator. If any geometry, datum, feature type, bend order, handwritten note, barcode, material, or thickness is not clear enough for a production-safe interpretation, STOP and ask a direct question instead of generating guessed geometry.
+**Quality rule:** A short answer is preferred, but never by skipping geometric verification. Execute the full internal checks in Sections 4–5, then report only the information needed by the operator. If topology, feature identity, bend order, material, thickness or datum is unproved, STOP production work and ask. When ONLY a numeric size/coordinate is missing after topology and datum tracing, the user permits a Magenta non-production preview with integer-rounded estimates, nearby FLAG text and a Stage 1 FLAG; never label that preview production-safe.
 
 ---
 
@@ -146,13 +146,9 @@ This mode is activated ONLY when the user explicitly states that a supplied DXF 
 - If the DXF differs from the PDF in a way that **cannot** be supported by the PDF dimensions/callouts, do NOT silently teach that difference as a general rule. Report it as a production-CAD adjustment or source conflict and ask the user when it materially changes the part.
 - A newer visible revision note / red correction on the PDF must still be reported if it conflicts with the supplied DXF; ground-truth calibration does not erase revision chronology.
 
-#### 2.4.3 Sharp-Corner / Shop Micro-Radius Policy
-- `R0.5` that exists **only in the reference DXF and is not called out on the PDF** is a downstream shop-added radius. It MUST be excluded from PDF↔DXF mismatch scoring and MUST NOT be generated in AutoLISP.
-- This `DXF-only R0.5 = shop feature` rule is a portable standard for this skill and does not require re-confirmation on every job. It is overridden only when the PDF itself explicitly calls out `R0.5`, or when the current user explicitly states that the DXF radius is a design requirement for that job.
-- Preserve the PDF geometry and dimensions exactly. Do NOT infer `R0.5` or any other micro-radius from material thickness.
-- If the PDF explicitly calls out a radius/chamfer, that callout remains part of the design and MUST be generated.
-- A DXF-only radius other than the confirmed `R0.5` exception is NOT automatically a shop feature. Treat it as a source conflict unless the user confirms the policy.
-- If a sharp corner on the PDF is geometrically inconsistent, unreadable, self-intersecting, or creates an unresolved contour problem, flag it immediately in Stage 1. Do not repair it by silently inserting `R0.5`.
+#### 2.4.3 Approved material-table Laser R takes precedence over old DXF-only R0.5 exception
+
+The V4.3 unconditional rule to omit uncalled-out DXF-only R0.5 is superseded. Read the approved `references/MATERIAL_RULES.md` and apply automatic Laser R0.5, R2 and R3 to **eligible, uncalled-out** corners according to material/thickness and corner class. Explicit PDF R or C at a corner always overrides its material-table auto R. A shop-added R not prescribed by the PDF or approved table may be omitted only with direct user confirmation or an approved shop specification; otherwise FLAG a source conflict. This rule never authorizes inventing contour topology, flattening a relief into a fillet, or silently adjusting explicitly dimensioned PDF geometry.
 
 #### 2.4.4 Calibration / Portable Learning Discipline
 - Every reference-DXF comparison is an **anti-regression calibration case**: record the semantic reason for each corrected mismatch, not merely the corrected coordinate. Validated general rules belong in this portable skill file.
@@ -165,7 +161,7 @@ This mode is activated ONLY when the user explicitly states that a supplied DXF 
 ## 3. Feature Recognition & 3D Forming Mapping Rules
 
 ### 3.1 Standard Cut Features
-- **Round Holes**: Extracted as `CIRCLE` entities. Threaded holes (`M*`) extract pilot diameters from the standard lookup table (Section 7.1).
+- **Round Holes**: A confirmed cut hole is `CIRCLE` unless the Section 3.3 POINT rules apply. Threaded M features use approved pilot diameter (Section 7.1) unless the PDF explicitly overrides it.
 - **Slots / Oblong Holes**: Constructed as single closed `LWPOLYLINE`s with two straight segments and two semi-circular bulges (`bulge = 1.0`).
 - **Slot Dimension Semantics — mandatory**: Before creating a slot, classify every length value as `OVERALL_LENGTH` (extreme end to extreme end) or `CENTER_DISTANCE / STRAIGHT_TANGENT_LENGTH` (center-to-center distance between the two semicircular ends; numerically equal to the straight tangent segment length for a stadium slot). Do not pass an unclassified value into a slot helper.
 - The canonical AutoLISP slot spec in this skill uses **overall length**: `(SLOTX L_TOTAL W)` or `(SLOTY L_TOTAL W)`, where `W` is slot width / end-circle diameter and `L_TOTAL >= W`. If the drawing gives center distance `C`, convert explicitly as `L_TOTAL = C + W` before storing or drawing the slot.
@@ -179,9 +175,28 @@ For 3D forming operations (which cannot be cut directly as flat outlines), map g
 1. **Scribe / Marking Lines (Kegaki - Color 1 / Red)**:
    - Features: **Louver**, **Emboss**, **Dimple Outline**, **Rib**, **Gusset**, **Bridge**, **Half Shear**, **Hem**, **Curl**, **Lance Cut Line**.
    - CAD Representation: DXF Group `(62 . 1)` on Layer `"0"`. Indicates marking/bending reference for press operators.
-2. **Pilot / Piercing Points (Piasu - Color 3 / Green)**:
-   - Features: **Dimple Center Point**, **Burring Pilot Hole**, **Lance Piercing Point**, **Spot Welding Location**.
-   - CAD Representation: DXF Group `(62 . 3)` on Layer `"0"`. Indicates laser piercing center location.
+2. **Piercing and ordinary manufacturing POINTs**: ByLayer on Layer 0 by default; Green (Color 3) ONLY for PDF-scoped `PIERCING + THROUGH HOLE`. A temporary unproved center/type is Magenta + FLAG. Relief slits use their own LINE-color rules.
+
+## 3.3 Approved POINT/CIRCLE routing and special J
+
+## 3.3 Approved POINT / CIRCLE decision (first matching rule)
+
+1. If the PDF explicitly applies `PIERCING + THROUGH HOLE` to a feature family: `POINT` on Layer 0, DXF color 3 (Green); Ø/M only in Stage 1 report, not CAD.
+2. Else if the PDF applies `PIERCING`: `POINT` on Layer 0, ByLayer (no explicit color 3/6), regardless of the worksheet's `白ピアス 〇/×` or nominal diameter. That worksheet column is machine **capability**, NOT drawing intent; a `×` does not suppress the explicit PIERCING POINT or create a capacity-only FLAG.
+3. Else, if the effective cut-hole diameter `d < t/2`: `POINT` ByLayer with **no capacity FLAG**. This holds even without a worksheet row. Strict inequality: `d = t/2` proceeds to the worksheet test.
+4. Else look up the applicable material/thickness row of `references/MATERIAL_RULES.md` (the approved `Rule_Bo_R&Hole.xlsx` transcription). If `d` is below that row's inherited minimum hole diameter: `POINT` ByLayer, **no capacity FLAG** even without PIERCING. Otherwise draw `CIRCLE` ByLayer at the effective cut diameter.
+5. If the worksheet cannot resolve the material/thickness/limit or the output type remains unproved and `d >= t/2`, use a **provisional `CIRCLE` Color 6 (Magenta) plus FLAG**; never assert production readiness. For a proved tapped `M*` callout, obtain provisional `d` from the approved thread pilot table (e.g. M4 Ø3.3, M5 Ø4.2, M6 Ø5.0), except where the PDF explicitly overrides it.
+
+The precedence above is per **feature family**, never per whole sheet. No numeric capacity FLAG is warranted when a higher-priority explicit PIERCING or verified capability rule definitively selects POINT. Independent uncertainty about quantity, center coordinates, PDF legibility, handwritten instructions or customer approval **continues to require FLAG**. If feature identity/topology is unresolved, do not invent a hole or switch type merely to fill an output.
+
+**Color contract:** all geometry Layer `0`; ordinary `POINT` ByLayer (DXF 62 omitted or 256); **only explicit PIERCING + THROUGH HOLE** produces a green **POINT** (62=3). A *provisional* feature is Color 6. Do not add redundant circle geometry or Ø/M labels around a POINT. Retain Ø/M and the conversion reason in the Stage 1 report.
+
+## 3.4 Special J markings vs ordinary hole features
+
+A printed `J` associated with a special POINT operation is **exceptional**, not a general feature inferred from an adjacent POINT or reference DXF. Only create that POINT/J set when the PDF has an applicable note/leader; when the mark is unreadable, flag it. This usage must be disambiguated from any bend/Nobi `J-symbol` described by the bend module; do not transfer a J operation between them. Calibration `055957`: the user confirms the PDF has a special J indication, but exact leader location is deferred; do not manufacture its geometry from the DXF alone.
+## Verification and workflow
+
+Trace separately the original callout count, verified effective diameters, POINT-vs-CIRCLE type, datum for every center, and every independent FLAG. Run material-domain containment on CIRCLE features. Preserve the part and keep a distinct shop report for all converted POINTs (source Ø/M, center, method/trigger).
 
 ---
 
@@ -288,18 +303,19 @@ $$X_{\text{mid}} = X_{\text{nominal}} + \frac{\text{Tolerance}_{\text{upper}} + 
 - **Adjacent Text Annotation**: Add a `TEXT` entity on DXF Group `(62 . 6)` immediately adjacent to the ambiguous feature (e.g., `"(ESTIMATED GEOMETRY - CHECK DRAWING)"` or `"(M6 OR M8)"`).
 
 ### 4.5 Corner Filleting & Chamfer Baking
-- **No Global Polyline Fillets**: Do NOT apply global fillet operations to outer boundaries containing internal notches.
-- **Corner Topology Classification First**: Before applying any `C` or `R` callout, classify the target corner relative to the **material region** as:
-  - **Convex / outside corner (góc lồi)**: material interior angle $< 180^\circ$.
-  - **Concave / re-entrant corner (góc lõm)**: material interior angle $> 180^\circ$.
-  Do not decide this from screen direction alone; use boundary orientation and which side of the boundary contains material.
-- **Leader Arrow = Representative Feature, not blind global scope**: The leader/arrow location is primary evidence for the intended corner class. For callouts such as `6-C5`, `2-C10`, or `8-R10`, identify equivalent candidate corners by topology, symmetry, repeated geometry, and callout count. The final number of assigned corners MUST match the `n-` quantity. If more than one plausible assignment remains, flag and ask; do not spread the callout to arbitrary nearby corners.
-- **Do Not Merge Feature Types**: `C` is a straight chamfer and `R` is an arc/fillet. Never encode a chamfer as a bulged arc or an R as a straight bevel.
-- **Outer Corner Fillets**: Apply fillet radius ($R$) ONLY to vertices explicitly supported by the callout/topology assignment. Bake fillets into polyline bulges:
-  $$\text{bulge} = \tan\left(\frac{\text{turn\_angle}}{4}\right) \quad (\text{for } 90^\circ, \text{bulge} \approx 0.41421356)$$
-- **Internal Corners Default to R0**: Internal corners of $U$-shaped notches, tabs, or slots MUST remain sharp ($R=0$) unless explicitly specified. When an internal $R$ is present, record it in `internal_fillets`.
-- **Chamfers**: Bake chamfers by replacing the corner vertex with two distinct vertices offset back along adjacent edges by chamfer size $C$, with bulge $0.0$.
-- **Reference-DXF R0.5 Exception**: In Section 2.4 ground-truth mode, an uncalled-out `R0.5` that exists only in the DXF is a confirmed later shop addition and MUST be ignored for generation/comparison. Preserve the PDF corner as R0 unless the PDF itself explicitly specifies R0.5 or the current user explicitly overrides this rule for the job.
+
+- **No global FILLET command** or global outline fillet pass: trace real topology before arithmetic.
+- Classify each target by **material interior angle**: convex/outside `<180°`; concave/re-entrant `>180°`. The term `outside corner ≤90°` in the workbook describes a convex exterior corner of the stated angle; do not apply the rule to similarly drawn inner corners.
+- **Order of authority per CORNER**: drawing-specific revision/red correction → explicit PDF R/C callout (with applicable quantity) → approved workbook automatic Laser R (if the PDF has NO R/C instruction for that corner). A PDF C remains a straight chamfer and must never silently become R2/R0.5. Where a PDF R/C overrides a material table at one corner, still use automatic Laser R at other eligible uncalled-out corners.
+- Workbook automatic laser radii: SS up to t5 as tabulated R0.5 for exterior ≤90°; SS t6–9 R2; SUS/other or AL rows with R0.5 for exterior ≤90°; Cu/Brass t≤5 R0.5 exterior ≤90°; SS t≥19 R3 at stated inside/outside corner class including the sheet's chamfer-language **only when there is no conflicting PDF-specific R/C**. Honor exact row/range lookup, and `無` means no automatic radius. A blank R is UNKNOWN, not automatically R0. Ignore unexplained `※3` annotation but do use the workbook's R3.
+- **Two R2 of part `055955` are required in generated geometry** under the SS t9 material-table rule; this explicitly reverses the earlier hypothesis to omit them as downstream shop additions. Never treat the old DXF-only R0.5 omission as a reason to omit a radius required by the current approved table.
+- **DXF-only shop radius beyond the table:** a PDF-unmarked radius that does **not** follow an approved material rule may be omitted as a separate later shop operation only with direct user approval or an approved shop specification. Otherwise source conflict/FLAG. Do not infer an arbitrary R from thickness.
+- **Callout topology and count:** a leader is evidence of target corner class, not global scope; identify the candidate equivalent corners by their material topology and count (`6-C5`, `2-C10`, `4-R5` etc). Distinct R and C families MUST match their own n-calls.
+- **Geometry:** bake an explicit R into polyline tangent points/bulges (for a CCW 90° arc, `bulge=tan(90°/4)=0.41421356` with sign from actual sweep). A straight C replaces the corner with two tangent-offset vertices and bulge 0. A sharp interior U-notch stays sharp unless the PDF explicitly requires an interior R or an approved material rule for that particular class applies.
+- **Relief is not Laser R:** an `R=t` relief at two oppositely folding edges whose outside extents must remain unchanged is a manufacturing clearance with distinct topology. Do not spread Laser R to reliefs and do not infer three special reliefs of `055958` (method pending).
+
+### Material-table validation
+Record source material, thickness, chosen worksheet row, eligible corner class, R/C overrides, and each generated automatic radius; compare PDF and ground-truth DXF *after* this classification. A DXF R0.5 that matches the approved material table is expected and must not be excluded from regression comparisons.
 
 ### 4.6 ID-to-OD Conversion for Non-90° Bends
 When dimensions are given as Inside Dimensions (ID), convert to Outside Dimensions (OD):
@@ -348,10 +364,15 @@ For flanges stepping inward before joining the body:
 - $Y_{\text{notch}} = Y_{\text{flange\_flat}} + L_{\text{notch\_gap}}$
 - $Y_{\text{body\_flat}} = L_{\text{body\_nominal}}$ (untouched)
 
-### 4.10 Corner Reliefs *(restored from V1)*
-- **Intersection Only**: Create corner reliefs ONLY where two bend lines from perpendicular axes cross.
-- **Geometry**: Retract longer edge by material thickness $t$, create slit inward by $t + 0.2$, and draw diagonal slit to bend line intersection.
-- **Offset Value**: Read from drawing. If unspecified, record `offset = null` and flag missing dimensions per Section 4.4.
+### 4.10 Corner Reliefs — two distinct mechanisms (V4.4)
+
+**Standard crossing-bend slit relief** (original V4.3 rule, only when two perpendicular bend lines cross):
+- Retract longer edge by `t`; slit inward by `t + 0.2`; diagonal slit to bend-line intersection; read any drawing-specific offset or FLAG if unknown.
+
+**Opposite-fold fixed-outside R=t relief** (approved calibration `055962`):
+- When **two outer edges fold in different directions** and both outside dimensions must remain unchanged, create an `R=t` escape relief at their intersection without shortening either outside dimension. This is a distinct topology/operation from the standard slit relief and from material-table automatic laser fillets. Determine its exact tangency and retained-material side from the real bend/edge topology; if those are unclear, do not invent them.
+- In `055962`, `t=2 mm` gives the two confirmed R2 reliefs. A separately observed R2 on an unbent corner is NOT automatically this relief.
+- Three green shop relief objects in `055958` are **not yet defined by an approved construction method**; keep them FLAGGED and do not generalize from reference DXF coordinates.
 
 ---
 
@@ -369,7 +390,7 @@ Before emitting AutoLISP code, run the following automated checks:
 - **Contour Topology Check**: Verify that the ordered visible boundary (including steps/recesses/protrusions) is reproduced before numerical closure. A geometrically closed but topologically wrong rectangle/step is FAIL.
 - **Reference-Datum Check**: Parenthesized/reference dimensions must retain their actual extension-line datum; using the nominal value directly as a global coordinate without datum proof is FAIL.
 - **Chain Closure Check**: Where an overall width/height is present, verify that the proven chain closes to the overall dimension. A closure failure is a semantic FAIL even if the CAD polyline itself is perfectly closed.
-- **Reference DXF Comparison Check**: When Section 2.4 is active, compare feature coordinates and topology against the master DXF after PDF interpretation. Exclude the confirmed uncalled-out DXF-only `R0.5` shop addition per Section 2.4.3; do not automatically exclude other discrepancies.
+- **Reference DXF Comparison Check**: When Section 2.4 is active, compare feature coordinates and topology against the master DXF after PDF interpretation. Apply the approved material-table auto Laser R first; a matching DXF R0.5/R2 must not be excluded solely because PDF omitted R/C. Omit only explicitly confirmed downstream shop-only differences.
 - **Feature Count Closure Check**: For every explicit quantity callout (`n-Ø`, `n-M*`, `n-slot`, `n-R`, `n-C`, repeated notch family, etc.), the generated family count MUST equal `n`. Thread-to-pilot conversion changes diameter representation, not the required count. Missing or extra members are FAIL, not WARN.
 - **Feature Family Isolation Check**: Keep each family (`Ø5.5`, `M4→Ø3.3`, `M5→Ø4.2`, slots, cutouts, etc.) independently counted and datum-traced. Do not use one family's centerline/dimension to create or position another family without explicit evidence.
 - **Local-Face → Flat Transform Check**: Every feature dimensioned on a bent face must have a proven Section 4.2.7 transform into global flat coordinates. Copying a local formed-face coordinate directly into the flat pattern is FAIL.
@@ -380,6 +401,10 @@ Before emitting AutoLISP code, run the following automated checks:
 - **No Placeholder Bounding Rectangle Check**: If the source contour contains a step, protrusion, recess, leg, or open center, a bounding rectangle is not an acceptable placeholder. Closed geometry that has the right bounding box but the wrong topology is FAIL.
 - **PASS Evidence Rule**: Never mark a checklist item `PASS` merely because the generated entity exists or looks plausible. `PASS` requires that the corresponding semantic/geometric validation was actually executed and succeeded. If the check cannot be executed from available evidence, use `FLAGGED`, `WARN`, or `N/A` as allowed by Section 9.
 
+- **Point/Circle semantic check (V4.4):** enforce per-feature PIERCING scope, strict Ø<t/2, effective pilot Ø for M, approved Excel threshold inheritance and ordinary POINT ByLayer vs PIERCING+THROUGH HOLE POINT Green. Missing capacity data must not silently be treated as cuttable.
+- **Laser R automatic check (V4.4):** verify material row, eligible convex/concave corner class, correct R0.5/R2/R3 only on otherwise uncalled-out corners, precedence of explicit PDF R/C, and independent R=t bend reliefs.
+- **Unknown numeric preview isolation (V4.4):** a known-topology estimated size/coordinate may be Magenta, integer-rounded and FLAGGED if the user wants preview output; a feature of unknown identity or invented topology cannot PASS or be output as speculative production geometry.
+- **Retained inner piece semantics (V4.4):** a PDF note to retain a cut-out piece must not automatically clone a second detached cut-out.
 ### 5.1.1 Full Internal Verification, Minimal External Noise
 - Every check in Section 5.1 remains mandatory even when the user asks for a short report.
 - Do not print a long PASS checklist by default. Internally execute the checks, then expose only:
@@ -392,7 +417,7 @@ Before emitting AutoLISP code, run the following automated checks:
 
 | Feasibility Parameter | Constraint Rule | Violation Action |
 | :--- | :--- | :--- |
-| **Minimum Hole Diameter** | Hole $\varnothing \ge \text{Material Thickness } t$ (for SS/SUS/AL) | Flag warning & add Piasu center point |
+| **Minimum Cut Hole Diameter** | Use the applicable, inherited minimum from `references/MATERIAL_RULES.md` after approved thickness selection; the unconditional `Ø<t/2` POINT rule is checked before the table | Verified below-capacity hole becomes POINT ByLayer **without a capacity FLAG**; unresolved table/material becomes provisional CIRCLE Magenta + FLAG |
 | **Minimum Bridge / Web Width** | Distance between hole edge & part boundary $\ge t$ | Flag low confidence warning |
 | **Laser Piercing Accessibility** | Distance between adjacent piercings $\ge 10\text{ mm}$ | Group piercing locations |
 | **Bend Line Collision** | Distance between hole edge & bend line $\ge 2 \times t + R_{\text{bend}}$ | Flag potential hole deformation |
@@ -469,18 +494,63 @@ For laser cutting, threaded holes (marked `M*`) MUST be output as pilot holes us
 | **M45** | 4.50 | 40.50 | 20.250 |
 | **M48** | 5.00 | 43.00 | 21.500 |
 
-### 7.2 Drilling & Piercing Capability Matrix
+### 7.2 Approved workbook: material laser R, hole capacity, White Piercing
 
-| Material | Thickness Range (mm) | Max Angle | Min Step Size | Lance Type | Min Pierce Size | Lance Dist | Min Hole Size | Machinability |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **SS** | Min ~ 3.2 | $\le 90^\circ$ | 0.5 | Step | 6 | 10 | $> 1/2 \times t$ | OK |
-| **SS** | 16.0 | - | No | Step | 10 | 10 | $> t$ | OK |
-| **SUS** | Min ~ 5.0 | $\le 90^\circ$ | 0.5 | Step | 6 | 10 | $> 1/2 \times t$ | OK |
-| **SUS** | 15.0 ~ 16.0 | - | No | Step | 10 | 10 | $\ge \varnothing 10$ | OK |
-| **SUS** | 20.0 ~ Max | - | No | Taper | 10 | 10 | $> t$ | OK |
-| **AL** | Min ~ 0.5 | $\le 90^\circ$ | 0.5 | Step | 6 | 10 | $> 0.8 \times t$ | OK |
-| **AL** | 16.0 ~ Max | - | No | Step | 10 | 10 | $> t$ | OK |
-| **Cu / Brass**| Min ~ 5.0 | $\le 90^\circ$ | 0.5 | Step | 6 | 10 | $> 1/2 \times t$ | OK |
+
+**Approved from user-supplied** `Rule_Bo_R&Hole.xlsx`, worksheet `Bo_R_Hole`, dated `2026.07.30`; calibration `520924-19`, approved 2026-09-25. This complete transcription is portable: do not require the original spreadsheet or past chat.
+
+#### Original worksheet entries (a dash means the CELL IS BLANK, not zero)
+
+| Excel row | Material group | t Min | t Max | Laser corner condition | Laser R | Minimum cut-hole diameter | 白ピアス capacity |
+|---:|---|---:|---:|---|---|---|:---:|
+| 4 | SS | — | 3.2 | outside corner ≤90° | R0.5 | ≥ t/2 | × |
+| 5 | SS | 4 | 5 | outside corner ≤90° | R0.5 | — | 〇 |
+| 6 | SS | 6 | 9 | outside corner ≤90° | R2 | — | 〇 |
+| 7 | SS | 10 | 12 | — | none (無) | — | 〇 |
+| 8 | SS | 16 | 16 | — | none (無) | ≥ t | 〇 |
+| 9 | SS | 19 | — | inside/outside corners, including chamfer (内外角/面取含) | R3 (※3 ignored) | — | 〇 |
+| 10 | SUS, 他 | — | 5 | outside corner ≤90° | R0.5 | ≥ t/2 | × |
+| 11 | SUS, 他 | 6 | 6 | outside corner ≤90° | R0.5 | — | 〇 |
+| 12 | SUS, 他 | 7 | 8 | — | none (無) | — | 〇 |
+| 13 | SUS, 他 | 9 | 12 | — | none (無) | — | 〇 |
+| 14 | SUS, 他 | 14 | 14 | — | none (無) | — | 〇 |
+| 15 | SUS, 他 | 15 | 16 | — | none (無) | ≥ Ø10 | 〇 |
+| 16 | SUS, 他 | 19 | 19 | — | none (無) | — | 〇 |
+| 17 | SUS, 他 | 20 | — | — | none (無) | ≥ t | 〇 |
+| 18 | AL | — | 0.5 | outside corner ≤90° | R0.5 | ≥ 0.8t | × |
+| 19 | AL | — | 6 | outside corner ≤90° | R0.5 | — | 〇 |
+| 20 | AL | 7 | 8 | — | none (無) | — | 〇 |
+| 21 | AL | 9 | — | — | none (無) | — | 〇 |
+| 22 | AL | 12 | — | — | none (無) | — | 〇 |
+| 23 | AL | 16 | — | — | none (無) | ≥ t | 〇 |
+| 24 | AL | 19 | — | — | none (無) | — | 〇 |
+| 25 | Cu / Brass (銅・真ちゅう) | — | 5 | outside corner ≤90° | R0.5 | ≥ t/2 | × |
+| 26 | Cu / Brass; ※ケガキ不可 | 6 | — | outside corner ≤90° | — [UNSPECIFIED] | ≥ t | × |
+
+The `※ケガキ不可` remark on the Cu/Brass last row means scribing/marking unavailable there; it does not specify a laser radius. The worksheet says `※3` at SS t≥19 but has no supplied explanatory text; **ignore only the annotation, retain R3** per approval. `無` explicitly means **no automatic laser fillet**. A blank R cell is **unknown**, not `無`.
+
+#### Approved lookup algorithm
+
+1. Lock the explicit drawing material group and real thickness `t`. Never silently equate `SUS430` and the SS group without an approved material mapping; ambiguous alloys require a question/FLAG.
+2. Find a row containing `t` in its stated Min–Max range. A first row with blank Min covers positive t up to its Max; for AL the next blank-Min row ending at 6 covers t>0.5 through 6 (the preceding row handles t≤0.5). If several rows with open Min are candidates, choose the most specific applicable row.
+3. If t falls between two explicit ranges, use the **next higher thickness row** (no interpolation). For a nonfinal row that has Min but blank Max, treat only its specified Min as explicit; for intermediate t choose the next higher row. A **last** row with a Min and no Max covers that Min and all greater thicknesses. Outside the material's defined ranges, or with no unambiguous row, ASK; do not invent a range.
+4. For a BLANK **hole-capacity** cell, inherit the last nonblank hole-capacity value above it **within the same material group only**. Do not inherit Laser R or White Piercing cells; their values are row-specific.
+5. Determine laser R only at corners belonging to the row's corner class. A PDF-specific R or C at that corner overrides the Excel R. Where Excel specifies R0.5/R2/R3 and PDF has no explicit R/C, bake it automatically into the actual contour; keep convex vs concave classification and do not blindly round internal notches. `R=t` bend-intersection relief is a separate feature class and must never be mistaken for material-table laser R.
+6. Calculate the **effective cut diameter** from an explicit drawing Ø when present, otherwise the pilot diameter from approved thread table 7.1 for a proved tapped M feature. PIERCING arrow/note scoped to that feature family => `POINT` ByLayer regardless of capacity. PIERCING plus THROUGH HOLE => `POINT` Color 3. Ø < t/2 => `POINT` ByLayer without a capacity FLAG. Else when effective Ø is below Excel minimum => `POINT` ByLayer without a capacity FLAG; otherwise `CIRCLE` ByLayer. An ambiguous feature identity => temporary `CIRCLE` Color 6 + FLAG; geometry/position uncertainty produces a separate independent FLAG.
+7. White Piercing `〇` and `×` are **machine-capability indicators**, never instructions to turn every hole into POINT; follow the explicit PDF PIERCING for the specified feature group even if worksheet is `×`, without a capacity-only FLAG. User-approved PROCESS POINT Color 3 is restricted to explicit `PIERCING + THROUGH HOLE`; other POINTs default ByLayer on Layer 0.
+8. Document the selected Excel row and any upward-thickness selection for ambiguous/nonstandard thickness; preserve unrelated dimensional/customer-approval FLAGs.
+
+#### Regression examples (user-approved)
+
+- SS t9: hole threshold t/2 = 4.5. M4 pilot Ø3.3 and M5 pilot Ø4.2 => POINT ByLayer with no capacity FLAG. M6 pilot Ø5.0 => CIRCLE if no PIERCING, assuming verified M6 and coordinates.
+- SS t9 outside corner ≤90° with no explicit PDF R/C => R2 added (e.g. `055955`). SS t≤3.2 outside ≤90° => R0.5 added.
+- SUS t15–16 => minimum cut hole Ø10, independent of the unconditional POINT rule for Ø < t/2.
+- AL t5 => minimum cut hole 0.8t = Ø4. Ø3 with no PIERCING => POINT ByLayer with no capacity FLAG, although Ø3 is not < t/2.
+- SS t19+ => laser R3 with inside/outside-corner scope as printed; ignore unexplained `※3` notation, not the R3 value.
+
+#### Scope separation
+
+This sheet governs **hole capability and automatic material-based laser corner R only**. Nobi/bend allowance still comes from approved Nobi tables and handwritten corrections. Special J marks and shop-specific relief geometry require their own explicit drawing evidence; the three reliefs of `055958` remain unresolved and MUST NOT be inferred from this workbook.
 
 ### 7.3 Nobi Allowance Standards Tables *(fully restored from V1 — including the previously-dropped Copper table and all intermediate L-brackets)*
 
@@ -602,7 +672,9 @@ All entities exist strictly on Layer `"0"`. Attribute properties are assigned vi
 | **Outer / Inner Boundary** | ByLayer | ByLayer (7 / White) | Closed `LWPOLYLINE` |
 | **Bend Lines** | `"DASHED"` | ByLayer | Double parallel lines |
 | **Kegaki / Formed Lines** | ByLayer | `1` (Red) | `LINE` or `LWPOLYLINE` |
-| **Piasu & Relief Slits** | ByLayer | `3` (Green) | `CIRCLE` (r=0.5) or `LINE` |
+| **Ordinary PIERCING / capacity POINT** | ByLayer | ByLayer | actual `POINT`, NOT `CIRCLE` |
+| **PIERCING + THROUGH HOLE POINT** | ByLayer | `3` (Green) | actual `POINT` |
+| **Relief slit (LINE-specific)** | ByLayer | `3` (Green) only when specified | `LINE` |
 | **Ambiguous Features** | ByLayer | `6` (Magenta) | Estimated geometry entities |
 | **Adjacent Text Notes** | ByLayer | `6` (Magenta) | `TEXT` entity next to feature |
 
@@ -626,9 +698,9 @@ The primary AutoLISP command MUST be **`c:DRAW`**. It constructs a dynamic DCL s
       BEND_LINES          ; List: (((x1 y1) (x2 y2) is_flagged) ...)
       CORNER_RELIEFS      ; List: ((x y offset) ...)     ; see Section 4.10 for calc rule
       INTERNAL_FILLETS    ; List: ((x y radius) ...)
-      HOLES               ; List: ((x y diameter_or_slot_spec) ...)
+      HOLES               ; List: ((x y diameter_or_slot_spec [is_flagged]) ...)
       KEGAKI_LINES        ; List: (((x1 y1) (x2 y2)) ...)
-      PIASUS              ; List: ((x y is_through) ...)
+      PIASUS              ; List: ((x y is_through) ...); TRUE only PDF PIERCING + THROUGH HOLE; Ø/M in report only
     )
   )
 )
@@ -679,7 +751,7 @@ Required content:
    - If any check is `FAIL`, `FLAGGED`, `WARN`, or `N/A` in a way that affects production interpretation, list only those exceptions with a short reason.
 
 4. **Questions / Ambiguity**:
-   - If production-safe geometry cannot be uniquely established, STOP before Stage 2 and ask the smallest direct question needed to resolve it.
+   - If topology, feature type, bend sequence, critical material or datum cannot be proved, STOP production generation and ask; numeric-only gaps on proven topology may be emitted as explicitly FLAGGED non-production Magenta previews if the user demands output.
    - Do not generate guessed Lisp merely to complete the response.
 
 **Report discipline:** Do not discuss irrelevant title-block fields, broad theory, calibration history, or lengthy reasoning unless explicitly requested.
@@ -687,7 +759,7 @@ Required content:
 ### Stage 2: Ready-to-Run AutoLISP Code Block
 When Stage 1 has no unresolved blocker, follow immediately with **exactly ONE** standard code block containing the complete AutoLISP script (`.lsp`), beginning with the Units & Header Setup block in Section 8.1.
 
-If Stage 1 contains an unresolved blocker that prevents reliable geometry, **do not emit a speculative code block**. Ask for clarification instead. This clarification exception overrides the normal Stage 2 requirement because accuracy has priority over output completeness.
+If source uncertainty changes topology, feature type, bend order or essential material, do not invent geometry in Stage 2. For only numeric uncertainty on proven topology, when the user requires output, emit a clearly FLAGGED Magenta non-production preview and list every estimated numeric field in Stage 1; no PASS.
 
 ## Appendix A — Regression Cases from 520919-05 (Mandatory Anti-Regression Tests)
 
@@ -719,11 +791,8 @@ These cases are not generic dimensions for other jobs. They are concrete regress
    - Callouts such as `6-C5`, `2-C10`, and `4-R5` are three different feature families.
    - Chamfers must remain straight, radii must remain arcs, and the number of assigned corners must match each callout count.
 
-7. **Ground-truth DXF micro-radius policy**
-   - A sharp corner on the PDF remains sharp in generated CAD unless the PDF explicitly calls out a radius/chamfer.
-   - An uncalled-out `R0.5` that exists only in the calibration/reference DXF is a downstream production addition and is intentionally ignored for comparison and generation.
-   - Do not extend this exception to any other uncalled-out radius value without explicit user confirmation.
-   - Never infer this radius from sheet thickness; the user will add it later.
+7. **Material-table shop Laser R (V4.4 supersedes old DXF-only exception)**
+   - Automatically include approved R0.5/R2/R3 for eligible uncalled-out corners. Omit other downstream DXF-only R only after direct user approval or approved shop specification. Do not copy DXF-only geometry as a missing PDF dimension.
 
 8. **Calibration reference is not a hidden dimension source**
    - Parse the PDF first. Use the DXF to expose interpretation mistakes and derive semantic anti-regression rules.
@@ -765,7 +834,7 @@ These cases validate **dimension endpoint identity, contour-topology tracing, an
    - Overall width `405` is only the maximum extent; the upper-right boundary steps inward.
    - `405-180=225` locates the upper vertical cut edge.
    - `405-25=380` locates the inner vertical wall associated with the R5 step.
-   - `633-275=358` locates the lower step ledge; `358+35=393` locates the upper horizontal ledge (preserve it sharp in the PDF model; ignore the DXF-only shop R0.5).
+   - `633-275=358` locates the lower step ledge; `358+35=393` locates the upper horizontal ledge (preserve its proven datum; determine any uncalled-out auto Laser R from the V4.4 approved material table).
    - Therefore the contour must include the inward step `x405 -> x380 -> x225`; extending the `x405` outer edge to the top is topologically wrong even though the bounding box remains `405 x 633`.
 
 5. **054638 — Reference dimension is not a global coordinate**
@@ -837,9 +906,23 @@ These cases were calibrated against a user-approved reference DXF. They are conc
     - Before Stage 1 can report PASS, every closed hole/slot/cutout must be tested against the actual material polygon, and every bend-line segment must be tested against the material domain.
     - A closed feature outside the polygon or a bend line crossing empty space is FAIL even if the outer polyline is closed and the overall dimensions are correct.
 
-11. **DXF-only R0.5 remains excluded**
-    - An `R0.5` appearing only in the reference DXF, with no PDF callout, is a downstream shop radius and is deliberately omitted from generated Lisp and PDF↔DXF mismatch scoring.
-    - Do not generalize this exception to other uncalled-out radii without user confirmation.
+11. **Historical R0.5 exclusion superseded by V4.4**
+    - A material-table required R0.5/R2/R3 is generated even if it is not explicitly called out on PDF. For any other DXF-only R require approved downstream shop specification or flag source conflict.
+
+---
+
+## Appendix E — Approved calibration 520924-19 (2026-09-25)
+
+Use the user's declared merged-DXF ordering by descending global Y to map `055915, 055916, 055955, 055956, 055957, 055958, 055959, 055962, 055963, 055964`. Always interpret the PDF first; reference DXF is comparison, not a source for missing PDF numeric values.
+
+- `055915/055916`: four Ø13 and basic contours matched reference; protect existing passing behavior.
+- `055955/055956` (SS t9): eligible uncalled-out outside corners must include material Laser R2, including two R2 on `055955`. M4 pilot Ø3.3 < t/2=4.5 => POINT ByLayer, no capacity FLAG. Unconfirmed center dimensions remain independently Magenta FLAG.
+- `055957`: retain-inner-panel instruction does NOT request a second detached cutout. Special J/POINT only when the PDF has the applicable indication. User confirms a rare J exists, but the exact leader scope is deferred; do not back-solve it from DXF.
+- `055958`: the PDF specifies **R50** (previous R60 OCR was wrong). Prior Lisp shifted ten hole centers by 45.32 mm because of wrong datum/face transform. Two customer-unconfirmed positions remain Magenta. Three green shop reliefs are pending a user-approved construction method: no automatic invented topology.
+- `055959`: 22-hole count and overall blank can pass while one lower-left contour edge is wrong by 5 mm. Three customer-unconfirmed positions still Magenta.
+- `055962`: two confirmed R2 = t2 *opposite-fold reliefs* preserve both outside dimensions; laser R at unrelated outer corners and bend-line material-domain trimming are independent checks.
+- `055963/055964`: verify PIERCING scope or approved effective pilot capacity for M6; a DXF POINT is not itself PDF proof. Unproven R5 on `055964` remains Magenta.
+- Unknown numeric-only locations on known topology may be previewed as integer-rounded Magenta geometry and must be FLAGGED. Neither `055957` J endpoints nor `055958` special relief construction is a newly approved universal method.
 
 ---
 
@@ -847,14 +930,14 @@ These cases were calibrated against a user-approved reference DXF. They are conc
 
 ### B.1 Minimum Package
 For cross-chat / cross-AI use, the minimum package is this single file:
-- `SKILL_LISPCAD_V4_3_PORTABLE.md`
+- `SKILL_LISPCAD_V4_4_PORTABLE.md`
 
 It already contains the formulas, Nobi tables, CAD schema, output contract, datum rules, C/R rules, DXF calibration protocol, and regression cases required for execution.
 
 ### B.2 Recommended Invocation Text
 At the start of a new AI/chat, the operator should provide this file and issue an instruction equivalent to:
 
-> Read `SKILL_LISPCAD_V4_3_PORTABLE.md` completely before processing drawings. Treat Sections 0–9 and all appendices as mandatory. Focus first on the drawing field, dimensions/witness lines, handwritten corrections/Nobi, barcode, material, and thickness. Keep Stage 1 compact; prioritize production-safe geometry and ask when evidence is not unique.
+> Read `SKILL_LISPCAD_V4_4_PORTABLE.md` completely before processing drawings. Treat Sections 0–9 and all appendices as mandatory. Focus first on the drawing field, dimensions/witness lines, handwritten corrections/Nobi, barcode, material, and thickness. Keep Stage 1 compact; prioritize production-safe geometry and ask when evidence is not unique.
 
 ### B.3 Audit-Only Exception
 If the user explicitly asks only to compare, audit, or produce a report and says **not to regenerate AutoLISP**, the audit request overrides the normal Stage 2 generation requirement for that turn. The AI must still apply all interpretation and verification rules and produce a structured Stage 1-style report.
@@ -864,7 +947,15 @@ If the user explicitly asks only to compare, audit, or produce a report and says
 - It cannot, by itself, permanently retrain or alter the base weights of every AI/model.
 - Therefore all validated learning that must persist must be represented explicitly in this portable specification, regression appendices, or user-supplied companion references.
 
-### B.5 V4.3 Portability Change Log
+### B.5 V4.4 approved 520924-19 release
+
+- Replaced unconditional DXF-only R0.5 omission with PDF-first, workbook-governed auto Laser R0.5/R2/R3 at eligible, uncalled-out corners.
+- Replaced one-size-fits-all minimum-hole warning with scoped PIERCING, Ø<t/2, inherited Excel material thresholds, pilot-table M conversion and POINT color rules.
+- Enabled clearly non-production Magenta preview for numeric-only uncertainty on known topology, retained special J and independently defined R=t relief, and added Appendix E.
+- Embedded the full approved Excel table in Section 7.2; no hidden dependency on uploaded spreadsheet.
+- V4.3 and V4.2 entries below are historical; where they conflict, these V4.4-approved rules govern.
+
+### B.6 V4.3 Portability Change Log (historical only)
 - Added **Drawing-Field Focus Mode**: prioritize main geometry, dimensions/witness lines, handwritten corrections/Nobi, barcode, material, and thickness; ignore unrelated title-block/administrative text unless it resolves a production conflict.
 - Added **user-marked ROI priority**: when the operator boxes/crops/highlights the drawing field, inspect that region first and only read necessary metadata/notes outside it.
 - Added mandatory drawing read order: contour topology → feature inventory/counts → datum graph → bend/face mapping → handwritten evidence → metadata lock → CAD generation.
