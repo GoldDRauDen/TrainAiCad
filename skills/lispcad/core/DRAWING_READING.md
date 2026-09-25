@@ -82,7 +82,7 @@ This is the default operating mode for production Lisp generation. The AI MUST s
 
 **User-marked ROI rule:** If the user crops, boxes, highlights, or otherwise identifies the drawing region to inspect, treat that marked region as the primary geometry ROI. Still read barcode, material, thickness, and applicable handwritten/revision notes outside the ROI when the user has explicitly indicated them or they are necessary to resolve the part. Do not let unrelated content outside the marked ROI distract from geometry extraction.
 
-**Quality rule:** A short answer is preferred, but never by skipping geometric verification. Execute the full internal checks in Sections 4–5, then report only the information needed by the operator. If any geometry, datum, feature type, bend order, handwritten note, barcode, material, or thickness is not clear enough for a production-safe interpretation, STOP and ask a direct question instead of generating guessed geometry.
+**Quality rule:** A short answer is preferred, but never by skipping geometric verification. Execute the full internal checks in Sections 4–5, then report only the information needed by the operator. If contour topology, feature identity, bend order, handwritten-note target, material, thickness, or datum is unresolved, STOP production geometry and ask. If only numeric size/position is missing AFTER the topology and datum have been traced, the user permits an explicitly non-production, Magenta estimated preview with nearby FLAG text, rounded integer estimates and a Stage 1 FLAG; preserve proven geometry verbatim. Never call that preview production-safe.
 
 ---
 
@@ -148,13 +148,9 @@ This mode is activated ONLY when the user explicitly states that a supplied DXF 
 - If the DXF differs from the PDF in a way that **cannot** be supported by the PDF dimensions/callouts, do NOT silently teach that difference as a general rule. Report it as a production-CAD adjustment or source conflict and ask the user when it materially changes the part.
 - A newer visible revision note / red correction on the PDF must still be reported if it conflicts with the supplied DXF; ground-truth calibration does not erase revision chronology.
 
-#### 2.4.3 Sharp-Corner / Shop Micro-Radius Policy
-- `R0.5` that exists **only in the reference DXF and is not called out on the PDF** is a downstream shop-added radius. It MUST be excluded from PDF↔DXF mismatch scoring and MUST NOT be generated in AutoLISP.
-- This `DXF-only R0.5 = shop feature` rule is a portable standard for this skill and does not require re-confirmation on every job. It is overridden only when the PDF itself explicitly calls out `R0.5`, or when the current user explicitly states that the DXF radius is a design requirement for that job.
-- Preserve the PDF geometry and dimensions exactly. Do NOT infer `R0.5` or any other micro-radius from material thickness.
-- If the PDF explicitly calls out a radius/chamfer, that callout remains part of the design and MUST be generated.
-- A DXF-only radius other than the confirmed `R0.5` exception is NOT automatically a shop feature. Treat it as a source conflict unless the user confirms the policy.
-- If a sharp corner on the PDF is geometrically inconsistent, unreadable, self-intersecting, or creates an unresolved contour problem, flag it immediately in Stage 1. Do not repair it by silently inserting `R0.5`.
+#### 2.4.3 Approved material-table Laser R takes precedence over old DXF-only R0.5 exception
+
+The V4.3 unconditional rule to omit uncalled-out DXF-only R0.5 is superseded. Read the approved `references/MATERIAL_RULES.md` and apply automatic Laser R0.5, R2 and R3 to **eligible, uncalled-out** corners according to material/thickness and corner class. Explicit PDF R or C at a corner always overrides its material-table auto R. A shop-added R not prescribed by the PDF or approved table may be omitted only with direct user confirmation or an approved shop specification; otherwise FLAG a source conflict. This rule never authorizes inventing contour topology, flattening a relief into a fillet, or silently adjusting explicitly dimensioned PDF geometry.
 
 #### 2.4.4 Calibration / Portable Learning Discipline
 - Every reference-DXF comparison is an **anti-regression calibration case**: record the semantic reason for each corrected mismatch, not merely the corrected coordinate. Validated general rules belong in this portable skill file.
