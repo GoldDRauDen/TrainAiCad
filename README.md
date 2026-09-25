@@ -45,7 +45,8 @@ TrainAiCad/
 │       └── versions/
 │           ├── V4.3/  (immutable baseline)
 │           ├── V4.4/  (immutable approved L01–L08)
-│           └── V4.5/  (immutable approved L09–L10)
+│           ├── V4.5/  (immutable approved L09–L10)
+│           └── V4.6/  (immutable approved 055958 one-slit correction)
 ├── references/
 │   ├── NOBI_TABLES.md
 │   ├── THREAD_PILOT_TABLE.md
@@ -59,10 +60,10 @@ TrainAiCad/
 
 ## Active approved production release (2026-09-25)
 
-- **V4.5** from approved `520924-19` calibration (L09–L10) is active. Read `AI_ENTRYPOINT.md` and the required modular files, or take the standalone `skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md`.
-- Historical `skills/lispcad/versions/V4.3/` is unchanged. Immutable approved V4.4 and V4.5 snapshots preserve their complete portable sources. V4.5 adds process-specific SUS430 mapping and the Cu/Brass t6 boundary clarification, retaining the original Excel transcription.
+- **V4.6** from approved `520924-19` calibration is active. `055958` has precisely ONE Section 4.10 Green slit comprising connected `LINE + ARC R0.5 + LINE` in its reference DXF, not three independent reliefs; all previous L01–L10 approved rules remain active. Read `AI_ENTRYPOINT.md` and the required modular files, or take the standalone `skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md`.
+- Historical `skills/lispcad/versions/V4.3/` is unchanged. Immutable approved V4.4, V4.5 and V4.6 snapshots preserve their complete portable sources. V4.5 added process-specific SUS430 and Cu/Brass t6 mapping; V4.6 corrects the `055958` feature count and slit-method status without changing the material workbook transcription.
 - Material capability and automatic R: `references/MATERIAL_RULES.md`. Approved tests: `regression/features/520924-19_APPROVED.md`.
-- **No Lisp/DXF was regenerated** for this skill-release operation; unapproved construction of `055958` shop relief and the exact special J in `055957` remain pending.
+- **No Lisp/DXF was regenerated** for this skill-release operation. The ONE `055958` standard Section 4.10 slit method/count is confirmed and no longer FLAGGED for those reasons; `055957` special J leader and unrelated customer size/position uncertainties remain pending.
 
 ## Operating model
 
