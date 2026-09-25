@@ -21,7 +21,9 @@ All entities exist strictly on Layer `"0"`. Attribute properties are assigned vi
 | **Outer / Inner Boundary** | ByLayer | ByLayer (7 / White) | Closed `LWPOLYLINE` |
 | **Bend Lines** | `"DASHED"` | ByLayer | Double parallel lines |
 | **Kegaki / Formed Lines** | ByLayer | `1` (Red) | `LINE` or `LWPOLYLINE` |
-| **Piasu & Relief Slits** | ByLayer | `3` (Green) | `CIRCLE` (r=0.5) or `LINE` |
+| **Ordinary PIERCING / capacity POINT** | ByLayer | ByLayer | actual `POINT`, NOT `CIRCLE` |
+| **PIERCING + THROUGH HOLE POINT** | ByLayer | `3` (Green) | actual `POINT` |
+| **Relief slit (LINE-specific)** | ByLayer | `3` (Green) only when specified | `LINE` |
 | **Ambiguous Features** | ByLayer | `6` (Magenta) | Estimated geometry entities |
 | **Adjacent Text Notes** | ByLayer | `6` (Magenta) | `TEXT` entity next to feature |
 
@@ -45,9 +47,9 @@ The primary AutoLISP command MUST be **`c:DRAW`**. It constructs a dynamic DCL s
       BEND_LINES          ; List: (((x1 y1) (x2 y2) is_flagged) ...)
       CORNER_RELIEFS      ; List: ((x y offset) ...)     ; see Section 4.10 for calc rule
       INTERNAL_FILLETS    ; List: ((x y radius) ...)
-      HOLES               ; List: ((x y diameter_or_slot_spec) ...)
+      HOLES               ; List: ((x y diameter_or_slot_spec [is_flagged]) ...): unproved type can be CIRCLE Color 6
       KEGAKI_LINES        ; List: (((x1 y1) (x2 y2)) ...)
-      PIASUS              ; List: ((x y is_through) ...)
+      PIASUS              ; List: ((x y is_through) ...): is_through TRUE only when PDF explicitly says PIERCING + THROUGH HOLE; metadata Ø/M in REPORT only
     )
   )
 )
@@ -84,7 +86,7 @@ Required content:
    - If any check is `FAIL`, `FLAGGED`, `WARN`, or `N/A` in a way that affects production interpretation, list only those exceptions with a short reason.
 
 4. **Questions / Ambiguity**:
-   - If production-safe geometry cannot be uniquely established, STOP before Stage 2 and ask the smallest direct question needed to resolve it.
+   - If topology/feature identity/bend order cannot be uniquely established, STOP and ask. If only dimensions or coordinates remain missing, and the user requires an output preview, create only the already-known topology with Magenta integer-rounded estimated parts and a prominent non-production FLAG; do not call it production-safe.
    - Do not generate guessed Lisp merely to complete the response.
 
 **Report discipline:** Do not discuss irrelevant title-block fields, broad theory, calibration history, or lengthy reasoning unless explicitly requested.
@@ -92,4 +94,4 @@ Required content:
 ### Stage 2: Ready-to-Run AutoLISP Code Block
 When Stage 1 has no unresolved blocker, follow immediately with **exactly ONE** standard code block containing the complete AutoLISP script (`.lsp`), beginning with the Units & Header Setup block in Section 8.1.
 
-If Stage 1 contains an unresolved blocker that prevents reliable geometry, **do not emit a speculative code block**. Ask for clarification instead. This clarification exception overrides the normal Stage 2 requirement because accuracy has priority over output completeness.
+If the blocker changes topology, feature identity, bend sequence, or critical material/datum, do not invent Stage 2 geometry. If the user expressly requests complete output and the only unresolved fields are numeric values on proven topology, emit a visibly FLAGGED Magenta **non-production preview** as in Section 4.4, with a Stage 1 list of all estimated fields. Never claim PASS for estimated parts.
