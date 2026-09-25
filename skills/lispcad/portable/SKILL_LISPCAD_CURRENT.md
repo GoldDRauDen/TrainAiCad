@@ -1,5 +1,5 @@
 
-# SKILL_LISPCAD V4.4 PORTABLE: Drawing-First Sheet Metal Flat Pattern Extractor & AutoLISP Generator
+# SKILL_LISPCAD V4.5 PORTABLE: Drawing-First Sheet Metal Flat Pattern Extractor & AutoLISP Generator
 
 
 ## 0. Portable Skill Contract — Mandatory for Every AI / Every Chat
@@ -302,6 +302,8 @@ $$X_{\text{mid}} = X_{\text{nominal}} + \frac{\text{Tolerance}_{\text{upper}} + 
 
 ### 4.5 Corner Filleting & Chamfer Baking
 
+**Approved V4.5 L09/L10:** SUS430 Laser R and holes use SUS/他 (Nobi remains SS), so SUS430 t6 Laser R0.5, not SS R2. Cu/Brass t6 auto Laser R0.5, at 5<t<6 upward-select t6/R0.5, and at t>6 no auto Laser R. Preserve PDF-specific R/C priority and original blank Excel cell; these are separate user-approved overrides.
+
 - **No global FILLET command** or global outline fillet pass: trace real topology before arithmetic.
 - Classify each target by **material interior angle**: convex/outside `<180°`; concave/re-entrant `>180°`. The term `outside corner ≤90°` in the workbook describes a convex exterior corner of the stated angle; do not apply the rule to similarly drawn inner corners.
 - **Order of authority per CORNER**: drawing-specific revision/red correction → explicit PDF R/C callout (with applicable quantity) → approved workbook automatic Laser R (if the PDF has NO R/C instruction for that corner). A PDF C remains a straight chamfer and must never silently become R2/R0.5. Where a PDF R/C overrides a material table at one corner, still use automatic Laser R at other eligible uncalled-out corners.
@@ -494,6 +496,7 @@ For laser cutting, threaded holes (marked `M*`) MUST be output as pilot holes us
 
 ### 7.2 Approved workbook: material laser R, hole capacity, White Piercing
 
+
 **Approved from user-supplied** `Rule_Bo_R&Hole.xlsx`, worksheet `Bo_R_Hole`, dated `2026.07.30`; calibration `520924-19`, approved 2026-09-25. This complete transcription is portable: do not require the original spreadsheet or past chat.
 
 #### Original worksheet entries (a dash means the CELL IS BLANK, not zero)
@@ -524,15 +527,41 @@ For laser cutting, threaded holes (marked `M*`) MUST be output as pilot holes us
 | 25 | Cu / Brass (銅・真ちゅう) | — | 5 | outside corner ≤90° | R0.5 | ≥ t/2 | × |
 | 26 | Cu / Brass; ※ケガキ不可 | 6 | — | outside corner ≤90° | — [UNSPECIFIED] | ≥ t | × |
 
-The `※ケガキ不可` remark on the Cu/Brass last row means scribing/marking unavailable there; it does not specify a laser radius. The worksheet says `※3` at SS t≥19 but has no supplied explanatory text; **ignore only the annotation, retain R3** per approval. `無` explicitly means **no automatic laser fillet**. A blank R cell is **unknown**, not `無`.
+The `※ケガキ不可` remark on the Cu/Brass last row means scribing/marking unavailable there; it does not specify a laser radius. The worksheet says `※3` at SS t≥19 but has no supplied explanatory text; **ignore only the annotation, retain R3** per approval. `無` explicitly means **no automatic laser fillet**. A blank R cell is **unknown in the original Excel transcription**; the separately approved L10 defines the Cu/Brass t6 R0.5 and t>6 NO-auto-R operation.
+
+#### L09 — Approved SUS430 process-specific routing (2026-09-25)
+
+**SUS430 has DIFFERENT lookup groups by manufacturing process; never apply a single SS or SUS group to all operations.**
+
+| Process | Authoritative group |
+|---|---|
+| Nobi / bend deduction | **SS, SUS430, BRASS** in `references/NOBI_TABLES.md` (portable Section 7.3); numeric values unchanged |
+| Laser R | Workbook **SUS, 他** |
+| Cut-hole minimum | Workbook **SUS, 他**; hole-limit blanks inherit only within this group |
+| 白ピアス / White Piercing capability | Workbook **SUS, 他**; 〇 is capability, not a request for a POINT |
+
+**Regression:** SUS430 t6 uses SS/SUS430 Nobi but SUS/他 row 11 for auto Laser **R0.5** on eligible uncalled-out outside corners ≤90°, inherited min cut-hole diameter **t/2** from SUS/他 row 10, and White Piercing **〇** from row 11. Using SS t6 Laser R2 for SUS430 is incorrect. Other unmapped alloys still require clarification.
+
+#### L10 — Approved Cu / Brass boundary at t6 (2026-09-25)
+
+**The original Excel row-26 Laser R cell remains BLANK in the transcription below. This separately approved production override does not claim that the workbook itself printed R0.5 or 無.**
+
+| Real thickness | Automatic Laser R at eligible uncalled-out outside corners ≤90° |
+|---|---|
+| `0<t≤5` mm | R0.5 from original row 25 |
+| `5<t<6` mm | Approved next-higher row t6 → **R0.5** |
+| `t=6` mm | **R0.5** per direct user clarification |
+| `t>6` mm | **NONE**: do not add an automatic Laser R |
+
+An explicit PDF R/C still takes priority **at that corner**, including t>6. This does not prohibit separately proven bend relief. The original row-26 minimum cut-hole **≥t**, White Piercing **×** and `※ケガキ不可` remain unchanged; do not generalize the Laser R override to other processes.
 
 #### Approved lookup algorithm
 
-1. Lock the explicit drawing material group and real thickness `t`. Never silently equate `SUS430` and the SS group without an approved material mapping; ambiguous alloys require a question/FLAG.
+1. Lock the drawing material and thickness `t`. **SUS430 is explicitly mapped by L09: SS/SUS430/BRASS Nobi, but SUS/他 Laser R, holes and White Piercing.** Other ambiguous alloy groups without an approved mapping still require a question/FLAG.
 2. Find a row containing `t` in its stated Min–Max range. A first row with blank Min covers positive t up to its Max; for AL the next blank-Min row ending at 6 covers t>0.5 through 6 (the preceding row handles t≤0.5). If several rows with open Min are candidates, choose the most specific applicable row.
 3. If t falls between two explicit ranges, use the **next higher thickness row** (no interpolation). For a nonfinal row that has Min but blank Max, treat only its specified Min as explicit; for intermediate t choose the next higher row. A **last** row with a Min and no Max covers that Min and all greater thicknesses. Outside the material's defined ranges, or with no unambiguous row, ASK; do not invent a range.
 4. For a BLANK **hole-capacity** cell, inherit the last nonblank hole-capacity value above it **within the same material group only**. Do not inherit Laser R or White Piercing cells; their values are row-specific.
-5. Determine laser R only at corners belonging to the row's corner class. A PDF-specific R or C at that corner overrides the Excel R. Where Excel specifies R0.5/R2/R3 and PDF has no explicit R/C, bake it automatically into the actual contour; keep convex vs concave classification and do not blindly round internal notches. `R=t` bend-intersection relief is a separate feature class and must never be mistaken for material-table laser R.
+5. Apply the approved L09 process split and L10 Cu/Brass thickness override first; then determine laser R only at corners belonging to the row's corner class. A PDF-specific R or C at that corner overrides the Excel R. Where Excel specifies R0.5/R2/R3 and PDF has no explicit R/C, bake it automatically into the actual contour; keep convex vs concave classification and do not blindly round internal notches. `R=t` bend-intersection relief is a separate feature class and must never be mistaken for material-table laser R.
 6. Calculate the **effective cut diameter** from an explicit drawing Ø when present, otherwise the pilot diameter from approved thread table 7.1 for a proved tapped M feature. PIERCING arrow/note scoped to that feature family => `POINT` ByLayer regardless of capacity. PIERCING plus THROUGH HOLE => `POINT` Color 3. Ø < t/2 => `POINT` ByLayer without a capacity FLAG. Else when effective Ø is below Excel minimum => `POINT` ByLayer without a capacity FLAG; otherwise `CIRCLE` ByLayer. An ambiguous feature identity => temporary `CIRCLE` Color 6 + FLAG; geometry/position uncertainty produces a separate independent FLAG.
 7. White Piercing `〇` and `×` are **machine-capability indicators**, never instructions to turn every hole into POINT; follow the explicit PDF PIERCING for the specified feature group even if worksheet is `×`, without a capacity-only FLAG. User-approved PROCESS POINT Color 3 is restricted to explicit `PIERCING + THROUGH HOLE`; other POINTs default ByLayer on Layer 0.
 8. Document the selected Excel row and any upward-thickness selection for ambiguous/nonstandard thickness; preserve unrelated dimensional/customer-approval FLAGs.
@@ -544,12 +573,16 @@ The `※ケガキ不可` remark on the Cu/Brass last row means scribing/marking 
 - SUS t15–16 => minimum cut hole Ø10, independent of the unconditional POINT rule for Ø < t/2.
 - AL t5 => minimum cut hole 0.8t = Ø4. Ø3 with no PIERCING => POINT ByLayer with no capacity FLAG, although Ø3 is not < t/2.
 - SS t19+ => laser R3 with inside/outside-corner scope as printed; ignore unexplained `※3` notation, not the R3 value.
+- L09 SUS430 t6: SS Nobi, SUS/他 Laser R0.5, SUS/他 inherited min hole t/2, 白ピアス 〇 as capacity only.
+- L10 Cu/Brass t6: R0.5 at eligible outside corner; t>6 NO automatic Laser R; at 5<t<6 use next-higher t6 row with R0.5.
 
 #### Scope separation
 
 This sheet governs **hole capability and automatic material-based laser corner R only**. Nobi/bend allowance still comes from approved Nobi tables and handwritten corrections. Special J marks and shop-specific relief geometry require their own explicit drawing evidence; the three reliefs of `055958` remain unresolved and MUST NOT be inferred from this workbook.
 
-### 7.3 Nobi Allowance Standards Tables *(fully restored from V1 — including the previously-dropped Copper table and all intermediate L-brackets)*
+### 7.3 Nobi Allowance Standards Tables
+
+**Approved L09 process split:** SUS430 uses the **SS, SUS430, BRASS Nobi** table below, but workbook **SUS, 他** for Laser R, cut-hole minimum and White Piercing. Do not alter the established Nobi numbers. *(fully restored from V1 — including the previously-dropped Copper table and all intermediate L-brackets)*
 
 #### 1. SS, SUS430, BRASS ($R=0.6$ for $t \le 4.5$, $R=3.0$ for $t=5.0 \sim 9.0$, $R=6.0$ for $t=12.0$)
 
@@ -910,6 +943,8 @@ These cases were calibrated against a user-approved reference DXF. They are conc
 
 ## Appendix E — Approved calibration 520924-19 (2026-09-25)
 
+**Approved L09–L10 extension (V4.5):** SUS430 Nobi → SS/SUS430/BRASS; SUS430 Laser R, holes, White Piercing → SUS/他 (t6 R0.5, min hole t/2 inherited, White Piercing 〇 capability only). Cu/Brass t6 → automatic exterior R0.5, t>6 → no auto R, 5<t<6 → higher t6 row R0.5. Preserve original Excel blank and independent hole/White Piercing parameters. Pending J/relief/unknown dimensions remain FLAGGED.
+
 Use the user's declared merged-DXF ordering by descending global Y to map `055915, 055916, 055955, 055956, 055957, 055958, 055959, 055962, 055963, 055964`. Always interpret the PDF first; reference DXF is comparison, not a source for missing PDF numeric values.
 
 - `055915/055916`: four Ø13 and basic contours matched reference; protect existing passing behavior.
@@ -927,14 +962,14 @@ Use the user's declared merged-DXF ordering by descending global Y to map `05591
 
 ### B.1 Minimum Package
 For cross-chat / cross-AI use, the minimum package is this single file:
-- `SKILL_LISPCAD_V4_4_PORTABLE.md`
+- `SKILL_LISPCAD_V4_5_PORTABLE.md`
 
 It already contains the formulas, Nobi tables, CAD schema, output contract, datum rules, C/R rules, DXF calibration protocol, and regression cases required for execution.
 
 ### B.2 Recommended Invocation Text
 At the start of a new AI/chat, the operator should provide this file and issue an instruction equivalent to:
 
-> Read `SKILL_LISPCAD_V4_4_PORTABLE.md` completely before processing drawings. Treat Sections 0–9 and all appendices as mandatory. Focus first on the drawing field, dimensions/witness lines, handwritten corrections/Nobi, barcode, material, and thickness. Keep Stage 1 compact; prioritize production-safe geometry and ask when evidence is not unique.
+> Read `SKILL_LISPCAD_V4_5_PORTABLE.md` completely before processing drawings. Treat Sections 0–9 and all appendices as mandatory. Focus first on the drawing field, dimensions/witness lines, handwritten corrections/Nobi, barcode, material, and thickness. Keep Stage 1 compact; prioritize production-safe geometry and ask when evidence is not unique.
 
 ### B.3 Audit-Only Exception
 If the user explicitly asks only to compare, audit, or produce a report and says **not to regenerate AutoLISP**, the audit request overrides the normal Stage 2 generation requirement for that turn. The AI must still apply all interpretation and verification rules and produce a structured Stage 1-style report.
@@ -944,7 +979,13 @@ If the user explicitly asks only to compare, audit, or produce a report and says
 - It cannot, by itself, permanently retrain or alter the base weights of every AI/model.
 - Therefore all validated learning that must persist must be represented explicitly in this portable specification, regression appendices, or user-supplied companion references.
 
-### B.5 V4.4 approved 520924-19 release
+### B.5 V4.5 approved L09–L10 extension (2026-09-25)
+
+- SUS430 routing by process: SS Nobi; SUS/他 Laser R, hole minimum and White Piercing.
+- Cu/Brass Laser R: t6 R0.5, t>6 no auto R; 5<t<6 upwards-select t6/R0.5. These are direct approved overrides to an unchanged historical blank Excel source cell.
+- The portable Section 7.2 includes original source table and clearly separated approved operational clarifications. Historical snapshots are unchanged.
+
+### B.6 V4.4 approved 520924-19 release
 
 - Replaced unconditional DXF-only R0.5 omission with PDF-first, workbook-governed auto Laser R0.5/R2/R3 at eligible, uncalled-out corners.
 - Replaced one-size-fits-all minimum-hole warning with scoped PIERCING, Ø<t/2, inherited Excel material thresholds, pilot-table M conversion and POINT color rules.
@@ -952,7 +993,7 @@ If the user explicitly asks only to compare, audit, or produce a report and says
 - Embedded the full approved Excel table in Section 7.2; no hidden dependency on uploaded spreadsheet.
 - V4.3 and V4.2 entries below are historical; where they conflict, these V4.4-approved rules govern.
 
-### B.6 V4.3 Portability Change Log (historical only)
+### B.7 V4.3 Portability Change Log (historical only)
 - Added **Drawing-Field Focus Mode**: prioritize main geometry, dimensions/witness lines, handwritten corrections/Nobi, barcode, material, and thickness; ignore unrelated title-block/administrative text unless it resolves a production conflict.
 - Added **user-marked ROI priority**: when the operator boxes/crops/highlights the drawing field, inspect that region first and only read necessary metadata/notes outside it.
 - Added mandatory drawing read order: contour topology → feature inventory/counts → datum graph → bend/face mapping → handwritten evidence → metadata lock → CAD generation.
