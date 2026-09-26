@@ -4,7 +4,7 @@ Source: approved V4.3 production baseline.
 
 ## 5. Error Detection & Manufacturing Validation Engine
 
-Before emitting AutoLISP code, run the following automated checks:
+Before exporting ANY production DXF or optional AutoLISP, run the following automated checks:
 
 ### 5.1 Geometry & Dimension-Semantic Integrity Engine
 - **Closed Polyline Check**: Outer boundary vertices must form a continuous loop that explicitly closes at $P_{\text{start}} = P_{\text{end}}$.
@@ -51,3 +51,8 @@ Before emitting AutoLISP code, run the following automated checks:
 | **Bend Line Collision** | Distance between hole edge & bend line $\ge 2 \times t + R_{\text{bend}}$ | Flag potential hole deformation |
 
 ---
+
+
+## V4.7 mandatory saved-DXF export/read-back checks
+Before declaring the canonical model PASS, actually execute every preceding V4.6 PDF-semantic, source/material, true contour topology, datum, feature-count, containment and bend-domain check. A serializer's structural validations cannot prove these engineering facts.
+For EACH individual and combined DXF, reopen the SAVED file and audit: real mm DXF, Layer 0 only, correct V4.6 entity/linetype/color/POINT/CIRCLE and bulges, geometry/count against the canonical source, no extra code-label TEXT. Combined drawing MUST contain exactly one translated copy of each production-PASS part, in explicitly declared code order descending Y, separated by at least 10 mm layout-only bbox clearance; record/check all offsets in the manifest. Keep numeric-only user-requested Magenta _PREVIEW outside production _ALL.dxf and do not mark preview PASS. Unknown topology/type/bend/material/datum blocks export. Count the `055958` Green LINE+ARC+LINE as ONE slit operation, not three.
