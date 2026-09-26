@@ -1,97 +1,63 @@
-# LISPCAD Core — CAD Output & Response Contract
+# TrainAiCad V4.7 Core — DXF-first CAD Output
 
-Source: approved V4.3 production baseline.
+**Current approved output mode:** direct DXF by default; BOTH individual and composite DXFs; optional AutoLISP on explicit request ONLY. This V4.7 change affects output/packaging, not V4.6-approved engineering, material, feature, relief, or regression logic.
 
-## 8. CAD Architecture & AutoLISP Schema
+## 8.1 ONE independently verified canonical geometry model
 
-### 8.1 Units & Header Setup (NEW — mandatory first step in code generation)
-Before emitting any geometry, the generated `.lsp` script MUST initialize drawing units to prevent scale corruption:
-```lisp
-(setvar "INSUNITS" 4)   ; 4 = Millimeters
-(setvar "LUNITS" 2)     ; 2 = Decimal
-(setvar "LUPREC" 2)     ; 2 decimal places precision
-```
-All coordinate values in `*parts*` (Section 8.4) are assumed to be in millimeters; this header block guarantees the AutoCAD session interprets them correctly regardless of the user's template default.
+Before generating any file, apply ALL current V4.6 Section 2–7 PDF-first rules: real outline topology, actual witness-line datum graph, independent quantity counts, material/thickness/handwritten evidence, approved material-table Laser R, scoped POINT/CIRCLE decisions, mid-tolerance, ID→OD rounding, Nobi, exact face/bend order, local-face→global-flat transforms, containment and bend-domain checks. A user-declared reference DXF may be used for calibration AFTER independent drawing interpretation, not as a hidden coordinate source.
 
-### 8.2 Layer, Linetype & Color Specifications
-All entities exist strictly on Layer `"0"`. Attribute properties are assigned via explicit DXF Group Codes:
+Store part-local coordinates in millimeters, one record per declared drawing code, with provenance/trace records and one canonical sequence of CAD primitives. Use THIS SAME geometry for individual DXF, translated composite DXF and optional Lisp; never solve dimensions independently a second time.
 
-| Geometry Feature | Linetype (Group 6) | Color Code (Group 62) | Execution Method |
-| :--- | :--- | :--- | :--- |
-| **Outer / Inner Boundary** | ByLayer | ByLayer (7 / White) | Closed `LWPOLYLINE` |
-| **Bend Lines** | `"DASHED"` | ByLayer | Double parallel lines |
-| **Kegaki / Formed Lines** | ByLayer | `1` (Red) | `LINE` or `LWPOLYLINE` |
-| **Ordinary PIERCING / capacity POINT** | ByLayer | ByLayer | actual `POINT`, NOT `CIRCLE` |
-| **PIERCING + THROUGH HOLE POINT** | ByLayer | `3` (Green) | actual `POINT` |
-| **Relief slit (LINE-specific)** | ByLayer | `3` (Green) only when specified | `LINE` |
-| **Ambiguous Features** | ByLayer | `6` (Magenta) | Estimated geometry entities |
-| **Adjacent Text Notes** | ByLayer | `6` (Magenta) | `TEXT` entity next to feature |
+Canonical job fields: `job_id`, ordered `parts`. Part fields: `code`, `material`, `thickness_mm`, `status` (`PASS` or explicitly non-production `PREVIEW`), independently executed `checks`, optional `flags`, and ordered `entities`.
 
-### 8.3 Interactive Dynamic DCL Command Structure
-The primary AutoLISP command MUST be **`c:DRAW`**. It constructs a dynamic DCL selection dialog at runtime:
-1. Writes a temporary `.dcl` file to `(getvar "TEMPPREFIX")`.
-2. Populates a `list_box` (`multiple_select = true;`) with part codes from global variable `*parts*`.
-3. On accept, prompts user for insertion point `(getpoint)` and draws selected flat patterns.
+Canonical entity representations:
+- `LWPOLYLINE`: `vertices:[[x,y,bulge],...]`, `closed:true` for one CCW proved outer outline and each CW interior cutout or slot. No duplicate final vertex; no fake bounding rectangle. Bake all qualified C/R into true tangent points/bulges, no faceting.
+- `CIRCLE`: `center:[x,y]`, positive `radius` for a verified cut hole or thread-pilot hole *after* V4.6 decisions.
+- `POINT`: `point:[x,y]`, actual point entity, never a tiny circle. Ordinary POINT is ByLayer; only explicitly scoped PDF PIERCING+THROUGH HOLE yields a Green POINT.
+- `LINE` (start/end) and `ARC` (center/radius/start_angle/end_angle, degrees) for proven manufacturing line/relief; double bend lines DASHED and clipped to real material. The approved `055958` one Green slit comprises two LINEs + one ARC R0.5 connected end-to-end; 3 entities = 1 operation, never a universal R0.5 slit formula.
+- `TEXT` is allowed ONLY as adjacent Magenta warning on an expressly requested numeric-only non-production preview; never add code labels to production modelspace.
 
-### 8.4 `*parts*` LISP Data Structure
-```lisp
-(setq *parts*
-  '(
-    (
-      "DRAWING_CODE"      ; String: e.g. "041919"
-      "MATERIAL"          ; String: e.g. "SUS304"
-      THICKNESS           ; Real: e.g. 3.0
-      OUTLINE             ; List: ((x y bulge_or_nil) ...)
-      OUTER_FILLETS       ; List: ((x y radius) ...)
-      CHAMFERS            ; List: ((x y size) ...)
-      BEND_LINES          ; List: (((x1 y1) (x2 y2) is_flagged) ...)
-      CORNER_RELIEFS      ; List: ((x y offset) ...)     ; see Section 4.10 for calc rule
-      INTERNAL_FILLETS    ; List: ((x y radius) ...)
-      HOLES               ; List: ((x y diameter_or_slot_spec [is_flagged]) ...): unproved type can be CIRCLE Color 6
-      KEGAKI_LINES        ; List: (((x1 y1) (x2 y2)) ...)
-      PIASUS              ; List: ((x y is_through) ...): is_through TRUE only when PDF explicitly says PIERCING + THROUGH HOLE; metadata Ø/M in REPORT only
-    )
-  )
-)
-```
+Slot source semantics must be classified first: `L_TOTAL` means actual end-to-end; `W` means end circle diameter; center distance `C` becomes `L_TOTAL=C+W`. Use one closed LWPOLYLINE with two straight tangents and two semicircular bulges of magnitude 1. Do not encode a source center distance as overall length.
 
+## 8.2 DXF header, Layer 0 and V4.6 entity legend
 
-Slot-specific storage semantics are canonical in `../features/SLOTS.md`; do not duplicate them here.
+Write real DXF with millimeter `$INSUNITS=4`, `$MEASUREMENT=1`, decimal `$LUNITS=2`, display-only precision `$LUPREC=2`. Preserve numeric calculation precision; do NOT truncate CAD coordinates to two decimals. Define the `DASHED` linetype. ALL modelspace entities stay strictly on Layer `0`, without changing layer defaults.
 
-## 9. Output Contract & Response Structure
+| V4.6 feature | DXF entity | Color 62 | Linetype |
+| :-- | :-- | :-- | :-- |
+| Outer/inner contour and slot | Closed LWPOLYLINE with real bulges | ByLayer (omit/256) | ByLayer |
+| Verified cut circle/M pilot | CIRCLE | ByLayer | ByLayer |
+| Ordinary PIERCING or capability POINT | actual POINT | ByLayer | ByLayer |
+| Explicit PDF PIERCING + THROUGH HOLE | actual POINT | Green 3 | ByLayer |
+| Kegaki/formed mark | LINE or proved LWPOLYLINE | Red 1 | ByLayer |
+| Double bend lines on material only | LINE ×2 | ByLayer | DASHED |
+| Proven explicitly Green slit/relief | LINE or ARC per source | Green 3 | ByLayer |
+| Numeric-only non-production estimate and adjacent note | appropriate entity and TEXT | Magenta 6 | ByLayer |
 
-For normal drawing-to-Lisp production work, output strictly in **COMPACT DUAL-STAGE FORMAT**. Accuracy and the Lisp geometry are primary; commentary is secondary.
+Do NOT reintroduce superseded V4.3 blanket DXF-only R0.5 omission, green-by-default Piasu or universal minimum-hole rules. Apply V4.6 approved material workbook and case-specific precedence in every export. A source-only feature/quantity unknown blocks production instead of inventing it.
 
-### Stage 1: Compact Production Report
-Keep Stage 1 short. Default target is approximately **4–12 lines plus a small part table**, unless a failure requires more explanation.
+## 8.3 Mandatory two-format DXF delivery for multi-part jobs
 
-Required content:
+Deliver **both** `<JOB_ID>_<DRAWING_CODE>.dxf` for every production-PASS part in original part-local coordinates AND `<JOB_ID>_ALL.dxf` with exact translated copies of ALL PASS parts, each once. Composite places disjoint parts in the explicitly declared job-list order **top-to-bottom (descending global Y)** with at least 10 mm *layout-only* clearance between complete geometric bounding extents. This is **not** nesting, kerf, an added manufacturing dimension or a revision to source geometry. No extra production label TEXT.
 
-1. **Part Summary** — one compact table with only:
-   - Barcode / Drawing Code
-   - Material
-   - Thickness
-   - Calculated flat blank size, when fully proven
+Always create `<JOB_ID>_MANIFEST.json`: ordered part codes, material, thickness, PASS/FLAG status, individual filename, local geometry bbox, entity counts, per-part composite XY translation and composite bbox. Use manifest offsets to verify code→cluster mapping and composite equivalence, not heuristic visual proximity.
 
-2. **Applied Adjustments** — only values that materially affect geometry:
-   - handwritten correction / handwritten Nobi used;
-   - Mid-Tolerance adjustment used;
-   - ID→OD conversion used;
-   - Nobi table row / conservative round-up used.
-   Omit this subsection if none apply.
+If the user explicitly requests a numeric-only preview on PROVEN topology, deliver separate `<JOB_ID>_<CODE>_PREVIEW.dxf` and, as needed, `<JOB_ID>_PREVIEW_ALL.dxf`, visibly Magenta with adjacent Magenta TEXT and independent numeric FLAGs. Never mix PREVIEW into production `_ALL.dxf` and never mark PREVIEW PASS. Unknown contour, feature type, bend order, critical material/datum or unsupported handwritten revision BLOCKS speculative production export.
 
-3. **Validation Result**:
-   - If all mandatory checks required for the part pass: write one concise line such as `Validation: PASS — contour, datum, feature count, unfold, containment checked.`
-   - Do **not** print the full PASS checklist by default.
-   - If any check is `FAIL`, `FLAGGED`, `WARN`, or `N/A` in a way that affects production interpretation, list only those exceptions with a short reason.
+## 8.4 Executed verification, actual DXF read-back and limitations
 
-4. **Questions / Ambiguity**:
-   - If topology/feature identity/bend order cannot be uniquely established, STOP and ask. If only dimensions or coordinates remain missing, and the user requires an output preview, create only the already-known topology with Magenta integer-rounded estimated parts and a prominent non-production FLAG; do not call it production-safe.
-   - Do not generate guessed Lisp merely to complete the response.
+Perform ALL V4.6 Section 5 semantic/manufacturing checks BEFORE constructing a production-PASS canonical record. Required recorded keys: `contour_topology`, `datum`, `feature_count`, `unfold`, `containment`, `bend_domain`, `material_rules`, `slot_semantics`, each really executed PASS or genuinely nonapplicable N/A. Critical topology/datum/count/containment/material must PASS and no unresolved production FLAG may remain.
 
-**Report discipline:** Do not discuss irrelevant title-block fields, broad theory, calibration history, or lengthy reasoning unless explicitly requested.
+Reopen/audit each SAVED DXF: parser validity, header units, Layer 0, approved entity type/property/color/POINT hierarchy, outline closure/orientation, actual arcs/bulges, full independent feature counts, proven extents and source datum precision, closed-feature containment and bend lines clipped to material. For merged DXF verify individual-to-composite equivalence by inverse translation, global/per-part counts, original source order, no bbox overlap and manifest offsets. A mere successful file save is never PASS evidence.
 
-### Stage 2: Ready-to-Run AutoLISP Code Block
-When Stage 1 has no unresolved blocker, follow immediately with **exactly ONE** standard code block containing the complete AutoLISP script (`.lsp`), beginning with the Units & Header Setup block in Section 8.1.
+The included `tools/export_dxf.py` performs **structural** schema, packaging and roundtrip checks, NOT PDF-reading, full material/datum arithmetic or complete polygonal manufacturing containment. Those require independently executed V4.6 upstream checks and ground-truth regression when available. Do not claim they ran just because JSON declares PASS.
 
-If the blocker changes topology, feature identity, bend sequence, or critical material/datum, do not invent Stage 2 geometry. If the user expressly requests complete output and the only unresolved fields are numeric values on proven topology, emit a visibly FLAGGED Magenta **non-production preview** as in Section 4.4, with a Stage 1 list of all estimated fields. Never claim PASS for estimated parts.
+## 8.5 Optional request-only AutoLISP
+
+Only if explicitly requested, generate existing approved `c:DRAW` AutoLISP and dynamic DCL (multi-select `*parts*`, temporary DCL under `TEMPPREFIX`, placement `getpoint`) from THE SAME verified canonical entities, not a second PDF coordinate solution. Initialize `INSUNITS=4`, `LUNITS=2`, `LUPREC=2`. No interactive geometry picking with FILLET/CHAMFER/SLOT/OFFSET. Optional legacy `*parts*` fields remain drawing code, material, thickness, OUTLINE, OUTER_FILLETS, CHAMFERS, BEND_LINES, CORNER_RELIEFS, INTERNAL_FILLETS, HOLES, KEGAKI_LINES and PIASUS. Legacy `(SLOTX L_TOTAL W)` / `(SLOTY L_TOTAL W)` use OVERALL slot length. Retain V4.6 Layer 0 and all color/POINT rules. Lisp is never automatic fallback when DXF generation is unavailable.
+
+## 9. DXF-first compact dual-stage response
+
+**Stage 1:** concise per-code barcode/material/thickness/proved flat extent table, real geometry-affecting corrections (handwritten Nobi, mid-tolerance, rounded ID→OD, table selection/material R), one aggregate PASS only for actually executed checks, and EVERY FAIL/FLAG/WARN/outstanding customer confirmation. Do not bury unproven dimensions or claim that bounding extents prove topology.
+
+**Stage 2 (default):** link the actual verified separate DXFs, merged `_ALL.dxf` and manifest; ZIP of same files is optional convenience. Clearly separate user-requested non-production `_PREVIEW` files and flags. Generate Lisp only when explicitly requested. An audit-only request skips CAD emission. When critical topology/type/datum/bend/material is unresolved, stop before speculative production files; when the environment cannot create or verify DXF links, report that limitation instead of inventing attachments or silently outputting Lisp.
