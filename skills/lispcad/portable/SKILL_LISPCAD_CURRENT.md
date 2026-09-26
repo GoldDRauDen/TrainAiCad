@@ -1,5 +1,5 @@
 
-# SKILL_LISPCAD V4.9 PORTABLE: Drawing-First Sheet Metal Flat Pattern Extractor & Single Composite DXF
+# SKILL_LISPCAD V4.10 PORTABLE: Drawing-First Sheet Metal Flat Pattern Extractor & Single Composite DXF + Verified Source-Origin Mapping
 
 
 ## 0. Portable Skill Contract — Mandatory for Every AI / Every Chat
@@ -116,7 +116,7 @@ For each part page, inspect in this sequence before writing any geometry:
 
 1. **Contour topology first**: trace every real outside edge, step, recess, tab, opening, cutout, R, and C. Do not start from a bounding rectangle.
 2. **Feature inventory**: enumerate each hole/slot/tap/cutout family and its quantity callout before assigning coordinates.
-3. **Dimension graph**: classify each used dimension and identify both witness-line endpoints before arithmetic.
+3. **Dimension graph and source-frame lock**: classify each used dimension and identify both witness-line endpoints before arithmetic. For absolute/ordinate dimensions, first PROVE the source coordinate origin's physical edge/feature and each positive X/Y axis direction in that view; record the target CAD origin before solving any coordinates (Section 4.2.9). Never default to lower-left when the drawing actually uses top-left.
 4. **Face/bend mapping**: determine which dimensions belong to which formed face and the ordered unfold path.
 5. **Handwritten and cancellation evidence**: apply corrections/Nobi to the features they clearly target; classify struck-through hole-family leaders under Section 2.5 before calculating active feature counts. If scope is unclear, ask.
 6. **Metadata lock**: confirm barcode, material, and thickness before choosing thread pilots, Nobi table rows, or feasibility rules.
@@ -291,6 +291,23 @@ The total flat length equation may be numerically unchanged when two flange leng
 - Double bend lines MUST be positioned from the ordered sequence in Section 4.7 and MUST exist only over material regions that actually cross that bend. For U-shaped, legged, stepped, or cut-away parts, split/trim bend lines around voids; never draw a bend line continuously through empty space.
 - If two face orders remain equally plausible after explicit trace exhaustion, STOP and ask the user. Magenta is not permission to choose an arbitrary bend order.
 
+#### 4.2.9 Mandatory Source-Origin and Axis-Direction Lock (V4.10 — approved)
+
+**Before converting any absolute/ordinate drawing dimensions into CAD coordinates, prove the SOURCE coordinate frame for EACH affected view.** Identify (a) the physical source origin O and the actual two edges/features that define it, (b) the direction of source +X and +Y from printed arrows, coordinate signs, dimension witness lines or explicit drawing annotations, (c) which actual material edge/feature becomes the TARGET CAD datum, and (d) the source-view-to-CAD orientation. Neither the paper/page upper-left corner nor a habitual DXF lower-left origin is evidence by itself. Never assume that a negative source ordinate means a negative CAD ordinate.
+
+For an axis-aligned view with no X/Y exchange, let `(X0_cad,Y0_cad)` be the VERIFIED CAD coordinates of the drawing's source origin and `sx,sy ∈ {+1,-1}` represent the respective source-positive axis directions relative to CAD-positive right/up. Use the general explicit transform:
+
+```
+X_cad = X0_cad + sx * X_source
+Y_cad = Y0_cad + sy * Y_source
+```
+
+Lock **both** source origin and each axis sign independently. When a source view is mirrored, rotated or exchanges X and Y, first prove the actual mapping from its view/face to the intended CAD face and apply the correctly oriented axis mapping; do not force this simple aligned-axis formula onto an unresolved view. Section 4.2.7 local-formed-face → global-flat unfolding is an ADDITIONAL transform after the source frame is established, not a substitute for it.
+
+**Top-left source datum cases:** If the drawing's proven origin is at its material top-left, its explicitly dimensioned part height is `H`, and CAD Y=0 is the SAME material bottom edge, then `Y0_cad=H`. If source +Y points **up** and a hole is given as `Y_source=-d`, `Y_cad=H-d`; if source +Y points **down** and the hole is `Y_source=+d`, `Y_cad=H-d`. These are two equivalent physical layouts with DIFFERENT source signs; do not mix their conventions. Use `H` only when that height and both controlling top/bottom edges are actually proven for the SAME view/face; never use an arbitrary picture/image bounding box or a formed-view overall for a different flat face.
+
+**Mandatory audit trace** for any ordinate-based feature family: source view/face ID, source origin's actual geometry, source +X/+Y directions, source signed X/Y of each family or row, target CAD datum, view transform (including any mirror/rotation), the explicit coordinate equations, and an independently dimensioned closure check where supplied. A row of repeated holes shares a Y result only when the source witness/ordinate data prove a common physical row. If origin or either needed axis direction is unproved after tracing all explicit drawing evidence, mark the affected coordinates FLAG and ask; keep independently proved source views separate rather than emitting guessed production coordinates. A visually plausible row or a matching total bbox is NOT evidence of a correct datum.
+
 ### 4.3 Mid-Tolerance Strategy (Tolerance Calculation)
 For coordinates governed by asymmetric tolerances or limit dimensions, calculate the flat pattern feature position using the **Mid-Tolerance Value**:
 
@@ -394,6 +411,7 @@ Before exporting production DXF or optional AutoLISP, run the following automate
 - **Closed Polyline Check**: Outer boundary vertices must form a continuous loop that explicitly closes at $P_{\text{start}} = P_{\text{end}}$.
 - **Self-Intersection Check**: Ensure no overlapping edges or intersecting outer polyline loops exist.
 - **Vertex Ordering**: Outer boundaries must follow Counter-Clockwise (CCW) orientation; internal cutouts must follow Clockwise (CW) orientation.
+- **Source-Origin/Axis Mapping Check (V4.10):** For every absolute or ordinate-based feature, confirm the actual source-view origin and positive X/Y directions from drawing evidence BEFORE any DXF coordinate assignment; record its target CAD datum and signed source→CAD equation, then verify an independent edge/overall closure when available. Negative source Y is NOT a CAD Y coordinate. Transferring `Y=-30` from a proved top-left origin on a view 138 mm high to a bottom-left CAD datum MUST give `Y=108`, not `-30` or `88`. Missing origin/axis evidence is FLAGGED and prevents production PASS; do not borrow an adjacent hole/contour datum.
 - **Datum Graph Connectivity Check**: Every critical hole/notch/step coordinate must have a connected dimension path from an identified datum per Section 4.2.
 - **Dimension-Type Check**: Each used dimension must be classified as baseline, chain, step/local, overall, or ordinate before arithmetic.
 - **Dimension Endpoint Identity Check**: For every crowded or parallel dimension group, verify that each dimension's start/end node targets the correct entity type (`OUTER_EDGE`, `CONTOUR_EDGE/STEP`, `HOLE_CENTER`, etc.). Reusing a neighboring endpoint is a semantic FAIL.
@@ -955,21 +973,25 @@ The user directly approved three corrections against the original PDF and correc
 
 ## Appendix B — Portable Deployment Guide
 
+### B.0.1 V4.10 approved source-origin and axis-direction rule (2026-09-26)
+
+The user directly approved making the **source drawing coordinate-origin/axis lock** a universal mandatory production skill, after the corrected PDF-based 043793 three-Ø7-hole row was confirmed as source Y=-30 from a real top-left origin, H=138 and flat CAD Y=108 from the same part's bottom edge. Always prove source O and source +X/+Y before deriving CAD coordinates; use signed source→CAD equations and separate local-view→global-flat mapping when applicable. Unknown origin/direction remains FLAG and blocks production. This APPROVAL is limited to this general frame-mapping method and the self-contained 043793 regression (Appendix H); it does NOT resolve independent customer-unconfirmed 043796 Z bend lengths, 043797 2-Ø? or 043799 165° Nobi.
+
 ### B.0 V4.9 single-composite export approval (2026-09-26)
 
-The user directly approved exactly ONE DXF composite as the default: all codes ordered top-to-bottom according to page 1, each code printed outside its cluster as non-cut annotation, with source-only views and explicit FLAG instead of invented flat patterns. One unresolved code makes the composite REVIEW_ONLY/NO CUT. Individual files and manifest are explicit-request options only. **This output-only approval supersedes V4.7/V4.8 dual-export instructions wherever they conflict, but changes no approved material, geometry, Nobi, POINT, R/C or PDF-reading rule.** Unconfirmed job-specific dimensions remain unconfirmed; do not promote any separate proposed datum lesson without direct user approval.
+The user directly approved exactly ONE DXF composite as the default: all codes ordered top-to-bottom according to page 1, each code printed outside its cluster as non-cut annotation, with source-only views and explicit FLAG instead of invented flat patterns. One unresolved code makes the composite REVIEW_ONLY/NO CUT. Individual files and manifest are explicit-request options only. **This output-only approval supersedes V4.7/V4.8 dual-export instructions wherever they conflict, but changes no approved material, geometry, Nobi, POINT, R/C or PDF-reading rule.** Unconfirmed job-specific dimensions remain unconfirmed; the separately proposed top-left source-origin datum lesson is now DIRECTLY APPROVED as V4.10 Section 4.2.9 / Appendix H.
 
 
 ### B.1 Minimum Package
 For cross-chat / cross-AI use, the minimum package is this single file:
-- `SKILL_LISPCAD_V4_9_PORTABLE.md`
+- `SKILL_LISPCAD_V4_10_PORTABLE.md`
 
 It already contains the formulas, Nobi tables, CAD schema, output contract, datum rules, C/R rules, DXF calibration protocol, and regression cases required for execution.
 
 ### B.2 Recommended Invocation Text
 At the start of a new AI/chat, the operator should provide this file and issue an instruction equivalent to:
 
-> Read `SKILL_LISPCAD_V4_9_PORTABLE.md` completely before processing drawings. Treat Sections 0–9 and all appendices as mandatory. Focus first on the drawing field, dimensions/witness lines, handwritten corrections/Nobi, barcode, material, and thickness. Keep Stage 1 compact; prioritize production-safe geometry and ask when evidence is not unique.
+> Read `SKILL_LISPCAD_V4_10_PORTABLE.md` completely before processing drawings. Treat Sections 0–9 and all appendices as mandatory. Focus first on the drawing field, dimensions/witness lines, handwritten corrections/Nobi, barcode, material, and thickness. Keep Stage 1 compact; prioritize production-safe geometry and ask when evidence is not unique.
 
 ### B.3 Audit-Only Exception
 If the user requests only an audit/report and explicitly no generated CAD, Stage 2 DXF and optional Lisp output are skipped for that turn. The AI must still apply all interpretation and verification rules and produce a structured Stage 1-style report.
@@ -1053,3 +1075,20 @@ If the user requests only an audit/report and explicitly no generated CAD, Stage
 2. With `A:PASS`, `B:VIEWS_ONLY` because two Z-fold lengths are missing, and `C:PREVIEW` with source-uncertain Ø, emit only `JOB_ALL_REVIEW_ONLY.dxf` with all three labeled and a global NO CUT annotation. B retains separate labeled proved source views rather than an invented flat; C's unproved estimated feature and adjacent note are Magenta/FLAG. A's geometry is unchanged but the combined review file cannot be cut as one job.
 3. Per-code `PASS` may be reported only after actual Section 5 checks. Structural output/read-back, correctly ordered labels, or a user-approved packaging change never resolves separate customer-uncertain Ø or Nobi values.
 4. On explicit request only, the old V4.7/V4.8 dual delivery may still be invoked for compatible PASS/PREVIEW jobs; this regression changes only the default output package.
+
+
+## Appendix H — V4.10 approved datum-origin regression: 520728-06 / 043793 (2026-09-26)
+
+The user **directly approved** the following generic source-frame lesson for future CAD work. This approval followed the user's correction of the original PDF and corrected DXF. PDF-first: the corrected DXF audits the independently established source-origin/axis interpretation; it is not an external ruler for missing PDF values.
+
+**Original drawing, page 4, code 043793.** Its absolute drawing datum is at the **physical upper-left corner of the part**, NOT the bottom-left DXF convention. Its explicitly proven part height in the relevant view is `H=138 mm`. Three independent `Ø7` holes share a real row measured **30 mm below that source top edge**. With source +Y upward, their drawing absolute ordinate is `Y_source=-30 mm`. Source O maps to target bottom-left CAD `Y0_cad=138`, and source +Y has the same global up direction as CAD `sy=+1`. Thus for each hole independently:
+
+```
+Y_cad = Y0_cad + sy * Y_source = 138 + (+1)*(-30) = 108 mm
+```
+
+All THREE `Ø7` row centers MUST have `Y_cad=108 mm` in the local DXF frame. The former `Y_cad=88 mm` is a **DATUM / AXIS-MAPPING FAIL**; `Y_cad=-30 mm` is also wrong in the bottom-left CAD frame. Do NOT derive `Y=108` merely by reverse-copying the reference DXF: read the actual printed absolute-origin indicator, source ordinate and explicit part height from the PDF. X positions require their own independently proven source X datum and dimensions; no example X coordinates here authorize borrowing one from a neighboring hole row.
+
+**Generic regression:** before using ANY absolute/ordinate coordinates, independently identify each view's true origin, source axis directions and target CAD datum. For another sheet with top-left origin but source +Y down, the SOURCE number is `+30`, not `-30`, and the explicit transform becomes `Y_cad=138-(+30)=108`. For bottom-left source origin with +Y up, `Y_cad=Y_source` only when source O and target CAD O are physically coincident. A change of source origin or axis sign without updating the transform is a FAIL. Do not let an overall bbox or visually plausible holes substitute for proven source coordinate-frame evidence. Applies independently to each formed face/view before Section 4.2.7 flat-unfold transforms.
+
+**Approval scope:** This directly approved lesson is production skill V4.10, not an automatic re-certification of previous 520728-06 DXF files or approval of unresolved 043796, 043797 or 043799 customer information. The V4.9 one combined code-labeled DXF default and every earlier approved manufacturing rule remain intact; V4.9 and earlier snapshots stay immutable.
