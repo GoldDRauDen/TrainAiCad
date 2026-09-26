@@ -14,7 +14,7 @@ A parenthesized/reference dimension is **not automatically a coordinate from the
 - If a formed-view reference value conflicts with a fully proven unfold equation, classify the issue as `REFERENCE/FORMED-DIMENSION ERROR` or source conflict; do not force the flat equation to equal the reference value.
 
 #### 4.2.7 Local-Face Datum → Global Flat Datum Mapping
-Features dimensioned on a bent flange/face MUST be transformed from the **local face coordinate system** into the **global unfolded blank coordinate system** before AutoLISP coordinates are emitted.
+Features dimensioned on a bent flange/face MUST be transformed from the **local face coordinate system** into the **global unfolded blank coordinate system** before verified global-flat coordinates are emitted.
 
 1. Assign each formed face an ordered identity along the unfold path: `FACE_1 -> BEND_1 -> FACE_2 -> ...`.
 2. Establish the flat start/end coordinates of that face from the sequential OD/Nobi equations in Section 4.7.
