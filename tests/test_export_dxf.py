@@ -82,3 +82,34 @@ def test_rejects_magenta_and_wrong_point_semantics(tmp_path):
     good["entities"][1]["color"] = 6
     with pytest.raises(ValueError, match="Magenta"):
         export_job({"job_id": "JOB", "parts": [good]}, tmp_path)
+
+
+def test_stadium_bulges_and_three_primitives_one_approved_style_relief(tmp_path):
+    """Synthetic feature serialization, not the 055958 drawing geometry itself."""
+    from ezdxf import bbox
+
+    sample = part("000003")
+    sample["entities"].extend([
+        # Horizontal stadium: W=4.5, C=10, L_TOTAL=14.5. CW interior loop.
+        {"type": "LWPOLYLINE", "role": "slot", "closed": True,
+         "vertices": [[10, 17.25, 0], [20, 17.25, -1],
+                      [20, 12.75, 0], [10, 12.75, -1]]},
+        # One connected Green slit, represented by three CAD entities.
+        {"type": "LINE", "role": "relief", "color": 3, "start": [24, 2], "end": [25, 2]},
+        {"type": "ARC", "role": "relief", "color": 3, "center": [25, 2.5],
+         "radius": 0.5, "start_angle": 270, "end_angle": 0},
+        {"type": "LINE", "role": "relief", "color": 3,
+         "start": [25.5, 2.5], "end": [26, 2.5]},
+    ])
+    manifest = export_job({"job_id": "SYNTHETIC", "parts": [sample]}, tmp_path)
+    doc = ezdxf.readfile(tmp_path / "SYNTHETIC_000003.dxf")
+    msp = doc.modelspace()
+    assert manifest["parts"][0]["entity_count"] == 10
+    slot = [e for e in msp if e.dxftype() == "LWPOLYLINE"][1]
+    assert [round(v[2], 6) for v in slot.get_points("xyb")] == [0, -1, 0, -1]
+    bounds = bbox.extents([slot])
+    assert round(bounds.extmax.x - bounds.extmin.x, 6) == 14.5
+    assert round(bounds.extmax.y - bounds.extmin.y, 6) == 4.5
+    assert len([e for e in msp if e.dxftype() == "ARC" and e.dxf.color == 3]) == 1
+    assert len([e for e in msp if e.dxftype() == "LINE" and e.dxf.color == 3]) == 2
+    assert len(list(ezdxf.readfile(tmp_path / "SYNTHETIC_ALL.dxf").modelspace())) == 10
