@@ -169,3 +169,155 @@ def validate_job(job):
     return jid
 
 
+def add_entity(msp, ent, dx=0.0, dy=0.0):
+    attrs = {"layer": "0"}
+    if ent.get("color", 256) != 256:
+        attrs["color"] = ent["color"]
+    if ent.get("linetype"):
+        attrs["linetype"] = ent["linetype"]
+    def move(v):
+        return (v[0] + dx, v[1] + dy)
+    t = ent["type"]
+    if t == "LWPOLYLINE":
+        return msp.add_lwpolyline([(v[0] + dx, v[1] + dy, v[2]) for v in ent["vertices"]],
+                                  format="xyb", close=ent.get("closed", False), dxfattribs=attrs)
+    if t == "CIRCLE":
+        return msp.add_circle(move(ent["center"]), ent["radius"], dxfattribs=attrs)
+    if t == "LINE":
+        return msp.add_line(move(ent["start"]), move(ent["end"]), dxfattribs=attrs)
+    if t == "ARC":
+        return msp.add_arc(move(ent["center"]), ent["radius"],
+                           ent["start_angle"], ent["end_angle"], dxfattribs=attrs)
+    if t == "POINT":
+        return msp.add_point(move(ent["point"]), dxfattribs=attrs)
+    if t == "TEXT":
+        attrs["height"] = ent.get("height", 2.5)
+        attrs["insert"] = move(ent["insert"])
+        return msp.add_text(ent["text"], dxfattribs=attrs)
+    fail(f"Unknown entity type {t}")
+
+
+def new_doc():
+    doc = ezdxf.new("R2010", setup=True)
+    doc.header["$INSUNITS"] = 4
+    doc.header["$MEASUREMENT"] = 1
+    doc.header["$LUNITS"] = 2
+    doc.header["$LUPREC"] = 2
+    if "DASHED" not in doc.linetypes:
+        doc.linetypes.new("DASHED", dxfattribs={"pattern": [4.0, 2.0, -2.0], "description": "2 mm dash, 2 mm gap"})
+    return doc
+
+
+def extents_of(doc):
+    ext = bbox.extents(doc.modelspace(), fast=False)
+    if not ext.has_data:
+        fail("No bounded CAD geometry to export")
+    return [round(ext.extmin.x, 6), round(ext.extmin.y, 6),
+            round(ext.extmax.x, 6), round(ext.extmax.y, 6)]
+
+
+def entity_signature(ent):
+    """Coordinate/attribute fingerprint including arc bulges for saved-DXF roundtrip."""
+    t = ent.dxftype()
+    attrs = (t, ent.dxf.layer, ent.dxf.get("color", 256), ent.dxf.get("linetype", "BYLAYER"))
+    def xy(v):
+        return (round(v[0], 6), round(v[1], 6))
+    if t == "LWPOLYLINE":
+        geometry = (ent.closed, tuple((round(x, 6), round(y, 6), round(b, 8)) for x, y, b in ent.get_points("xyb")))
+    elif t == "CIRCLE":
+        geometry = (xy(ent.dxf.center), round(ent.dxf.radius, 6))
+    elif t == "POINT":
+        geometry = xy(ent.dxf.location)
+    elif t == "LINE":
+        geometry = (xy(ent.dxf.start), xy(ent.dxf.end))
+    elif t == "ARC":
+        geometry = (xy(ent.dxf.center), round(ent.dxf.radius, 6), round(ent.dxf.start_angle, 6), round(ent.dxf.end_angle, 6))
+    elif t == "TEXT":
+        geometry = (xy(ent.dxf.insert), ent.dxf.text, round(ent.dxf.height, 6))
+    else:
+        fail(f"Unexpected written DXF entity {t}")
+    return (attrs, geometry)
+
+
+def write_and_audit(doc, target, expected_count):
+    before = [entity_signature(ent) for ent in doc.modelspace()]
+    doc.saveas(target)
+    loaded = ezdxf.readfile(target)
+    errors = loaded.audit()
+    if errors.has_errors:
+        fail(f"DXF audit failed: {target.name}")
+    ents = list(loaded.modelspace())
+    if len(ents) != expected_count or any(ent.dxf.layer != "0" for ent in ents):
+        fail(f"DXF read-back/layer/entity-count failure: {target.name}")
+    if loaded.header["$INSUNITS"] != 4:
+        fail(f"DXF unit failure: {target.name}")
+    if [entity_signature(ent) for ent in ents] != before:
+        fail(f"DXF entity/coordinate/attribute roundtrip mismatch: {target.name}")
+    return extents_of(loaded)
+
+
+def export_job(job, output_dir, gap_mm=10.0):
+    jid = validate_job(job)
+    gap_mm = number(gap_mm, "gap_mm")
+    if gap_mm < 10:
+        fail("Composite drawing requires at least 10 mm clearance between part bounding boxes")
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    records = []
+    for part in job["parts"]:
+        preview = part["status"] == "PREVIEW"
+        doc = new_doc()
+        for ent in part["entities"]:
+            add_entity(doc.modelspace(), ent)
+        suffix = "_PREVIEW" if preview else ""
+        name = f"{jid}_{part['code']}{suffix}.dxf"
+        bounds = write_and_audit(doc, out / name, len(part["entities"]))
+        records.append({"code": part["code"], "material": part["material"],
+                        "thickness_mm": part["thickness_mm"], "status": part["status"],
+                        "filename": name, "entity_count": len(part["entities"]),
+                        "bbox_mm": bounds, "flags": part.get("flags", []),
+                        "checks": part["checks"]})
+    combined = {}
+    for state, suffix in (("PASS", "ALL"), ("PREVIEW", "PREVIEW_ALL")):
+        chosen = [(p, r) for p, r in zip(job["parts"], records) if p["status"] == state]
+        if not chosen:
+            continue
+        total_height = sum(r["bbox_mm"][3] - r["bbox_mm"][1] for _, r in chosen) + gap_mm * (len(chosen) - 1)
+        cursor = total_height
+        merged = new_doc()
+        positions = []
+        for part, rec in chosen:
+            xmin, ymin, xmax, ymax = rec["bbox_mm"]
+            h = ymax - ymin
+            bottom = cursor - h
+            dx, dy = -xmin, bottom - ymin
+            for ent in part["entities"]:
+                add_entity(merged.modelspace(), ent, dx, dy)
+            positions.append({"code": rec["code"], "filename": rec["filename"],
+                              "translation_mm": [round(dx, 6), round(dy, 6)],
+                              "combined_bbox_mm": [0, round(bottom, 6), round(xmax - xmin, 6), round(cursor, 6)]})
+            cursor = bottom - gap_mm
+        name = f"{jid}_{suffix}.dxf"
+        write_and_audit(merged, out / name, sum(r["entity_count"] for _, r in chosen))
+        combined[state] = {"filename": name, "layout": "top-to-bottom in job.parts order",
+                           "clearance_mm": gap_mm, "parts": positions}
+    manifest = {"contract": "TrainAiCad-DXF-V4.7", "job_id": jid,
+                "coordinate_units": "mm", "layer": "0", "source": "canonical independently checked geometry",
+                "parts": records, "combined": combined,
+                "warning": "PREVIEW files are NOT production CAD; never mix preview parts into *_ALL.dxf"}
+    (out / f"{jid}_MANIFEST.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return manifest
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Generate separate and top-to-bottom combined DXFs from verified TrainAiCad canonical JSON")
+    ap.add_argument("input_json", type=Path)
+    ap.add_argument("output_dir", type=Path)
+    ap.add_argument("--gap-mm", type=float, default=10.0)
+    args = ap.parse_args()
+    manifest = export_job(json.loads(args.input_json.read_text(encoding="utf-8")), args.output_dir, args.gap_mm)
+    print(json.dumps({"job_id": manifest["job_id"], "files": [p["filename"] for p in manifest["parts"]] + [c["filename"] for c in manifest["combined"].values()]}, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()
