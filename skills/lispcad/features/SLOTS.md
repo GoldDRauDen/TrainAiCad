@@ -4,7 +4,7 @@ Source: approved V4.3 production baseline.
 
 - **Slots / Oblong Holes**: Constructed as single closed `LWPOLYLINE`s with two straight segments and two semi-circular bulges (`bulge = 1.0`).
 - **Slot Dimension Semantics — mandatory**: Before creating a slot, classify every length value as `OVERALL_LENGTH` (extreme end to extreme end) or `CENTER_DISTANCE / STRAIGHT_TANGENT_LENGTH` (center-to-center distance between the two semicircular ends; numerically equal to the straight tangent segment length for a stadium slot). Do not pass an unclassified value into a slot helper.
-- The canonical AutoLISP slot spec in this skill uses **overall length**: `(SLOTX L_TOTAL W)` or `(SLOTY L_TOTAL W)`, where `W` is slot width / end-circle diameter and `L_TOTAL >= W`. If the drawing gives center distance `C`, convert explicitly as `L_TOTAL = C + W` before storing or drawing the slot.
+- The canonical direct-DXF slot uses overall `L_TOTAL` and end width `W` for a SINGLE closed Layer-0 LWPOLYLINE with two straight tangent segments and two true semicircular bulges; optional AutoLISP retains its existing spec: `(SLOTX L_TOTAL W)` or `(SLOTY L_TOTAL W)`, where `W` is slot width / end-circle diameter and `L_TOTAL >= W`. If the drawing gives center distance `C`, convert explicitly as `L_TOTAL = C + W` before storing or drawing the slot.
 - If witness lines do not prove whether the printed slot length is overall or center-distance/tangent length, apply Section 4.4; do not guess from appearance or from a reference DXF.
 
 
@@ -24,3 +24,6 @@ Inside `HOLES`, slots MUST use one of these canonical forms:
 - Do not use a generic helper argument named only `len` unless the function contract explicitly states `len = L_TOTAL`; ambiguous helper semantics are prohibited.
 
 ---
+
+
+**V4.7 DXF default:** serialize each proved inner slot as exactly ONE closed CW `LWPOLYLINE` with semicircular bulge magnitude `1`, original proven `L_TOTAL`/`W`, exact tangent points and no faceted approximations, overlapping circles or independent calculations for composite output. The legacy `SLOTX`/`SLOTY` contract is request-only Lisp and must consume the same canonical derived geometry. Validate real containment, count and source length classification before production DXF.
