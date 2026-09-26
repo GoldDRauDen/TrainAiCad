@@ -1,6 +1,6 @@
 # LISPCAD Core — Datum & Dimension Semantics
 
-Source: approved V4.3 production baseline. These rules apply across all topology and mode modules.
+Source: approved V4.3 production baseline, with independently approved V4.10 source-origin/axis mapping. These rules apply across all topology and mode modules.
 
 ## V4.8 approved datum/feature-family regression
 
@@ -88,6 +88,23 @@ The total flat length equation may be numerically unchanged when two flange leng
 - Do not validate bend order merely because `sum(OD) - sum(Nobi)` matches the overall blank length.
 - Double bend lines MUST be positioned from the ordered sequence in Section 4.7 and MUST exist only over material regions that actually cross that bend. For U-shaped, legged, stepped, or cut-away parts, split/trim bend lines around voids; never draw a bend line continuously through empty space.
 - If two face orders remain equally plausible after explicit trace exhaustion, STOP and ask the user. Magenta is not permission to choose an arbitrary bend order.
+
+#### 4.2.9 Mandatory Source-Origin and Axis-Direction Lock (V4.10 — approved)
+
+**Before converting any absolute/ordinate drawing dimensions into CAD coordinates, prove the SOURCE coordinate frame for EACH affected view.** Identify (a) the physical source origin O and the actual two edges/features that define it, (b) the direction of source +X and +Y from printed arrows, coordinate signs, dimension witness lines or explicit drawing annotations, (c) which actual material edge/feature becomes the TARGET CAD datum, and (d) the source-view-to-CAD orientation. Neither the paper/page upper-left corner nor a habitual DXF lower-left origin is evidence by itself. Never assume that a negative source ordinate means a negative CAD ordinate.
+
+For an axis-aligned view with no X/Y exchange, let `(X0_cad,Y0_cad)` be the VERIFIED CAD coordinates of the drawing's source origin and `sx,sy ∈ {+1,-1}` represent the respective source-positive axis directions relative to CAD-positive right/up. Use the general explicit transform:
+
+```
+X_cad = X0_cad + sx * X_source
+Y_cad = Y0_cad + sy * Y_source
+```
+
+Lock **both** source origin and each axis sign independently. When a source view is mirrored, rotated or exchanges X and Y, first prove the actual mapping from its view/face to the intended CAD face and apply the correctly oriented axis mapping; do not force this simple aligned-axis formula onto an unresolved view. Section 4.2.7 local-formed-face → global-flat unfolding is an ADDITIONAL transform after the source frame is established, not a substitute for it.
+
+**Top-left source datum cases:** If the drawing's proven origin is at its material top-left, its explicitly dimensioned part height is `H`, and CAD Y=0 is the SAME material bottom edge, then `Y0_cad=H`. If source +Y points **up** and a hole is given as `Y_source=-d`, `Y_cad=H-d`; if source +Y points **down** and the hole is `Y_source=+d`, `Y_cad=H-d`. These are two equivalent physical layouts with DIFFERENT source signs; do not mix their conventions. Use `H` only when that height and both controlling top/bottom edges are actually proven for the SAME view/face; never use an arbitrary picture/image bounding box or a formed-view overall for a different flat face.
+
+**Mandatory audit trace** for any ordinate-based feature family: source view/face ID, source origin's actual geometry, source +X/+Y directions, source signed X/Y of each family or row, target CAD datum, view transform (including any mirror/rotation), the explicit coordinate equations, and an independently dimensioned closure check where supplied. A row of repeated holes shares a Y result only when the source witness/ordinate data prove a common physical row. If origin or either needed axis direction is unproved after tracing all explicit drawing evidence, mark the affected coordinates FLAG and ask; keep independently proved source views separate rather than emitting guessed production coordinates. A visually plausible row or a matching total bbox is NOT evidence of a correct datum.
 
 ### 4.3 Mid-Tolerance Strategy (Tolerance Calculation)
 For coordinates governed by asymmetric tolerances or limit dimensions, calculate the flat pattern feature position using the **Mid-Tolerance Value**:
