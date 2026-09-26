@@ -2,6 +2,10 @@
 
 Source: approved V4.3 production baseline.
 
+## V4.8 required cancellation and regression audit
+
+Classify each source feature-family callout as ACTIVE or unequivocally CANCELED before count closure. Require original quantity for each active family and ZERO produced entities for confirmed full-family deletions; include individual and translated composite DXF read-back. Ambiguous/partial strike-through blocks deletion and requires clarification. Apply approved regression/datum/520709-07_APPROVED.md for 039915 external-step datum, 039918/039919 diagonal/hole family and full reflection, and 040006 deletion of the complete 2-Ø8H7 family with active 6-M8 and 4-Ø9 retained. Matching overall extents alone cannot PASS these checks.
+
 ## 5. Error Detection & Manufacturing Validation Engine
 
 Before exporting ANY production DXF or optional AutoLISP, run the following automated checks:

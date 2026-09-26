@@ -4,6 +4,10 @@ Source: approved V4.3 production baseline. This file preserves the portable cont
 
 **Modular compatibility note:** inherited V4.3 wording such as “this document” refers to the complete approved LISPCAD rule set loaded through `AI_ENTRYPOINT.md`. The single-file portable form remains `../portable/SKILL_LISPCAD_CURRENT.md`.
 
+## V4.8 approved hole-family cancellation — active override
+
+When an entire hole callout is clearly struck out and its leader clearly identifies a complete family, omit the whole family from DXF regardless of remaining legacy drawn circles. Log canceled source quantity and prove zero output entities; active nearby groups are unchanged. If only a tolerance/finish fragment is crossed or target/revision scope is unclear, DO NOT delete holes; ask. Case 040006 on 520709-07 deletes both 2-Ø8H7 while retaining 6-M8 and 4-Ø9. The full authoritative rule is portable Section 2.5, case Appendix F.
+
 ## 0. Portable Skill Contract — Mandatory for Every AI / Every Chat
 
 ### 0.1 Standalone / Session-Independent Design

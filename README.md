@@ -1,6 +1,10 @@
-# TrainAiCad — DXF-first production (V4.7)
+# TrainAiCad — DXF-first production (V4.8)
 
 TrainAiCad is a user-calibrated CAD production skill repository, **not an automatic training environment**. Only user-approved rules enter the production skill. Begin with [AI_ENTRYPOINT.md](AI_ENTRYPOINT.md).
+
+## V4.8 approval — 520709-07 (2026-09-26)
+
+The user approved one narrowly scoped manufacturing interpretation rule: a clearly struck-out COMPLETE hole-family callout with an unambiguous leader deletes all its holes even when obsolete circle symbols remain visible. Crossing out only tolerance/finish never automatically deletes holes; unclear scope requires a question. Regression 039915 requires an OD external-step datum (25, not 22.36); 039918/039919 require slope 50, correct printed M4/Ø5 groups and exact corrected reflection; 040006 requires deleting its entire 2-Ø8H7 group, preserving 6-M8 and 4-Ø9. See [approved regression](regression/datum/520709-07_APPROVED.md). V4.7 export and V4.6 engineering remain unchanged; V4.7 snapshot is preserved.
 
 ## Approved output mode (2026-09-26)
 
@@ -10,7 +14,7 @@ TrainAiCad is a user-calibrated CAD production skill repository, **not an automa
 
 ## Current modules and implementation
 
-- [Portable current V4.7](skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md), identical to [immutable V4.7 release](skills/lispcad/versions/V4.7/SKILL_LISPCAD_V4_7_PORTABLE.md). [Historical V4.6](skills/lispcad/versions/V4.6/SKILL_LISPCAD_V4_6_PORTABLE.md) preserved.
+- [Portable current V4.8](skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md), identical to [immutable V4.8 release](skills/lispcad/versions/V4.8/SKILL_LISPCAD_V4_8_PORTABLE.md); [historical V4.7](skills/lispcad/versions/V4.7/SKILL_LISPCAD_V4_7_PORTABLE.md) preserved. [Historical V4.6](skills/lispcad/versions/V4.6/SKILL_LISPCAD_V4_6_PORTABLE.md) preserved.
 - `skills/lispcad/core/`: DRAWING_READING, DATUM_DIMENSION, VALIDATION, CAD_OUTPUT; load all before working.
 - `skills/lispcad/{modes,topology,features}/`: load all applicable composable manufacturing rules.
 - `references/`: full approved material, Nobi and metric-thread pilot tables.

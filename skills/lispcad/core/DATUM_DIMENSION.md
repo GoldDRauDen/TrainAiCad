@@ -2,6 +2,10 @@
 
 Source: approved V4.3 production baseline. These rules apply across all topology and mode modules.
 
+## V4.8 approved datum/feature-family regression
+
+Regression 520709-07: for 039915, OD 30 minus local step 5 gives the external step at **25**, NOT 27.36 (Nobi-adjusted bend datum) minus 5 = 22.36; the bend zone still retains Nobi 2.64. For 039918 and PDF-mirrored 039919, printed diagonal 50 (not 100) is measured to the theoretical sharp point before R10; independently identify 2-M4 and 3-Ø5 hole families by source leaders. The correct original 039918 flattened local centers (173.2,110) and (224.2,54) are respectively M4→Ø3.3 and Ø5. These examples reinforce existing dimension-endpoint and family-isolation rules; they do not create new general coordinates.
+
 ## 4. Dimension Authority, Tolerance Rules & Nobi Logic
 
 ### 4.1 Dimension Precedence System

@@ -1,6 +1,8 @@
-# TrainAiCad V4.7 Core — DXF-first CAD Output
+# TrainAiCad V4.8 Core — DXF-first CAD Output (V4.7 serialization unchanged)
 
 **Current approved output mode:** direct DXF by default; BOTH individual and composite DXFs; optional AutoLISP on explicit request ONLY. This V4.7 change affects output/packaging, not V4.6-approved engineering, material, feature, relief, or regression logic.
+
+**V4.8 upstream gate:** Write canceled source-family provenance and effective zero-count into canonical job trace, omit all deleted hole entities, and verify that the deleted group is also absent in the translated composite. No CAD serialization or DXF schema change; only user-confirmed PDF reading, counts and regression cases were approved.
 
 ## 8.1 ONE independently verified canonical geometry model
 
