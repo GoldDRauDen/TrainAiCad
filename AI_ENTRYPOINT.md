@@ -1,11 +1,11 @@
-# AI ENTRYPOINT — V4.9 single-composite DXF approved output on V4.8 engineering
+# AI ENTRYPOINT — V4.10 source-origin/axis lock on V4.9 single-composite output
 
-Current production release is **V4.9**. It changes ONLY the output default to ONE code-labeled top-to-bottom composite DXF, preserving every V4.8 hole-cancellation and PDF-grounded regression and earlier approved manufacturing rule. Direct DXF remains the default. Optional AutoLISP exists ONLY when the user expressly requests it. The existing lispcad module paths remain stable for backwards-compatible imports.
+Current production release is **V4.10**. It ADDS the directly user-approved absolute source-coordinate origin/axis-lock rule (520728-06 / 043793) to unchanged V4.9 ONE code-labeled top-to-bottom composite DXF output and all V4.8 and earlier approved manufacturing rules. Direct DXF remains the default. Optional AutoLISP exists ONLY when the user expressly requests it. The existing lispcad module paths remain stable for backwards-compatible imports.
 
 ## Mandatory load order
 
 1. Read ALL core files in `skills/lispcad/core/`: `DRAWING_READING.md`, `DATUM_DIMENSION.md`, `VALIDATION.md`, `CAD_OUTPUT.md`.
-2. Inspect the actual PDF drawing/marked ROI before selecting specialized modules. Trace the real contour, explicit features and quantity callouts, and actual dimension extension-line endpoints BEFORE computing any coordinate. Lock barcode, material, thickness and applicable handwritten revisions.
+2. Inspect the actual PDF drawing/marked ROI before selecting specialized modules. Trace the real contour, explicit feature quantities and actual dimension extension-line endpoints BEFORE computing any coordinate. **For every absolute/ordinate source view independently PROVE the drawing's PHYSICAL coordinate origin, signed +X/+Y directions and mapping to target CAD origin before using any ordinate; never default to bottom-left when the source actually uses top-left.** Read DATUM_DIMENSION.md §4.2.9 and approved regression/datum/520728-06_043793_TOP_LEFT_APPROVED.md. Lock barcode, material, thickness and applicable handwritten revisions.
 3. Apply V4.8 full-family crossed-out callout scope: delete every hole only if the entire callout and target leader unambiguously cancel the group; a partial H7/finish strike-through or unclear leader requires clarification. Record source canceled quantity and verify ZERO residual entities; preserve neighboring active families. Read regression/datum/520709-07_APPROVED.md.
 4. Load `modes/FLAT_NO_BEND.md` or `modes/BEND_UNFOLD.md`; load ALL applicable topology and feature modules. A drawing may require multiple topology types.
 5. Load material/Nobi/thread references where applicable. Keep every V4.6-approved rule: scoped PIERCING/POINT/CIRCLE; material-table Laser R; SUS430 SS Nobi versus SUS/他 laser R/hole rules; Cu/Brass t6; independently proven R=t relief and the `055958` ONE connected three-primitive slit.
@@ -15,10 +15,12 @@ Current production release is **V4.9**. It changes ONLY the output default to ON
 
 ## Portability, approval and historical precedence
 
-Current standalone file: `skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md`, identical to immutable `skills/lispcad/versions/V4.9/SKILL_LISPCAD_V4_9_PORTABLE.md`. Immutable **V4.8, V4.7, V4.6** and earlier V4.3–V4.5 are historical; do not modify snapshots. Older V4.3 blanket DXF-only-R0.5 omission and green-by-default Piasu are superseded by approved V4.4–V4.6 material/POINT rules. Historical regression documents that preserve obsolete assumptions cannot override active technical rules.
+Current standalone file: `skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md`, identical to immutable `skills/lispcad/versions/V4.10/SKILL_LISPCAD_V4_10_PORTABLE.md`. Immutable **V4.9, V4.8, V4.7, V4.6** and earlier V4.3–V4.5 are historical; do not modify snapshots. Older V4.3 blanket DXF-only-R0.5 omission and green-by-default Piasu are superseded by approved V4.4–V4.6 material/POINT rules. Historical regression documents that preserve obsolete assumptions cannot override active technical rules.
 
 The user directly approved this V4.7 DXF output migration on 2026-09-26. That approval does NOT approve a new geometric/material lesson, alter regression source evidence or resolve the outstanding `055957` special-J and customer-unconfirmed dimensions. New lessons enter production only after separate direct user approval. GitHub stores portable production skills, not training state.
 
 The user separately approved ALL 520709-07 regression cases plus the explicit whole-group strike-through cancellation rule on 2026-09-26. This V4.8 approval does not endorse the original nine-code DXF export or certify unexecuted corrected DXF deliverables.
 
-The user directly approved the V4.9 **single-composite code-labeled export** on 2026-09-26. This does not approve a new datum/manufacturing lesson: unresolved 520728-06 customer Ø/Nobi/Z-fold lengths remain FLAGGED, and the separate top-left datum lesson proposal remains unapproved.
+The user directly approved the V4.9 **single-composite code-labeled export** on 2026-09-26. This approval was OUTPUT-ONLY. The source-origin lesson has since received its OWN explicit approval as V4.10, but unresolved customer Ø/Nobi/Z-fold lengths from 520728-06 remain FLAGGED.
+
+The user DIRECTLY approved the separate V4.10 top-left/source-origin lesson on 2026-09-26. Mandatory universal method: prove per-view physical source zero, signed X/Y axes and CAD target origin, then apply explicit signed source→CAD conversion. Regression 043793 PDF page 4 has source top-left Y=-30 and H=138, giving bottom-left CAD Y=108 for all 3-Ø7 holes. The previous Y=88 is a FAIL. Do not assume every future drawing uses top-left, do not borrow missing PDF coordinates from DXF, and do not resolve the separate customer-pending flags by this approval.
