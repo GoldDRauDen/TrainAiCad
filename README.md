@@ -1,6 +1,12 @@
-# TrainAiCad — DXF-first production (V4.10)
+# TrainAiCad — DXF-first production (V4.11)
 
 TrainAiCad is a user-calibrated CAD production skill repository, **not an automatic training environment**. Only user-approved rules enter the production skill. Begin with [AI_ENTRYPOINT.md](AI_ENTRYPOINT.md).
+
+## Approved V4.11 DRAW → FLAG → CONFIRM and 520625-15 QA (2026-09-26)
+
+The user directly approved drawing plausible provisional geometry when source evidence is incomplete, marking **each uncertain portion Magenta (Layer 0 / color 6)** with an adjacent specific FLAG, and asking for confirmation **after producing the preview**. Preserve separately proved geometry precisely. If an unfolded flat cannot be established responsibly, draw independently proved orthographic/source views as separate labeled groups (`VIEWS_ONLY`) under the correct code instead. Any open FLAG makes the single output `*_ALL_REVIEW_ONLY.dxf` with global **NO CUT**; production PASS still requires confirmed dimensions, full Section 5 manufacturing validation and saved-DXF read-back. This expands preview permission only, not automatic production acceptance.
+
+The user reports QA PASS of the previously delivered seven-code `520625-15` job and explicitly confirmed `036575`: two Ø5 holes lie opposite one another on a diameter of its Ø300 disk, center-to-center distance 180 mm, and one Ø9 is at the disk center. The specific three-hole question is closed; this does **not** automatically certify a subsequently modified DXF. See [approved V4.11 QA regression](regression/qa/520625-15_V4_11_APPROVED.md) and [current portable skill](skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md).
 
 ## V4.8 approval — 520709-07 (2026-09-26)
 
@@ -18,7 +24,7 @@ The user **directly approved** the previously proposed source-frame lesson using
 
 ## Current modules and implementation
 
-- [Portable current V4.10](skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md), identical to [immutable V4.10 release](skills/lispcad/versions/V4.10/SKILL_LISPCAD_V4_10_PORTABLE.md); [historical V4.9](skills/lispcad/versions/V4.9/SKILL_LISPCAD_V4_9_PORTABLE.md) preserved; [historical V4.8](skills/lispcad/versions/V4.8/SKILL_LISPCAD_V4_8_PORTABLE.md) preserved; [historical V4.7](skills/lispcad/versions/V4.7/SKILL_LISPCAD_V4_7_PORTABLE.md) preserved. [Historical V4.6](skills/lispcad/versions/V4.6/SKILL_LISPCAD_V4_6_PORTABLE.md) preserved.
+- [Portable current V4.11](skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md), identical to [immutable V4.11 release](skills/lispcad/versions/V4.11/SKILL_LISPCAD_V4_11_PORTABLE.md); [historical V4.10](skills/lispcad/versions/V4.10/SKILL_LISPCAD_V4_10_PORTABLE.md) preserved; [historical V4.9](skills/lispcad/versions/V4.9/SKILL_LISPCAD_V4_9_PORTABLE.md) preserved; [historical V4.8](skills/lispcad/versions/V4.8/SKILL_LISPCAD_V4_8_PORTABLE.md) preserved; [historical V4.7](skills/lispcad/versions/V4.7/SKILL_LISPCAD_V4_7_PORTABLE.md) preserved. [Historical V4.6](skills/lispcad/versions/V4.6/SKILL_LISPCAD_V4_6_PORTABLE.md) preserved.
 - `skills/lispcad/core/`: DRAWING_READING, DATUM_DIMENSION, VALIDATION, CAD_OUTPUT; load all before working.
 - `skills/lispcad/{modes,topology,features}/`: load all applicable composable manufacturing rules.
 - `references/`: full approved material, Nobi and metric-thread pilot tables.
@@ -27,7 +33,7 @@ The user **directly approved** the previously proposed source-frame lesson using
 
 ## Production sequence
 
-Interpret the PDF independently, calculate manufacturing geometry once, and run real Section 5 validation BEFORE declaring canonical data PASS. Serialize identical checked part-local data as translated clusters into ONE code-labeled top-down DXF, then verify its source-to-cluster equivalence, metadata labels and review status. Optional requested individual DXFs/manifest must use the SAME data. Prove the absolute drawing source origin/axis signs before calculating coordinates, as in V4.10's 043793 regression. A reference DXF is calibration ground truth only after user declaration. Optional `c:DRAW` Lisp uses that SAME verified model if requested. A structural file audit or synthetic exporter test never substitutes for PDF-specific datum, material or geometric containment verification.
+Interpret the PDF independently, calculate manufacturing geometry once, and run real Section 5 validation BEFORE declaring canonical data PASS. Serialize identical checked part-local data as translated clusters into ONE code-labeled top-down DXF, then verify its source-to-cluster equivalence, metadata labels and review status. Optional requested individual DXFs/manifest must use the SAME data. Prove the absolute drawing source origin/axis signs before calculating coordinates, as in V4.10's 043793 regression. V4.11 uncertain but source-supported geometry is previewed with Magenta assumptions/FLAGs, or displayed as separate VIEWS_ONLY source groups if the flat cannot be inferred. Confirm the outstanding questions and rerun all checks before production release. A reference DXF is calibration ground truth only after user declaration. Optional `c:DRAW` Lisp uses that SAME verified model if requested. A structural file audit or synthetic exporter test never substitutes for PDF-specific datum, material or geometric containment verification.
 
 ```bash
 python -m pip install -r requirements.txt
