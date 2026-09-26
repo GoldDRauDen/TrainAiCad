@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""TrainAiCad V4.7: serialize independently verified flat geometry to DXF.
+"""TrainAiCad V4.9: serialize checked source geometry to ONE labeled combined DXF.
 
 Input is canonical geometry that has ALREADY passed the approved drawing
 interpretation, tolerance, material, unfold and manufacturing checks.  This
@@ -81,7 +81,7 @@ def validate_entity(entity, part_code, preview):
     if role == "estimated" and col != 6:
         fail(f"{part_code}: estimated geometry must be Magenta")
     if t == "TEXT" and (not preview or col != 6 or role != "estimated_note"):
-        fail(f"{part_code}: TEXT only for adjacent Magenta preview notes")
+        fail(f"{part_code}: source TEXT only for adjacent Magenta preview notes; code labels are generated in AI_META")
     if t == "LWPOLYLINE":
         vertices = entity.get("vertices")
         if not isinstance(vertices, list) or len(vertices) < 2:
@@ -148,22 +148,29 @@ def validate_job(job):
         if number(part.get("thickness_mm"), f"{code} thickness") <= 0:
             fail(f"{code}: thickness must be positive")
         state = part.get("status")
-        if state not in ("PASS", "PREVIEW"):
-            fail(f"{code}: status must be PASS or PREVIEW; blocked parts must not be exported")
+        if state not in ("PASS", "PREVIEW", "VIEWS_ONLY"):
+            fail(f"{code}: status must be PASS, PREVIEW or VIEWS_ONLY")
         checks = part.get("checks")
-        if not isinstance(checks, dict) or any(checks.get(key) not in ("PASS", "N/A") for key in CHECKS):
-            fail(f"{code}: all eight upstream semantic checks require explicit PASS/N/A evidence")
+        permitted = ("PASS", "N/A", "FLAGGED") if state == "VIEWS_ONLY" else ("PASS", "N/A")
+        if not isinstance(checks, dict) or any(checks.get(key) not in permitted for key in CHECKS):
+            fail(f"{code}: all eight upstream semantic checks require explicit PASS/N/A (or VIEWS_ONLY FLAGGED) evidence")
         if state == "PASS" and (part.get("flags") or any(e == "N/A" for e in (checks[k] for k in ("contour_topology", "datum", "feature_count", "containment", "material_rules")))):
             fail(f"{code}: production PASS requires no flags and applicable critical checks")
         if state == "PREVIEW" and (not part.get("flags") or part.get("preview_reason") != "numeric_only_known_topology"):
             fail(f"{code}: preview permitted ONLY for numeric uncertainty on proved topology with flags")
+        if state == "VIEWS_ONLY" and (not part.get("flags") or part.get("preview_reason") != "separate_source_views"):
+            fail(f"{code}: VIEWS_ONLY requires independently proved source views, reason and unresolved flags")
         ents = part.get("entities")
         if not isinstance(ents, list) or not ents:
             fail(f"{code}: entities required")
         for ent in ents:
-            validate_entity(ent, code, state == "PREVIEW")
-        if sum(ent.get("role") == "outer" for ent in ents) != 1:
+            validate_entity(ent, code, state != "PASS")
+            if state == "VIEWS_ONLY" and ent["type"] != "TEXT":
+                safe_name(ent.get("view_id"))
+        if state != "VIEWS_ONLY" and sum(ent.get("role") == "outer" for ent in ents) != 1:
             fail(f"{code}: exactly one proved closed outside contour required")
+        if state == "VIEWS_ONLY" and not any(ent["type"] != "TEXT" for ent in ents):
+            fail(f"{code}: no proved source-view geometry")
         if state == "PREVIEW" and not (any(e.get("color") == 6 for e in ents) and any(e.get("type") == "TEXT" for e in ents)):
             fail(f"{code}: preview requires Magenta geometry AND adjacent Magenta TEXT")
     return jid
@@ -247,8 +254,11 @@ def write_and_audit(doc, target, expected_count):
     if errors.has_errors:
         fail(f"DXF audit failed: {target.name}")
     ents = list(loaded.modelspace())
-    if len(ents) != expected_count or any(ent.dxf.layer != "0" for ent in ents):
+    if len(ents) != expected_count or any(ent.dxf.layer != "0" and
+            not (ent.dxf.layer == "AI_META" and ent.dxftype() == "TEXT") for ent in ents):
         fail(f"DXF read-back/layer/entity-count failure: {target.name}")
+    if "AI_META" in loaded.layers and loaded.layers.get("AI_META").dxf.get("plot", 1) != 0:
+        fail(f"AI_META must be non-plot annotation: {target.name}")
     if loaded.header["$INSUNITS"] != 4:
         fail(f"DXF unit failure: {target.name}")
     if [entity_signature(ent) for ent in ents] != before:
@@ -256,7 +266,9 @@ def write_and_audit(doc, target, expected_count):
     return extents_of(loaded)
 
 
-def export_job(job, output_dir, gap_mm=10.0):
+def export_dual_job(job, output_dir, gap_mm=10.0):
+    if any(p.get("status") == "VIEWS_ONLY" for p in job.get("parts", [])):
+        fail("Legacy dual export does not support VIEWS_ONLY; use default single composite")
     jid = validate_job(job)
     gap_mm = number(gap_mm, "gap_mm")
     if gap_mm < 10:
@@ -309,14 +321,150 @@ def export_job(job, output_dir, gap_mm=10.0):
     return manifest
 
 
+
+def source_view_boxes(part):
+    """Source-view extents only; used to prove independently separated projections."""
+    groups = {}
+    for ent in part["entities"]:
+        if ent["type"] != "TEXT":
+            groups.setdefault(ent["view_id"], []).append(ent)
+    boxes = {}
+    for vid, ents in groups.items():
+        doc = new_doc()
+        for ent in ents:
+            add_entity(doc.modelspace(), ent)
+        boxes[vid] = extents_of(doc)
+    ids = list(boxes)
+    for i, first in enumerate(ids):
+        for second in ids[i + 1:]:
+            a, b = boxes[first], boxes[second]
+            x_gap = max(b[0] - a[2], a[0] - b[2])
+            y_gap = max(b[1] - a[3], a[1] - b[3])
+            if max(x_gap, y_gap) < 10 - 1e-6:
+                fail(f"{part['code']}: source views {first}/{second} must be separated by >=10 mm")
+    return boxes
+
+
+def export_single_job(job, output_dir, gap_mm=10.0, write_manifest=False):
+    """One composite, source-order labels, all-code review downgrade on ANY FLAG."""
+    jid = validate_job(job)
+    gap_mm = number(gap_mm, "gap_mm")
+    if gap_mm < 10:
+        fail("Combined geometric cluster gap must be >=10 mm")
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    parts = job["parts"]
+    review = any(p["status"] != "PASS" or p.get("flags") for p in parts)
+    records = []
+    for p in parts:
+        scratch = new_doc()
+        for e in p["entities"]:
+            add_entity(scratch.modelspace(), e)
+        view_boxes = source_view_boxes(p) if p["status"] == "VIEWS_ONLY" else {}
+        records.append({"code": p["code"], "material": p["material"],
+                        "thickness_mm": p["thickness_mm"], "status": p["status"],
+                        "bbox_mm": extents_of(scratch), "entity_count": len(p["entities"]),
+                        "flags": p.get("flags", []), "checks": p["checks"],
+                        "source_view_boxes": view_boxes})
+    total_height = sum(r["bbox_mm"][3] - r["bbox_mm"][1] for r in records) + gap_mm * (len(records) - 1)
+    merged = new_doc()
+    merged.layers.new("AI_META", dxfattribs={"color": 8, "plot": 0})
+    merged.appids.new("AICAD")
+    msp = merged.modelspace()
+    layout = []
+    expected_geometry = []
+    expected_labels = []
+    cursor = total_height
+    annotation_count = 0
+
+    def label(text_value, where, color=8):
+        nonlocal annotation_count
+        obj = msp.add_text(text_value, dxfattribs={
+            "layer": "AI_META", "color": color, "height": 3.0, "insert": where})
+        obj.set_xdata("AICAD", [(1000, "NON_CUT_ANNOTATION")])
+        annotation_count += 1
+
+    for p, rec in zip(parts, records):
+        xmin, ymin, xmax, ymax = rec["bbox_mm"]
+        h = ymax - ymin
+        bottom = cursor - h
+        dx, dy = -xmin, bottom - ymin
+        before_count = len(expected_geometry)
+        for e in p["entities"]:
+            obj = add_entity(msp, e, dx, dy)
+            expected_geometry.append(entity_signature(obj))
+        if len(expected_geometry) - before_count != rec["entity_count"]:
+            fail(f"{p['code']}: source-to-composite entity count changed")
+        status_suffix = "" if p["status"] == "PASS" else " [FLAG]"
+        if p["status"] == "VIEWS_ONLY":
+            status_suffix = " [VIEWS_ONLY - FLAG]"
+        code_label = p["code"] + status_suffix
+        label(code_label, (0.0, cursor + 2))
+        expected_labels.append(code_label)
+        if p.get("flags"):
+            label(p["code"] + " FLAG: SEE STAGE1; NO CUT", (max(xmax - xmin, 20), cursor + 2), color=6)
+        if p["status"] == "VIEWS_ONLY":
+            for view_id, bounds in rec["source_view_boxes"].items():
+                label(p["code"] + " VIEW " + view_id, (bounds[0] + dx, bounds[3] + dy + 2))
+        placed = [0.0, bottom, xmax - xmin, cursor]
+        layout.append({"code": p["code"], "status": p["status"],
+                       "translation_mm": [round(dx, 6), round(dy, 6)],
+                       "combined_bbox_mm": [round(v, 6) for v in placed],
+                       "entity_count": rec["entity_count"]})
+        cursor = bottom - gap_mm
+    if review:
+        label("REVIEW ONLY - NO CUT - UNRESOLVED CODES PRESENT", (0, total_height + 12), color=6)
+    filename = f"{jid}_ALL_REVIEW_ONLY.dxf" if review else f"{jid}_ALL.dxf"
+    target = out / filename
+    write_and_audit(merged, target, len(expected_geometry) + annotation_count)
+    loaded = ezdxf.readfile(target)
+    actual_geometry = [entity_signature(e) for e in loaded.modelspace() if e.dxf.layer == "0"]
+    if actual_geometry != expected_geometry:
+        fail("Combined source geometry does not match canonical translated part-local geometry")
+    labels = [e.dxf.text for e in loaded.modelspace() if e.dxf.layer == "AI_META"]
+    if [x for x in labels if x in expected_labels] != expected_labels:
+        fail("Missing or misordered code labels in combined DXF")
+    if review and "REVIEW ONLY - NO CUT - UNRESOLVED CODES PRESENT" not in labels:
+        fail("REVIEW_ONLY output missing global NO CUT label")
+    for upper, lower in zip(layout, layout[1:]):
+        if upper["combined_bbox_mm"][1] - lower["combined_bbox_mm"][3] < gap_mm - 1e-5:
+            fail("Combined source-code clusters overlap or lack required gap")
+    manifest = {"contract": "TrainAiCad-DXF-V4.9", "job_id": jid,
+                "coordinate_units": "mm", "layout": "code-labeled top-to-bottom",
+                "status": "REVIEW_ONLY" if review else "PASS",
+                "filename": filename, "parts": records, "positions": layout,
+                "source": "independently checked canonical geometry",
+                "warning": "AI_META is non-cut; review-only files are NEVER production CAD"}
+    if write_manifest:
+        (out / f"{jid}_MANIFEST.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return manifest
+
+
+def export_job(job, output_dir, gap_mm=10.0, mode="single", write_manifest=False):
+    if mode == "dual":
+        return export_dual_job(job, output_dir, gap_mm)
+    if mode != "single":
+        fail("mode must be single or dual")
+    return export_single_job(job, output_dir, gap_mm, write_manifest=write_manifest)
+
+
 def main():
-    ap = argparse.ArgumentParser(description="Generate separate and top-to-bottom combined DXFs from verified TrainAiCad canonical JSON")
+    ap = argparse.ArgumentParser(description="V4.9: ONE code-labeled top-to-bottom combined DXF by default")
     ap.add_argument("input_json", type=Path)
     ap.add_argument("output_dir", type=Path)
     ap.add_argument("--gap-mm", type=float, default=10.0)
+    ap.add_argument("--mode", choices=["single", "dual"], default="single", help="dual is explicit-request legacy V4.7 export")
+    ap.add_argument("--write-manifest", action="store_true", help="optional external JSON for single composite")
     args = ap.parse_args()
-    manifest = export_job(json.loads(args.input_json.read_text(encoding="utf-8")), args.output_dir, args.gap_mm)
-    print(json.dumps({"job_id": manifest["job_id"], "files": [p["filename"] for p in manifest["parts"]] + [c["filename"] for c in manifest["combined"].values()]}, ensure_ascii=False))
+    manifest = export_job(json.loads(args.input_json.read_text(encoding="utf-8")), args.output_dir,
+                          args.gap_mm, mode=args.mode, write_manifest=args.write_manifest)
+    files = ([manifest["filename"]] if args.mode == "single" else
+             [p["filename"] for p in manifest["parts"]] +
+             [c["filename"] for c in manifest["combined"].values()])
+    if args.mode == "single" and args.write_manifest:
+        files.append(manifest["job_id"] + "_MANIFEST.json")
+    print(json.dumps({"job_id": manifest["job_id"], "files": files}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

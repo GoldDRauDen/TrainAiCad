@@ -1,6 +1,6 @@
-# TrainAiCad V4.8 Core — DXF-first CAD Output (V4.7 serialization unchanged)
+# TrainAiCad V4.9 Core — ONE labeled composite DXF by default
 
-**Current approved output mode:** direct DXF by default; BOTH individual and composite DXFs; optional AutoLISP on explicit request ONLY. This V4.7 change affects output/packaging, not V4.6-approved engineering, material, feature, relief, or regression logic.
+**Current V4.9 user-approved output:** ONE top-to-bottom composite DXF, with exact code labels outside each nonoverlapping part cluster; per-code files and manifest only by explicit request. Incomplete flats remain source-view groups under the correct code; any FLAG makes the entire combined file `REVIEW_ONLY - NO CUT`. This changes only packaging, not the V4.8-approved or earlier manufacturing rules. AutoLISP remains explicit-request only.
 
 **V4.8 upstream gate:** Write canceled source-family provenance and effective zero-count into canonical job trace, omit all deleted hole entities, and verify that the deleted group is also absent in the translated composite. No CAD serialization or DXF schema change; only user-confirmed PDF reading, counts and regression cases were approved.
 
@@ -8,7 +8,7 @@
 
 Before generating any file, apply ALL current V4.6 Section 2–7 PDF-first rules: real outline topology, actual witness-line datum graph, independent quantity counts, material/thickness/handwritten evidence, approved material-table Laser R, scoped POINT/CIRCLE decisions, mid-tolerance, ID→OD rounding, Nobi, exact face/bend order, local-face→global-flat transforms, containment and bend-domain checks. A user-declared reference DXF may be used for calibration AFTER independent drawing interpretation, not as a hidden coordinate source.
 
-Store part-local coordinates in millimeters, one record per declared drawing code, with provenance/trace records and one canonical sequence of CAD primitives. Use THIS SAME geometry for individual DXF, translated composite DXF and optional Lisp; never solve dimensions independently a second time.
+Store part-local coordinates in millimeters, one record per declared drawing code, with provenance/trace records and one canonical sequence of CAD primitives. Use THIS SAME geometry for the default combined DXF, optional individual files and optional Lisp; never solve dimensions independently a second time.
 
 Canonical job fields: `job_id`, ordered `parts`. Part fields: `code`, `material`, `thickness_mm`, `status` (`PASS` or explicitly non-production `PREVIEW`), independently executed `checks`, optional `flags`, and ordered `entities`.
 
@@ -23,7 +23,7 @@ Slot source semantics must be classified first: `L_TOTAL` means actual end-to-en
 
 ## 8.2 DXF header, Layer 0 and V4.6 entity legend
 
-Write real DXF with millimeter `$INSUNITS=4`, `$MEASUREMENT=1`, decimal `$LUNITS=2`, display-only precision `$LUPREC=2`. Preserve numeric calculation precision; do NOT truncate CAD coordinates to two decimals. Define the `DASHED` linetype. ALL modelspace entities stay strictly on Layer `0`, without changing layer defaults.
+Write real DXF with millimeter `$INSUNITS=4`, `$MEASUREMENT=1`, decimal `$LUNITS=2`, display-only precision `$LUPREC=2`. Preserve numeric calculation precision; do NOT truncate CAD coordinates to two decimals. Define the `DASHED` linetype. ALL actual geometry stays on Layer `0`. Only non-cut, automatically generated code/status/FLAG `TEXT` uses dedicated non-plot `AI_META`, with gray code labels or Magenta review notes.
 
 | V4.6 feature | DXF entity | Color 62 | Linetype |
 | :-- | :-- | :-- | :-- |
@@ -38,21 +38,23 @@ Write real DXF with millimeter `$INSUNITS=4`, `$MEASUREMENT=1`, decimal `$LUNITS
 
 Do NOT reintroduce superseded V4.3 blanket DXF-only R0.5 omission, green-by-default Piasu or universal minimum-hole rules. Apply V4.6 approved material workbook and case-specific precedence in every export. A source-only feature/quantity unknown blocks production instead of inventing it.
 
-## 8.3 Mandatory two-format DXF delivery for multi-part jobs
+## 8.3 V4.9 mandatory single composite
 
-Deliver **both** `<JOB_ID>_<DRAWING_CODE>.dxf` for every production-PASS part in original part-local coordinates AND `<JOB_ID>_ALL.dxf` with exact translated copies of ALL PASS parts, each once. Composite places disjoint parts in the explicitly declared job-list order **top-to-bottom (descending global Y)** with at least 10 mm *layout-only* clearance between complete geometric bounding extents. This is **not** nesting, kerf, an added manufacturing dimension or a revision to source geometry. No extra production label TEXT.
+Default **one DXF only**: `<JOB>_ALL.dxf` if every code has independent manufacturing PASS; otherwise `<JOB>_ALL_REVIEW_ONLY.dxf` including all codes and visible **NO CUT** annotation. Individual DXFs/manifest are NOT default and require explicit request. Preserve Stage 1 per-code status/report without delivering unnecessary individual CAD files.
 
-Always create `<JOB_ID>_MANIFEST.json`: ordered part codes, material, thickness, PASS/FLAG status, individual filename, local geometry bbox, entity counts, per-part composite XY translation and composite bbox. Use manifest offsets to verify code→cluster mapping and composite equivalence, not heuristic visual proximity.
+Use the declared page-1 code order strictly top-to-bottom, with >=10 mm **layout-only** clearance between part/view-group geometry bboxes, no overlaps and no geometric rescaling. Every code appears exactly once beside its own cluster as generated `TEXT` on non-plot `AI_META`, not as a Layer-0 cut path. Internally record code, status, bbox, XY translation, flags and per-code machining entity counts even when the user did not request an external manifest.
 
-If the user explicitly requests a numeric-only preview on PROVEN topology, deliver separate `<JOB_ID>_<CODE>_PREVIEW.dxf` and, as needed, `<JOB_ID>_PREVIEW_ALL.dxf`, visibly Magenta with adjacent Magenta TEXT and independent numeric FLAGs. Never mix PREVIEW into production `_ALL.dxf` and never mark PREVIEW PASS. Unknown contour, feature type, bend order, critical material/datum or unsupported handwritten revision BLOCKS speculative production export.
+For known-topology numeric-only uncertainty: preserve all proved sizes and positions, isolate an integer-rounded Magenta estimate plus adjacent Magenta FLAG note. For unknown unfold dimensions/order: output only independently proved orthographic/source views, grouped and labeled by source view under the correct code (`VIEWS_ONLY`), never a fabricated flat. If a temporary Ø is user-authorized, label it `Ø?` and treat it as review-only, not a verified hole. If there is not enough evidence even to draw a source view or assign the correct code, STOP and ask.
 
-## 8.4 Executed verification, actual DXF read-back and limitations
+A single unresolved `PREVIEW`/`VIEWS_ONLY`/FLAG invalidates *production use of the entire composite*, even if other part clusters are individually correct. An explicitly requested legacy dual export may be supplied for compatible jobs but never silently substituted for the V4.9 default.
 
-Perform ALL V4.6 Section 5 semantic/manufacturing checks BEFORE constructing a production-PASS canonical record. Required recorded keys: `contour_topology`, `datum`, `feature_count`, `unfold`, `containment`, `bend_domain`, `material_rules`, `slot_semantics`, each really executed PASS or genuinely nonapplicable N/A. Critical topology/datum/count/containment/material must PASS and no unresolved production FLAG may remain.
+## 8.4 Executed verification, read-back and limitations
 
-Reopen/audit each SAVED DXF: parser validity, header units, Layer 0, approved entity type/property/color/POINT hierarchy, outline closure/orientation, actual arcs/bulges, full independent feature counts, proven extents and source datum precision, closed-feature containment and bend lines clipped to material. For merged DXF verify individual-to-composite equivalence by inverse translation, global/per-part counts, original source order, no bbox overlap and manifest offsets. A mere successful file save is never PASS evidence.
+Execute all V4.8/Section 5 checks for every production PASS part before serialization. A source view with no proveable flat retains explicit `VIEWS_ONLY` flags and does NOT inherit invented PASS results. Numeric-only PREVIEW needs source-supported topology and Magenta explanatory warnings.
 
-The included `tools/export_dxf.py` performs **structural** schema, packaging and roundtrip checks, NOT PDF-reading, full material/datum arithmetic or complete polygonal manufacturing containment. Those require independently executed V4.6 upstream checks and ground-truth regression when available. Do not claim they ran just because JSON declares PASS.
+Reopen/audit the ONE saved DXF for units mm, all manufacturing primitives Layer 0 and their approved properties, actual CCW/CW bulges and counts, source-cluster geometry equality by inverse XY translation, correct distinct descending-Y source-code labels on non-plot `AI_META`, >=10 mm layout gaps and explicit NO CUT filename/global note whenever a FLAG exists. Metadata labels are never holes, slots, bend lines, or cut primitives. Check canceled families for zero surviving machining entities. Labels must be excluded from CAM toolpaths.
+
+The exporter performs structural serialization, schema, packaging and read-back checks; it never proves PDF datum/face order, missing Nobi, material selection or full manufacturing containment. Do not claim otherwise.
 
 ## 8.5 Optional request-only AutoLISP
 
@@ -62,4 +64,4 @@ Only if explicitly requested, generate existing approved `c:DRAW` AutoLISP and d
 
 **Stage 1:** concise per-code barcode/material/thickness/proved flat extent table, real geometry-affecting corrections (handwritten Nobi, mid-tolerance, rounded ID→OD, table selection/material R), one aggregate PASS only for actually executed checks, and EVERY FAIL/FLAG/WARN/outstanding customer confirmation. Do not bury unproven dimensions or claim that bounding extents prove topology.
 
-**Stage 2 (default):** link the actual verified separate DXFs, merged `_ALL.dxf` and manifest; ZIP of same files is optional convenience. Clearly separate user-requested non-production `_PREVIEW` files and flags. Generate Lisp only when explicitly requested. An audit-only request skips CAD emission. When critical topology/type/datum/bend/material is unresolved, stop before speculative production files; when the environment cannot create or verify DXF links, report that limitation instead of inventing attachments or silently outputting Lisp.
+**Stage 2 (default):** link exactly ONE verified top-to-bottom composite DXF, `_ALL.dxf` when all parts PASS or `_ALL_REVIEW_ONLY.dxf` when any part remains FLAG/VIEWS_ONLY/PREVIEW. Only explicit request produces individual DXFs and manifest. Generate Lisp only when explicitly requested. An audit-only request skips CAD emission. When critical topology/type/datum/bend/material is unresolved, stop before speculative production files; when the environment cannot create or verify DXF links, report that limitation instead of inventing attachments or silently outputting Lisp.
