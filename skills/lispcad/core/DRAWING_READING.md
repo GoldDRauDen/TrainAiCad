@@ -123,6 +123,7 @@ For each part page, inspect in this sequence before writing any geometry:
 1. **Contour topology first**: trace every real outside edge, step, recess, tab, opening, cutout, R, and C. Do not start from a bounding rectangle.
 2. **Feature inventory**: enumerate each hole/slot/tap/cutout family and its quantity callout before assigning coordinates.
 3. **Dimension graph**: classify each used dimension and identify both witness-line endpoints before arithmetic.
+   **Mandatory source-frame lock (V4.10):** before applying ANY absolute/ordinate value, identify the coordinate origin's actual source-view feature/edge, +X/+Y arrow/sign conventions, and target CAD datum. A printed absolute top-left origin overrides the usual bottom-left CAD assumption; an unproved origin/axis blocks production geometry (see DATUM_DIMENSION.md §4.2.9).
 4. **Face/bend mapping**: determine which dimensions belong to which formed face and the ordered unfold path.
 5. **Handwritten evidence**: apply handwritten correction/Nobi only to the feature or bend it clearly points to. If the target is unclear, ask.
 6. **Metadata lock**: confirm barcode, material, and thickness before choosing thread pilots, Nobi table rows, or feasibility rules.
