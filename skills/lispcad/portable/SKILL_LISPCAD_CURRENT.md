@@ -1,5 +1,5 @@
 
-# SKILL_LISPCAD V4.10 PORTABLE: Drawing-First Sheet Metal Flat Pattern Extractor & Single Composite DXF + Verified Source-Origin Mapping
+# SKILL_LISPCAD V4.11 PORTABLE: Drawing-First Sheet Metal Flat Pattern Extractor, Provisional-First FLAG Workflow & Verified Source-Origin Mapping
 
 
 ## 0. Portable Skill Contract — Mandatory for Every AI / Every Chat
@@ -36,6 +36,8 @@ When the user supplies a reference DXF or corrected CAD for comparison:
 - Never write rules such as "as discussed earlier", "as the user said before", or "use the previous chat". Replace them with explicit, self-contained instructions.
 
 ### 0.5 Versioning and Update Discipline
+
+**V4.11 direct user approval (2026-09-26):** For any drawing with a plausible but not fully proved shape, construct a clearly identified REVIEW-ONLY approximation and FLAG uncertain geometry after drawing; where a reliable flat cannot be proposed, draw separately identifiable source/orthographic views and FLAG. Ask for confirmation of every unresolved issue. This permission is for a visible, auditable preview, **not** permission to assert production accuracy, to quietly invent dimensions, or to bypass the production-PASS gates. Section 4.4.1 defines the mandatory workflow and supersedes earlier STOP-before-any-drawing wording only for review-only previews. The user also confirmed the specific 036575 pattern and QA-passed job 520625-15 (Appendix I). Preserve V4.10 as an immutable historical copy.
 - Major behavior changes create a new portable version (`V4.x` or later); do not overwrite the only known-good copy without preserving the previous version.
 - Every validated correction must be checked for whether it is:
   - **Universal rule** → merge into the relevant main section.
@@ -80,7 +82,7 @@ This is the default operating mode for production DXF generation. The AI MUST sp
 
 **User-marked ROI rule:** If the user crops, boxes, highlights, or otherwise identifies the drawing region to inspect, treat that marked region as the primary geometry ROI. Still read barcode, material, thickness, and applicable handwritten/revision notes outside the ROI when the user has explicitly indicated them or they are necessary to resolve the part. Do not let unrelated content outside the marked ROI distract from geometry extraction.
 
-**Quality rule:** A short answer is preferred, but never by skipping geometric verification. Execute the full internal checks in Sections 4–5, then report only the information needed by the operator. If topology, feature identity, bend order, material, thickness or datum is unproved, STOP production work and ask. When ONLY a numeric size/coordinate is missing after topology and datum tracing, the user permits a Magenta non-production preview with integer-rounded estimates, nearby FLAG text and a Stage 1 FLAG; never label that preview production-safe.
+**Quality rule (V4.11):** A short answer is preferred, never at the expense of verification. Execute every check that available evidence permits. When some topology, feature type, bend order, material, thickness, datum, size or coordinate remains uncertain but the drawing supports a recognizable provisional shape, **DRAW FIRST as a REVIEW-ONLY preview**, mark the entire uncertain portion Magenta, annotate the exact assumption and FLAG it in Stage 1, and ask the user to confirm. Preserve all independently proved geometry unchanged. When a reliable flat cannot be proposed, draw independently proved source/orthographic views separately within that part's cluster, label `VIEWS_ONLY` and FLAG. Only when neither a recognizable provisional drawing nor independently assignable source views can be produced must drawing stop pending clarification. Do not issue a production-PASS or cut file for unresolved assumptions. See Section 4.4.1.
 
 ---
 
@@ -122,7 +124,7 @@ For each part page, inspect in this sequence before writing any geometry:
 6. **Metadata lock**: confirm barcode, material, and thickness before choosing thread pilots, Nobi table rows, or feasibility rules.
 7. **Only then generate CAD coordinates** and run Section 5 validation.
 
-Do not generate provisional production geometry while the contour topology or datum graph is unresolved.
+Do not generate **production** geometry while contour topology or datum is unresolved. V4.11 permits visibly provisional REVIEW-ONLY drawing (Section 4.4.1) and source-view separation; neither establishes production PASS.
 
 ### 2.3 OCR Error Correction & Context Engine
 Correct optical character recognition errors using engineering context rules:
@@ -320,12 +322,24 @@ $$X_{\text{mid}} = X_{\text{nominal}} + \frac{\text{Tolerance}_{\text{upper}} + 
 
 ### 4.4 Ambiguous, Unclear, or Missing Dimension Handling
 - **Flag only after explicit-trace exhaustion**: A crowded/overlapping print is not automatically ambiguous. Before flagging, zoom/re-read the witness lines and test all explicit dimension paths, endpoint identities, feature diameters, feature counts, projection relationships, and overall closure. If the PDF contains a unique trace, use it; do not use Magenta as an escape from difficult dimension parsing.
-- **Magenta is not permission to invent topology**: Use estimated/Magenta geometry only when the entity identity and contour/feature topology are already certain but a numeric dimension remains unreadable/ambiguous. If multiple topologies, feature types, or bend orders are possible, STOP and ask the user rather than fabricating a bounding rectangle, generic slot, or arbitrary flange order.
+- **V4.11 provisional topology exception:** Magenta never converts a guess into production geometry. When the source drawing visibly supports a plausible shape but one or more topology/feature/bend choices remain uncertain, the user's direct approval permits a **visibly approximate REVIEW-ONLY preview** of the best source-supported interpretation: Magenta for every assumed primitive, adjacent explanatory FLAG naming the alternative/unknown, and a concrete question. Keep separately proved elements exact. If several candidate flat layouts remain plausible and none has better explicit evidence, **do not randomly select a production topology**; prefer separately rendered proved source views with a FLAG, or draw an expressly alternative-labeled provisional preview only when its assumptions are traceable. If source identity itself is unrecognizable or clusters cannot be assigned to codes, ask before export.
 - **Integer Value Enforcement applies only to estimated/assumed values**: Any truly estimated dimension MUST be rounded to the nearest integer (e.g., `256` or `258`, never `256.4`). Explicit dimensions and deterministic formula results (for example `182.70`, `159.26`, or a Nobi-derived bend coordinate) MUST retain their calculated precision and MUST NOT be rounded to an integer merely because another part of the same feature/part is flagged.
 - **Known/unknown separation**: Flagging an unresolved feature does not authorize changing dimensions that are already proven. Keep all proven edges, lengths, hole sizes, and coordinates exact; isolate only the unresolved quantity/entity.
-- **No bounding-box substitution**: A known overall width/height may be reported as a bounding extent, but MUST NOT be emitted as a closed rectangular outline unless the contour trace proves that all four rectangle edges actually exist.
+- **No deceptive bounding-box substitution**: A known overall width/height is not evidence that the part is rectangular. Do not emit a rectangular **production** outline unless all four edges are proved. In a V4.11 review preview, any source-supported but unproved provisional boundary MUST be Magenta and labeled as estimated; do not erase visibly drawn steps/cutouts merely to fit the overall box.
 - **Color Code 6 (Magenta)**: Assign DXF Group `(62 . 6)` to any line, circle, or polyline whose size/position was estimated or ambiguous.
 - **Adjacent Text Annotation**: Add a `TEXT` entity on DXF Group `(62 . 6)` immediately adjacent to the ambiguous feature (e.g., `"(ESTIMATED GEOMETRY - CHECK DRAWING)"` or `"(M6 OR M8)"`).
+
+### 4.4.1 V4.11 Approved DRAW → FLAG → CONFIRM workflow (2026-09-26)
+
+The user directly approved this universal operating change while QA reviewing `520625-15`: **when anything in a drawing remains uncertain, draw everything that can responsibly be represented, then FLAG the uncertain part; if a reliable flat cannot be assembled, draw independently verified projections separately instead. Ask for confirmation of anything unresolved.** This is a preview authorization, never a silent approval of unknown dimensions.
+
+1. Interpret the original PDF first. Separate **PROVED** geometry from **ESTIMATED** geometry and **UNRESOLVED** manufacturing decisions. Preserve proved vertices, numeric callouts, feature quantities and process choices exactly.
+2. If an uncertain part nonetheless admits one reasonable source-supported preliminary depiction, create that provisional shape or feature **in Magenta (DXF 62=6) on Layer 0**, round only *estimated numeric dimensions* to integers, add adjacent Magenta `ESTIMATED / CHECK DRAWING` text describing precisely what is assumed, and list a per-code FLAG/question in Stage 1. Mark the code PREVIEW. An uncertain hole identity is labeled `Ø?` or its unresolved alternatives, not promoted to a verified cut-hole specification; a plausible preliminary outline is not a verified contour.
+3. If the formed/flat topology or bend sequence is not reliably inferable, **draw each independently proved orthographic/section/source view as its own separated labeled subgroup** under the correct code, retain only dimensions independently proved for that view, and FLAG the missing transforms/requirements (`VIEWS_ONLY`). This is preferable to joining unrelated projections into an invented flat.
+4. The default single composite includes such PREVIEW / VIEWS_ONLY clusters, each labeled and ordered per Section 8.3, and the ENTIRE file is `*_ALL_REVIEW_ONLY.dxf` with a prominent `REVIEW ONLY — NO CUT` annotation. Recheck that all placed entities and their flags remain intact after serialization. Never silently promote user QA approval of a previous file to proof of a newly changed file.
+5. Ask targeted questions in the report, including alternatives when known. After direct user confirmation, revise the canonical geometry, close **only** resolved flags, and re-run all manufacturing and DXF read-back checks before production PASS. If no identifiable view geometry or source-to-code mapping exists at all, stop and ask rather than manufacturing fictional geometry.
+
+**Precedence:** This approved V4.11 workflow supersedes V4.10's blanket `STOP before drawing` and `numeric-only Magenta` restriction **for flagged, clearly non-production previews only**. All Sections 4.1–4.3, Section 5 production validations, source-origin proof, actual PDF evidence and customer confirmation continue to govern production output.
 
 ### 4.5 Corner Filleting & Chamfer Baking
 
@@ -433,7 +447,7 @@ Before exporting production DXF or optional AutoLISP, run the following automate
 
 - **Point/Circle semantic check (V4.4):** enforce per-feature PIERCING scope, strict Ø<t/2, effective pilot Ø for M, approved Excel threshold inheritance and ordinary POINT ByLayer vs PIERCING+THROUGH HOLE POINT Green. Missing capacity data must not silently be treated as cuttable.
 - **Laser R automatic check (V4.4):** verify material row, eligible convex/concave corner class, correct R0.5/R2/R3 only on otherwise uncalled-out corners, precedence of explicit PDF R/C, and independent R=t bend reliefs.
-- **Unknown numeric preview isolation (V4.4):** a known-topology estimated size/coordinate may be Magenta, integer-rounded and FLAGGED if the user wants preview output; a feature of unknown identity or invented topology cannot PASS or be output as speculative production geometry.
+- **V4.11 preview isolation:** a PDF-supported approximate geometry or an unproved numeric value may appear only in a Magenta, clearly annotated REVIEW-ONLY preview per Section 4.4.1. Unknown identity/shape can never PASS or be exported as speculative **production** geometry; when no credible provisional flat exists, export separate independently proved source views instead.
 - **Retained inner piece semantics (V4.4):** a PDF note to retain a cut-out piece must not automatically clone a second detached cut-out.
 ### 5.1.1 Full Internal Verification, Minimal External Noise
 - Every check in Section 5.1 remains mandatory even when the user asks for a short report.
@@ -728,7 +742,7 @@ Canonical entity representations:
 - `CIRCLE`: `center:[x,y]`, positive `radius` for a verified cut hole or thread-pilot hole *after* V4.6 decisions.
 - `POINT`: `point:[x,y]`, actual point entity, never a tiny circle. Ordinary POINT is ByLayer; only explicitly scoped PDF PIERCING+THROUGH HOLE yields a Green POINT.
 - `LINE` (start/end) and `ARC` (center/radius/start_angle/end_angle, degrees) for proven manufacturing line/relief; double bend lines DASHED and clipped to real material. The approved `055958` one Green slit comprises two LINEs + one ARC R0.5 connected end-to-end; 3 entities = 1 operation, never a universal R0.5 slit formula.
-- Manufacturing geometry uses Layer `0`. `TEXT` on Layer `0` is permitted only for adjacent Magenta numeric-only preview warning. V4.9 uniquely permits non-cut identifying code labels and review FLAG text on the dedicated non-plot `AI_META` layer in the COMPOSITE DXF; these are generated packing metadata, not source machining geometry.
+- Manufacturing geometry uses Layer `0`. `TEXT` on Layer `0` is permitted only for an adjacent Magenta V4.11 provisional-geometry/dimension warning. V4.9 uniquely permits non-cut identifying code labels and review FLAG text on the dedicated non-plot `AI_META` layer in the COMPOSITE DXF; these are generated packing metadata, not source machining geometry.
 
 Slot source semantics must be classified first: `L_TOTAL` means actual end-to-end; `W` means end circle diameter; center distance `C` becomes `L_TOTAL=C+W`. Use one closed LWPOLYLINE with two straight tangents and two semicircular bulges of magnitude 1. Do not encode a source center distance as overall length.
 
@@ -745,19 +759,19 @@ Write real DXF with millimeter `$INSUNITS=4`, `$MEASUREMENT=1`, decimal `$LUNITS
 | Kegaki/formed mark | LINE or proved LWPOLYLINE | Red 1 | ByLayer |
 | Double bend lines on material only | LINE ×2 | ByLayer | DASHED |
 | Proven explicitly Green slit/relief | LINE or ARC per source | Green 3 | ByLayer |
-| Numeric-only non-production estimate and adjacent note | appropriate entity and TEXT | Magenta 6 | ByLayer |
+| V4.11 non-production estimated numeric/shape/type and adjacent note | appropriate provisional entity and TEXT | Magenta 6 | ByLayer |
 
 Do NOT reintroduce superseded V4.3 blanket DXF-only R0.5 omission, green-by-default Piasu or universal minimum-hole rules. Apply V4.6 approved material workbook and case-specific precedence in every export. A source-only feature/quantity unknown blocks production instead of inventing it.
 
 ## 8.3 Mandatory ONE labeled, top-to-bottom composite DXF (V4.9 approved 2026-09-26)
 
-**Default output: exactly ONE DXF.** Export `<JOB_ID>_ALL.dxf` only if every included code is independently production-PASS. If any code has a source/dimension/feature/unfold FLAG or only separate orthographic views, deliver ONE `<JOB_ID>_ALL_REVIEW_ONLY.dxf` instead: include all codes but mark the ENTIRE file **REVIEW ONLY — NO CUT**. Never name a mixed-confidence file as production-ready. Individual per-code DXFs, JSON manifest, or ZIP are optional by *explicit current user request*, not defaults. Stage 1 per-code PASS/FLAG explanations remain mandatory in the response.
+**Default output: exactly ONE DXF.** Export `<JOB_ID>_ALL.dxf` only if every included code is independently production-PASS. If any code has a source/dimension/feature/unfold FLAG, V4.11 Magenta approximate geometry, or only separate orthographic views, deliver ONE `<JOB_ID>_ALL_REVIEW_ONLY.dxf` instead: include all codes but mark the ENTIRE file **REVIEW ONLY — NO CUT**. Never name a mixed-confidence file as production-ready. Individual per-code DXFs, JSON manifest, or ZIP are optional by *explicit current user request*, not defaults. Stage 1 per-code PASS/FLAG explanations and targeted questions remain mandatory in the response.
 
 Place EVERY declared part code exactly once in the job-list order **top to bottom, descending global Y**. Keep each code's actual part geometry or proved source-view group as its own nonoverlapping cluster; >=10 mm **layout-only** clearance between geometric cluster bounding boxes. Do not nest, rotate source shapes arbitrarily, alter source dimensions, re-solve geometry, or allow ambiguous cluster-to-code mapping. Use one canonical part-local mm model, apply only the manifest-recorded/verified XY translation for layout. Keep ordered code/status/translation/bbox/entity-count records internally even if no JSON is delivered; verify inverse translation against source canonical entities.
 
 Write the **exact drawing code** beside each cluster as a non-cut DXF `TEXT` on dedicated `AI_META` non-plot annotation layer, outside the actual manufacturing geometry bbox and never as manufacturing Layer-0 toolpath. Allow only these packager-generated identifiers/status/FLAG annotation entities on `AI_META`. Keep the full PDF material/thickness and geometry validation independent of these labels. A receiver preparing laser CAM must exclude `AI_META` even when all parts PASS.
 
-For a code with **known topology but unknown numerical dimension**, retain all proved geometry, show only the unproved estimate as integer-rounded Magenta on Layer `0`, place an adjacent Magenta explanatory note and mark the code FLAG. Never turn a placeholder Ø or guessed Nobi into production geometry. When **unfold topology, actual bend order or missing dimensions prevent joining projections**, draw only the independently proved orthographic/source views as clearly separated groups inside that code's cluster, label each view and the unresolved requirement, and mark the code `VIEWS_ONLY` / FLAG. These source views are reference drawings, **not** an invented flat pattern. If a feature identity itself is unknown, do not invent its diameter/type to satisfy source callouts: a temporary user-authorized estimated diameter is Magenta with `Ø?` and FLAG, and not a PASS cut hole.
+For a code with **uncertain numeric dimensions or source-supported but unproved topology**, retain independently proved geometry, render any reasonable source-supported approximation as Magenta on Layer `0`, place adjacent Magenta explanatory `ESTIMATED` notes identifying assumptions, and mark the code `PREVIEW` / FLAG under Section 4.4.1. Estimated numeric values are rounded to integers; explicit and calculated proven values retain precision. Never turn placeholder Ø, uncertain feature identity or guessed Nobi into verified production geometry. When **unfold topology, actual bend order or missing dimensions prevent a defensible preliminary flat**, draw independently proved orthographic/source views as separate labeled groups in that code's cluster, FLAG the unknown and mark `VIEWS_ONLY`. Never fabricate a flat merely to reduce flags. A source-supported provisional alternative is permissible only if explicitly labeled approximate and kept review-only. If feature diameter/type remains uncertain, label the Magenta preview `Ø?`/alternatives and request confirmation.
 
 Never silently weaken Section 5 verification for review-only shapes. An unproved flat cannot PASS. If a code has no independently recognizable view geometry or cannot be safely assigned to a cluster, STOP and ask rather than emitting fabricated geometry. A mixed composite is **NO CUT** until each retained FLAG has been resolved and all real production checks have been executed.
 
@@ -765,7 +779,7 @@ Never silently weaken Section 5 verification for review-only shapes. An unproved
 
 ## 8.4 Actual DXF read-back and independent manufacturing validation
 
-Run Section 5 drawing and manufacturing checks BEFORE marking each complete flat `PASS`. Required internal per-code keys: `contour_topology`, `datum`, `feature_count`, `unfold`, `containment`, `bend_domain`, `material_rules`, `slot_semantics`, actually verified `PASS` or genuinely inapplicable `N/A`. Critical topology/datum/count/containment/material must PASS for each production code. `VIEWS_ONLY` may record an explicit `FLAGGED` for incomplete flat-only checks but must never be presented as production PASS; numeric-only `PREVIEW` keeps its independent flags.
+Run Section 5 drawing and manufacturing checks BEFORE marking each complete flat `PASS`. Required internal per-code keys: `contour_topology`, `datum`, `feature_count`, `unfold`, `containment`, `bend_domain`, `material_rules`, `slot_semantics`, actually verified `PASS` or genuinely inapplicable `N/A`. Critical topology/datum/count/containment/material must PASS for each production code. `VIEWS_ONLY` may record an explicit `FLAGGED` for incomplete flat-only checks but must never be presented as production PASS; V4.11 numeric or provisional-topology `PREVIEW` retains every independent flag.
 
 Reopen/audit the SAVED composite DXF: validity, millimeter header, manufacturing entities strictly on Layer 0, approved type/color/POINT hierarchy, real C/R bulges, closure/winding where applicable, verified source feature counts and proven canceled-family zero counts. Separately audit only `AI_META` labels for exact codes/order/status and non-plot/non-cut annotation attributes. Verify each source geometry cluster's bbox and inverse-XY-translation entity equality against the independent canonical model, top-to-bottom declared order, >=10 mm nonoverlap, and that all distinct `VIEWS_ONLY` projections remain labeled/unjoined. Do not count packager labels as holes, slots, reliefs or manufacturing features.
 
@@ -779,7 +793,7 @@ Only if explicitly requested, generate existing approved `c:DRAW` AutoLISP and d
 
 ## 9. DXF-first compact two-stage response
 
-**Stage 1:** concise per-code barcode/material/thickness/proved flat extent table, real geometry-affecting corrections (handwritten Nobi, mid-tolerance, rounded ID→OD, table selection/material R, proven canceled features), one aggregate PASS only for actually executed checks, and EVERY FAIL/FLAG/WARN/outstanding customer confirmation. Do not bury unproven dimensions or claim that bounding extents prove topology.
+**Stage 1:** concise per-code barcode/material/thickness/proved flat extent table, real geometry-affecting corrections (handwritten Nobi, mid-tolerance, rounded ID→OD, table selection/material R, proven canceled features), one aggregate PASS only for actually executed checks, and EVERY FAIL/FLAG/WARN/outstanding customer confirmation. For any V4.11 approximation, state the exact assumed shape/coordinate/type and ask a targeted question. Do not bury unproven dimensions or claim that bounding extents prove topology.
 
 **Stage 2 (default):** link exactly ONE verified code-labeled top-to-bottom composite: `<JOB>_ALL.dxf` if all codes production PASS, otherwise `<JOB>_ALL_REVIEW_ONLY.dxf` with source views/FLAGs separated under each correct code and the whole file NO CUT. Deliver optional individual DXFs/manifest only when expressly asked; Stage 1 still reports per-code statuses and customer questions. Generate Lisp only on explicit request. Unknown source-view identity or ambiguous code mapping blocks speculative export; the inability to create/verify a DXF must be reported, not replaced with invented attachments.
 
@@ -984,14 +998,14 @@ The user directly approved exactly ONE DXF composite as the default: all codes o
 
 ### B.1 Minimum Package
 For cross-chat / cross-AI use, the minimum package is this single file:
-- `SKILL_LISPCAD_V4_10_PORTABLE.md`
+- `SKILL_LISPCAD_V4_11_PORTABLE.md`
 
 It already contains the formulas, Nobi tables, CAD schema, output contract, datum rules, C/R rules, DXF calibration protocol, and regression cases required for execution.
 
 ### B.2 Recommended Invocation Text
 At the start of a new AI/chat, the operator should provide this file and issue an instruction equivalent to:
 
-> Read `SKILL_LISPCAD_V4_10_PORTABLE.md` completely before processing drawings. Treat Sections 0–9 and all appendices as mandatory. Focus first on the drawing field, dimensions/witness lines, handwritten corrections/Nobi, barcode, material, and thickness. Keep Stage 1 compact; prioritize production-safe geometry and ask when evidence is not unique.
+> Read `SKILL_LISPCAD_V4_11_PORTABLE.md` completely before processing drawings. Treat Sections 0–9 and all appendices as mandatory. Focus first on the drawing field, dimensions/witness lines, handwritten corrections/Nobi, barcode, material, and thickness. Keep Stage 1 compact; prioritize production-safe geometry and ask when evidence is not unique.
 
 ### B.3 Audit-Only Exception
 If the user requests only an audit/report and explicitly no generated CAD, Stage 2 DXF and optional Lisp output are skipped for that turn. The AI must still apply all interpretation and verification rules and produce a structured Stage 1-style report.
@@ -1092,3 +1106,16 @@ All THREE `Ø7` row centers MUST have `Y_cad=108 mm` in the local DXF frame. The
 **Generic regression:** before using ANY absolute/ordinate coordinates, independently identify each view's true origin, source axis directions and target CAD datum. For another sheet with top-left origin but source +Y down, the SOURCE number is `+30`, not `-30`, and the explicit transform becomes `Y_cad=138-(+30)=108`. For bottom-left source origin with +Y up, `Y_cad=Y_source` only when source O and target CAD O are physically coincident. A change of source origin or axis sign without updating the transform is a FAIL. Do not let an overall bbox or visually plausible holes substitute for proven source coordinate-frame evidence. Applies independently to each formed face/view before Section 4.2.7 flat-unfold transforms.
 
 **Approval scope:** This directly approved lesson is production skill V4.10, not an automatic re-certification of previous 520728-06 DXF files or approval of unresolved 043796, 043797 or 043799 customer information. The V4.9 one combined code-labeled DXF default and every earlier approved manufacturing rule remain intact; V4.9 and earlier snapshots stay immutable.
+
+
+---
+
+## Appendix I — V4.11 user-approved QA and preview-first calibration: 520625-15 (2026-09-26)
+
+**User QA result:** The user explicitly states that their QA **PASSed the entire delivered 520625-15 job**. This records external QA confirmation for that delivered set, not an independent claim that a revised/exported production DXF already exists. Re-export after any geometry change still requires full Section 5 verification and actual DXF read-back.
+
+**Part 036575 directly confirmed:** The relevant Ø300 disk has **two Ø5 holes diametrically opposite each other along the same diameter, with their centers 180 mm apart**, and **one central Ø9 hole at the disk center**. In disk-center local coordinates, the Ø5 pair lies at radial offsets `+90` and `−90` mm along the shown diameter, with Ø9 at local `(0,0)`. Do not impose an unsupported global rotation on this local relationship. The user's response closes the former question about this particular hole layout; it does not prove arbitrary unprinted dimensions or entitle another part to reuse these coordinates.
+
+**Directly approved portable lesson — DRAW → FLAG → CONFIRM:** On future drawings, when the PDF supports a reasonable but not definitive depiction, draw the provisional shape rather than omitting it; explicitly FLAG every unproved assumption after drawing. Where the views cannot be reliably joined into a flat, draw them separately, clearly labeled, and FLAG the missing information. Ask whenever the available drawing and the provisional depiction leave an actual decision unresolved. Approximate or separately projected geometry always remains REVIEW ONLY / NO CUT until the user confirms and all production checks pass. This extends preview permission beyond V4.10's numeric-only Magenta condition but **does not weaken production safety or allow fabricated silent production geometry**.
+
+**Regression checks:** (1) 036575 must no longer be flagged merely because the three-hole relationship is unconfirmed; the user has answered that question. (2) Any remaining genuinely unproved datum/orientation/geometry must retain its own independent FLAG. (3) Other uncertain sheets should contain a visible approximate Magenta preview or separately labeled source views, rather than an empty/omitted code, whenever identifiable source evidence exists. (4) A mixed-confidence composite remains REVIEW ONLY; the user QA of a prior file never substitutes for read-back and validation of a modified file.
