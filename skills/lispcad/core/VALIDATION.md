@@ -59,6 +59,8 @@ Before exporting ANY production DXF or optional AutoLISP, run the following auto
 | **Laser Piercing Accessibility** | Distance between adjacent piercings $\ge 10\text{ mm}$ | Group piercing locations |
 | **Bend Line Collision** | Distance between hole edge & bend line $\ge 2 \times t + R_{\text{bend}}$ | Flag potential hole deformation |
 
+**V4.12 shop-distance question suppression:** Treat minimum bridge/web, inter-piercing spacing and hole-to-bend proximity as optional/internal nonblocking **advisories** for geometry drawn as printed in the PDF. Do not shift/remove such geometry, block a source-faithful preview, or ask routine customer clearance acceptance solely for these heuristics. Maintain mandatory PDF-specific clearances, actual self-intersection and containment, source datum, hole-capacity rules, unproved dimensions and real demonstrated production conflicts; a genuine conflict still receives an actionable FLAG.
+
 ---
 
 
