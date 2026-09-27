@@ -471,7 +471,7 @@ Before exporting production DXF or optional AutoLISP, run the following automate
 - Every check in Section 5.1 remains mandatory even when the user asks for a short report.
 - Do not print a long PASS checklist by default. Internally execute the checks, then expose only:
   - one compact overall validation line when all required checks pass; and
-  - every `FAIL`, `FLAGGED`, `WARN`, ambiguity, or user-confirmation item.
+  - every `FAIL`, `FLAGGED`, actionable `WARN`, unresolved ambiguity or needed user confirmation; exclude nonblocking shop-distance-only advisories under §5.2.
 - A concise report MUST NOT hide an unresolved production risk. Brevity controls presentation, not engineering rigor.
 - Do not narrate exploratory reasoning, discarded hypotheses, or general sheet-metal theory unless the user asks for an audit/explanation.
 
