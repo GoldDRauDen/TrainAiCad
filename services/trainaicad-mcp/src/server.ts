@@ -13,6 +13,7 @@ import {
 import { downloadUri, storeSource } from "./ingest.js";
 import { GeometrySourceV1 } from "./geometry.js";
 import { DirectAuditConfig } from "./direct_audit.js";
+import { ReviewOutputV1 } from "./review.js";
 
 const BASE64 = /^[A-Za-z0-9+/\s]*={0,2}$/;
 
@@ -86,6 +87,19 @@ export function buildServer(): McpServer {
     },
     async ({ jobId, geometrySources }) =>
       json(publicJob(jobStore.buildGeometry(jobId, geometrySources)))
+  );
+
+  server.registerTool(
+    "export_review_dxf",
+    {
+      description:
+        "Serialize explicit PREVIEW/VIEWS_ONLY review geometry using the current one-composite contract. Requires evidence refs on every review entity, emits only *_ALL_REVIEW_ONLY.dxf with global NO CUT, and can never transition to production PASS.",
+      inputSchema: z.object({
+        jobId: z.string().min(1),
+        review: ReviewOutputV1
+      })
+    },
+    async ({ jobId, review }) => json(publicJob(jobStore.exportReviewDxf(jobId, review)))
   );
 
   server.registerTool(

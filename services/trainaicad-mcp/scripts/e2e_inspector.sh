@@ -23,7 +23,7 @@ EXPECT=$(grep -o 'Current production release is \*\*V[0-9.]*\*\*' ../../AI_ENTRY
 echo "expected release pin: $EXPECT"
 
 LIST=$($INS --method tools/list 2>/dev/null)
-for t in open_cad_job submit_cad_evidence route_cad_parts build_canonical_geometry export_dxf audit_dxf audit_existing_dxf get_cad_job ingest_cad_file; do
+for t in open_cad_job submit_cad_evidence route_cad_parts build_canonical_geometry export_dxf audit_dxf export_review_dxf audit_existing_dxf get_cad_job ingest_cad_file; do
   echo "$LIST" | grep -q "\"name\": \"$t\"" && ok "tool listed: $t" || bad "tool listed: $t"
 done
 
@@ -105,6 +105,21 @@ echo "$OUT" | grep -q '"HOLE_SLOT": {' && ok "independent family QA present" || 
 OUT=$(call get_cad_job "jobId=$JOB")
 echo "$OUT" | grep -q "\"release\": \"$EXPECT\"" && ok "release pin $EXPECT" || bad "release pin ($EXPECT): $OUT"
 echo "$OUT" | grep -q '"state": "PRODUCTION_PASS"' && ok "get_cad_job persists audited PRODUCTION_PASS" || bad "production state missing: $OUT"
+
+# 5b. unresolved source => explicit REVIEW_ONLY / NO CUT path
+OUT=$(call open_cad_job "drawing={\"fileName\":\"review.pdf\",\"sha256\":\"$SHA_A\",\"sourceId\":\"$SHA_A\"}" "mode=AUTO")
+RV_JOB=$(echo "$OUT" | grep -o 'cad_[0-9a-f]\{16\}' | head -1)
+RV_EV='{"schema":"CAD_EVIDENCE_V1","jobId":"'"$RV_JOB"'","code":"RV01","source":{"sourceId":"'"$SHA_A"'","page":1},"material":{"printed":"SS400","family":"SS","thickness":{"value":2,"unit":"mm","origin":"PRINTED"}},"views":[{"id":"FRONT","type":"FRONT"}],"contour":{"topology":"UNKNOWN","status":"UNCERTAIN"},"features":[],"bends":[],"markings":[],"handwriting":[],"uncertainties":[{"code":"TOPOLOGY","evidence":"flat topology unresolved","blocking":true}]}'
+call submit_cad_evidence "jobId=$RV_JOB" "evidence=[$RV_EV]" >/dev/null
+OUT=$(call route_cad_parts "jobId=$RV_JOB")
+echo "$OUT" | grep -q '"state": "REVIEW_REQUIRED"' && ok "uncertain source => REVIEW_REQUIRED" || bad "review route: $OUT"
+RV='{"schema":"REVIEW_OUTPUT_V1","parts":[{"code":"RV01","status":"VIEWS_ONLY","preview_reason":"separate_source_views","flags":["TOPOLOGY unresolved"],"checks":{"contour_topology":"FLAGGED","datum":"PASS","feature_count":"PASS","unfold":"FLAGGED","containment":"FLAGGED","bend_domain":"N/A","material_rules":"PASS","slot_semantics":"N/A"},"entities":[{"type":"LINE","role":"source_view","view_id":"FRONT","start":[0,0],"end":[40,0],"evidenceRefs":["page:1 FRONT"]},{"type":"LINE","role":"source_view","view_id":"FRONT","start":[40,0],"end":[40,20],"evidenceRefs":["page:1 FRONT"]}]}]}'
+OUT=$(call export_review_dxf "jobId=$RV_JOB" "review=$RV")
+echo "$OUT" | grep -q '"state": "REVIEW_ONLY"' && ok "review export => REVIEW_ONLY" || bad "review export state: $OUT"
+echo "$OUT" | grep -q '_ALL_REVIEW_ONLY.dxf' && ok "review filename is NO-CUT composite" || bad "review filename: $OUT"
+echo "$OUT" | grep -q '"reviewOnly": true' && ok "review artifact cannot masquerade as production" || bad "review marker: $OUT"
+ERR=$(call audit_dxf "jobId=$RV_JOB")
+echo "$ERR" | grep -q 'DXF_AUDIT_NOT_ALLOWED_IN_STATE' && ok "review output cannot enter production audit" || bad "review production guard: $ERR"
 
 # 6. ingest drawing PDF (base64) bound to job
 PDF_B64=$(printf '%%PDF-1.7\n1 0 obj\n<<>>\nendobj\ntrailer\n%%%%EOF\n' | base64 -w0)

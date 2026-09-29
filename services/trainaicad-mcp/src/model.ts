@@ -281,6 +281,7 @@ export type DxfArtifact = {
   bytes: number;
   units: "mm";
   manifestRelativePath: string;
+  reviewOnly?: true;
   readback?: {
     auditErrors: number;
     layer0Entities: number;
