@@ -89,13 +89,13 @@ test("V4.20 source authority split is encoded", () => {
   assert.equal(sourcePolicyForMode("DIRECT_EXISTING_DXF_AUDIT").dxfUse, "GROUND_TRUTH_AUDIT");
 });
 
-test("state machine has no production PASS shortcut", () => {
-  assert.throws(
-    () => assertTransition("SOURCE_READY", "PRODUCTION_PASS"),
-    /INVALID_JOB_TRANSITION/
-  );
+test("PRODUCTION_PASS is reachable only through QA_COMPLETE", () => {
   for (const [from, targets] of Object.entries(allowedTransitions)) {
-    assert.equal(targets.includes("PRODUCTION_PASS"), false, `shortcut from ${from}`);
+    const canPass = targets.includes("PRODUCTION_PASS");
+    assert.equal(canPass, from === "QA_COMPLETE", `unexpected production transition from ${from}`);
+  }
+  for (const state of ["SOURCE_READY", "EVIDENCE_READY", "ROUTED", "GEOMETRY_READY", "DXF_WRITTEN", "DXF_READBACK"] as const) {
+    assert.throws(() => assertTransition(state, "PRODUCTION_PASS"), /INVALID_JOB_TRANSITION/);
   }
 });
 

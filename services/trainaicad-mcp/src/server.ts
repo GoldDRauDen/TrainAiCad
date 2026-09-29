@@ -23,7 +23,7 @@ function json(value: unknown) {
 
 export function buildServer(): McpServer {
   const server = new McpServer(
-    { name: "TrainAiCad", version: "0.2.0" },
+    { name: "TrainAiCad", version: "1.0.0" },
     { capabilities: { tools: {} } }
   );
 
@@ -77,7 +77,7 @@ export function buildServer(): McpServer {
     "build_canonical_geometry",
     {
       description:
-        "Build deterministic CANONICAL_GEOMETRY_V1 from source-authorized GEOMETRY_SOURCE_V1. V0.2 supports proved flat single-face geometry and proved constant-width linear bend chains; unsupported/missing constraints fail to REVIEW_REQUIRED.",
+        "Build CANONICAL_GEOMETRY_V1 from source-authorized GEOMETRY_SOURCE_V1. Supports flat, linear-chain, and proved FACE_GRAPH_FLAT with rigid per-face transforms, feature transforms, G1-G8 proof gates, containment and bend-domain checks.",
       inputSchema: z.object({
         jobId: z.string().min(1),
         geometrySources: z.array(GeometrySourceV1).min(1)
@@ -88,10 +88,30 @@ export function buildServer(): McpServer {
   );
 
   server.registerTool(
+    "export_dxf",
+    {
+      description:
+        "Serialize GEOMETRY_READY canonical geometry to the current TrainAiCad one-composite DXF contract. This writes the DXF but does not grant production PASS.",
+      inputSchema: z.object({ jobId: z.string().min(1) })
+    },
+    async ({ jobId }) => json(publicJob(jobStore.exportDxf(jobId)))
+  );
+
+  server.registerTool(
+    "audit_dxf",
+    {
+      description:
+        "Re-open the saved DXF independently, verify mm units, exact canonical Layer-0 geometry, code order and independent CUT/HOLE-SLOT/BEND/KEGAKI/RIB family status. Only a successful audit can reach PRODUCTION_PASS.",
+      inputSchema: z.object({ jobId: z.string().min(1) })
+    },
+    async ({ jobId }) => json(publicJob(jobStore.auditDxf(jobId)))
+  );
+
+  server.registerTool(
     "get_cad_job",
     {
       description:
-        "Read current experimental job state, release pin, source policy, routes, canonical geometry and flags. V0.2 still has no DXF/production PASS path.",
+        "Read current TrainAiCad MCP job state, source policy, routes, canonical geometry, DXF artifact/read-back QA and flags.",
       inputSchema: z.object({ jobId: z.string().min(1) })
     },
     async ({ jobId }) => json(publicJob(jobStore.get(jobId)))

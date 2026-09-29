@@ -1,8 +1,8 @@
-# TrainAiCad MCP V0.2 — Canonical Geometry
+# TrainAiCad MCP V1.0 — End-to-End CAD Runtime
 
 This service is an experimental MCP runtime boundary for TrainAiCad. It does **not** modify or replace the current production LISPCAD skill.
 
-## Implemented through V0.2
+## V1.0 implemented pipeline
 
 Implemented:
 - `CAD_EVIDENCE_V1` schema with provenance on technical numbers.
@@ -10,7 +10,7 @@ Implemented:
 - Runtime production-release pinning from repository `AI_ENTRYPOINT.md` + `SKILL_LISPCAD_CURRENT.md`.
 - V4.20 source classification: `PDF_ONLY`, `PDF_DATA_RAW`, `TRAIN_REFERENCE`, `DIRECT_EXISTING_DXF_AUDIT`.\n- Mandatory mechanical classification record and V4.20 feature routing (KEGAKI, SLIT/RELIEF, RIB, curved slot, PIASU).\n- Every bent/multi-face route loads `BEND_UNFOLD` + `FACE_GRAPH_UNFOLD_PROTOCOL`; missing signed bend/face evidence is REVIEW_REQUIRED.
 - Jev policy boundary plus disabled/mock/shadow adapter contract. V0.1 performs no Jev network call.
-- Six MCP tools: `ingest_cad_file`, `open_cad_job`, `submit_cad_evidence`, `route_cad_parts`, `build_canonical_geometry`, `get_cad_job`.
+- Eight MCP tools: `ingest_cad_file`, `open_cad_job`, `submit_cad_evidence`, `route_cad_parts`, `build_canonical_geometry`, `export_dxf`, `audit_dxf`, `get_cad_job`.
 - Loopback-only Streamable HTTP endpoint at `/mcp`.
 - File ingestion (`ingest_cad_file`): inline base64 or http(s) URI, SHA256, magic-byte signature sniffing, MIME/extension/size validation, filename sanitization, SSRF-guarded download (http(s) only, private ranges blocked by default, bounded redirects/size/time), immutable content-addressed storage under `data/sources/<ROLE>/`.
 - DXFs are role-separated (`DATA_DXF`, `REFERENCE_DXF`, `AI_DXF`). In `PDF_DATA_RAW`, DATA is geometry authority and PDF controls semantics/dimensions/revisions/Nobi. In `TRAIN_REFERENCE`, reference DXF is audit-only.
@@ -80,3 +80,15 @@ V0.3: composite DXF export, re-open/read-back and independent CUT/HOLE/BEND/KEGA
 - Unsupported mixed-axis, variable-width, bent-feature-transform, relief-domain or incomplete graph cases fail to `REVIEW_REQUIRED`; V0.2 does not guess or reverse-fit.
 - `foldBack=STRUCTURAL_ONLY_V02` is explicitly not G8 production proof.
 
+
+## V1.0 production path
+
+`ingest -> open job -> CAD_EVIDENCE_V1 -> route -> GEOMETRY_SOURCE_V1 -> CANONICAL_GEOMETRY_V1 -> export_dxf -> audit_dxf -> PRODUCTION_PASS`.
+
+- FACE_GRAPH_FLAT supports source-proved rigid per-face transforms, mixed bend axes, variable-width flats, hosted feature transforms and true LWPOLYLINE bulges.
+- G1-G7 are mandatory before bent geometry; G8 fold-back proof is mandatory before production export. Printed/handwritten/user-confirmed numeric checks are exact; only DERIVED comparison residuals may be strictly below 0.01 mm.
+- `export_dxf` uses the repository's existing `tools/export_dxf.py` single-composite contract and stops at `DXF_WRITTEN`.
+- `audit_dxf` independently re-opens the saved DXF using ezdxf, verifies mm units, exact Layer-0 canonical geometry, source code order/mapping and independent CUT / HOLE-SLOT / BEND / KEGAKI / RIB family status.
+- Only successful read-back QA transitions through `DXF_READBACK -> QA_COMPLETE -> PRODUCTION_PASS`.
+- RIB manufacturing parts are represented as independent `partRole=RIB` jobs/codes; a RIB feature embedded in a main part is rejected. Main-part RIB locating marks are KEGAKI.
+- Jev remains advisory only and cannot authorize dimensions, geometry, DXF, or PASS.

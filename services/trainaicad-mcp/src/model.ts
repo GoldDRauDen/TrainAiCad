@@ -102,6 +102,7 @@ export const CadEvidenceV1 = z.object({
     page: z.number().int().positive(),
     revision: z.string().nullable().optional()
   }),
+  partRole: z.enum(["MAIN", "RIB", "SECONDARY"]).default("MAIN"),
   material: z.object({
     printed: z.string().min(1).optional(),
     family: z.string().min(1).optional(),
@@ -228,6 +229,39 @@ export type RouteResult = {
   jev: { mode: string; configured: boolean; verdict: "UNAVAILABLE" | "MOCK_MATCH"; detail: string };
 };
 
+
+export type DxfFamilyQa = {
+  status: "PASS" | "N/A";
+  entities: number;
+};
+
+export type DxfQaFamilies = {
+  CUT: DxfFamilyQa;
+  HOLE_SLOT: DxfFamilyQa;
+  BEND: DxfFamilyQa;
+  KEGAKI: DxfFamilyQa;
+  RIB: DxfFamilyQa;
+  PIASU_SLIT_FORMING: DxfFamilyQa;
+};
+
+export type DxfArtifact = {
+  filename: string;
+  relativePath: string;
+  sha256: string;
+  bytes: number;
+  units: "mm";
+  manifestRelativePath: string;
+  readback?: {
+    auditErrors: number;
+    layer0Entities: number;
+    metaEntities: number;
+    canonicalMatch: boolean;
+    codeOrderMatch: boolean;
+    unitsMatch: boolean;
+  };
+  families?: DxfQaFamilies;
+};
+
 export type CadJob = {
   jobId: string;
   mode: JobMode;
@@ -241,6 +275,7 @@ export type CadJob = {
   routes: RouteResult[];
   geometrySources: GeometrySourceV1[];
   geometry: CanonicalGeometryV1[];
+  output?: DxfArtifact;
   flags: string[];
   createdAt: string;
   updatedAt: string;

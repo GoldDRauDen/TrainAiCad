@@ -4,6 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { bindSourceToJob, dataRoot, type IngestResult, type SourceRole } from "./ingest.js";
 import { jevStatus } from "./jev.js";
 import { buildJobGeometry, GeometrySourceV1 } from "./geometry.js";
+import { auditDxf as auditDxfArtifact, exportDxf as exportDxfArtifact } from "./dxf.js";
 import {
   CadEvidenceV1,
   type CadEvidenceV1 as Evidence,
@@ -61,10 +62,10 @@ export const allowedTransitions: Readonly<Record<JobState, readonly JobState[]>>
   EVIDENCE_READY: ["ROUTED", "REVIEW_REQUIRED"],
   ROUTED: ["EVIDENCE_READY", "GEOMETRY_READY", "REVIEW_REQUIRED"],
   REVIEW_REQUIRED: ["EVIDENCE_READY", "GEOMETRY_READY"],
-  GEOMETRY_READY: [],
-  DXF_WRITTEN: [],
-  DXF_READBACK: [],
-  QA_COMPLETE: [],
+  GEOMETRY_READY: ["DXF_WRITTEN"],
+  DXF_WRITTEN: ["DXF_READBACK"],
+  DXF_READBACK: ["QA_COMPLETE"],
+  QA_COMPLETE: ["PRODUCTION_PASS"],
   PRODUCTION_PASS: [],
   REVIEW_ONLY: [],
   VIEWS_ONLY: [],
@@ -283,6 +284,7 @@ class JobStore {
     job.routes = [];
     job.geometrySources = [];
     job.geometry = [];
+    job.output = undefined;
     job.flags = [];
     if (job.state === "SOURCE_READY") return this.transition(jobId, "EVIDENCE_READY");
     job.state = "EVIDENCE_READY";
@@ -299,6 +301,7 @@ class JobStore {
     job.routes = routes;
     job.geometrySources = [];
     job.geometry = [];
+    job.output = undefined;
     job.flags = routes
       .filter((r) => r.status === "REVIEW_REQUIRED")
       .map((r) => `${r.code}:ROUTING_REVIEW_REQUIRED`);
@@ -312,6 +315,7 @@ class JobStore {
 
     job.geometrySources = parsed;
     job.geometry = built.ready;
+    job.output = undefined;
     job.flags = built.flags;
     job.updatedAt = new Date().toISOString();
     this.persist(job);
@@ -321,6 +325,32 @@ class JobStore {
       return this.transition(jobId, "REVIEW_REQUIRED");
     }
     return this.transition(jobId, "GEOMETRY_READY");
+  }
+
+  exportDxf(jobId: string): CadJob {
+    const job = this.get(jobId);
+    if (job.state !== "GEOMETRY_READY") {
+      throw new Error(`DXF_EXPORT_NOT_ALLOWED_IN_STATE: ${job.state}`);
+    }
+    const artifact = exportDxfArtifact(job, resolveRepoRoot());
+    job.output = artifact;
+    job.updatedAt = new Date().toISOString();
+    this.persist(job);
+    return this.transition(jobId, "DXF_WRITTEN");
+  }
+
+  auditDxf(jobId: string): CadJob {
+    const job = this.get(jobId);
+    if (job.state !== "DXF_WRITTEN") {
+      throw new Error(`DXF_AUDIT_NOT_ALLOWED_IN_STATE: ${job.state}`);
+    }
+    const audited = auditDxfArtifact(job, resolveRepoRoot());
+    job.output = audited;
+    job.updatedAt = new Date().toISOString();
+    this.persist(job);
+    this.transition(jobId, "DXF_READBACK");
+    this.transition(jobId, "QA_COMPLETE");
+    return this.transition(jobId, "PRODUCTION_PASS");
   }
 
   /**
