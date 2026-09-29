@@ -894,10 +894,10 @@ function buildLinearChain(job: CadJob, source: GeometrySourceV1): GeometryBuildR
     return { code: source.code, status: "REVIEW_REQUIRED", flags: ["NONPOSITIVE_FLAT_LENGTH"] };
   }
   const outer = ensureCcw(source.flatOuterContour ?? [
-    { x: 0, y: 0 },
-    { x: flatLength, y: 0 },
-    { x: flatLength, y: width },
-    { x: 0, y: width }
+    { x: 0, y: 0, bulge: 0 },
+    { x: flatLength, y: 0, bulge: 0 },
+    { x: flatLength, y: width, bulge: 0 },
+    { x: 0, y: width, bulge: 0 }
   ]);
   const outerFlags = validateSimplePolygon(outer);
   if (outerFlags.length) return { code: source.code, status: "REVIEW_REQUIRED", flags: outerFlags };
