@@ -34,8 +34,8 @@ export const DirectAuditConfig = z.object({
     mappingProofRefs: z.array(z.string().min(1)).min(1),
     aiWindow: Window.optional(),
     referenceWindow: Window.optional(),
-    aiTransform: ExplicitTransform.default({}),
-    referenceTransform: ExplicitTransform.default({})
+    aiTransform: ExplicitTransform.optional(),
+    referenceTransform: ExplicitTransform.optional()
   })).min(1)
 }).superRefine((v, ctx) => {
   if (v.parts.length > 1) {
