@@ -49,3 +49,10 @@ jobs:
           cache-dependency-path: services/trainaicad-mcp/package-lock.json
       - run: npm ci
       - run: npm run check
+      - name: MCP Inspector e2e
+        run: |
+          npm run dev > /tmp/trainaicad-mcp.log 2>&1 &
+          MCP_PID=$!
+          trap 'kill $MCP_PID 2>/dev/null || true' EXIT
+          sleep 2
+          bash scripts/e2e_inspector.sh
