@@ -59,7 +59,8 @@ test("signature sniffing decides the kind, not the declared MIME", () => {
     () => storeSource({ fileName: "drawing.pdf", bytes: PDF, mimeType: "image/png" }, "DRAWING"),
     /MIME_SIGNATURE_MISMATCH/
   );
-  assert.throws(() => storeSource({ fileName: "drawing.dxf", bytes: PDF }, "DRAWING"), /EXTENSION_SIGNATURE_MISMATCH/);\n  assert.throws(() => storeSource({ fileName: "not-data.pdf", bytes: PDF }, "DATA_DXF"), /ROLE_KIND_MISMATCH/);
+  assert.throws(() => storeSource({ fileName: "drawing.dxf", bytes: PDF }, "DRAWING"), /EXTENSION_SIGNATURE_MISMATCH/);
+  assert.throws(() => storeSource({ fileName: "not-data.pdf", bytes: PDF }, "DATA_DXF"), /ROLE_KIND_MISMATCH/);
   assert.throws(() => storeSource({ fileName: "drawing.pdf", bytes: Buffer.alloc(0) }, "DRAWING"), /EMPTY_SOURCE_FILE/);
   assert.throws(() => storeSource({ fileName: "drawing.pdf", bytes: Buffer.from("nope") }, "DRAWING"), /UNKNOWN_FILE_SIGNATURE/);
 
