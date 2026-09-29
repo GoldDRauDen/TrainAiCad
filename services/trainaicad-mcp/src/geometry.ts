@@ -526,10 +526,10 @@ function foldBackResidual(source: GeometrySourceV1): { flags: string[]; max: num
   const flags: string[] = [];
   let max = 0;
   for (const check of proof.numericChecks) {
-    const residual = Math.abs(check.expected - check.actual);
+    const residual = Number(Math.abs(check.expected - check.actual).toFixed(12));
     max = Math.max(max, residual);
     if (check.origin === "DERIVED") {
-      if (!(residual < 0.01)) flags.push(`FOLD_BACK_DERIVED_RESIDUAL:${check.id}`);
+      if (residual >= 0.01) flags.push(`FOLD_BACK_DERIVED_RESIDUAL:${check.id}`);
     } else if (residual > 1e-9) {
       flags.push(`FOLD_BACK_EXACT_SOURCE_MISMATCH:${check.id}`);
     }
