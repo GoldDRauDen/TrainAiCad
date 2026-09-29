@@ -25,7 +25,7 @@ def test_hard_gates_present():
     assert "V4.17 HARD MIRROR GATE" in skill
     for gate in ["SLOT_WITNESS_FAIL","MIRROR_SCOPE_FAIL","DATUM_WITNESS_FAIL","KEGAKI_SCOPE_FAIL","STALE_PREVIEW_FAIL","REFERENCE_METADATA_NONBLOCKING"]:
         assert gate in valid
-    assert "W=9" in qa and "R4.5" in qa
+    assert "width/end-diameter = 9" in qa and "R4.5" in qa
     assert "Y=32-10=22" in qa
     assert "$INSUNITS=1" in qa
 
