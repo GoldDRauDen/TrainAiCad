@@ -9,6 +9,7 @@ on:
       - 'regression/**'
       - 'tools/**'
       - 'tests/**'
+      - 'services/trainaicad-mcp/**'
       - 'requirements.txt'
       - '.github/workflows/dxf-export-tests.yml'
   pull_request:
@@ -20,6 +21,7 @@ on:
       - 'regression/**'
       - 'tools/**'
       - 'tests/**'
+      - 'services/trainaicad-mcp/**'
       - 'requirements.txt'
       - '.github/workflows/dxf-export-tests.yml'
 jobs:
@@ -32,3 +34,18 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install -r requirements.txt
       - run: python -m pytest tests/ -q
+
+  mcp:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/trainaicad-mcp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: services/trainaicad-mcp/package-lock.json
+      - run: npm ci
+      - run: npm run check

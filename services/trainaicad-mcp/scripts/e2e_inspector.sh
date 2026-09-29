@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E2E smoke for TrainAiCad MCP V0.1 via MCP Inspector CLI (HTTP transport).
+# E2E smoke for TrainAiCad MCP V0.1.1 via MCP Inspector CLI (HTTP transport).
 set -u
 cd "$(dirname "$0")/.." || exit 1
 INS="npx -y @modelcontextprotocol/inspector@2.8.0 --cli --server-url http://127.0.0.1:8787/mcp --transport http"
@@ -23,21 +23,28 @@ EXPECT=$(grep -o 'Current production release is \*\*V[0-9.]*\*\*' ../../AI_ENTRY
 echo "expected release pin: $EXPECT"
 
 LIST=$($INS --method tools/list 2>/dev/null)
-for t in open_cad_job submit_cad_evidence route_cad_parts get_cad_job; do
+for t in open_cad_job submit_cad_evidence route_cad_parts get_cad_job ingest_cad_file; do
   echo "$LIST" | grep -q "\"name\": \"$t\"" && ok "tool listed: $t" || bad "tool listed: $t"
 done
 
-# 1. AUTO + reference DXF must stay NEW_PDF_TO_DXF
-OUT=$(call open_cad_job "drawing={\"fileName\":\"sample.pdf\",\"sha256\":\"$SHA_A\"}" \
-  "referenceDxf={\"fileName\":\"ref.dxf\",\"sha256\":\"$SHA_B\"}" "mode=AUTO")
-echo "$OUT" | grep -q '"mode": "NEW_PDF_TO_DXF"' && ok "AUTO+reference => NEW_PDF_TO_DXF" || bad "AUTO+reference: $OUT"
+# 1. V4.20 source classification
+OUT=$(call open_cad_job "drawing={\"fileName\":\"sample.pdf\",\"sha256\":\"$SHA_A\"}" "mode=AUTO")
+echo "$OUT" | grep -q '"mode": "PDF_ONLY"' && ok "AUTO PDF-only => PDF_ONLY" || bad "PDF_ONLY: $OUT"
 JOB=$(echo "$OUT" | grep -o 'cad_[0-9a-f]\{16\}' | head -1)
 [ -n "$JOB" ] && ok "jobId=$JOB" || bad "jobId missing"
 
-# 2. DIRECT audit without reference must FAIL
-ERR=$(call open_cad_job "drawing={\"fileName\":\"sample.pdf\",\"sha256\":\"$SHA_A\"}" \
+OUT=$(call open_cad_job "drawing={\"fileName\":\"sample.pdf\",\"sha256\":\"$SHA_A\"}" \
+  "dxf={\"fileName\":\"data.dxf\",\"sha256\":\"$SHA_B\"}" "mode=AUTO")
+echo "$OUT" | grep -q '"mode": "PDF_DATA_RAW"' && ok "AUTO+generic DXF => PDF_DATA_RAW" || bad "PDF_DATA_RAW: $OUT"
+
+OUT=$(call open_cad_job "drawing={\"fileName\":\"sample.pdf\",\"sha256\":\"$SHA_A\"}" \
+  "referenceDxf={\"fileName\":\"approved.dxf\",\"sha256\":\"$SHA_B\"}" "mode=AUTO")
+echo "$OUT" | grep -q '"mode": "TRAIN_REFERENCE"' && ok "AUTO+explicit reference => TRAIN_REFERENCE" || bad "TRAIN_REFERENCE: $OUT"
+
+# 2. DIRECT audit without approved reference must FAIL
+ERR=$(call open_cad_job "drawing={\"fileName\":\"ai.dxf\",\"sha256\":\"$SHA_A\"}" \
   "mode=DIRECT_EXISTING_DXF_AUDIT")
-echo "$ERR" | grep -q 'requires referenceDxf' && ok "direct audit w/o reference FAILs" || bad "direct audit: $ERR"
+echo "$ERR" | grep -q 'approved reference DXF' && ok "direct audit w/o reference FAILs" || bad "direct audit: $ERR"
 
 # 3. submit evidence
 EV='{"schema":"CAD_EVIDENCE_V1","jobId":"'"$JOB"'","code":"056648","source":{"sourceId":"'"$SHA_A"'","page":1},"material":{"printed":"SS400","family":"SS","thickness":{"value":3,"unit":"mm","origin":"PRINTED"}},"views":[{"id":"A","type":"FLAT"}],"contour":{"topology":"PLATE","status":"PROVED","overallX":{"value":50,"unit":"mm","origin":"PRINTED"},"overallY":{"value":32,"unit":"mm","origin":"PRINTED"}},"features":[{"id":"S1","family":"SLOT","quantity":1,"width":{"value":10,"unit":"mm","origin":"PRINTED"}}],"bends":[],"markings":[],"handwriting":[],"uncertainties":[]}'
