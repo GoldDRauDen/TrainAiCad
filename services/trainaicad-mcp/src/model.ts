@@ -169,7 +169,8 @@ export const JobState = z.enum([
   "PRODUCTION_PASS",
   "REVIEW_ONLY",
   "VIEWS_ONLY",
-  "SOURCE_CONFLICT"
+  "SOURCE_CONFLICT",
+  "AUDIT_COMPLETE"
 ]);
 export type JobState = z.infer<typeof JobState>;
 
@@ -230,6 +231,35 @@ export type RouteResult = {
 };
 
 
+
+export type DirectAuditFamilyResult = {
+  status: "MATCH" | "DIFF" | "N/A";
+  maxDistanceMm: number | null;
+  lengthDeltaMm: number | null;
+  aPrimitives: number;
+  bPrimitives: number;
+};
+
+export type DirectAuditPartResult = {
+  code: string;
+  status: "MATCH" | "PARTIAL" | "DIFF" | "UNVERIFIED" | "SOURCE_CONFLICT";
+  reason?: string;
+  translationRemovedMm?: [number, number];
+  whole?: DirectAuditFamilyResult;
+  families: Record<string, DirectAuditFamilyResult>;
+  note?: string;
+};
+
+export type DirectAuditResult = {
+  aiSha256: string;
+  referenceSha256: string;
+  aiMmPerUnit: number;
+  referenceMmPerUnit: number;
+  curveToleranceMm: number;
+  parts: DirectAuditPartResult[];
+  boundary: string;
+};
+
 export type DxfFamilyQa = {
   status: "PASS" | "N/A";
   entities: number;
@@ -276,6 +306,7 @@ export type CadJob = {
   geometrySources: GeometrySourceV1[];
   geometry: CanonicalGeometryV1[];
   output?: DxfArtifact;
+  directAudit?: DirectAuditResult;
   flags: string[];
   createdAt: string;
   updatedAt: string;

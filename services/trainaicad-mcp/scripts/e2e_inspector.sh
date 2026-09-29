@@ -23,7 +23,7 @@ EXPECT=$(grep -o 'Current production release is \*\*V[0-9.]*\*\*' ../../AI_ENTRY
 echo "expected release pin: $EXPECT"
 
 LIST=$($INS --method tools/list 2>/dev/null)
-for t in open_cad_job submit_cad_evidence route_cad_parts build_canonical_geometry export_dxf audit_dxf get_cad_job ingest_cad_file; do
+for t in open_cad_job submit_cad_evidence route_cad_parts build_canonical_geometry export_dxf audit_dxf audit_existing_dxf get_cad_job ingest_cad_file; do
   echo "$LIST" | grep -q "\"name\": \"$t\"" && ok "tool listed: $t" || bad "tool listed: $t"
 done
 
@@ -45,6 +45,32 @@ echo "$OUT" | grep -q '"mode": "TRAIN_REFERENCE"' && ok "AUTO+explicit reference
 ERR=$(call open_cad_job "drawing={\"fileName\":\"ai.dxf\",\"sha256\":\"$SHA_A\"}" \
   "mode=DIRECT_EXISTING_DXF_AUDIT")
 echo "$ERR" | grep -q 'approved reference DXF' && ok "direct audit w/o reference FAILs" || bad "direct audit: $ERR"
+
+# 2b. DIRECT existing DXF physical audit: bulged polyline vs LINE+ARC, translation-only normalization
+TMP_AUDIT=$(mktemp -d)
+python - "$TMP_AUDIT/ai.dxf" "$TMP_AUDIT/ref.dxf" <<'PY'
+import ezdxf,sys
+ai,ref=sys.argv[1],sys.argv[2]
+d=ezdxf.new("R2010"); d.header["$INSUNITS"]=4; m=d.modelspace()
+m.add_lwpolyline([(0,0,0),(10,0,1)],format="xyb",close=True); d.saveas(ai)
+r=ezdxf.new("R2010"); r.header["$INSUNITS"]=1; q=r.modelspace()
+q.add_line((100,200),(110,200)); q.add_arc((105,200),5,0,180); r.saveas(ref)
+PY
+AI_AUDIT_B64=$(base64 -w0 "$TMP_AUDIT/ai.dxf")
+REF_AUDIT_B64=$(base64 -w0 "$TMP_AUDIT/ref.dxf")
+OUT=$(call ingest_cad_file "fileName=ai.dxf" "role=AI_DXF" "data=$AI_AUDIT_B64")
+AI_AUDIT_SHA=$(echo "$OUT" | grep -o '"sha256": "[0-9a-f]\{64\}"' | head -1 | grep -o '[0-9a-f]\{64\}')
+OUT=$(call ingest_cad_file "fileName=approved.dxf" "role=REFERENCE_DXF" "data=$REF_AUDIT_B64")
+REF_AUDIT_SHA=$(echo "$OUT" | grep -o '"sha256": "[0-9a-f]\{64\}"' | head -1 | grep -o '[0-9a-f]\{64\}')
+OUT=$(call open_cad_job "drawing={\"fileName\":\"ai.dxf\",\"sha256\":\"$AI_AUDIT_SHA\",\"sourceId\":\"$AI_AUDIT_SHA\"}" \
+  "referenceDxf={\"fileName\":\"approved.dxf\",\"sha256\":\"$REF_AUDIT_SHA\"}" "mode=DIRECT_EXISTING_DXF_AUDIT")
+AUDIT_JOB=$(echo "$OUT" | grep -o 'cad_[0-9a-f]\{16\}' | head -1)
+DAC='{"aiMmPerUnit":1,"referenceMmPerUnit":1,"aiUnitProofRefs":["source/user:mm"],"referenceUnitProofRefs":["source/user:mm despite header"],"curveToleranceMm":0.001,"toleranceProofRefs":["physical curve contract"],"parts":[{"code":"D01","mappingProofRefs":["whole drawing D01"],"aiTransform":{},"referenceTransform":{}}]}'
+OUT=$(call audit_existing_dxf "jobId=$AUDIT_JOB" "config=$DAC")
+echo "$OUT" | grep -q '"state": "AUDIT_COMPLETE"' && ok "direct audit => AUDIT_COMPLETE" || bad "direct audit state: $OUT"
+echo "$OUT" | grep -q '"status": "MATCH"' && ok "ARC+LINE equals exact bulged polyline physically" || bad "direct audit geometry: $OUT"
+echo "$OUT" | grep -q '"referenceMmPerUnit": 1' && ok "direct audit uses explicit physical unit scale" || bad "direct audit unit: $OUT"
+rm -rf "$TMP_AUDIT"
 
 # 3. submit evidence
 EV='{"schema":"CAD_EVIDENCE_V1","jobId":"'"$JOB"'","code":"056648","source":{"sourceId":"'"$SHA_A"'","page":1},"material":{"printed":"SS400","family":"SS","thickness":{"value":3,"unit":"mm","origin":"PRINTED"}},"views":[{"id":"A","type":"FLAT"}],"contour":{"topology":"PLATE","status":"PROVED","overallX":{"value":50,"unit":"mm","origin":"PRINTED"},"overallY":{"value":32,"unit":"mm","origin":"PRINTED"}},"features":[{"id":"S1","family":"SLOT","quantity":1,"width":{"value":10,"unit":"mm","origin":"PRINTED"}}],"bends":[],"markings":[],"handwriting":[],"uncertainties":[]}'

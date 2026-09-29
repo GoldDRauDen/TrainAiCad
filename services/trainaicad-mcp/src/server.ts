@@ -12,6 +12,7 @@ import {
 } from "./core.js";
 import { downloadUri, storeSource } from "./ingest.js";
 import { GeometrySourceV1 } from "./geometry.js";
+import { DirectAuditConfig } from "./direct_audit.js";
 
 const BASE64 = /^[A-Za-z0-9+/\s]*={0,2}$/;
 
@@ -85,6 +86,19 @@ export function buildServer(): McpServer {
     },
     async ({ jobId, geometrySources }) =>
       json(publicJob(jobStore.buildGeometry(jobId, geometrySources)))
+  );
+
+  server.registerTool(
+    "audit_existing_dxf",
+    {
+      description:
+        "DIRECT_EXISTING_DXF_AUDIT only: compare an already-produced AI DXF directly against an approved/customer DXF before PDF diagnosis. Requires proof-backed physical unit scales, code mapping and any non-identity rotation/mirror. Layout translation is normalized automatically. Returns MATCH/PARTIAL/DIFF/UNVERIFIED per code.",
+      inputSchema: z.object({
+        jobId: z.string().min(1),
+        config: DirectAuditConfig
+      })
+    },
+    async ({ jobId, config }) => json(publicJob(jobStore.auditExistingDxf(jobId, config)))
   );
 
   server.registerTool(

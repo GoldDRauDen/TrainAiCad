@@ -5,6 +5,7 @@ import { bindSourceToJob, dataRoot, type IngestResult, type SourceRole } from ".
 import { jevStatus } from "./jev.js";
 import { buildJobGeometry, GeometrySourceV1 } from "./geometry.js";
 import { auditDxf as auditDxfArtifact, exportDxf as exportDxfArtifact } from "./dxf.js";
+import { runDirectAudit } from "./direct_audit.js";
 import {
   CadEvidenceV1,
   type CadEvidenceV1 as Evidence,
@@ -58,7 +59,7 @@ export function readReleasePin(repoRoot = resolveRepoRoot()): ReleasePin {
 
 export const allowedTransitions: Readonly<Record<JobState, readonly JobState[]>> = {
   CREATED: ["SOURCE_READY"],
-  SOURCE_READY: ["EVIDENCE_READY"],
+  SOURCE_READY: ["EVIDENCE_READY", "AUDIT_COMPLETE"],
   EVIDENCE_READY: ["ROUTED", "REVIEW_REQUIRED"],
   ROUTED: ["EVIDENCE_READY", "GEOMETRY_READY", "REVIEW_REQUIRED"],
   REVIEW_REQUIRED: ["EVIDENCE_READY", "GEOMETRY_READY"],
@@ -69,7 +70,8 @@ export const allowedTransitions: Readonly<Record<JobState, readonly JobState[]>>
   PRODUCTION_PASS: [],
   REVIEW_ONLY: [],
   VIEWS_ONLY: [],
-  SOURCE_CONFLICT: []
+  SOURCE_CONFLICT: [],
+  AUDIT_COMPLETE: []
 };
 
 export function assertTransition(from: JobState, to: JobState): void {
@@ -231,6 +233,7 @@ class JobStore {
       routes: [],
       geometrySources: [],
       geometry: [],
+      directAudit: undefined,
       flags: [],
       createdAt: now,
       updatedAt: now
@@ -285,6 +288,7 @@ class JobStore {
     job.geometrySources = [];
     job.geometry = [];
     job.output = undefined;
+    job.directAudit = undefined;
     job.flags = [];
     if (job.state === "SOURCE_READY") return this.transition(jobId, "EVIDENCE_READY");
     job.state = "EVIDENCE_READY";
@@ -325,6 +329,20 @@ class JobStore {
       return this.transition(jobId, "REVIEW_REQUIRED");
     }
     return this.transition(jobId, "GEOMETRY_READY");
+  }
+
+  auditExistingDxf(jobId: string, config: unknown): CadJob {
+    const job = this.get(jobId);
+    if (job.mode !== "DIRECT_EXISTING_DXF_AUDIT") {
+      throw new Error(`DIRECT_AUDIT_WRONG_MODE: ${job.mode}`);
+    }
+    if (job.state !== "SOURCE_READY") {
+      throw new Error(`DIRECT_AUDIT_NOT_ALLOWED_IN_STATE: ${job.state}`);
+    }
+    job.directAudit = runDirectAudit(job, resolveRepoRoot(), config);
+    job.updatedAt = new Date().toISOString();
+    this.persist(job);
+    return this.transition(jobId, "AUDIT_COMPLETE");
   }
 
   exportDxf(jobId: string): CadJob {
