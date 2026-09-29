@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { dataRoot } from "./ingest.js";
+import { bindSourceToJob, dataRoot, type IngestResult, type SourceRole } from "./ingest.js";
 import { jevStatus } from "./jev.js";
 import {
   CadEvidenceV1,
@@ -145,6 +145,36 @@ function dxfRoleForMode(mode: JobMode): DxfRole | undefined {
   return undefined;
 }
 
+/**
+ * Source-mode invariant: a bound DXF source must be reflected by the job mode,
+ * and `PDF_ONLY` may never coexist with a bound DXF. Returns the mode after the
+ * binding (unchanged when the binding needs no reclassification) or throws.
+ * Mode is reclassifiable only while the job is still SOURCE_READY; after
+ * evidence is submitted the mode is locked and a mode-changing binding is
+ * rejected instead.
+ */
+export function modeAfterBinding(mode: JobMode, state: JobState, role: SourceRole): JobMode {
+  if (role === "DRAWING") return mode;
+
+  let next: JobMode;
+  if (role === "DATA_DXF") {
+    if (mode === "PDF_ONLY") next = "PDF_DATA_RAW";
+    else if (mode === "PDF_DATA_RAW") return mode;
+    else throw new Error(`SOURCE_CONFLICT: DATA_DXF cannot bind to ${mode}`);
+  } else if (role === "REFERENCE_DXF") {
+    if (mode === "PDF_ONLY") next = "TRAIN_REFERENCE";
+    else if (mode === "TRAIN_REFERENCE" || mode === "DIRECT_EXISTING_DXF_AUDIT") return mode;
+    else throw new Error(`SOURCE_CONFLICT: REFERENCE_DXF cannot bind to ${mode}`);
+  } else {
+    // AI_DXF: fail-closed, only the direct audit mode accepts an AI-exported DXF
+    if (mode === "DIRECT_EXISTING_DXF_AUDIT") return mode;
+    throw new Error(`AI_DXF_NOT_ALLOWED_IN_${mode}`);
+  }
+
+  if (state !== "SOURCE_READY") throw new Error(`SOURCE_MODE_LOCKED: ${state}`);
+  return next;
+}
+
 class JobStore {
   private jobs = new Map<string, CadJob>();
 
@@ -264,6 +294,31 @@ class JobStore {
       .filter((r) => r.status === "REVIEW_REQUIRED")
       .map((r) => `${r.code}:ROUTING_REVIEW_REQUIRED`);
     return this.transition(jobId, job.flags.length ? "REVIEW_REQUIRED" : "ROUTED");
+  }
+
+  /**
+   * Bind an ingested source and keep the source-mode invariant: the job mode,
+   * source policy and dxf descriptor are reclassified (or the binding is
+   * rejected) so `PDF_ONLY` can never carry a DXF source. Rejects before any
+   * write, so a refused binding leaves both the job and the binding file alone.
+   */
+  bindSource(jobId: string, role: SourceRole, source: IngestResult): { job: CadJob; bound: Record<string, IngestResult> } {
+    const job = this.get(jobId);
+    const next = modeAfterBinding(job.mode, job.state, role);
+    const bound = bindSourceToJob(jobId, role, source);
+    if (next !== job.mode) {
+      job.mode = next;
+      job.sourcePolicy = sourcePolicyForMode(next);
+      job.dxf = {
+        fileName: source.fileName,
+        sha256: source.sha256,
+        mimeType: source.mimeType
+      };
+      job.dxfRole = dxfRoleForMode(next);
+      job.updatedAt = new Date().toISOString();
+      this.persist(job);
+    }
+    return { job, bound };
   }
 }
 

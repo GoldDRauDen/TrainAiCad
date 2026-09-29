@@ -10,7 +10,7 @@ import {
   publicJob,
   routeJob
 } from "./core.js";
-import { bindSourceToJob, downloadUri, storeSource } from "./ingest.js";
+import { downloadUri, storeSource } from "./ingest.js";
 
 const BASE64 = /^[A-Za-z0-9+/\s]*={0,2}$/;
 
@@ -110,9 +110,11 @@ export function buildServer(): McpServer {
 
       const stored = storeSource({ fileName, bytes, mimeType }, role);
       let bound: Record<string, unknown> | null = null;
+      let jobMode: string | null = null;
       if (jobId) {
-        const job = jobStore.get(jobId);
-        bound = bindSourceToJob(job.jobId, role, stored);
+        const result = jobStore.bindSource(jobId, role, stored); // reclassifies or rejects before writing
+        bound = result.bound;
+        jobMode = result.job.mode;
       }
       return json({
         role,
@@ -125,6 +127,7 @@ export function buildServer(): McpServer {
         },
         storedPath: `sources/${role}/${stored.sha256.slice(0, 2)}/${stored.sha256}${stored.fileName.match(/\.[^.]+$/)?.[0] ?? ""}`,
         boundToJob: jobId ?? null,
+        jobMode,
         boundSources: bound
       });
     }
