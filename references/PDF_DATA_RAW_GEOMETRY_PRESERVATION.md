@@ -5,7 +5,7 @@
 ## Scope
 Applies to every job where the customer supplies a PDF/image together with corresponding customer CAD/DXF DATA.
 
-- Customer DATA is the authoritative geometry source.
+- Customer DATA is the **geometry authority** and authoritative geometry source.
 - PDF is the semantic/control source for code, material, thickness, view/face meaning, dimension witnesses/datums, drawing scale, revision/handwriting, Nobi, BEND, KEGAKI, RIB, PIASU, feature identity/count and manufacturing semantics.
 - Job family `646` is DATA-required by default. If a 646 production job arrives without its corresponding customer DATA, report `DATA_REQUIRED_MISSING`, ask for the DATA, and do not silently fall back to PDF_ONLY.
 
