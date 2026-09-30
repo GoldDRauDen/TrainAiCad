@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url));
@@ -13,7 +14,17 @@ const missing = [];
 for (const testCase of required.cases) {
   for (const role of testCase.requiredRoles) {
     const path = testCase.sources?.[role];
-    if (!path) missing.push(`${testCase.id}:${role}`);
+    if (!path) {
+      missing.push(`${testCase.id}:${role}: fixture path not declared`);
+      continue;
+    }
+    const absolutePath = resolve(repo, path);
+    const fromRoot = relative(repo, absolutePath);
+    if (!fromRoot || fromRoot === ".." || fromRoot.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) || isAbsolute(fromRoot)) {
+      missing.push(`${testCase.id}:${role}: path escapes repository`);
+    } else if (!existsSync(absolutePath)) {
+      missing.push(`${testCase.id}:${role}: ${path}`);
+    }
   }
 }
 

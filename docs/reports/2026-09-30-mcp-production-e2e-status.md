@@ -34,26 +34,26 @@ The local MCP transport and defensive export workflow are runnable and tested. T
 | 9. Face graph and bend engine | Partial | Existing regression gates pass; requested full L/U/multi-axis/BOXMET production fold-back is not implemented. |
 | 10. Composite, uncertainty and audit modes | Partial | Fail-closed artifact/export path exists; complete all-code composite contract and per-code audit outcomes remain unfinished. |
 | 11. Revision and persistence | Partial | Atomic persistence and stale-PASS migration/guards exist; full immutable revision lineage, idempotent retry and conflict recovery are incomplete. |
-| 12. True E2E and CI | Partial | Local MCP HTTP Inspector is being extended to exercise actual bound DATA harvesting and persistence; source gate reports SOURCE_UNAVAILABLE; real ChatGPT Web E2E is unavailable. |
+| 12. True E2E and CI | Partial | Local MCP HTTP Inspector passes 87 assertions, including actual bound DATA harvesting and persistence. The production source gate reports 17 `SOURCE_UNAVAILABLE` files; remote ChatGPT Web E2E is unavailable. |
 
 ## Verification on this Windows machine
 
 - `npm run check`: TypeScript compile and **46/46 unit tests passed**.
 - `python -m pytest -q`: **93 passed**.
 - `npm run test:gate`: **7/7 approved regression scripts passed**, including the acute-bend geometry derivation.
-- `npm run test:integration`: **87/87 local MCP HTTP Inspector assertions passed**, including bound DATA DXF harvest, content-hash retrieval, stale hash rejection, and automatic orchestrator harvest.
+- `npm run test:integration`: **87/87 local MCP HTTP Inspector assertions passed**, including bound DATA DXF harvest, content-hash retrieval, stale hash rejection, automatic orchestrator harvest, and review-state invalidation.
 - `npm run test:e2e`: all 87 Inspector assertions pass; the command then exits nonzero because 17 required source-role paths are unavailable and remote ChatGPT Web acceptance is blocked. It does not report production acceptance.
 - `git diff --check`: clean (Git may report expected LF-to-CRLF conversion warnings).
-- GitHub Actions run [36735486603](https://github.com/GoldDRauDen/TrainAiCad/actions/runs/36735486603): serializer jobs passed on Windows and Ubuntu. MCP doctor, unit/type checks and regression gates passed on both; MCP `test:e2e` failed closed on both because the 17 required source-role paths are unavailable and the remote ChatGPT Web path is untested. The branch was pushed; production acceptance remains blocked.
+- GitHub Actions run [36744073928](https://github.com/GoldDRauDen/TrainAiCad/actions/runs/36744073928): serializer jobs passed on Windows and Ubuntu. MCP doctor, unit/type checks, regression gates, and all 87 HTTP Inspector assertions passed on both; `test:e2e` then failed closed on both because the 17 required source-role files are missing and the remote ChatGPT Web path is untested. Production acceptance remains blocked.
 
 ## Remaining blockers for true production E2E
 
-1. The acceptance manifest has 14 cases, but **17 required source-role paths are not declared/present** (for example, `DRAWING`, `DATA_DXF`, `AI_DXF` and `REFERENCE_DXF` roles). The gate reports these as `SOURCE_UNAVAILABLE`; it does not invent filenames. Fill the approved fixture paths/roles in `regression/production-e2e/acceptance-set.json`, provide the source bytes, and rerun `npm run test:e2e`.
+1. The acceptance manifest has 14 cases and now declares all expected role paths, but **17 approved source files are absent**. The doctor and source gate report every missing role and path as `SOURCE_UNAVAILABLE`. Provide approved source bytes at the paths in `regression/production-e2e/acceptance-set.json`, then rerun `npm run test:e2e`.
 2. The PDF-only deterministic geometry solver is incomplete. The new DATA parser does not yet prove real physical scale, PDF-to-DATA correspondence, or produce canonical CAD geometry. INSERT arrays and other unsupported entity classes remain hard-flagged.
 3. Full material, datum, contour, bend/unfold and fold-back QA is not implemented for all requested source classes. Current regression passes do not establish those production checks.
 4. Positive independently reviewed source-to-DXF canaries are unavailable, so the pipeline has no honest basis to issue `PRODUCTION_PASS` for the requested customer drawing classes.
 5. ChatGPT Web's native attachment-to-MCP invocation and artifact download were not tested. This local loopback test is not evidence of remote client reachability; hosted MCP application and secure tunnel/client setup are separate requirements.
-6. GitHub Actions run 36735486603 covered the previous commit; its available checks passed, while full source E2E failed closed on missing source roles. The current implementation commit still needs a new cross-platform CI run.
+6. GitHub Actions run 36744073928 exercised the DATA harvester on Windows and Ubuntu. Runtime checks passed; full source acceptance remains blocked by the missing approved files and remote client path.
 
 ## Next executable sequence
 

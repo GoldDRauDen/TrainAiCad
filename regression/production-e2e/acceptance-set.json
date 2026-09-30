@@ -1,19 +1,19 @@
 {
   "schema": "TRAINAICAD_PRODUCTION_E2E_ACCEPTANCE_V1",
   "cases": [
-    { "id": "pdf_only_plate_notch_hole_slot_rc", "requiredRoles": ["DRAWING"], "sources": {} },
-    { "id": "pdf_data_multi_arc_curve_preservation", "requiredRoles": ["DRAWING", "DATA_DXF"], "sources": {} },
-    { "id": "l_bend_with_feature", "requiredRoles": ["DRAWING"], "sources": {} },
-    { "id": "u_bend", "requiredRoles": ["DRAWING"], "sources": {} },
-    { "id": "kegaki", "requiredRoles": ["DRAWING"], "sources": {} },
-    { "id": "piasu", "requiredRoles": ["DRAWING"], "sources": {} },
-    { "id": "slit_relief", "requiredRoles": ["DRAWING"], "sources": {} },
-    { "id": "rib", "requiredRoles": ["DRAWING"], "sources": {} },
-    { "id": "boxmet", "requiredRoles": ["DRAWING"], "sources": {} },
-    { "id": "acute_bend_under_85", "requiredRoles": ["DRAWING"], "sources": {} },
-    { "id": "multi_code_customer_confirmation_pending", "requiredRoles": ["DRAWING"], "sources": {} },
-    { "id": "top_origin_datum", "requiredRoles": ["DRAWING"], "sources": {} },
-    { "id": "cancelled_feature_family", "requiredRoles": ["DRAWING"], "sources": {} },
-    { "id": "direct_existing_dxf_audit", "requiredRoles": ["DRAWING", "AI_DXF", "REFERENCE_DXF"], "sources": {} }
+    { "id": "pdf_only_plate_notch_hole_slot_rc", "requiredRoles": ["DRAWING"], "sources": { "DRAWING": "regression/assets/production-e2e/pdf_only_plate_notch_hole_slot_rc.pdf" } },
+    { "id": "pdf_data_multi_arc_curve_preservation", "requiredRoles": ["DRAWING", "DATA_DXF"], "sources": { "DRAWING": "regression/assets/production-e2e/pdf_data_multi_arc_curve_preservation.pdf", "DATA_DXF": "regression/assets/production-e2e/pdf_data_multi_arc_curve_preservation.dxf" } },
+    { "id": "l_bend_with_feature", "requiredRoles": ["DRAWING"], "sources": { "DRAWING": "regression/assets/production-e2e/l_bend_with_feature.pdf" } },
+    { "id": "u_bend", "requiredRoles": ["DRAWING"], "sources": { "DRAWING": "regression/assets/production-e2e/u_bend.pdf" } },
+    { "id": "kegaki", "requiredRoles": ["DRAWING"], "sources": { "DRAWING": "regression/assets/production-e2e/kegaki.pdf" } },
+    { "id": "piasu", "requiredRoles": ["DRAWING"], "sources": { "DRAWING": "regression/assets/production-e2e/piasu.pdf" } },
+    { "id": "slit_relief", "requiredRoles": ["DRAWING"], "sources": { "DRAWING": "regression/assets/production-e2e/slit_relief.pdf" } },
+    { "id": "rib", "requiredRoles": ["DRAWING"], "sources": { "DRAWING": "regression/assets/production-e2e/rib.pdf" } },
+    { "id": "boxmet", "requiredRoles": ["DRAWING"], "sources": { "DRAWING": "regression/assets/production-e2e/boxmet.pdf" } },
+    { "id": "acute_bend_under_85", "requiredRoles": ["DRAWING"], "sources": { "DRAWING": "regression/assets/production-e2e/acute_bend_under_85.pdf" } },
+    { "id": "multi_code_customer_confirmation_pending", "requiredRoles": ["DRAWING"], "sources": { "DRAWING": "regression/assets/production-e2e/multi_code_customer_confirmation_pending.pdf" } },
+    { "id": "top_origin_datum", "requiredRoles": ["DRAWING"], "sources": { "DRAWING": "regression/assets/production-e2e/top_origin_datum.pdf" } },
+    { "id": "cancelled_feature_family", "requiredRoles": ["DRAWING"], "sources": { "DRAWING": "regression/assets/production-e2e/cancelled_feature_family.pdf" } },
+    { "id": "direct_existing_dxf_audit", "requiredRoles": ["DRAWING", "AI_DXF", "REFERENCE_DXF"], "sources": { "DRAWING": "regression/assets/production-e2e/direct_existing_dxf_audit.pdf", "AI_DXF": "regression/assets/production-e2e/direct_existing_dxf_audit_ai.dxf", "REFERENCE_DXF": "regression/assets/production-e2e/direct_existing_dxf_audit_reference.dxf" } }
   ]
 }
