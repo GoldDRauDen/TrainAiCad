@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import ezdxf
-from ezdxf.math import Matrix44
+from ezdxf.math import Matrix44, Vec3
 
 
 SUPPORTED = {
@@ -134,6 +134,30 @@ def _effective_layer(entity_layer: str, insert_layer: str | None) -> str:
     return (insert_layer or "0") if entity_layer == "0" and insert_layer else entity_layer
 
 
+def _insert_array_instances(insert: Any) -> list[Any]:
+    """Clone each MINSERT cell, including coincident cells with zero spacing."""
+    d = insert.dxf
+    rows = int(_dxf(insert, "row_count", 1))
+    columns = int(_dxf(insert, "column_count", 1))
+    row_spacing = _num(_dxf(insert, "row_spacing", 0.0))
+    column_spacing = _num(_dxf(insert, "column_spacing", 0.0))
+    rotation = _num(_dxf(insert, "rotation", 0.0))
+    instances = []
+    for row in range(rows):
+        for column in range(columns):
+            offset = Vec3(column * column_spacing, row * row_spacing)
+            if rotation:
+                offset = offset.rotate_deg(rotation)
+            instance = insert.copy()
+            instance.dxf.insert = Vec3(d.insert) + offset
+            instance.dxf.discard("row_count")
+            instance.dxf.discard("column_count")
+            instance.dxf.discard("row_spacing")
+            instance.dxf.discard("column_spacing")
+            instances.append(instance)
+    return instances
+
+
 def harvest_data_dxf(path: str | Path) -> dict[str, Any]:
     source_path = Path(path).resolve(strict=True)
     source_bytes = source_path.read_bytes()
@@ -202,7 +226,7 @@ def harvest_data_dxf(path: str | Path) -> dict[str, Any]:
         if instance_count > MAX_INSERT_ARRAY_INSTANCES:
             cycle_flags.append(f"INSERT_ARRAY_EXPANSION_LIMIT:{handle}:{instance_count}")
             return
-        instances = list(ent.multi_insert()) if instance_count > 1 else [ent]
+        instances = _insert_array_instances(ent) if instance_count > 1 else [ent]
         for instance_index, instance in enumerate(instances):
             instance_chain = child_chain
             if instance_count > 1:

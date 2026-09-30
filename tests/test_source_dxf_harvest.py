@@ -121,6 +121,23 @@ def test_insert_array_over_limit_is_hard_flagged_without_claiming_expansion(tmp_
     assert result["status"] == "REVIEW_REQUIRED"
 
 
+def test_insert_array_retains_coincident_cells_when_spacing_is_zero(tmp_path):
+    path = tmp_path / "coincident_array.dxf"
+    handles = save_fixture(path, array=True)
+    doc = ezdxf.readfile(path)
+    insert = doc.entitydb[handles["insert"]]
+    insert.dxf.column_count = 2
+    insert.dxf.row_spacing = 0
+    insert.dxf.column_spacing = 0
+    doc.saveas(path)
+    result = harvest_data_dxf(path)
+    children = [entity for entity in result["entities"]
+                if entity["sourceHandle"] == handles["block_line"]]
+    assert len(children) == 4
+    assert {item["insertChain"][0]["arrayInstance"] for item in children} == {"0", "1", "2", "3"}
+    assert len({tuple(item["transform4x4"][3][:2]) for item in children}) == 1
+
+
 def test_real_acute_bend_regression_dxf_census_is_honest_about_scale():
     path = ROOT / "regression" / "assets" / "acute_bend_lt85" / "ACUTE_BEND_LT85_SOURCE_FIXTURE.dxf"
     result = harvest_data_dxf(path)
