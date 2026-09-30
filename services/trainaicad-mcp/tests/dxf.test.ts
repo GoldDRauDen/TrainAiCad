@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { jobStore, routeJob } from "../src/core.js";
-import { createExportPayload } from "../src/dxf.js";
+import { auditWithBridge, createExportPayload } from "../src/dxf.js";
 
 process.env.TRAINAICAD_MCP_DATA = mkdtempSync(join(tmpdir(), "trainaicad-mcp-v03-"));
 
@@ -102,4 +102,20 @@ test("bent production export requires full fold-back PASS", () => {
   }];
   const bad = qa(job.jobId);
   assert.throws(() => createExportPayload(job, bad), /DXF_BENT_QA_NOT_PASS/);
+});
+
+test("caller-forged QA cannot export an unverified source job", () => {
+  const job = readyJob();
+  assert.throws(() => jobStore.exportDxf(job.jobId, qa(job.jobId)), /PRODUCTION_SOURCE_UNVERIFIED/);
+});
+
+test("read-back rejects a DXF changed after export", () => {
+  const file = join(process.env.TRAINAICAD_MCP_DATA!, "tampered.dxf");
+  writeFileSync(file, "original DXF bytes");
+  const record = {
+    fileName: "tampered.dxf", relativePath: "tampered.dxf", absolutePath: file,
+    manifestPath: "", serializerContract: "test", codeOrder: ["P1"],
+    fileSha256: "0".repeat(64), writtenAt: new Date().toISOString()
+  };
+  assert.throws(() => auditWithBridge(record, process.cwd()), /DXF_READBACK_FILE_CHANGED_AFTER_EXPORT/);
 });

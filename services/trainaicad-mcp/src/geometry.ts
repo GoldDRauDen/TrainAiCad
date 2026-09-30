@@ -328,6 +328,7 @@ function validateEvidenceFeatureOwnership(job: CadJob, source: GeometrySourceV1)
   const evidence = evidenceForCode(job, source.code);
   const flags: string[] = [];
   const byId = new Map(source.features.map((f) => [f.featureId, f] as const));
+  if (byId.size !== source.features.length) flags.push("DUPLICATE_SOURCE_FEATURE_ID");
   for (const feature of evidence.features) {
     const sourceFeature = byId.get(feature.id);
     if (!sourceFeature) {
@@ -356,7 +357,27 @@ function validateEvidenceFeatureOwnership(job: CadJob, source: GeometrySourceV1)
       }
     }
   }
+  for (const sourceFeature of source.features) {
+    const item = evidence.features.find((f) => f.id === sourceFeature.featureId) ??
+      evidence.markings.find((f) => f.id === sourceFeature.featureId);
+    if (!item) flags.push(`UNDECLARED_SOURCE_FEATURE:${sourceFeature.featureId}`);
+  }
   return flags;
+}
+
+function contourIsRectangle(contour: Point2[], length: number, width: number): boolean {
+  if (contour.length !== 4) return false;
+  const xs = contour.map((p) => p.x);
+  const ys = contour.map((p) => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const corners = new Set(contour.map((p) => `${p.x},${p.y}`));
+  const expected = new Set([
+    `${minX},${minY}`, `${minX},${maxY}`, `${maxX},${minY}`, `${maxX},${maxY}`
+  ]);
+  const tol = 1e-6;
+  return [...expected].every((p) => corners.has(p)) &&
+    Math.abs(maxX - minX - length) <= tol && Math.abs(maxY - minY - width) <= tol;
 }
 
 function buildFlat(job: CadJob, source: GeometrySourceV1): GeometryBuildResult {
@@ -370,6 +391,10 @@ function buildFlat(job: CadJob, source: GeometrySourceV1): GeometryBuildResult {
   if (source.bends.length) flags.push("FLAT_CANNOT_HAVE_BENDS");
 
   const face = source.faces[0];
+  if (face && face.outsideLength && face.transverseWidth &&
+      !contourIsRectangle(face.contour, face.outsideLength.value, face.transverseWidth.value)) {
+    flags.push("FLAT_CONTOUR_DIMENSION_OR_TOPOLOGY_MISMATCH");
+  }
   if (face) flags.push(...validateSimplePolygon(face.contour));
   flags.push(...validateEvidenceFeatureOwnership(job, source));
 
@@ -433,7 +458,7 @@ function buildLinearChain(job: CadJob, source: GeometrySourceV1): GeometryBuildR
   if (source.faces.length < 2) flags.push("LINEAR_CHAIN_REQUIRES_AT_LEAST_TWO_FACES");
   if (source.bends.length !== Math.max(0, source.faces.length - 1)) flags.push("BEND_COUNT_NOT_CHAIN_CLOSED");
 
-  if (source.features.length) {
+  if (source.features.length || evidenceForCode(job, source.code).features.length || evidenceForCode(job, source.code).markings.length) {
     flags.push("V02_BENT_FEATURE_TRANSFORM_NOT_IMPLEMENTED");
   }
 
@@ -447,6 +472,13 @@ function buildLinearChain(job: CadJob, source: GeometrySourceV1): GeometryBuildR
   if (widths.some((v) => v === undefined || v <= 0)) flags.push("FACE_TRANSVERSE_WIDTH_MISSING");
 
   const width0 = widths[0];
+  for (let i = 0; i < ordered.length; i++) {
+    const face = ordered[i]!;
+    const l = lengths[i], w = widths[i];
+    if (l !== undefined && w !== undefined && !contourIsRectangle(face.contour, l, w)) {
+      flags.push(`LINEAR_FACE_CONTOUR_NOT_PROVED_RECTANGLE:${face.faceId}`);
+    }
+  }
   if (width0 !== undefined && widths.some((v) => v !== undefined && Math.abs(v - width0) > 1e-9)) {
     flags.push("V02_LINEAR_CHAIN_REQUIRES_CONSTANT_WIDTH");
   }

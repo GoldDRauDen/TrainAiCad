@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { lookup } from "node:dns/promises";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, readdirSync, writeFileSync } from "node:fs";
 import { isIP } from "node:net";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -88,6 +88,30 @@ export type IngestResult = {
   sha256: string;
   storedPath: string;
 };
+
+/** Verify bytes stored by ingest; a caller-supplied descriptor alone is not receipt. */
+export function verifiedSource(role: SourceRole, fileName: string, expectedSha256: string): IngestResult {
+  if (!/^[a-fA-F0-9]{64}$/.test(expectedSha256)) throw new Error("INVALID_SOURCE_SHA256");
+  const safeName = sanitizeFileName(fileName);
+  const ext = extname(safeName).toLowerCase();
+  const path = join(dataRoot(), "sources", role, expectedSha256.slice(0, 2), `${expectedSha256}${ext}`);
+  if (!existsSync(path)) throw new Error(`SOURCE_NOT_INGESTED:${role}:${expectedSha256}`);
+  const bytes = readFileSync(path);
+  const actual = createHash("sha256").update(bytes).digest("hex");
+  if (actual !== expectedSha256.toLowerCase()) throw new Error(`SOURCE_HASH_MISMATCH:${role}`);
+  const kind = sniffKind(bytes);
+  if (!kind || ALLOWED_EXT[ext] !== kind) throw new Error(`SOURCE_SIGNATURE_MISMATCH:${role}`);
+  return { kind, bytes: bytes.length, fileName: safeName, mimeType: KIND_MIME[kind][0]!, sha256: actual, storedPath: realpathSync(path) };
+}
+
+export function storedSourceByHash(role: SourceRole, sha256: string): IngestResult | undefined {
+  const folder = join(dataRoot(), "sources", role, sha256.slice(0, 2));
+  if (!existsSync(folder)) return undefined;
+  for (const name of readdirSync(folder)) {
+    if (name.startsWith(`${sha256}.`)) return verifiedSource(role, `source${extname(name)}`, sha256);
+  }
+  return undefined;
+}
 
 /**
  * Validate bytes, hash them and store immutably under data/sources/<role>/.

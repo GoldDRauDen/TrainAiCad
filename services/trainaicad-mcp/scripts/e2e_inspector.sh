@@ -23,7 +23,7 @@ EXPECT=$(grep -o 'Current production release is \*\*V[0-9.]*\*\*' ../../AI_ENTRY
 echo "expected release pin: $EXPECT"
 
 LIST=$($INS --method tools/list 2>/dev/null)
-for t in open_cad_job submit_cad_evidence route_cad_parts build_canonical_geometry export_dxf audit_dxf get_cad_job ingest_cad_file; do
+for t in open_cad_job submit_cad_evidence route_cad_parts build_canonical_geometry run_cad_qa export_dxf audit_dxf get_cad_job ingest_cad_file get_cad_source_view; do
   echo "$LIST" | grep -q "\"name\": \"$t\"" && ok "tool listed: $t" || bad "tool listed: $t"
 done
 
@@ -70,7 +70,7 @@ echo "$OUT" | grep -q 'PRODUCTION_PASS' && bad "job reached PRODUCTION_PASS" || 
 
 # 6. ingest drawing PDF (base64) bound to job
 PDF_B64=$(printf '%%PDF-1.7\n1 0 obj\n<<>>\nendobj\ntrailer\n%%%%EOF\n' | base64 -w0)
-OUT=$(call ingest_cad_file "fileName=../../evil sample.pdf" "role=DRAWING" "data=$PDF_B64" "jobId=$JOB")
+OUT=$(call ingest_cad_file "fileName=../../evil sample.pdf" "role=DRAWING" "data=$PDF_B64")
 echo "$OUT" | grep -q '"kind": "PDF"' && ok "ingest PDF (base64) => kind PDF" || bad "ingest pdf: $OUT"
 echo "$OUT" | grep -q '"fileName": "evil sample.pdf"' && ok "filename sanitized" || bad "filename: $OUT"
 echo "$OUT" | grep -q "sources/DRAWING/" && ok "drawing stored under DRAWING/" || bad "path: $OUT"
@@ -111,7 +111,7 @@ echo "$ERR" | grep -q 'PRIVATE_ADDRESS_BLOCKED' && ok "private address blocked" 
 # 9. DRAWING binding is immutable per job: new valid PDF content must be refused
 PDF2_B64=$(printf '%%PDF-1.7\nother content\ntrailer\n%%%%EOF\n' | base64 -w0)
 ERR=$(call ingest_cad_file "fileName=other.pdf" "role=DRAWING" "data=$PDF2_B64" "jobId=$JOB")
-echo "$ERR" | grep -q 'SOURCE_ALREADY_BOUND' && ok "DRAWING binding immutable" || bad "rebind: $ERR"
+echo "$ERR" | grep -Eq 'SOURCE_ALREADY_BOUND|SOURCE_DESCRIPTOR_MISMATCH' && ok "DRAWING binding cannot change job source" || bad "rebind: $ERR"
 
 # 10. unknown job cannot be bound
 ERR=$(call ingest_cad_file "fileName=a.pdf" "role=DRAWING" "data=$PDF_B64" "jobId=cad_0000000000000000")
@@ -138,20 +138,26 @@ grep -q '"mode": "TRAIN_REFERENCE"' "data/jobs/$REF_JOB.json" && ok "F: mode per
 grep -q '"mode": "PDF_ONLY"' "data/jobs/$JOB.json" && ok "locked job persisted PDF_ONLY" || bad "lock file: $JOB"
 grep -q '"dxf"' "data/jobs/$JOB.json" && bad "PDF_ONLY job carries a DXF descriptor" || ok "PDF_ONLY job has no DXF"
 
-# 14. V0.3 FULL E2E: canonical geometry -> real DXF -> independent read-back -> PRODUCTION_PASS
+# 14. Production gate rejects client-supplied QA for an unverified source.
 QA='{"schema":"MANUFACTURING_QA_V1","jobId":"'"$JOB"'","code":"056648","checks":{"contour_topology":"PASS","datum":"PASS","feature_count":"PASS","unfold":"N/A","containment":"PASS","bend_domain":"N/A","material_rules":"PASS","slot_semantics":"PASS"},"foldBack":"N/A","approvedForExport":true}'
 OUT=$(call export_dxf "jobId=$JOB" "qa=[$QA]")
-echo "$OUT" | grep -q '"state": "DXF_WRITTEN"' && ok "V0.3 export => DXF_WRITTEN" || bad "export: $OUT"
-echo "$OUT" | grep -q '_ALL.dxf' && ok "composite DXF created" || bad "export filename: $OUT"
-DXF_PATH=$(echo "$OUT" | sed -n 's/.*"absolutePath": "\([^"]*\.dxf\)".*/\1/p' | head -1)
-[ -n "$DXF_PATH" ] && [ -f "$DXF_PATH" ] && ok "DXF file exists" || bad "DXF path missing: $DXF_PATH"
+echo "$OUT" | grep -q 'PRODUCTION_SOURCE_UNVERIFIED' && ok "forged client QA rejected before export" || bad "unsafe export result: $OUT"
+OUT=$(call get_cad_job "jobId=$JOB")
+echo "$OUT" | grep -q 'PRODUCTION_PASS' && bad "unverified job reached PRODUCTION_PASS" || ok "unverified job cannot reach PRODUCTION_PASS"
 
-OUT=$(call audit_dxf "jobId=$JOB")
-echo "$OUT" | grep -q '"state": "PRODUCTION_PASS"' && ok "read-back => PRODUCTION_PASS" || bad "audit state: $OUT"
-echo "$OUT" | grep -q '"insunits": 4' && ok "read-back units mm" || bad "audit units: $OUT"
-echo "$OUT" | grep -q '"auditErrorCount": 0' && ok "read-back audit errors=0" || bad "audit errors: $OUT"
-echo "$OUT" | grep -q '"aiMetaPlot": 0' && ok "AI_META non-plot" || bad "AI_META: $OUT"
-echo "$OUT" | grep -q '"056648"' && ok "code label read-back" || bad "labels: $OUT"
+# 15. Real source-image path: ingest valid PDF, bind the same bytes, render page 1, attach receipt.
+PDF_B64=$(python -c "import pymupdf,sys,base64; d=pymupdf.open(); p=d.new_page(); p.insert_text((72,72),'TrainAiCad MCP source-view E2E'); sys.stdout.write(base64.b64encode(d.tobytes()).decode())")
+OUT=$(call ingest_cad_file "fileName=source.pdf" "role=DRAWING" "data=$PDF_B64")
+VIEW_SHA=$(echo "$OUT" | grep -o '"sha256": "[0-9a-f]\{64\}"' | head -1 | grep -o '[0-9a-f]\{64\}')
+OUT=$(call open_cad_job "drawing={\"fileName\":\"source.pdf\",\"sha256\":\"$VIEW_SHA\"}" "mode=AUTO")
+VIEW_JOB=$(echo "$OUT" | grep -o 'cad_[0-9a-f]\{16\}' | head -1)
+echo "$OUT" | grep -q '"sourceVerified": true' && ok "open verifies matching ingested PDF bytes" || bad "source verification: $OUT"
+OUT=$(call get_cad_source_view "jobId=$VIEW_JOB" "page=1" "dpi=100")
+echo "$OUT" | grep -q '"imageSha256"' && ok "source-view returns image receipt" || bad "source-view: $OUT"
+RECEIPT=$(echo "$OUT" | grep -o '"receiptId": "[^"]*"' | head -1 | cut -d '"' -f4)
+EV_VIEW='{"schema":"CAD_EVIDENCE_V1","jobId":"'"$VIEW_JOB"'","code":"VIEW001","source":{"sourceId":"'"$VIEW_SHA"'","page":1,"visualReceiptIds":["'"$RECEIPT"'"]},"material":{"printed":"SS400","family":"SS","thickness":{"value":2,"unit":"mm","origin":"PRINTED"}},"views":[{"id":"A","type":"FLAT"}],"contour":{"topology":"PLATE","status":"PROVED","overallX":{"value":20,"unit":"mm","origin":"PRINTED"},"overallY":{"value":10,"unit":"mm","origin":"PRINTED"}},"features":[],"bends":[],"markings":[],"handwriting":[],"uncertainties":[]}'
+OUT=$(call submit_cad_evidence "jobId=$VIEW_JOB" "evidence=[$EV_VIEW]")
+echo "$OUT" | grep -q '"state": "EVIDENCE_READY"' && ok "page receipt authorizes evidence intake" || bad "receipt-gated evidence: $OUT"
 
 echo "---- inspector e2e: $PASS passed, $FAIL failed ----"
 echo "JOB_ID=$JOB"

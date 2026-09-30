@@ -75,6 +75,8 @@ function flatGeometry(jobId: string, holeCount = 2, sha = PDF_SHA, origin: "PDF_
     faces: [{
       faceId: "F1",
       sourceView: "A",
+      outsideLength: number(50),
+      transverseWidth: number(32),
       contour: [
         { x: 0, y: 0 },
         { x: 50, y: 0 },
@@ -186,6 +188,15 @@ test("feature quantity mismatch goes REVIEW_REQUIRED and corrected geometry can 
   const fixed = jobStore.buildGeometry(routed.jobId, [flatGeometry(routed.jobId, 2)]);
   assert.equal(fixed.state, "GEOMETRY_READY");
   assert.equal(fixed.flags.length, 0);
+});
+
+test("notched source contour cannot be collapsed to its bounding rectangle", () => {
+  const routed = openRoutedFlat(2);
+  const input = flatGeometry(routed.jobId);
+  input.faces[0]!.contour.splice(2, 0, { x: 50, y: 20 });
+  const built = jobStore.buildGeometry(routed.jobId, [input]);
+  assert.equal(built.state, "REVIEW_REQUIRED");
+  assert.ok(built.flags.some((f) => f.includes("FLAT_CONTOUR_DIMENSION_OR_TOPOLOGY_MISMATCH")));
 });
 
 test("linear chain deterministically computes flat length and double bend zone", () => {

@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import * as z from "zod/v4";
@@ -23,7 +24,7 @@ export const ManufacturingQaV1 = z.object({
     slot_semantics: CheckValue
   }),
   foldBack: z.enum(["PASS", "N/A"]),
-  approvedForExport: z.literal(true)
+  approvedForExport: z.boolean()
 });
 export type ManufacturingQaV1 = z.infer<typeof ManufacturingQaV1>;
 
@@ -34,6 +35,7 @@ export type DxfOutputRecord = {
   manifestPath: string;
   serializerContract: string;
   codeOrder: string[];
+  fileSha256: string;
   writtenAt: string;
 };
 
@@ -221,6 +223,7 @@ function featureEntities(feature: CanonicalGeometryV1["features"][number]): any[
 }
 
 function buildSerializerPart(job: CadJob, geometry: CanonicalGeometryV1, qa: ManufacturingQaV1) {
+  if (!qa.approvedForExport) throw new Error(`DXF_QA_NOT_APPROVED:${geometry.code}`);
   const evidence = job.evidence.find((e) => e.code === geometry.code);
   if (!evidence) throw new Error(`DXF_EVIDENCE_NOT_FOUND:${geometry.code}`);
   const material = evidence.material.printed ?? evidence.material.family;
@@ -311,6 +314,7 @@ export function exportWithBridge(job: CadJob, rawQa: unknown[], repoRoot: string
       manifestPath: resolve(result.manifest_path),
       serializerContract: result.manifest.contract,
       codeOrder: result.manifest.parts.map((p: any) => p.code),
+      fileSha256: createHash("sha256").update(readFileSync(abs)).digest("hex"),
       writtenAt: new Date().toISOString()
     }
   };
@@ -318,6 +322,8 @@ export function exportWithBridge(job: CadJob, rawQa: unknown[], repoRoot: string
 
 export function auditWithBridge(output: DxfOutputRecord, repoRoot: string): DxfAuditRecord {
   if (!existsSync(output.absolutePath)) throw new Error("DXF_AUDIT_FILE_MISSING");
+  const actualSha256 = createHash("sha256").update(readFileSync(output.absolutePath)).digest("hex");
+  if (!output.fileSha256 || actualSha256 !== output.fileSha256) throw new Error("DXF_READBACK_FILE_CHANGED_AFTER_EXPORT");
   const result = runBridge(repoRoot, ["audit", output.absolutePath]);
   const audit: DxfAuditRecord = {
     ok: Boolean(result.ok),

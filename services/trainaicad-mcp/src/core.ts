@@ -1,10 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { bindSourceToJob, dataRoot, type IngestResult, type SourceRole } from "./ingest.js";
+import { bindSourceToJob, dataRoot, verifiedSource, type IngestResult, type SourceRole } from "./ingest.js";
 import { jevStatus } from "./jev.js";
 import { buildJobGeometry, GeometrySourceV1 } from "./geometry.js";
-import { exportWithBridge, auditWithBridge } from "./dxf.js";
+import { exportWithBridge, auditWithBridge, type ManufacturingQaV1 } from "./dxf.js";
 import {
   CadEvidenceV1,
   type CadEvidenceV1 as Evidence,
@@ -15,6 +15,7 @@ import {
   type JobState,
   type PartClass,
   type ReleasePin,
+  type SourceViewReceipt,
   type RouteResult,
   type SourceDescriptor,
   type SourcePolicy
@@ -205,6 +206,9 @@ class JobStore {
     }
 
     legacy.sourcePolicy = legacy.sourcePolicy ?? sourcePolicyForMode(legacy.mode as JobMode);
+    legacy.sourceVerified = legacy.sourceVerified ?? false;
+    legacy.sourceBindings = legacy.sourceBindings ?? {};
+    legacy.sourceViewReceipts = legacy.sourceViewReceipts ?? [];
     legacy.geometrySources = legacy.geometrySources ?? [];
     legacy.geometry = legacy.geometry ?? [];
     legacy.manufacturingQa = legacy.manufacturingQa ?? [];
@@ -226,6 +230,9 @@ class JobStore {
       state: "CREATED",
       production: readReleasePin(),
       source,
+      sourceVerified: false,
+      sourceBindings: {},
+      sourceViewReceipts: [],
       dxf,
       dxfRole: dxfRoleForMode(mode),
       evidence: [],
@@ -240,6 +247,28 @@ class JobStore {
     this.jobs.set(job.jobId, job);
     this.persist(job);
     return this.transition(job.jobId, "SOURCE_READY");
+  }
+
+  createFromIngestedSources(
+    drawing: Pick<IngestResult, "fileName" | "sha256"> & { mimeType?: string },
+    dxf: (Pick<IngestResult, "fileName" | "sha256"> & { mimeType?: string }) | undefined,
+    requested: JobModeRequested,
+    declaredReference = false
+  ): CadJob {
+    const drawingBytes = verifiedSource("DRAWING", drawing.fileName, drawing.sha256);
+    const dxfRole: SourceRole | undefined = dxf ? (declaredReference ? "REFERENCE_DXF" : "DATA_DXF") : undefined;
+    const dxfBytes = dxf && dxfRole ? verifiedSource(dxfRole, dxf.fileName, dxf.sha256) : undefined;
+    const job = this.create(
+      { fileName: drawingBytes.fileName, sha256: drawingBytes.sha256, sourceId: drawingBytes.sha256, mimeType: drawingBytes.mimeType },
+      dxfBytes ? { fileName: dxfBytes.fileName, sha256: dxfBytes.sha256, mimeType: dxfBytes.mimeType } : undefined,
+      requested,
+      declaredReference
+    );
+    job.sourceVerified = true;
+    job.sourceBindings.DRAWING = sourceSnapshot("DRAWING", drawingBytes);
+    if (dxfBytes && dxfRole) job.sourceBindings[dxfRole] = sourceSnapshot(dxfRole, dxfBytes);
+    this.persist(job);
+    return job;
   }
 
   get(jobId: string): CadJob {
@@ -275,6 +304,12 @@ class JobStore {
       if (item.jobId !== jobId) throw new Error(`EVIDENCE_JOB_MISMATCH: ${item.jobId}`);
       if (item.source.sourceId !== (job.source.sourceId ?? job.source.sha256)) {
         throw new Error(`EVIDENCE_SOURCE_MISMATCH: ${item.code}`);
+      }
+      if (job.sourceVerified) {
+        const validReceipts = new Set(job.sourceViewReceipts.filter((r) => r.page === item.source.page).map((r) => r.receiptId));
+        if (!item.source.visualReceiptIds.length || item.source.visualReceiptIds.some((id) => !validReceipts.has(id))) {
+          throw new Error(`SOURCE_IMAGE_NOT_INSPECTED:${item.code}:PAGE_${item.source.page}`);
+        }
       }
     }
     const seen = new Set<string>();
@@ -337,7 +372,15 @@ class JobStore {
 
   exportDxf(jobId: string, rawQa: unknown[]): CadJob {
     const job = this.get(jobId);
-    const exported = exportWithBridge(job, rawQa, resolveRepoRoot());
+    if (!job.sourceVerified) throw new Error("PRODUCTION_SOURCE_UNVERIFIED");
+    const machineQa = this.runManufacturingQa(jobId);
+    const requiredKeys = ["contour_topology", "datum", "feature_count", "containment", "material_rules"] as const;
+    if (machineQa.some((q) => !q.approvedForExport || requiredKeys.some((key) => q.checks[key] !== "PASS"))) {
+      throw new Error(`PRODUCTION_QA_FAILED:${machineQa.map((q) => `${q.code}:${Object.entries(q.checks).filter(([k, v]) => requiredKeys.includes(k as typeof requiredKeys[number]) && v !== "PASS").map(([k, v]) => `${k}=${v}`).join(",")}`).join(";")}`);
+    }
+    // Kept in the method signature during the client migration; caller-supplied checks never authorize export.
+    void rawQa;
+    const exported = exportWithBridge(job, machineQa, resolveRepoRoot());
     job.manufacturingQa = exported.qa;
     job.dxfOutput = exported.output;
     job.dxfAudit = undefined;
@@ -345,6 +388,17 @@ class JobStore {
     job.updatedAt = new Date().toISOString();
     this.persist(job);
     return this.transition(jobId, "DXF_WRITTEN");
+  }
+
+  runManufacturingQa(jobId: string): ManufacturingQaV1[] {
+    const job = this.get(jobId);
+    if (!job.sourceVerified) throw new Error("PRODUCTION_SOURCE_UNVERIFIED");
+    if (!job.geometry.length) throw new Error("QA_GEOMETRY_MISSING");
+    const qa = evaluateManufacturingQa(job);
+    job.manufacturingQa = qa;
+    job.updatedAt = new Date().toISOString();
+    this.persist(job);
+    return qa;
   }
 
   auditDxf(jobId: string): CadJob {
@@ -358,6 +412,9 @@ class JobStore {
     this.persist(job);
     this.transition(jobId, "DXF_READBACK");
     this.transition(jobId, "QA_COMPLETE");
+    if (!job.sourceVerified || !job.manufacturingQa.length || !job.manufacturingQa.every((q) => q.approvedForExport)) {
+      throw new Error("PRODUCTION_ACCEPTANCE_EVIDENCE_MISSING");
+    }
     return this.transition(jobId, "PRODUCTION_PASS");
   }
 
@@ -370,6 +427,9 @@ class JobStore {
   bindSource(jobId: string, role: SourceRole, source: IngestResult): { job: CadJob; bound: Record<string, IngestResult> } {
     const job = this.get(jobId);
     const next = modeAfterBinding(job.mode, job.state, role);
+    if (role === "DRAWING" && source.sha256 !== job.source.sha256) {
+      throw new Error(`SOURCE_DESCRIPTOR_MISMATCH:DRAWING:${job.source.sha256}->${source.sha256}`);
+    }
     const bound = bindSourceToJob(jobId, role, source);
     if (next !== job.mode) {
       job.mode = next;
@@ -383,11 +443,93 @@ class JobStore {
       job.updatedAt = new Date().toISOString();
       this.persist(job);
     }
+    job.sourceBindings[role] = sourceSnapshot(role, source);
+    if (role === "DRAWING") job.sourceVerified = true;
+    job.updatedAt = new Date().toISOString();
+    this.persist(job);
     return { job, bound };
   }
 }
 
 export const jobStore = new JobStore();
+
+function sourceSnapshot(role: SourceRole, source: IngestResult) {
+  return { role, fileName: source.fileName, sha256: source.sha256, mimeType: source.mimeType, storedPath: source.storedPath };
+}
+
+export function recordSourceViewReceipt(jobId: string, receipt: SourceViewReceipt): CadJob {
+  const job = jobStore.get(jobId);
+  if (!job.sourceVerified || receipt.sourceSha256 !== job.source.sha256) throw new Error("SOURCE_VIEW_SOURCE_MISMATCH");
+  if (!Number.isInteger(receipt.page) || receipt.page < 1 || !Number.isFinite(receipt.dpi)) throw new Error("SOURCE_VIEW_METADATA_INVALID");
+  if (!job.sourceViewReceipts.some((r) => r.receiptId === receipt.receiptId)) job.sourceViewReceipts.push(receipt);
+  job.updatedAt = new Date().toISOString();
+  // Persist through the public transition API without changing job state.
+  saveJob(job);
+  return job;
+}
+
+function saveJob(job: CadJob): void {
+  const file = join(dataRoot(), "jobs", `${job.jobId}.json`);
+  mkdirSync(join(dataRoot(), "jobs"), { recursive: true });
+  writeFileSync(file, JSON.stringify(job, null, 2));
+}
+
+function evaluateManufacturingQa(job: CadJob): import("./dxf.js").ManufacturingQaV1[] {
+  return job.geometry.map((g) => {
+    const evidence = job.evidence.find((e) => e.code === g.code)!;
+    const inventoryOk = featureInventoryMatches(evidence, g.features);
+    const hasFeatures = evidence.features.length > 0 || evidence.markings.length > 0;
+    const datumOk = evidence.features.every((f) => Boolean(f.datum?.axis && f.datum.target === "FEATURE_CENTER"));
+    const spans = g.outerContours[0]?.length ? {
+      x: Math.max(...g.outerContours[0]!.map((p) => p.x)) - Math.min(...g.outerContours[0]!.map((p) => p.x)),
+      y: Math.max(...g.outerContours[0]!.map((p) => p.y)) - Math.min(...g.outerContours[0]!.map((p) => p.y))
+    } : undefined;
+    const contourMatches = Boolean(spans &&
+      (evidence.contour.overallX === undefined || Math.abs(spans.x - evidence.contour.overallX.value) <= 1e-6) &&
+      (evidence.contour.overallY === undefined || Math.abs(spans.y - evidence.contour.overallY.value) <= 1e-6));
+    const noBends = g.bendZones.length === 0;
+    const check = (ok: boolean): "PASS" | "N/A" => ok ? "PASS" : "N/A";
+    const checks: ManufacturingQaV1["checks"] = {
+      contour_topology: check(g.outerContours.length === 1 && g.qa.topologyClosed && contourMatches),
+      datum: hasFeatures ? check(datumOk) : "N/A",
+      feature_count: check(inventoryOk),
+      unfold: "N/A",
+      containment: "N/A",
+      bend_domain: "N/A",
+      material_rules: "N/A",
+      slot_semantics: "N/A"
+    };
+    const requiredKeys = ["contour_topology", "datum", "feature_count", "containment", "material_rules"] as const;
+    return {
+      schema: "MANUFACTURING_QA_V1" as const,
+      jobId: job.jobId,
+      code: g.code,
+      checks,
+      foldBack: noBends ? "N/A" : "N/A",
+      approvedForExport: requiredKeys.every((key) => checks[key] === "PASS")
+    };
+  });
+}
+
+function featureInventoryMatches(evidence: Evidence, features: CadJob["geometry"][number]["features"]): boolean {
+  const ids = new Set<string>();
+  for (const item of evidence.features) {
+    if (ids.has(item.id)) return false;
+    ids.add(item.id);
+    const instances = features.filter((f) => f.featureId === item.id);
+    if (instances.length !== item.quantity || instances.some((f) => f.family !== item.family)) return false;
+    if (item.diameter !== undefined && instances.some((f) => f.geometry.kind !== "CIRCLE" || Math.abs(f.geometry.diameter - item.diameter!.value) > 1e-6)) return false;
+    if (item.width !== undefined && instances.some((f) => f.geometry.kind !== "SLOT" || Math.abs(f.geometry.width - item.width!.value) > 1e-6)) return false;
+  }
+
+  for (const marking of evidence.markings) {
+    if (!new Set(["KEGAKI", "RIB"]).has(marking.family)) continue;
+    const instances = features.filter((f) => f.featureId === marking.id && f.family === marking.family);
+    if (instances.length !== marking.quantity) return false;
+    ids.add(marking.id);
+  }
+  return features.every((f) => ids.has(f.featureId));
+}
 
 const topologyModule: Partial<Record<Evidence["contour"]["topology"], string>> = {
   L_PROFILE: "skills/lispcad/topology/L_PROFILE.md",

@@ -101,6 +101,7 @@ export const CadEvidenceV1 = z.object({
   source: z.object({
     sourceId: z.string().min(1),
     page: z.number().int().positive(),
+    visualReceiptIds: z.array(z.string().min(1)).default([]),
     revision: z.string().nullable().optional()
   }),
   material: z.object({
@@ -203,6 +204,16 @@ export type ReleasePin = {
   currentSkillSha256: string;
 };
 
+export type SourceViewReceipt = {
+  receiptId: string;
+  sourceSha256: string;
+  page: number;
+  imageSha256: string;
+  region: [number, number, number, number];
+  dpi: number;
+  storedAt: string;
+};
+
 export type MechanicalClassification = {
   sourceMode: JobMode;
   partClass: PartClass;
@@ -236,6 +247,9 @@ export type CadJob = {
   state: JobState;
   production: ReleasePin;
   source: SourceDescriptor;
+  sourceVerified: boolean;
+  sourceBindings: Record<string, { role: string; fileName: string; sha256: string; mimeType: string; storedPath: string }>;
+  sourceViewReceipts: SourceViewReceipt[];
   dxf?: SourceDescriptor;
   dxfRole?: DxfRole;
   evidence: CadEvidenceV1[];

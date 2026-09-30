@@ -8,11 +8,12 @@ import {
 import {
   jobStore,
   publicJob,
+  recordSourceViewReceipt,
   routeJob
 } from "./core.js";
 import { downloadUri, storeSource } from "./ingest.js";
 import { GeometrySourceV1 } from "./geometry.js";
-import { ManufacturingQaV1 } from "./dxf.js";
+import { renderSourcePage } from "./source-view.js";
 
 const BASE64 = /^[A-Za-z0-9+/\s]*={0,2}$/;
 
@@ -32,7 +33,7 @@ export function buildServer(): McpServer {
     "open_cad_job",
     {
       description:
-        "Open a TrainAiCad V0.1.1 job with V4.20 source classification. AUTO+generic dxf => PDF_DATA_RAW; AUTO+explicit referenceDxf => TRAIN_REFERENCE; no DXF => PDF_ONLY.",
+        "Open a TrainAiCad V0.3 job with V4.20 source classification. Exact previously ingested source hashes are verified automatically; descriptor-only jobs stay unverified and cannot export.",
       inputSchema: z.object({
         drawing: SourceDescriptor,
         dxf: SourceDescriptor.optional(),
@@ -43,7 +44,15 @@ export function buildServer(): McpServer {
     async ({ drawing, dxf, referenceDxf, mode }) => {
       if (dxf && referenceDxf) throw new Error("PROVIDE_ONLY_ONE_OF_DXF_OR_REFERENCEDXF");
       const attachedDxf = dxf ?? referenceDxf;
-      const job = jobStore.create(drawing, attachedDxf, mode, Boolean(referenceDxf));
+      let job;
+      try {
+        job = jobStore.createFromIngestedSources(drawing, attachedDxf, mode, Boolean(referenceDxf));
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.startsWith("SOURCE_NOT_INGESTED:")) throw error;
+        // Preserve non-production classification-only jobs for clients that have
+        // not uploaded bytes yet; they remain unverified and cannot export.
+        job = jobStore.create(drawing, attachedDxf, mode, Boolean(referenceDxf));
+      }
       return json(publicJob(job));
     }
   );
@@ -89,16 +98,43 @@ export function buildServer(): McpServer {
   );
 
   server.registerTool(
+    "get_cad_source_view",
+    {
+      description:
+        "Render a page from the hash-verified drawing source and return the actual page image plus a server-issued inspection receipt.",
+      inputSchema: z.object({ jobId: z.string().min(1), page: z.number().int().positive(), dpi: z.number().int().min(72).max(300).default(150) })
+    },
+    async ({ jobId, page, dpi }) => {
+      const job = jobStore.get(jobId);
+      const rendered = renderSourcePage(job, page, dpi);
+      recordSourceViewReceipt(jobId, rendered.receipt);
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(rendered.receipt, null, 2) },
+          { type: "image" as const, data: rendered.png.toString("base64"), mimeType: "image/png" }
+        ]
+      };
+    }
+  );
+
+  server.registerTool(
+    "run_cad_qa",
+    {
+      description:
+        "Run server-computed manufacturing checks on canonical geometry. Checks the server cannot prove remain N/A and block production export.",
+      inputSchema: z.object({ jobId: z.string().min(1) })
+    },
+    async ({ jobId }) => json(jobStore.runManufacturingQa(jobId))
+  );
+
+  server.registerTool(
     "export_dxf",
     {
       description:
-        "Serialize GEOMETRY_READY canonical geometry to one composite mm DXF using the approved TrainAiCad Python serializer. Requires explicit MANUFACTURING_QA_V1 for every code.",
-      inputSchema: z.object({
-        jobId: z.string().min(1),
-        qa: z.array(ManufacturingQaV1).min(1)
-      })
+        "Serialize canonical geometry only when server-computed manufacturing QA proves every required check. Caller-supplied QA cannot authorize export.",
+      inputSchema: z.object({ jobId: z.string().min(1) })
     },
-    async ({ jobId, qa }) => json(publicJob(jobStore.exportDxf(jobId, qa)))
+    async ({ jobId }) => json(publicJob(jobStore.exportDxf(jobId, [])))
   );
 
   server.registerTool(

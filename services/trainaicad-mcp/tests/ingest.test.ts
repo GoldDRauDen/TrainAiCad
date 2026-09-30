@@ -92,8 +92,8 @@ test("signature sniffing decides the kind, not the declared MIME", () => {
 });
 
 test("binding an ingested DXF reclassifies a PDF_ONLY job and persists it", () => {
-  const job = jobStore.create({ fileName: "a.pdf", sha256: "b".repeat(64) }, undefined, "AUTO");
   const drawing = storeSource({ fileName: "a.pdf", bytes: PDF }, "DRAWING");
+  const job = jobStore.create({ fileName: drawing.fileName, sha256: drawing.sha256 }, undefined, "AUTO");
   const reference = storeSource({ fileName: "ref.dxf", bytes: DXF }, "REFERENCE_DXF");
 
   const bound = jobStore.bindSource(job.jobId, "DRAWING", drawing);
@@ -120,7 +120,7 @@ test("binding an ingested DXF reclassifies a PDF_ONLY job and persists it", () =
       "DRAWING",
       storeSource({ fileName: "other.pdf", bytes: Buffer.from("%PDF-1.7\nother\n%%EOF\n") }, "DRAWING")
     ),
-    /SOURCE_ALREADY_BOUND/
+    /SOURCE_DESCRIPTOR_MISMATCH/
   );
   assert.throws(
     () => jobStore.bindSource("cad_0000000000000000", "DRAWING", drawing),
