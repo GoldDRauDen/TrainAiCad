@@ -1,6 +1,6 @@
 # SKILL_LISPCAD V4.21 PORTABLE — Customer DATA Geometry Preservation Hard Gate
 
-**Status:** CURRENT production release candidate, user-approved 2026-09-30.
+**Status:** CURRENT production release, user-approved 2026-09-30.
 
 ## 0. Inheritance / mandatory base
 V4.21 is an immutable delta release over V4.20. It does not replace, weaken or rewrite prior production rules.
