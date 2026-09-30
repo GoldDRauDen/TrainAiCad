@@ -26,7 +26,7 @@ The local MCP transport and defensive export workflow are runnable and tested. T
 | 1. Native upload and artifact | Partial | Hash-bound ingest and MCP artifact resource are implemented; ChatGPT Web native attachment delivery/download remains untested and unverified. |
 | 2. Production orchestrator | Partial | `process_cad_job` / `advance_cad_job` and pinned routing exist; PDF+DATA jobs automatically harvest the bound DATA source. Full production state machine and deterministic canonical execution remain incomplete. |
 | 3. CAD evidence V2 and census | Partial | V1 semantic evidence, source receipts, page/code manifest fields, crop/rotation/cache exist; the complete V2 evidence schema and census are missing. |
-| 4. Customer DATA DXF harvester | Partial | Raw ledgers/transforms support LINE/ARC/CIRCLE/LWPOLYLINE/POLYLINE/POINT/SPLINE/ELLIPSE/INSERT. Unsupported types and INSERT arrays are hard-flagged; physical scale, PDF correspondence, complete array expansion and canonical integration remain incomplete. |
+| 4. Customer DATA DXF harvester | Partial | Raw ledgers/transforms support LINE/ARC/CIRCLE/LWPOLYLINE/POLYLINE/POINT/SPLINE/ELLIPSE/INSERT. MINSERT arrays now expand into per-instance child records with distinct transforms (up to 10,000 instances); larger arrays are retained as source INSERT records and hard-flagged. Unsupported types remain hard-flagged. Physical scale proof, PDF correspondence and canonical integration remain incomplete. |
 | 5. PDF-only deterministic solver | Blocked/incomplete | Router explicitly flags unsupported solver; no production coordinate solver. |
 | 6. Executable CURRENT rule engine | Partial | Immutable content-hashed rule snapshots and routing dependencies exist; production execution of every listed rule family is not complete. |
 | 7. Manufacturing QA V2 and reprojection | Blocked/incomplete | Caller QA is rejected and some checks run; dual-source reprojection and full manufacturing checks are not complete. |
@@ -39,12 +39,12 @@ The local MCP transport and defensive export workflow are runnable and tested. T
 ## Verification on this Windows machine
 
 - `npm run check`: TypeScript compile and **46/46 unit tests passed**.
-- `python -m pytest -q`: **93 passed**.
+- `python -m pytest -q`: **94 passed**, including MINSERT instance transform and over-limit hard-flag tests.
 - `npm run test:gate`: **7/7 approved regression scripts passed**, including the acute-bend geometry derivation.
 - `npm run test:integration`: **87/87 local MCP HTTP Inspector assertions passed**, including bound DATA DXF harvest, content-hash retrieval, stale hash rejection, automatic orchestrator harvest, and review-state invalidation.
 - `npm run test:e2e`: all 87 Inspector assertions pass; the command then exits nonzero because 17 required source-role paths are unavailable and remote ChatGPT Web acceptance is blocked. It does not report production acceptance.
 - `git diff --check`: clean (Git may report expected LF-to-CRLF conversion warnings).
-- GitHub Actions run [36745192297](https://github.com/GoldDRauDen/TrainAiCad/actions/runs/36745192297) on this snapshot: serializer jobs passed on Windows and Ubuntu. MCP doctor, type/unit checks and regression gates passed on both; Ubuntu `test:e2e` failed closed at the missing approved source-role gate. The Windows MCP job also completed and failed closed at the same acceptance check. Both OS runs passed their runtime/regression stages and 87 Inspector assertions before reporting missing sources. Production acceptance remains blocked.
+- GitHub Actions run [36745192297](https://github.com/GoldDRauDen/TrainAiCad/actions/runs/36745192297) on the prior code snapshot: serializer jobs passed on Windows and Ubuntu. MCP doctor, type/unit checks and regression gates passed on both; each OS completed 87 Inspector assertions, then `test:e2e` failed closed because the required source-role files are missing and hosted ChatGPT Web is untested. The MINSERT expansion added after that run is covered locally by the Python tests; the next CI run will validate it cross-platform. Production acceptance remains blocked.
 
 ## Remaining blockers for true production E2E
 
@@ -53,7 +53,7 @@ The local MCP transport and defensive export workflow are runnable and tested. T
 3. Full material, datum, contour, bend/unfold and fold-back QA is not implemented for all requested source classes. Current regression passes do not establish those production checks.
 4. Positive independently reviewed source-to-DXF canaries are unavailable, so the pipeline has no honest basis to issue `PRODUCTION_PASS` for the requested customer drawing classes.
 5. ChatGPT Web's native attachment-to-MCP invocation and artifact download were not tested. This local loopback test is not evidence of remote client reachability; hosted MCP application and secure tunnel/client setup are separate requirements.
-6. GitHub Actions run 36745192297 exercised the DATA harvester on Windows and Ubuntu. Serializer and MCP runtime checks passed on both; Ubuntu full source acceptance failed closed on missing approved files. The Windows E2E job also completed with the same fail-closed result. Both OS runs report the 17 missing source files and untested hosted ChatGPT Web path.
+6. GitHub Actions run 36745192297 exercised the pre-MINSERT DATA harvester on Windows and Ubuntu. Serializer and MCP runtime checks passed on both; both E2E jobs reported 17 absent source files and untested hosted ChatGPT Web. New MINSERT logic currently has local Python coverage; cross-platform validation awaits the next CI run.
 
 ## Next executable sequence
 

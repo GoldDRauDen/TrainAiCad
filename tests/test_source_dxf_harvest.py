@@ -90,11 +90,34 @@ def test_harvest_preserves_geometry_provenance_and_insert_transform(tmp_path):
     assert result["status"] == "REVIEW_REQUIRED"
 
 
-def test_insert_array_is_never_silently_reduced_to_one_instance(tmp_path):
+def test_insert_array_expands_every_instance_with_its_own_transform(tmp_path):
     path = tmp_path / "array.dxf"
     handles = save_fixture(path, array=True)
     result = harvest_data_dxf(path)
-    assert f"INSERT_ARRAY_NOT_EXPANDED:{handles['insert']}" in result["flags"]
+    children = [entity for entity in result["entities"]
+                if entity["sourceHandle"] == handles["block_line"]]
+    assert len(children) == 2
+    assert {item["insertChain"][0]["arrayInstance"] for item in children} == {"0", "1"}
+    offsets = {tuple(round(value, 6) for value in item["transform4x4"][3][:2]) for item in children}
+    assert len(offsets) == 2
+    assert not any(flag.startswith(f"INSERT_ARRAY_NOT_EXPANDED:{handles['insert']}")
+                   for flag in result["flags"])
+    assert result["status"] == "REVIEW_REQUIRED"
+
+
+def test_insert_array_over_limit_is_hard_flagged_without_claiming_expansion(tmp_path):
+    path = tmp_path / "huge_array.dxf"
+    handles = save_fixture(path, array=True)
+    doc = ezdxf.readfile(path)
+    insert = doc.entitydb[handles["insert"]]
+    insert.dxf.row_count = 101
+    insert.dxf.column_count = 100
+    doc.saveas(path)
+    result = harvest_data_dxf(path)
+    assert f"INSERT_ARRAY_EXPANSION_LIMIT:{handles['insert']}:10100" in result["flags"]
+    children = [entity for entity in result["entities"]
+                if entity["sourceHandle"] == handles["block_line"]]
+    assert children == []
     assert result["status"] == "REVIEW_REQUIRED"
 
 

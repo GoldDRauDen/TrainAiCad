@@ -19,6 +19,7 @@ SUPPORTED = {
     "LINE", "ARC", "CIRCLE", "LWPOLYLINE", "POLYLINE", "POINT",
     "SPLINE", "ELLIPSE", "INSERT",
 }
+MAX_INSERT_ARRAY_INSTANCES = 10_000
 
 
 def _num(value: Any) -> float:
@@ -197,11 +198,21 @@ def harvest_data_dxf(path: str | Path) -> dict[str, Any]:
         composed = transform @ ent.matrix44()
         child_chain = [*insert_chain, chain_item]
         child_inherited = effective
-        if geometry["rowCount"] > 1 or geometry["columnCount"] > 1:
-            cycle_flags.append(f"INSERT_ARRAY_NOT_EXPANDED:{handle}")
-        for child in block:
-            visit(child, layout, composed, child_chain, child_inherited,
-                  (*block_stack, block_name), depth + 1)
+        instance_count = geometry["rowCount"] * geometry["columnCount"]
+        if instance_count > MAX_INSERT_ARRAY_INSTANCES:
+            cycle_flags.append(f"INSERT_ARRAY_EXPANSION_LIMIT:{handle}:{instance_count}")
+            return
+        instances = list(ent.multi_insert()) if instance_count > 1 else [ent]
+        for instance_index, instance in enumerate(instances):
+            instance_chain = child_chain
+            if instance_count > 1:
+                instance_chain = [*insert_chain, {
+                    **chain_item, "arrayInstance": str(instance_index)
+                }]
+            instance_transform = transform @ instance.matrix44()
+            for child in block:
+                visit(child, layout, instance_transform, instance_chain, child_inherited,
+                      (*block_stack, block_name), depth + 1)
 
     for layout in doc.layouts:
         for entity in layout:
