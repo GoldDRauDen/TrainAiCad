@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import * as z from "zod/v4";
 import type { CadJob } from "./model.js";
 import type { CanonicalGeometryV1, LocalFeatureGeometry, Point2 } from "./geometry.js";
@@ -36,6 +36,8 @@ export type DxfOutputRecord = {
   serializerContract: string;
   codeOrder: string[];
   fileSha256: string;
+  serializerInputSha256: string;
+  manifestSha256: string;
   writtenAt: string;
 };
 
@@ -49,6 +51,9 @@ export type DxfAuditRecord = {
   entityTypes: Record<string, number>;
   labels: string[];
   aiMetaPlot: number | null;
+  physicalGeometryMatch: boolean;
+  comparedEntityCount: number;
+  codeOrderMatch: boolean;
   auditedAt: string;
 };
 
@@ -315,6 +320,8 @@ export function exportWithBridge(job: CadJob, rawQa: unknown[], repoRoot: string
       serializerContract: result.manifest.contract,
       codeOrder: result.manifest.parts.map((p: any) => p.code),
       fileSha256: createHash("sha256").update(readFileSync(abs)).digest("hex"),
+      serializerInputSha256: createHash("sha256").update(readFileSync(inputPath)).digest("hex"),
+      manifestSha256: createHash("sha256").update(readFileSync(resolve(result.manifest_path))).digest("hex"),
       writtenAt: new Date().toISOString()
     }
   };
@@ -324,7 +331,13 @@ export function auditWithBridge(output: DxfOutputRecord, repoRoot: string): DxfA
   if (!existsSync(output.absolutePath)) throw new Error("DXF_AUDIT_FILE_MISSING");
   const actualSha256 = createHash("sha256").update(readFileSync(output.absolutePath)).digest("hex");
   if (!output.fileSha256 || actualSha256 !== output.fileSha256) throw new Error("DXF_READBACK_FILE_CHANGED_AFTER_EXPORT");
-  const result = runBridge(repoRoot, ["audit", output.absolutePath]);
+  const serializerInput = join(dirname(output.manifestPath), "serializer_input.json");
+  if (!existsSync(serializerInput) || !existsSync(output.manifestPath)) throw new Error("DXF_READBACK_EXPECTED_GEOMETRY_MISSING");
+  if (createHash("sha256").update(readFileSync(serializerInput)).digest("hex") !== output.serializerInputSha256 ||
+      createHash("sha256").update(readFileSync(output.manifestPath)).digest("hex") !== output.manifestSha256) {
+    throw new Error("DXF_READBACK_EXPECTED_GEOMETRY_CHANGED");
+  }
+  const result = runBridge(repoRoot, ["audit", output.absolutePath, serializerInput, output.manifestPath]);
   const audit: DxfAuditRecord = {
     ok: Boolean(result.ok),
     auditErrorCount: Number(result.audit_error_count ?? -1),
@@ -335,13 +348,17 @@ export function auditWithBridge(output: DxfOutputRecord, repoRoot: string): DxfA
     entityTypes: result.entity_types ?? {},
     labels: Array.isArray(result.labels) ? result.labels : [],
     aiMetaPlot: result.ai_meta_plot === null || result.ai_meta_plot === undefined ? null : Number(result.ai_meta_plot),
+    physicalGeometryMatch: result.physical_geometry_match === true,
+    comparedEntityCount: Number(result.compared_entity_count ?? -1),
+    codeOrderMatch: result.code_order_match === true,
     auditedAt: new Date().toISOString()
   };
 
   if (!audit.ok || audit.auditErrorCount !== 0) throw new Error("DXF_READBACK_AUDIT_FAILED");
   if (audit.insunits !== 4) throw new Error("DXF_READBACK_UNITS_NOT_MM");
   if (audit.aiMetaPlot !== 0) throw new Error("DXF_READBACK_AI_META_PLOT_ENABLED");
-  if (audit.labels.join("|") !== output.codeOrder.join("|")) throw new Error("DXF_READBACK_CODE_ORDER_MISMATCH");
+  if (!audit.codeOrderMatch || audit.labels.join("|") !== output.codeOrder.join("|")) throw new Error("DXF_READBACK_CODE_ORDER_MISMATCH");
   if (!audit.layers["0"]) throw new Error("DXF_READBACK_NO_MANUFACTURING_GEOMETRY");
+  if (!audit.physicalGeometryMatch || audit.comparedEntityCount !== audit.entityCount) throw new Error("DXF_READBACK_PHYSICAL_GEOMETRY_MISMATCH");
   return audit;
 }

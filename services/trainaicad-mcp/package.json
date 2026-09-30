@@ -7,8 +7,13 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "dev": "tsx src/http.ts",
-    "check": "tsc --noEmit && npm test",
-    "test": "tsx --test tests/*.test.ts"
+    "doctor": "node scripts/doctor.mjs",
+    "check": "tsc --noEmit && npm run test:unit",
+    "test": "npm run test:unit",
+    "test:unit": "tsx --test tests/*.test.ts",
+    "test:integration": "node scripts/run_e2e.mjs",
+    "test:gate": "node scripts/run_gates.mjs",
+    "test:e2e": "node scripts/run_e2e.mjs && node scripts/check_source_acceptance.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "^2.1.0",

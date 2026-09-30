@@ -99,6 +99,9 @@ test("binding an ingested DXF reclassifies a PDF_ONLY job and persists it", () =
   const bound = jobStore.bindSource(job.jobId, "DRAWING", drawing);
   assert.equal(bound.bound.DRAWING?.sha256, drawing.sha256);
   assert.equal(bound.job.mode, "PDF_ONLY"); // a drawing never changes classification
+  assert.deepEqual(bound.job.sourceManifest.sources, [{
+    role: "DRAWING", fileName: drawing.fileName, sha256: drawing.sha256, mimeType: drawing.mimeType, verified: true
+  }]);
   assert.notEqual(
     join(dataDir, "sources", "DRAWING", drawing.sha256.slice(0, 2), `${drawing.sha256}.pdf`),
     join(dataDir, "sources", "REFERENCE_DXF", reference.sha256.slice(0, 2), `${reference.sha256}.dxf`)
@@ -110,6 +113,7 @@ test("binding an ingested DXF reclassifies a PDF_ONLY job and persists it", () =
   assert.equal(asReference.job.dxfRole, "TRAIN_REFERENCE");
   assert.equal(asReference.job.sourcePolicy.dxfUse, "AUDIT_ONLY");
   assert.equal(asReference.job.dxf?.sha256, reference.sha256);
+  assert.deepEqual(asReference.job.sourceManifest.sources.map((item) => item.role).sort(), ["DRAWING", "REFERENCE_DXF"]);
   const onDisk = JSON.parse(readFileSync(join(dataDir, "jobs", `${job.jobId}.json`), "utf8"));
   assert.equal(onDisk.mode, "TRAIN_REFERENCE");
   assert.equal(onDisk.sourcePolicy.dxfUse, "AUDIT_ONLY");

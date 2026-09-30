@@ -23,7 +23,7 @@ EXPECT=$(grep -o 'Current production release is \*\*V[0-9.]*\*\*' ../../AI_ENTRY
 echo "expected release pin: $EXPECT"
 
 LIST=$($INS --method tools/list 2>/dev/null)
-for t in open_cad_job submit_cad_evidence route_cad_parts build_canonical_geometry run_cad_qa export_dxf audit_dxf get_cad_job ingest_cad_file get_cad_source_view; do
+for t in process_cad_job advance_cad_job open_cad_job get_cad_rule_bundle submit_cad_evidence route_cad_parts build_canonical_geometry run_cad_qa export_dxf audit_dxf get_cad_job get_cad_artifact ingest_cad_file get_cad_source_view; do
   echo "$LIST" | grep -q "\"name\": \"$t\"" && ok "tool listed: $t" || bad "tool listed: $t"
 done
 
@@ -32,6 +32,16 @@ OUT=$(call open_cad_job "drawing={\"fileName\":\"sample.pdf\",\"sha256\":\"$SHA_
 echo "$OUT" | grep -q '"mode": "PDF_ONLY"' && ok "AUTO PDF-only => PDF_ONLY" || bad "PDF_ONLY: $OUT"
 JOB=$(echo "$OUT" | grep -o 'cad_[0-9a-f]\{16\}' | head -1)
 [ -n "$JOB" ] && ok "jobId=$JOB" || bad "jobId missing"
+
+# 1b. Current approved 646 rule: missing customer DATA blocks routing explicitly.
+OUT=$(call open_cad_job "drawing={\"fileName\":\"family646.pdf\",\"sha256\":\"$SHA_B\"}" "mode=AUTO")
+FAMILY_JOB=$(echo "$OUT" | grep -o 'cad_[0-9a-f]\{16\}' | head -1)
+EV_646='{"schema":"CAD_EVIDENCE_V1","jobId":"'"$FAMILY_JOB"'","code":"056646","source":{"sourceId":"'"$SHA_B"'","page":1},"material":{"printed":"SS400","family":"SS","thickness":{"value":3,"unit":"mm","origin":"PRINTED"}},"views":[{"id":"A","type":"FLAT"}],"contour":{"topology":"PLATE","status":"PROVED","overallX":{"value":50,"unit":"mm","origin":"PRINTED"},"overallY":{"value":32,"unit":"mm","origin":"PRINTED"}},"features":[],"bends":[],"markings":[],"handwriting":[],"uncertainties":[]}'
+OUT=$(call submit_cad_evidence "jobId=$FAMILY_JOB" "evidence=[$EV_646]")
+echo "$OUT" | grep -q '"state": "EVIDENCE_READY"' && ok "646 case evidence accepted for classification" || bad "646 evidence: $OUT"
+OUT=$(call route_cad_parts "jobId=$FAMILY_JOB")
+echo "$OUT" | grep -q 'DATA_REQUIRED_MISSING' && ok "646 without DATA hard-blocked" || bad "646 gate: $OUT"
+echo "$OUT" | grep -q '"mode": "UNRESOLVED"' && ok "646 missing DATA has no PDF_ONLY geometry route" || bad "646 mode: $OUT"
 
 OUT=$(call open_cad_job "drawing={\"fileName\":\"sample.pdf\",\"sha256\":\"$SHA_A\"}" \
   "dxf={\"fileName\":\"data.dxf\",\"sha256\":\"$SHA_B\"}" "mode=AUTO")
@@ -144,6 +154,8 @@ OUT=$(call export_dxf "jobId=$JOB" "qa=[$QA]")
 echo "$OUT" | grep -q 'PRODUCTION_SOURCE_UNVERIFIED' && ok "forged client QA rejected before export" || bad "unsafe export result: $OUT"
 OUT=$(call get_cad_job "jobId=$JOB")
 echo "$OUT" | grep -q 'PRODUCTION_PASS' && bad "unverified job reached PRODUCTION_PASS" || ok "unverified job cannot reach PRODUCTION_PASS"
+ERR=$(call get_cad_artifact "jobId=$JOB")
+echo "$ERR" | grep -q 'DXF_ARTIFACT_NOT_PRODUCTION_READY' && ok "artifact is withheld without production audit" || bad "unsafe artifact exposure: $ERR"
 
 # 15. Real source-image path: ingest valid PDF, bind the same bytes, render page 1, attach receipt.
 PDF_B64=$(python -c "import pymupdf,sys,base64; d=pymupdf.open(); p=d.new_page(); p.insert_text((72,72),'TrainAiCad MCP source-view E2E'); sys.stdout.write(base64.b64encode(d.tobytes()).decode())")
@@ -152,12 +164,17 @@ VIEW_SHA=$(echo "$OUT" | grep -o '"sha256": "[0-9a-f]\{64\}"' | head -1 | grep -
 OUT=$(call open_cad_job "drawing={\"fileName\":\"source.pdf\",\"sha256\":\"$VIEW_SHA\"}" "mode=AUTO")
 VIEW_JOB=$(echo "$OUT" | grep -o 'cad_[0-9a-f]\{16\}' | head -1)
 echo "$OUT" | grep -q '"sourceVerified": true' && ok "open verifies matching ingested PDF bytes" || bad "source verification: $OUT"
-OUT=$(call get_cad_source_view "jobId=$VIEW_JOB" "page=1" "dpi=100")
-echo "$OUT" | grep -q '"imageSha256"' && ok "source-view returns image receipt" || bad "source-view: $OUT"
-RECEIPT=$(echo "$OUT" | grep -o '"receiptId": "[^"]*"' | head -1 | cut -d '"' -f4)
+OUT=$(call process_cad_job "jobId=$VIEW_JOB")
+echo "$OUT" | grep -q '"phase": "NEED_VISION"' && ok "high-level process returns NEED_VISION" || bad "process phase: $OUT"
+echo "$OUT" | grep -q '"type": "image"' && ok "high-level process returns actual page image" || bad "process image: $OUT"
+echo "$OUT" | grep -q "SKILL_LISPCAD $EXPECT PORTABLE" && ok "process pins and returns live CURRENT rule content" || bad "process rule bundle missing CURRENT"
+echo "$OUT" | grep -q '"imageSha256"' && ok "source-view receipt includes image hash" || bad "source receipt: $OUT"
+RECEIPT=$(echo "$OUT" | sed -n 's/.*SOURCE_VIEW_RECEIPT \([0-9a-f-]*\).*/\1/p' | head -1)
 EV_VIEW='{"schema":"CAD_EVIDENCE_V1","jobId":"'"$VIEW_JOB"'","code":"VIEW001","source":{"sourceId":"'"$VIEW_SHA"'","page":1,"visualReceiptIds":["'"$RECEIPT"'"]},"material":{"printed":"SS400","family":"SS","thickness":{"value":2,"unit":"mm","origin":"PRINTED"}},"views":[{"id":"A","type":"FLAT"}],"contour":{"topology":"PLATE","status":"PROVED","overallX":{"value":20,"unit":"mm","origin":"PRINTED"},"overallY":{"value":10,"unit":"mm","origin":"PRINTED"}},"features":[],"bends":[],"markings":[],"handwriting":[],"uncertainties":[]}'
-OUT=$(call submit_cad_evidence "jobId=$VIEW_JOB" "evidence=[$EV_VIEW]")
-echo "$OUT" | grep -q '"state": "EVIDENCE_READY"' && ok "page receipt authorizes evidence intake" || bad "receipt-gated evidence: $OUT"
+OUT=$(call advance_cad_job "jobId=$VIEW_JOB" "evidence=[$EV_VIEW]")
+echo "$OUT" | grep -q '"phase": "ROUTED"' && ok "advance validates evidence and routes automatically" || bad "advance route: $OUT"
+echo "$OUT" | grep -q 'skills/lispcad/modes/FLAT_NO_BEND.md' && ok "advance returns routed rule content" || bad "routed rule bundle: $OUT"
+echo "$OUT" | grep -q 'PDF_ONLY_DETERMINISTIC_SOLVER_NOT_IMPLEMENTED' && ok "orchestrator exposes the real solver blocker" || bad "solver blocker hidden: $OUT"
 
 echo "---- inspector e2e: $PASS passed, $FAIL failed ----"
 echo "JOB_ID=$JOB"

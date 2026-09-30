@@ -1,6 +1,7 @@
 import * as z from "zod/v4";
 import type { CanonicalGeometryV1, GeometrySourceV1 } from "./geometry.js";
 import type { ManufacturingQaV1, DxfOutputRecord, DxfAuditRecord } from "./dxf.js";
+import type { RuleFilePin } from "./rules.js";
 
 export const Provenance = z.enum([
   "PRINTED",
@@ -202,6 +203,28 @@ export type ReleasePin = {
   release: string;
   entrypointSha256: string;
   currentSkillSha256: string;
+  ruleFiles?: RuleFilePin[];
+  ruleSnapshotSha256?: string;
+};
+
+export type SourceManifestV2 = {
+  schema: "SOURCE_MANIFEST_V2";
+  revision: number;
+  sources: Array<{
+    role: "DRAWING" | "DATA_DXF" | "REFERENCE_DXF" | "AI_DXF";
+    fileName: string;
+    sha256: string;
+    mimeType: string;
+    verified: boolean;
+  }>;
+  pageCodeMap: Array<{
+    code: string;
+    sourceSha256: string;
+    page: number;
+    visualReceiptIds: string[];
+    revision?: string | null;
+  }>;
+  updatedAt: string;
 };
 
 export type SourceViewReceipt = {
@@ -210,6 +233,7 @@ export type SourceViewReceipt = {
   page: number;
   imageSha256: string;
   region: [number, number, number, number];
+  rotation?: 0 | 90 | 180 | 270;
   dpi: number;
   storedAt: string;
 };
@@ -235,6 +259,7 @@ export type RouteResult = {
   topology: CadEvidenceV1["contour"]["topology"];
   modules: string[];
   specialRules: string[];
+  flags: string[];
   status: "ROUTED" | "REVIEW_REQUIRED";
   mechanical: MechanicalClassification;
   jev: { mode: string; configured: boolean; verdict: "UNAVAILABLE" | "MOCK_MATCH"; detail: string };
@@ -249,7 +274,9 @@ export type CadJob = {
   source: SourceDescriptor;
   sourceVerified: boolean;
   sourceBindings: Record<string, { role: string; fileName: string; sha256: string; mimeType: string; storedPath: string }>;
+  sourceManifest: SourceManifestV2;
   sourceViewReceipts: SourceViewReceipt[];
+  ruleBundleReadSha256?: string;
   dxf?: SourceDescriptor;
   dxfRole?: DxfRole;
   evidence: CadEvidenceV1[];

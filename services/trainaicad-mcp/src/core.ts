@@ -1,10 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { bindSourceToJob, dataRoot, verifiedSource, type IngestResult, type SourceRole } from "./ingest.js";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { atomicWriteJson, bindSourceToJob, dataRoot, verifiedSource, type IngestResult, type SourceRole } from "./ingest.js";
 import { jevStatus } from "./jev.js";
 import { buildJobGeometry, GeometrySourceV1 } from "./geometry.js";
 import { exportWithBridge, auditWithBridge, type ManufacturingQaV1 } from "./dxf.js";
+import { createRuleSnapshot, extendRuleSnapshot, readPinnedRuleBundle, verifyRuleSnapshot } from "./rules.js";
 import {
   CadEvidenceV1,
   type CadEvidenceV1 as Evidence,
@@ -17,6 +18,7 @@ import {
   type ReleasePin,
   type SourceViewReceipt,
   type RouteResult,
+  type SourceManifestV2,
   type SourceDescriptor,
   type SourcePolicy
 } from "./model.js";
@@ -53,7 +55,11 @@ export function readReleasePin(repoRoot = resolveRepoRoot()): ReleasePin {
   return {
     release: entryMatch[1],
     entrypointSha256: sha256(entrypoint),
-    currentSkillSha256: sha256(currentSkill)
+    currentSkillSha256: sha256(currentSkill),
+    ...(() => {
+      const rules = createRuleSnapshot(repoRoot);
+      return { ruleFiles: rules.files, ruleSnapshotSha256: rules.sha256 };
+    })()
   };
 }
 
@@ -186,8 +192,40 @@ class JobStore {
   }
 
   private persist(job: CadJob): void {
-    mkdirSync(join(dataRoot(), "jobs"), { recursive: true });
-    writeFileSync(this.file(job.jobId), JSON.stringify(job, null, 2));
+    atomicWriteJson(this.file(job.jobId), job);
+  }
+
+  private refreshSourceManifest(job: CadJob): void {
+    const verified = Object.values(job.sourceBindings);
+    const sources: SourceManifestV2["sources"] = verified.length
+      ? verified.map((source) => ({
+          role: source.role as SourceManifestV2["sources"][number]["role"],
+          fileName: source.fileName,
+          sha256: source.sha256,
+          mimeType: source.mimeType,
+          verified: true
+        }))
+      : [{
+          role: "DRAWING",
+          fileName: job.source.fileName,
+          sha256: job.source.sha256,
+          mimeType: job.source.mimeType ?? "application/pdf",
+          verified: false
+        }];
+    const previous = job.sourceManifest;
+    job.sourceManifest = {
+      schema: "SOURCE_MANIFEST_V2",
+      revision: (previous?.revision ?? 0) + 1,
+      sources,
+      pageCodeMap: job.evidence.map((evidence) => ({
+        code: evidence.code,
+        sourceSha256: evidence.source.sourceId,
+        page: evidence.source.page,
+        visualReceiptIds: [...evidence.source.visualReceiptIds],
+        ...(evidence.source.revision !== undefined ? { revision: evidence.source.revision } : {})
+      })),
+      updatedAt: new Date().toISOString()
+    };
   }
 
   private normalizePersisted(raw: unknown): CadJob {
@@ -206,12 +244,30 @@ class JobStore {
     }
 
     legacy.sourcePolicy = legacy.sourcePolicy ?? sourcePolicyForMode(legacy.mode as JobMode);
-    legacy.sourceVerified = legacy.sourceVerified ?? false;
+    const hasPinnedRuleFiles = Array.isArray(legacy.production.ruleFiles) && legacy.production.ruleFiles.length > 0;
+    legacy.sourceVerified = hasPinnedRuleFiles ? (legacy.sourceVerified ?? false) : false;
     legacy.sourceBindings = legacy.sourceBindings ?? {};
+    legacy.sourceManifest = legacy.sourceManifest ?? {
+      schema: "SOURCE_MANIFEST_V2",
+      revision: 0,
+      sources: [],
+      pageCodeMap: [],
+      updatedAt: legacy.updatedAt
+    };
     legacy.sourceViewReceipts = legacy.sourceViewReceipts ?? [];
+    legacy.production.ruleFiles = legacy.production.ruleFiles ?? [];
+    legacy.production.ruleSnapshotSha256 = legacy.production.ruleSnapshotSha256 ?? sha256(JSON.stringify([]));
     legacy.geometrySources = legacy.geometrySources ?? [];
     legacy.geometry = legacy.geometry ?? [];
     legacy.manufacturingQa = legacy.manufacturingQa ?? [];
+    const expectedGeometryPinned = Boolean(legacy.dxfOutput?.serializerInputSha256 && legacy.dxfOutput?.manifestSha256);
+    if ((legacy.state === "PRODUCTION_PASS" && !hasPinnedRuleFiles) || (legacy.dxfOutput && !expectedGeometryPinned)) {
+      legacy.state = "REVIEW_REQUIRED";
+      legacy.flags = [...new Set([...(legacy.flags ?? []), "LEGACY_READBACK_BASIS_UNVERIFIED"] )];
+      legacy.dxfAudit = undefined;
+      legacy.dxfOutput = undefined;
+      legacy.manufacturingQa = legacy.manufacturingQa.map((qa) => ({ ...qa, approvedForExport: false }));
+    }
     return legacy as CadJob;
   }
 
@@ -232,6 +288,13 @@ class JobStore {
       source,
       sourceVerified: false,
       sourceBindings: {},
+      sourceManifest: {
+        schema: "SOURCE_MANIFEST_V2",
+        revision: 1,
+        sources: [{ role: "DRAWING", fileName: source.fileName, sha256: source.sha256, mimeType: source.mimeType ?? "application/pdf", verified: false }],
+        pageCodeMap: [],
+        updatedAt: now
+      },
       sourceViewReceipts: [],
       dxf,
       dxfRole: dxfRoleForMode(mode),
@@ -267,11 +330,13 @@ class JobStore {
     job.sourceVerified = true;
     job.sourceBindings.DRAWING = sourceSnapshot("DRAWING", drawingBytes);
     if (dxfBytes && dxfRole) job.sourceBindings[dxfRole] = sourceSnapshot(dxfRole, dxfBytes);
+    this.refreshSourceManifest(job);
     this.persist(job);
     return job;
   }
 
   get(jobId: string): CadJob {
+    if (!/^cad_[a-f0-9]{16}$/.test(jobId)) throw new Error(`INVALID_JOB_ID: ${jobId}`);
     let job = this.jobs.get(jobId);
     if (!job) {
       const file = this.file(jobId);
@@ -325,6 +390,7 @@ class JobStore {
     job.dxfOutput = undefined;
     job.dxfAudit = undefined;
     job.flags = [];
+    this.refreshSourceManifest(job);
     if (job.state === "SOURCE_READY") return this.transition(jobId, "EVIDENCE_READY");
     job.state = "EVIDENCE_READY";
     job.updatedAt = new Date().toISOString();
@@ -344,13 +410,18 @@ class JobStore {
     job.dxfOutput = undefined;
     job.dxfAudit = undefined;
     job.flags = routes
-      .filter((r) => r.status === "REVIEW_REQUIRED")
-      .map((r) => `${r.code}:ROUTING_REVIEW_REQUIRED`);
+      .flatMap((r) => r.flags.map((flag) => `${r.code}:${flag}`));
+    if (!job.flags.length) {
+      job.flags = routes
+        .filter((r) => r.status === "REVIEW_REQUIRED")
+        .map((r) => `${r.code}:ROUTING_REVIEW_REQUIRED`);
+    }
     return this.transition(jobId, job.flags.length ? "REVIEW_REQUIRED" : "ROUTED");
   }
 
   buildGeometry(jobId: string, rawSources: unknown[]): CadJob {
     const job = this.get(jobId);
+    if (job.sourceVerified) this.assertRuleBundleRead(jobId);
     const parsed = rawSources.map((raw) => GeometrySourceV1.parse(raw));
     const built = buildJobGeometry(job, parsed);
 
@@ -401,8 +472,34 @@ class JobStore {
     return qa;
   }
 
+  getRuleBundle(jobId: string) {
+    const job = this.get(jobId);
+    const snapshot = {
+      files: job.production.ruleFiles ?? [],
+      sha256: job.production.ruleSnapshotSha256 ?? ""
+    };
+    const bundle = readPinnedRuleBundle(resolveRepoRoot(), snapshot);
+    job.ruleBundleReadSha256 = bundle.snapshotSha256;
+    job.updatedAt = new Date().toISOString();
+    this.persist(job);
+    return bundle;
+  }
+
+  assertRuleBundleRead(jobId: string): void {
+    const job = this.get(jobId);
+    const snapshot = {
+      files: job.production.ruleFiles ?? [],
+      sha256: job.production.ruleSnapshotSha256 ?? ""
+    };
+    verifyRuleSnapshot(resolveRepoRoot(), snapshot);
+    if (!job.ruleBundleReadSha256 || job.ruleBundleReadSha256 !== snapshot.sha256) {
+      throw new Error("JOB_RULE_BUNDLE_NOT_READ_OR_STALE");
+    }
+  }
+
   auditDxf(jobId: string): CadJob {
     const job = this.get(jobId);
+    if (job.sourceVerified) this.assertRuleBundleRead(jobId);
     if (job.state !== "DXF_WRITTEN") {
       throw new Error(`DXF_AUDIT_NOT_ALLOWED_IN_STATE: ${job.state}`);
     }
@@ -416,6 +513,36 @@ class JobStore {
       throw new Error("PRODUCTION_ACCEPTANCE_EVIDENCE_MISSING");
     }
     return this.transition(jobId, "PRODUCTION_PASS");
+  }
+
+  readDxfArtifact(jobId: string): { uri: string; fileName: string; sha256: string; bytes: Buffer } {
+    const job = this.get(jobId);
+    if (job.state !== "PRODUCTION_PASS" || !job.dxfOutput || !job.dxfAudit?.ok) {
+      throw new Error("DXF_ARTIFACT_NOT_PRODUCTION_READY");
+    }
+    this.assertRuleBundleRead(jobId);
+    const allowedDir = realpathSync(join(dataRoot(), "outputs", jobId));
+    const actualPath = realpathSync(job.dxfOutput.absolutePath);
+    const pathFromJobDir = relative(allowedDir, actualPath);
+    if (!pathFromJobDir || pathFromJobDir === ".." || pathFromJobDir.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) || isAbsolute(pathFromJobDir)) {
+      throw new Error("DXF_ARTIFACT_OUTSIDE_JOB_OUTPUT");
+    }
+    const bytes = readFileSync(actualPath);
+    const actualSha256 = createHash("sha256").update(bytes).digest("hex");
+    if (actualSha256 !== job.dxfOutput.fileSha256) throw new Error("DXF_ARTIFACT_HASH_MISMATCH");
+    const serializerInput = join(allowedDir, "serializer_input.json");
+    const manifest = job.dxfOutput.manifestPath;
+    if (!existsSync(serializerInput) || !existsSync(manifest) ||
+        createHash("sha256").update(readFileSync(serializerInput)).digest("hex") !== job.dxfOutput.serializerInputSha256 ||
+        createHash("sha256").update(readFileSync(manifest)).digest("hex") !== job.dxfOutput.manifestSha256) {
+      throw new Error("DXF_ARTIFACT_AUDIT_BASIS_CHANGED");
+    }
+    return {
+      uri: `trainaicad://jobs/${jobId}/artifacts/${actualSha256}`,
+      fileName: job.dxfOutput.fileName,
+      sha256: actualSha256,
+      bytes
+    };
   }
 
   /**
@@ -445,6 +572,7 @@ class JobStore {
     }
     job.sourceBindings[role] = sourceSnapshot(role, source);
     if (role === "DRAWING") job.sourceVerified = true;
+    this.refreshSourceManifest(job);
     job.updatedAt = new Date().toISOString();
     this.persist(job);
     return { job, bound };
@@ -461,6 +589,10 @@ export function recordSourceViewReceipt(jobId: string, receipt: SourceViewReceip
   const job = jobStore.get(jobId);
   if (!job.sourceVerified || receipt.sourceSha256 !== job.source.sha256) throw new Error("SOURCE_VIEW_SOURCE_MISMATCH");
   if (!Number.isInteger(receipt.page) || receipt.page < 1 || !Number.isFinite(receipt.dpi)) throw new Error("SOURCE_VIEW_METADATA_INVALID");
+  const [x0, y0, x1, y1] = receipt.region;
+  if ([x0, y0, x1, y1].some((n) => !Number.isFinite(n) || n < 0 || n > 1) || x0 >= x1 || y0 >= y1) throw new Error("SOURCE_VIEW_REGION_INVALID");
+  if (![0, 90, 180, 270].includes(receipt.rotation ?? 0)) throw new Error("SOURCE_VIEW_ROTATION_INVALID");
+  if (!/^[a-f0-9]{64}$/i.test(receipt.imageSha256)) throw new Error("SOURCE_VIEW_IMAGE_HASH_INVALID");
   if (!job.sourceViewReceipts.some((r) => r.receiptId === receipt.receiptId)) job.sourceViewReceipts.push(receipt);
   job.updatedAt = new Date().toISOString();
   // Persist through the public transition API without changing job state.
@@ -469,9 +601,7 @@ export function recordSourceViewReceipt(jobId: string, receipt: SourceViewReceip
 }
 
 function saveJob(job: CadJob): void {
-  const file = join(dataRoot(), "jobs", `${job.jobId}.json`);
-  mkdirSync(join(dataRoot(), "jobs"), { recursive: true });
-  writeFileSync(file, JSON.stringify(job, null, 2));
+  atomicWriteJson(join(dataRoot(), "jobs", `${job.jobId}.json`), job);
 }
 
 function evaluateManufacturingQa(job: CadJob): import("./dxf.js").ManufacturingQaV1[] {
@@ -692,6 +822,7 @@ export function routeEvidence(evidence: Evidence, sourceMode: JobMode = "PDF_ONL
       ? "skills/lispcad/modes/BEND_UNFOLD.md"
       : "skills/lispcad/modes/FLAT_NO_BEND.md"
   ];
+  if (sourceMode === "PDF_DATA_RAW") modules.push("references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md");
 
   const topology = topologyModule[evidence.contour.topology];
   if (topology) modules.push(topology);
@@ -731,6 +862,7 @@ export function routeEvidence(evidence: Evidence, sourceMode: JobMode = "PDF_ONL
     topology: evidence.contour.topology,
     modules: unique(modules),
     specialRules: unique(specialRules),
+    flags: [],
     status: blocked ? "REVIEW_REQUIRED" : "ROUTED",
     mechanical: {
       sourceMode,
@@ -759,21 +891,50 @@ export function routeJob(jobId: string): CadJob {
     throw new Error(`ROUTING_NOT_ALLOWED_IN_STATE: ${job.state}`);
   }
   if (!job.evidence.length) throw new Error("NO_EVIDENCE");
-  return jobStore.setRoutes(
-    jobId,
-    job.evidence.map((evidence) => routeEvidence(evidence, job.mode))
-  );
+  const routes = job.evidence.map((evidence) => {
+    const route = routeEvidence(evidence, job.mode);
+    const code = evidence.code.replace(/\D/g, "");
+    if (code.includes("646") && !job.sourceBindings.DATA_DXF) {
+      return { ...route, mode: "UNRESOLVED" as const, status: "REVIEW_REQUIRED" as const, flags: ["DATA_REQUIRED_MISSING"] };
+    }
+    return route;
+  });
+  const routeRulePaths = routes.flatMap((route) => [...route.modules, ...route.specialRules]);
+  const pinned = extendRuleSnapshot(resolveRepoRoot(), {
+    files: job.production.ruleFiles ?? [],
+    sha256: job.production.ruleSnapshotSha256 ?? ""
+  }, routeRulePaths);
+  job.production.ruleFiles = pinned.files;
+  job.production.ruleSnapshotSha256 = pinned.sha256;
+  job.ruleBundleReadSha256 = undefined;
+  return jobStore.setRoutes(jobId, routes);
 }
 
 export function publicJob(
   job: CadJob
-): Omit<CadJob, "evidence" | "geometrySources"> & {
+): Omit<CadJob, "evidence" | "geometrySources" | "sourceBindings" | "dxfOutput"> & {
   evidenceCount: number;
   geometrySourceCount: number;
+  sourceBindings: Record<string, Omit<CadJob["sourceBindings"][string], "storedPath">>;
+  dxfOutput?: Omit<NonNullable<CadJob["dxfOutput"]>, "absolutePath" | "manifestPath" | "relativePath"> & { artifactUri: string };
 } {
   const { evidence, geometrySources, ...rest } = job;
   return {
     ...rest,
+    sourceBindings: Object.fromEntries(Object.entries(job.sourceBindings).map(([role, binding]) => {
+      const { storedPath: _storedPath, ...publicBinding } = binding;
+      return [role, publicBinding];
+    })),
+    dxfOutput: job.dxfOutput ? {
+      fileName: job.dxfOutput.fileName,
+      serializerContract: job.dxfOutput.serializerContract,
+      codeOrder: job.dxfOutput.codeOrder,
+      fileSha256: job.dxfOutput.fileSha256,
+      serializerInputSha256: job.dxfOutput.serializerInputSha256,
+      manifestSha256: job.dxfOutput.manifestSha256,
+      writtenAt: job.dxfOutput.writtenAt,
+      artifactUri: `trainaicad://jobs/${job.jobId}/artifacts/${job.dxfOutput.fileSha256}`
+    } : undefined,
     evidenceCount: evidence.length,
     geometrySourceCount: geometrySources.length
   };

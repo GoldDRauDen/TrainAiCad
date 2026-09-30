@@ -11,6 +11,7 @@ import {
   resolveJobMode,
   resolveRepoRoot,
   routeEvidence,
+  routeJob,
   sourcePolicyForMode
 } from "../src/core.js";
 import { CadEvidenceV1 } from "../src/model.js";
@@ -77,6 +78,21 @@ test("V4.20 source classification is deterministic", () => {
   assert.throws(() => resolveJobMode("PDF_DATA_RAW", false), /requires DXF/);
   assert.throws(() => resolveJobMode("DIRECT_EXISTING_DXF_AUDIT", false), /approved reference DXF/);
   assert.throws(() => resolveJobMode("PDF_ONLY", true), /cannot include DXF/);
+});
+
+test("646 family without bound DATA is explicitly blocked before geometry", () => {
+  const job = jobStore.create(source, undefined, "AUTO");
+  const item = evidence({ jobId: job.jobId, code: "056646", features: [] });
+  jobStore.submitEvidence(job.jobId, [item]);
+  const routed = routeJob(job.jobId);
+  assert.equal(routed.state, "REVIEW_REQUIRED");
+  assert.ok(routed.flags.includes("056646:DATA_REQUIRED_MISSING"));
+  assert.equal(routed.routes[0]?.mode, "UNRESOLVED");
+  assert.throws(() => jobStore.buildGeometry(job.jobId, []), /GEOMETRY_BUILD_BLOCKED_BY_ROUTING_REVIEW/);
+});
+
+test("job path lookup rejects traversal-shaped identifiers", () => {
+  assert.throws(() => jobStore.get("../../AI_ENTRYPOINT.md"), /INVALID_JOB_ID/);
 });
 
 test("V4.20 source authority split is encoded", () => {
@@ -172,6 +188,7 @@ test("every proved bent/multi-face route loads BEND_UNFOLD and FACE_GRAPH", () =
   });
   const route = routeEvidence(e, "PDF_DATA_RAW");
   assert.equal(route.mode, "BEND_UNFOLD");
+  assert.ok(route.modules.includes("references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md"));
   assert.equal(route.status, "ROUTED");
   assert.ok(route.modules.includes("skills/lispcad/modes/BEND_UNFOLD.md"));
   assert.ok(route.specialRules.includes("references/FACE_GRAPH_UNFOLD_PROTOCOL.md"));

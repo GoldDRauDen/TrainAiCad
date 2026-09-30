@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
-import { existsSync, mkdirSync, readFileSync, realpathSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, readdirSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { isIP } from "node:net";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -102,6 +102,20 @@ export function verifiedSource(role: SourceRole, fileName: string, expectedSha25
   const kind = sniffKind(bytes);
   if (!kind || ALLOWED_EXT[ext] !== kind) throw new Error(`SOURCE_SIGNATURE_MISMATCH:${role}`);
   return { kind, bytes: bytes.length, fileName: safeName, mimeType: KIND_MIME[kind][0]!, sha256: actual, storedPath: realpathSync(path) };
+}
+
+/** Replace JSON state atomically so a crash cannot leave a truncated manifest/job. */
+export function atomicWriteJson(path: string, value: unknown): void {
+  mkdirSync(dirname(path), { recursive: true });
+  const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    writeFileSync(temporary, JSON.stringify(value, null, 2), { flag: "wx" });
+    renameSync(temporary, path);
+  } finally {
+    if (existsSync(temporary)) {
+      try { unlinkSync(temporary); } catch { /* best effort cleanup after failed rename */ }
+    }
+  }
 }
 
 export function storedSourceByHash(role: SourceRole, sha256: string): IngestResult | undefined {
@@ -260,6 +274,6 @@ export function bindSourceToJob(
     throw new Error(`SOURCE_ALREADY_BOUND: ${role} is immutable for ${jobId}`);
   }
   current[role] = source;
-  writeFileSync(file, JSON.stringify(current, null, 2));
+  atomicWriteJson(file, current);
   return current;
 }
