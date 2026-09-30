@@ -44,7 +44,7 @@ The local MCP transport and defensive export workflow are runnable and tested. T
 - `npm run test:integration`: **87/87 local MCP HTTP Inspector assertions passed**, including bound DATA DXF harvest, content-hash retrieval, stale hash rejection, automatic orchestrator harvest, and review-state invalidation.
 - `npm run test:e2e`: all 87 Inspector assertions pass; the command then exits nonzero because 17 required source-role paths are unavailable and remote ChatGPT Web acceptance is blocked. It does not report production acceptance.
 - `git diff --check`: clean (Git may report expected LF-to-CRLF conversion warnings).
-- GitHub Actions run [36745192297](https://github.com/GoldDRauDen/TrainAiCad/actions/runs/36745192297) on this snapshot: serializer jobs passed on Windows and Ubuntu. MCP doctor, type/unit checks and regression gates passed on both; Ubuntu `test:e2e` failed closed at the missing approved source-role gate. The Windows MCP job was still running at the time this report was refreshed. Production acceptance remains blocked.
+- GitHub Actions run [36745192297](https://github.com/GoldDRauDen/TrainAiCad/actions/runs/36745192297) on this snapshot: serializer jobs passed on Windows and Ubuntu. MCP doctor, type/unit checks and regression gates passed on both; Ubuntu `test:e2e` failed closed at the missing approved source-role gate. The Windows MCP job also completed and failed closed at the same acceptance check. Both OS runs passed their runtime/regression stages and 87 Inspector assertions before reporting missing sources. Production acceptance remains blocked.
 
 ## Remaining blockers for true production E2E
 
@@ -53,7 +53,7 @@ The local MCP transport and defensive export workflow are runnable and tested. T
 3. Full material, datum, contour, bend/unfold and fold-back QA is not implemented for all requested source classes. Current regression passes do not establish those production checks.
 4. Positive independently reviewed source-to-DXF canaries are unavailable, so the pipeline has no honest basis to issue `PRODUCTION_PASS` for the requested customer drawing classes.
 5. ChatGPT Web's native attachment-to-MCP invocation and artifact download were not tested. This local loopback test is not evidence of remote client reachability; hosted MCP application and secure tunnel/client setup are separate requirements.
-6. GitHub Actions run 36745192297 exercised the DATA harvester on Windows and Ubuntu. Serializer and MCP runtime checks passed on both; Ubuntu full source acceptance failed closed on missing approved files. The Windows E2E job had not yet completed when this report was refreshed.
+6. GitHub Actions run 36745192297 exercised the DATA harvester on Windows and Ubuntu. Serializer and MCP runtime checks passed on both; Ubuntu full source acceptance failed closed on missing approved files. The Windows E2E job also completed with the same fail-closed result. Both OS runs report the 17 missing source files and untested hosted ChatGPT Web path.
 
 ## Next executable sequence
 
