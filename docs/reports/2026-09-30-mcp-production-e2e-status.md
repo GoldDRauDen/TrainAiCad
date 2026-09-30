@@ -2,7 +2,7 @@
 
 Date: 2026-09-30
 Repository: `GoldDRauDen/TrainAiCad`
-Branch snapshot: `codex/mcp-production-e2e` at `793594c840a077a97031e76190cb9cda88da97e9`
+Branch snapshot: `codex/mcp-production-e2e` at `fd5379b154c5ef0fa1ccec69665fe963b2d9de76`
 Production rule pin: V4.22
 
 ## Result
@@ -44,7 +44,7 @@ The local MCP transport and defensive export workflow are runnable and tested. T
 - `npm run test:integration`: **87/87 local MCP HTTP Inspector assertions passed**, including bound DATA DXF harvest, content-hash retrieval, stale hash rejection, automatic orchestrator harvest, and review-state invalidation.
 - `npm run test:e2e`: all 87 Inspector assertions pass; the command then exits nonzero because 17 required source-role paths are unavailable and remote ChatGPT Web acceptance is blocked. It does not report production acceptance.
 - `git diff --check`: clean (Git may report expected LF-to-CRLF conversion warnings).
-- GitHub Actions run [36745192297](https://github.com/GoldDRauDen/TrainAiCad/actions/runs/36745192297) on the prior code snapshot: serializer jobs passed on Windows and Ubuntu. MCP doctor, type/unit checks and regression gates passed on both; each OS completed 87 Inspector assertions, then `test:e2e` failed closed because the required source-role files are missing and hosted ChatGPT Web is untested. The initial MINSERT expansion added after that run has a separate CI run in progress; a follow-up fix now also preserves coincident zero-spacing cells and has local Python coverage. Its CI validation will follow the push. Production acceptance remains blocked.
+- GitHub Actions run [36747282661](https://github.com/GoldDRauDen/TrainAiCad/actions/runs/36747282661) on this code snapshot: serializer jobs passed on Windows and Ubuntu; MCP doctor, type/unit checks and regression gates passed on both; Windows recorded 87/87 Inspector assertions. Both MCP `test:e2e` jobs then failed closed because 17 production source files are missing and hosted ChatGPT Web is untested. Production acceptance remains blocked.
 
 ## Remaining blockers for true production E2E
 
@@ -53,7 +53,7 @@ The local MCP transport and defensive export workflow are runnable and tested. T
 3. Full material, datum, contour, bend/unfold and fold-back QA is not implemented for all requested source classes. Current regression passes do not establish those production checks.
 4. Positive independently reviewed source-to-DXF canaries are unavailable, so the pipeline has no honest basis to issue `PRODUCTION_PASS` for the requested customer drawing classes.
 5. ChatGPT Web's native attachment-to-MCP invocation and artifact download were not tested. This local loopback test is not evidence of remote client reachability; hosted MCP application and secure tunnel/client setup are separate requirements.
-6. GitHub Actions run 36745192297 exercised the pre-MINSERT DATA harvester on Windows and Ubuntu. Serializer and MCP runtime checks passed on both; both E2E jobs reported 17 absent source files and untested hosted ChatGPT Web. New MINSERT logic currently has local Python coverage; cross-platform validation awaits the next CI run.
+6. GitHub Actions run 36747282661 exercised the MINSERT-aware DATA harvester on Windows and Ubuntu. Serializer, doctor, unit/type and regression checks passed on both. Each platform reported 17 missing source files and the untested hosted ChatGPT Web path; local/CI protocol assertions do not certify production E2E.
 
 ## Next executable sequence
 
