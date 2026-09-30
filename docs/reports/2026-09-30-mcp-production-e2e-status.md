@@ -43,7 +43,7 @@ The local MCP transport and defensive export workflow are runnable and tested. T
 - `npm run test:integration`: **69/69 local MCP HTTP Inspector assertions passed**.
 - `npm run test:e2e`: MCP Inspector transport/flow assertions pass; final source-acceptance check exits with a blocked status by design while required source fixtures are absent.
 - `git diff --check`: clean (Git may report expected LF-to-CRLF conversion warnings).
-- No GitHub Actions run was triggered, and this snapshot was not pushed.
+- GitHub Actions run [36735486603](https://github.com/GoldDRauDen/TrainAiCad/actions/runs/36735486603): serializer jobs passed on Windows and Ubuntu. MCP doctor, unit/type checks and regression gates passed on both; MCP `test:e2e` failed closed on both because the 17 required source-role paths are unavailable and the remote ChatGPT Web path is untested. The branch was pushed; production acceptance remains blocked.
 
 ## Remaining blockers for true production E2E
 
