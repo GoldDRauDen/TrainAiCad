@@ -409,14 +409,48 @@ class JobStore {
     job.manufacturingQa = [];
     job.dxfOutput = undefined;
     job.dxfAudit = undefined;
-    job.flags = routes
-      .flatMap((r) => r.flags.map((flag) => `${r.code}:${flag}`));
+    const harvestFlags = job.sourceGeometryHarvest
+      ? ["DATA_DXF_HARVEST_REVIEW_REQUIRED", ...job.sourceGeometryHarvest.flags.map((flag) => `DATA_DXF:${flag}`)]
+      : [];
+    job.flags = [...new Set([
+      ...routes.flatMap((r) => r.flags.map((flag) => `${r.code}:${flag}`)),
+      ...harvestFlags
+    ])];
     if (!job.flags.length) {
       job.flags = routes
         .filter((r) => r.status === "REVIEW_REQUIRED")
         .map((r) => `${r.code}:ROUTING_REVIEW_REQUIRED`);
     }
     return this.transition(jobId, job.flags.length ? "REVIEW_REQUIRED" : "ROUTED");
+  }
+
+  recordSourceGeometryHarvest(jobId: string, harvest: CadJob["sourceGeometryHarvest"]): CadJob {
+    const job = this.get(jobId);
+    if (!harvest) throw new Error("DATA_DXF_HARVEST_RESULT_MISSING");
+    if (job.mode !== "PDF_DATA_RAW") throw new Error(`DATA_DXF_HARVEST_NOT_ALLOWED_IN_${job.mode}`);
+    if (!job.sourceBindings.DATA_DXF || job.sourceBindings.DATA_DXF.sha256 !== harvest?.sourceSha256) {
+      throw new Error("DATA_DXF_HARVEST_SOURCE_MISMATCH");
+    }
+    if (["REVIEW_ONLY", "VIEWS_ONLY", "SOURCE_CONFLICT"].includes(job.state)) {
+      throw new Error(`DATA_DXF_HARVEST_NOT_ALLOWED_IN_STATE:${job.state}`);
+    }
+    const changed = job.sourceGeometryHarvest?.ledgerSha256 !== harvest.ledgerSha256;
+    job.sourceGeometryHarvest = harvest;
+    job.flags = [...new Set([
+      ...job.flags,
+      "DATA_DXF_HARVEST_REVIEW_REQUIRED",
+      ...harvest.flags.map((flag) => `DATA_DXF:${flag}`)
+    ])];
+    job.geometrySources = [];
+    job.geometry = [];
+    job.manufacturingQa = [];
+    job.dxfOutput = undefined;
+    job.dxfAudit = undefined;
+    if (changed) job.flags = [...new Set([...job.flags, "SOURCE_GEOMETRY_LEDGER_CHANGED_REQUIRES_REVIEW"])];
+    job.state = "REVIEW_REQUIRED";
+    job.updatedAt = new Date().toISOString();
+    this.persist(job);
+    return job;
   }
 
   buildGeometry(jobId: string, rawSources: unknown[]): CadJob {

@@ -4,6 +4,7 @@
 Commands:
   export <input_json> <output_dir>
   audit <dxf_path>
+  harvest <source_dxf_path>
 
 All JSON output is single-line on stdout. Errors are raised to stderr/nonzero.
 """
@@ -191,6 +192,13 @@ def cmd_audit(dxf_path: str, expected_json: str, manifest_json: str):
     }, ensure_ascii=False))
 
 
+def cmd_harvest(source_dxf_path: str):
+    from source_dxf_harvest import harvest_data_dxf
+
+    print(json.dumps(harvest_data_dxf(source_dxf_path), ensure_ascii=False,
+                     separators=(",", ":")))
+
+
 def main():
     if len(sys.argv) < 2:
         raise SystemExit("usage: dxf_bridge.py export <json> <outdir> | audit <dxf>")
@@ -201,6 +209,8 @@ def main():
         raise SystemExit("audit requires: dxf_path serializer_input.json manifest.json")
     elif cmd == "audit" and len(sys.argv) == 5:
         cmd_audit(sys.argv[2], sys.argv[3], sys.argv[4])
+    elif cmd == "harvest" and len(sys.argv) == 3:
+        cmd_harvest(sys.argv[2])
     else:
         raise SystemExit("invalid command/arguments")
 

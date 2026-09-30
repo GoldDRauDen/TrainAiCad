@@ -14,6 +14,7 @@ import {
 import { downloadUri, storeSource } from "./ingest.js";
 import { GeometrySourceV1 } from "./geometry.js";
 import { renderSourcePage, sourcePageCount } from "./source-view.js";
+import { harvestBoundDataDxf, readBoundDataDxfLedger } from "./source-dxf.js";
 
 const BASE64 = /^[A-Za-z0-9+/\s]*={0,2}$/;
 const NormalizedRegion = z.tuple([z.number().min(0).max(1), z.number().min(0).max(1), z.number().min(0).max(1), z.number().min(0).max(1)])
@@ -152,6 +153,52 @@ export function buildServer(): McpServer {
         content: [
           { type: "text" as const, text: JSON.stringify(rendered.receipt, null, 2) },
           { type: "image" as const, data: rendered.png.toString("base64"), mimeType: "image/png" }
+        ]
+      };
+    }
+  );
+
+  server.registerTool(
+    "harvest_data_dxf",
+    {
+      description:
+        "Parse the exact job-bound PDF_DATA_RAW DATA_DXF into a source-handle/entity/transformation ledger. Preserves LINE/ARC/CIRCLE/LWPOLYLINE/POLYLINE/POINT/SPLINE/ELLIPSE and nested INSERT provenance; unsupported entities are retained as blocking flags. Never refits semantics or trusts INSUNITS as physical scale proof; the result always remains REVIEW_REQUIRED until scale and PDF correspondence are proved.",
+      inputSchema: z.object({ jobId: z.string().min(1) })
+    },
+    async ({ jobId }) => {
+      const harvested = harvestBoundDataDxf(jobId);
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify({
+            phase: "SOURCE_GEOMETRY_HARVESTED_REVIEW_REQUIRED",
+            jobId,
+            ledgerUri: harvested.uri,
+            fileName: harvested.fileName,
+            ...harvested.summary
+          }, null, 2) },
+          { type: "resource" as const, resource: {
+            uri: harvested.uri,
+            mimeType: "application/json",
+            blob: harvested.ledgerBytes.toString("base64")
+          } }
+        ]
+      };
+    }
+  );
+
+  server.registerTool(
+    "get_source_geometry_ledger",
+    {
+      description:
+        "Read the exact persisted source geometry ledger for the job's currently bound DATA_DXF. Requires the current ledger SHA-256 and rechecks the bound source and stored ledger hashes before returning its MCP resource.",
+      inputSchema: z.object({ jobId: z.string().min(1), ledgerSha256: z.string().regex(/^[a-f0-9]{64}$/) })
+    },
+    async ({ jobId, ledgerSha256 }) => {
+      const ledger = readBoundDataDxfLedger(jobId, ledgerSha256);
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify({ jobId, uri: ledger.uri, ledgerSha256, fileName: ledger.fileName, status: ledger.summary.status }) },
+          { type: "resource" as const, resource: { uri: ledger.uri, mimeType: "application/json", blob: ledger.ledgerBytes.toString("base64") } }
         ]
       };
     }
@@ -305,6 +352,33 @@ async function orchestrate(jobId: string, evidence?: unknown[]): Promise<CallToo
   if (job.state === "EVIDENCE_READY") {
     job = routeJob(jobId);
     const routedRules = jobStore.getRuleBundle(jobId);
+    if (job.mode === "PDF_DATA_RAW") {
+      const harvested = harvestBoundDataDxf(jobId);
+      const current = jobStore.get(jobId);
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify({
+            phase: "SOURCE_GEOMETRY_HARVESTED_REVIEW_REQUIRED",
+            job: publicJob(current),
+            routeRuleSnapshotSha256: routedRules.snapshotSha256,
+            pinnedRouteRules: routedRules.files,
+            ledgerUri: harvested.uri,
+            ledgerSha256: harvested.ledgerSha256,
+            blockers: [
+              "DATA_DXF_PHYSICAL_SCALE_UNPROVED",
+              "PDF_DATA_GEOMETRY_CORRESPONDENCE_NOT_PROVED",
+              "DATA_DXF_CANONICAL_GEOMETRY_ENGINE_NOT_IMPLEMENTED"
+            ],
+            next: "Prove physical scale and PDF-to-DATA correspondence from source evidence. Geometry remains review-only until deterministic canonical construction and manufacturing QA consume the ledger."
+          }, null, 2) },
+          { type: "resource" as const, resource: {
+            uri: harvested.uri,
+            mimeType: "application/json",
+            blob: harvested.ledgerBytes.toString("base64")
+          } }
+        ]
+      };
+    }
     if (job.state === "REVIEW_REQUIRED") {
       return json({ phase: "NEED_VISION", job: publicJob(job), routeRuleSnapshotSha256: routedRules.snapshotSha256, pinnedRouteRules: routedRules.files });
     }
@@ -313,8 +387,8 @@ async function orchestrate(jobId: string, evidence?: unknown[]): Promise<CallToo
       job: publicJob(job),
       routeRuleSnapshotSha256: routedRules.snapshotSha256,
       pinnedRouteRules: routedRules.files,
-      blocker: job.mode === "PDF_DATA_RAW" ? "DATA_DXF_HARVESTER_NOT_IMPLEMENTED" : "PDF_ONLY_DETERMINISTIC_SOLVER_NOT_IMPLEMENTED",
-      next: "The MCP has no production source-geometry engine for this route yet; it will not request caller-generated GEOMETRY_SOURCE_V1."
+      blocker: "PDF_ONLY_DETERMINISTIC_SOLVER_NOT_IMPLEMENTED",
+      next: "The MCP has no production PDF-only source-geometry engine for this route yet; it will not request caller-generated GEOMETRY_SOURCE_V1."
     });
   }
 

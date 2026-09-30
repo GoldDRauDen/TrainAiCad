@@ -227,6 +227,18 @@ export type SourceManifestV2 = {
   updatedAt: string;
 };
 
+export type SourceGeometryHarvestV1 = {
+  schema: "TRAINSOURCE_GEOMETRY_LEDGER_V1";
+  sourceSha256: string;
+  ledgerSha256: string;
+  entityCount: number;
+  unsupportedCount: number;
+  flags: string[];
+  scaleStatus: "UNPROVED";
+  status: "REVIEW_REQUIRED";
+  updatedAt: string;
+};
+
 export type SourceViewReceipt = {
   receiptId: string;
   sourceSha256: string;
@@ -275,6 +287,7 @@ export type CadJob = {
   sourceVerified: boolean;
   sourceBindings: Record<string, { role: string; fileName: string; sha256: string; mimeType: string; storedPath: string }>;
   sourceManifest: SourceManifestV2;
+  sourceGeometryHarvest?: SourceGeometryHarvestV1;
   sourceViewReceipts: SourceViewReceipt[];
   ruleBundleReadSha256?: string;
   dxf?: SourceDescriptor;

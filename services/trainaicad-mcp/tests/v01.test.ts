@@ -15,6 +15,7 @@ import {
   sourcePolicyForMode
 } from "../src/core.js";
 import { CadEvidenceV1 } from "../src/model.js";
+import { storeSource } from "../src/ingest.js";
 
 process.env.TRAINAICAD_MCP_DATA = mkdtempSync(join(tmpdir(), "trainaicad-mcp-v011-"));
 
@@ -244,6 +245,59 @@ test("job store records raw DATA vs explicit training reference separately", () 
   assert.equal(ref.mode, "TRAIN_REFERENCE");
   assert.equal(ref.dxfRole, "TRAIN_REFERENCE");
   assert.equal(ref.sourcePolicy.dxfUse, "AUDIT_ONLY");
+});
+
+test("DATA DXF source harvest is hash-bound and remains review-only", () => {
+  const job = jobStore.create(source, genericDxf, "AUTO");
+  const dxfBytes = Buffer.from("0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF\n", "ascii");
+  const stored = storeSource({ fileName: "data.dxf", bytes: dxfBytes }, "DATA_DXF");
+  jobStore.bindSource(job.jobId, "DATA_DXF", stored);
+
+  const harvest = {
+    schema: "TRAINSOURCE_GEOMETRY_LEDGER_V1" as const,
+    sourceSha256: stored.sha256,
+    ledgerSha256: "d".repeat(64),
+    entityCount: 0,
+    unsupportedCount: 0,
+    flags: ["DXF_NO_MODEL_GEOMETRY", "DXF_PHYSICAL_SCALE_UNPROVED"],
+    scaleStatus: "UNPROVED" as const,
+    status: "REVIEW_REQUIRED" as const,
+    updatedAt: new Date().toISOString()
+  };
+  assert.throws(() => jobStore.recordSourceGeometryHarvest(job.jobId, { ...harvest, sourceSha256: "e".repeat(64) }), /DATA_DXF_HARVEST_SOURCE_MISMATCH/);
+  const updated = jobStore.recordSourceGeometryHarvest(job.jobId, harvest);
+  assert.equal(updated.sourceGeometryHarvest?.sourceSha256, stored.sha256);
+  assert.equal(updated.sourceGeometryHarvest?.status, "REVIEW_REQUIRED");
+  assert.equal(updated.state, "REVIEW_REQUIRED");
+
+  // A ledger refresh is an upstream mutation: stale production approval and
+  // every derived geometry/QA/artifact record must be withdrawn.
+  updated.state = "PRODUCTION_PASS";
+  updated.geometrySources = [{} as never];
+  updated.geometry = [{} as never];
+  updated.manufacturingQa = [{} as never];
+  updated.dxfOutput = {} as never;
+  updated.dxfAudit = {} as never;
+  const refreshed = jobStore.recordSourceGeometryHarvest(job.jobId, {
+    ...harvest, ledgerSha256: "a".repeat(64)
+  });
+  assert.equal(refreshed.state, "REVIEW_REQUIRED");
+  assert.equal(refreshed.geometry.length, 0);
+  assert.equal(refreshed.manufacturingQa.length, 0);
+  assert.equal(refreshed.dxfOutput, undefined);
+  assert.equal(refreshed.dxfAudit, undefined);
+});
+
+test("DATA DXF harvesting is rejected for audit-only training references", () => {
+  const job = jobStore.create(source, referenceDxf, "AUTO", true);
+  const harvest = {
+    schema: "TRAINSOURCE_GEOMETRY_LEDGER_V1" as const,
+    sourceSha256: referenceDxf.sha256,
+    ledgerSha256: "f".repeat(64), entityCount: 0, unsupportedCount: 0,
+    flags: ["DXF_PHYSICAL_SCALE_UNPROVED"], scaleStatus: "UNPROVED" as const,
+    status: "REVIEW_REQUIRED" as const, updatedAt: new Date().toISOString()
+  };
+  assert.throws(() => jobStore.recordSourceGeometryHarvest(job.jobId, harvest), /DATA_DXF_HARVEST_NOT_ALLOWED_IN_TRAIN_REFERENCE/);
 });
 
 test("job reaches routing only through accepted evidence", () => {

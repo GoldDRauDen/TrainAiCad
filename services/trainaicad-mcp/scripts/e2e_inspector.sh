@@ -23,7 +23,7 @@ EXPECT=$(grep -o 'Current production release is \*\*V[0-9.]*\*\*' ../../AI_ENTRY
 echo "expected release pin: $EXPECT"
 
 LIST=$($INS --method tools/list 2>/dev/null)
-for t in process_cad_job advance_cad_job open_cad_job get_cad_rule_bundle submit_cad_evidence route_cad_parts build_canonical_geometry run_cad_qa export_dxf audit_dxf get_cad_job get_cad_artifact ingest_cad_file get_cad_source_view; do
+for t in process_cad_job advance_cad_job open_cad_job get_cad_rule_bundle submit_cad_evidence route_cad_parts build_canonical_geometry run_cad_qa export_dxf audit_dxf get_cad_job get_cad_artifact ingest_cad_file get_cad_source_view harvest_data_dxf get_source_geometry_ledger; do
   echo "$LIST" | grep -q "\"name\": \"$t\"" && ok "tool listed: $t" || bad "tool listed: $t"
 done
 
@@ -85,6 +85,29 @@ echo "$OUT" | grep -q '"kind": "PDF"' && ok "ingest PDF (base64) => kind PDF" ||
 echo "$OUT" | grep -q '"fileName": "evil sample.pdf"' && ok "filename sanitized" || bad "filename: $OUT"
 echo "$OUT" | grep -q "sources/DRAWING/" && ok "drawing stored under DRAWING/" || bad "path: $OUT"
 DRAW_SHA=$(echo "$OUT" | grep -o '"sha256": "[0-9a-f]\{64\}"' | head -1 | grep -o '[0-9a-f]\{64\}')
+
+# 6b. A real, bound regression DATA DXF is harvested with exact hashes and no
+# scale promotion from $INSUNITS. This tests extraction only, not manufacture.
+DATA_JOB_OUT=$(call open_cad_job "drawing={\"fileName\":\"source.pdf\",\"sha256\":\"$DRAW_SHA\"}" "mode=AUTO")
+DATA_JOB=$(echo "$DATA_JOB_OUT" | grep -o 'cad_[0-9a-f]\{16\}' | head -1)
+DATA_DXF_B64=$(base64 -w0 ../../regression/assets/acute_bend_lt85/ACUTE_BEND_LT85_SOURCE_FIXTURE.dxf)
+OUT=$(call ingest_cad_file "fileName=approved-regression-source.dxf" "role=DATA_DXF" "data=$DATA_DXF_B64" "jobId=$DATA_JOB")
+echo "$OUT" | grep -q '"jobMode": "PDF_DATA_RAW"' && ok "DATA source bound to PDF_DATA_RAW" || bad "DATA bind: $OUT"
+DATA_SHA=$(echo "$OUT" | grep -o '"sha256": "[0-9a-f]\{64\}"' | head -1 | grep -o '[0-9a-f]\{64\}')
+OUT=$(call harvest_data_dxf "jobId=$DATA_JOB")
+DATA_LEDGER_SHA=$(echo "$OUT" | grep -o '"ledgerSha256": "[0-9a-f]\{64\}"' | head -1 | grep -o '[0-9a-f]\{64\}')
+echo "$OUT" | grep -q 'SOURCE_GEOMETRY_HARVESTED_REVIEW_REQUIRED' && ok "bound DATA DXF harvested to review-only source ledger" || bad "harvest phase: $OUT"
+echo "$OUT" | grep -q "\"sourceSha256\": \"$DATA_SHA\"" && ok "harvest ledger source hash matches ingested bytes" || bad "harvest source hash: $OUT"
+echo "$OUT" | grep -q '"scaleStatus": "UNPROVED"' && ok "INSUNITS does not prove physical scale" || bad "harvest scale status: $OUT"
+echo "$OUT" | grep -q 'DXF_PHYSICAL_SCALE_UNPROVED' && ok "scale uncertainty retained as explicit flag" || bad "harvest flags: $OUT"
+echo "$OUT" | grep -q 'trainaicad://jobs/.*/source-geometry/' && ok "ledger returned as content-addressed MCP resource" || bad "harvest resource URI: $OUT"
+OUT=$(call get_source_geometry_ledger "jobId=$DATA_JOB" "ledgerSha256=$DATA_LEDGER_SHA")
+echo "$OUT" | grep -q "$DATA_LEDGER_SHA" && ok "persisted source ledger is retrievable by content hash" || bad "ledger retrieval: $OUT"
+ERR=$(call get_source_geometry_ledger "jobId=$DATA_JOB" "ledgerSha256=$(printf '0%.0s' {1..64})")
+echo "$ERR" | grep -q 'SOURCE_GEOMETRY_LEDGER_NOT_CURRENT' && ok "stale/forged source ledger hash is rejected" || bad "stale ledger retrieval: $ERR"
+OUT=$(call get_cad_job "jobId=$DATA_JOB")
+echo "$OUT" | grep -q '"scaleStatus": "UNPROVED"' && ok "source harvest metadata persisted on job" || bad "harvest persistence: $OUT"
+echo "$OUT" | grep -q '"state": "REVIEW_REQUIRED"' && ok "unproved DATA harvest leaves job review-gated" || bad "harvest state: $OUT"
 
 # 7. PDF + explicit reference (matrix C/F): fresh PDF_ONLY job, then bind REFERENCE_DXF
 DXF_B64=$(printf '0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF\n' | base64 -w0)
@@ -175,6 +198,22 @@ OUT=$(call advance_cad_job "jobId=$VIEW_JOB" "evidence=[$EV_VIEW]")
 echo "$OUT" | grep -q '"phase": "ROUTED"' && ok "advance validates evidence and routes automatically" || bad "advance route: $OUT"
 echo "$OUT" | grep -q 'skills/lispcad/modes/FLAT_NO_BEND.md' && ok "advance returns routed rule content" || bad "routed rule bundle: $OUT"
 echo "$OUT" | grep -q 'PDF_ONLY_DETERMINISTIC_SOLVER_NOT_IMPLEMENTED' && ok "orchestrator exposes the real solver blocker" || bad "solver blocker hidden: $OUT"
+
+# 16. PDF + bound DATA takes the high-level route through harvest automatically,
+# but remains blocked at unproved physical scale/correspondence.
+DATA_ROUTE=$(call open_cad_job "drawing={\"fileName\":\"source.pdf\",\"sha256\":\"$VIEW_SHA\"}" \
+  "dxf={\"fileName\":\"approved-regression-source.dxf\",\"sha256\":\"$DATA_SHA\"}" "mode=AUTO")
+DATA_ROUTE_JOB=$(echo "$DATA_ROUTE" | grep -o 'cad_[0-9a-f]\{16\}' | head -1)
+echo "$DATA_ROUTE" | grep -q '"mode": "PDF_DATA_RAW"' && ok "orchestrator E2E opens verified PDF+DATA job" || bad "raw source job: $DATA_ROUTE"
+OUT=$(call process_cad_job "jobId=$DATA_ROUTE_JOB")
+DATA_RECEIPT=$(echo "$OUT" | sed -n 's/.*SOURCE_VIEW_RECEIPT \([0-9a-f-]*\).*/\1/p' | head -1)
+[ -n "$DATA_RECEIPT" ] && ok "PDF+DATA job receives actual visual source receipt" || bad "raw source receipt: $OUT"
+EV_DATA='{"schema":"CAD_EVIDENCE_V1","jobId":"'"$DATA_ROUTE_JOB"'","code":"DATA001","source":{"sourceId":"'"$VIEW_SHA"'","page":1,"visualReceiptIds":["'"$DATA_RECEIPT"'"]},"material":{"printed":"SS400","family":"SS","thickness":{"value":2,"unit":"mm","origin":"PRINTED"}},"views":[{"id":"A","type":"FLAT"}],"contour":{"topology":"PLATE","status":"PROVED","overallX":{"value":20,"unit":"mm","origin":"PRINTED"},"overallY":{"value":10,"unit":"mm","origin":"PRINTED"}},"features":[],"bends":[],"markings":[],"handwriting":[],"uncertainties":[]}'
+OUT=$(call advance_cad_job "jobId=$DATA_ROUTE_JOB" "evidence=[$EV_DATA]")
+echo "$OUT" | grep -q 'SOURCE_GEOMETRY_HARVESTED_REVIEW_REQUIRED' && ok "advance automatically harvests bound DATA DXF" || bad "raw advance harvest: $OUT"
+echo "$OUT" | grep -q 'DATA_DXF_PHYSICAL_SCALE_UNPROVED' && ok "raw orchestrator blocks unproved physical scale" || bad "raw scale gate: $OUT"
+echo "$OUT" | grep -q 'DATA_DXF_CANONICAL_GEOMETRY_ENGINE_NOT_IMPLEMENTED' && ok "raw orchestrator reports remaining deterministic engine gap" || bad "raw engine blocker: $OUT"
+echo "$OUT" | grep -q '"state": "REVIEW_REQUIRED"' && ok "raw source job stays REVIEW_REQUIRED" || bad "raw job state: $OUT"
 
 echo "---- inspector e2e: $PASS passed, $FAIL failed ----"
 echo "JOB_ID=$JOB"

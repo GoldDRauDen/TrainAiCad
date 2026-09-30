@@ -106,10 +106,14 @@ export function verifiedSource(role: SourceRole, fileName: string, expectedSha25
 
 /** Replace JSON state atomically so a crash cannot leave a truncated manifest/job. */
 export function atomicWriteJson(path: string, value: unknown): void {
+  atomicWriteBytes(path, Buffer.from(JSON.stringify(value, null, 2), "utf8"));
+}
+
+export function atomicWriteBytes(path: string, bytes: Buffer): void {
   mkdirSync(dirname(path), { recursive: true });
   const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
   try {
-    writeFileSync(temporary, JSON.stringify(value, null, 2), { flag: "wx" });
+    writeFileSync(temporary, bytes, { flag: "wx" });
     renameSync(temporary, path);
   } finally {
     if (existsSync(temporary)) {
