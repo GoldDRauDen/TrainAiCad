@@ -33,7 +33,7 @@ General V4.20 raw-DATA boundary: Delta<0.1 mm no FLAG; Delta>=0.1 mm FLAG. KH433
 
 ## 4. Geometry-first, one drawing code end-to-end
 
-For every code, use the **mandatory reading and manufacturing sequence specified by the current portable skill**; the following gates ensure that the model's interpretation actually becomes CAD:
+For every code, use the **mandatory reading and manufacturing sequence specified by the pinned core plus router-selected modules/references**; the following gates ensure that the model's interpretation actually becomes CAD:
 
 **G0 — Mechanical classification.** Create the `references/MECHANICAL_CLASSIFIER.md` record: source mode, part class, face count, bend axes/angles/signs, independent feature inventory and loaded modules. Labels route work but never replace source evidence or V4.19 FACE_GRAPH closure.
 
@@ -41,11 +41,11 @@ For every code, use the **mandatory reading and manufacturing sequence specified
 
 **G2 — Connected dimension graph.** Before numeric geometry, store actual dimension records with printed values, classes (baseline/chain/local/overall/ordinate), the true start/end witness endpoints, physical source frame, local face, datum and derived expression. No blank `dimension_graph` followed by a generic `DATUM_LOCKED_OR_FLAGGED` success for a dimensioned part. Exhaust the source evidence before declaring a dimension genuinely unresolved.
 
-**G3 — Typed feature geometry.** Preserve the source quantity of each active/canceled Ø/M/slot/cutout/R/C family independently. Construct coordinates, sizes and actual canonical CAD primitives for every **proved** feature; isolate an uncertain member with an exact local FLAG. Do not erase all independently known holes because one hole or one datum is unresolved. Follow the active skill's material, pilot, POINT/CIRCLE, radius, relief and overlap/union rules.
+**G3 — Typed feature geometry.** Preserve the source quantity of each active/canceled Ø/M/slot/cutout/R/C family independently. Construct coordinates, sizes and actual canonical CAD primitives for every **proved** feature; isolate an uncertain member with an exact local FLAG. Do not erase all independently known holes because one hole or one datum is unresolved. Follow the active routed material, pilot, POINT/CIRCLE, radius, relief and overlap/union rules.
 
 **G4 — Unfold/transform.** Prove the ordered formed-face and bend sequence, source-to-CAD axis mapping and independent face-local-to-flat transforms. Apply written Nobi and the currently approved ID→OD rounding and material rules. If a defensible full flat is proven, **build the actual flat and bend-line geometry**, not merely note a calculated flat bounding size. If a full flat is genuinely unproved after source-trace exhaustion, retain the actual separately reconstructed source views as `VIEWS_ONLY` and FLAG the exact missing relationship. Never guess a production face order or manufacture a flat from an overall bbox.
 
-**G5 — Per-code semantic QA.** Actually run every applicable validation required by the **currently loaded** skill (real contour topology, printed numeric fidelity, datum graph, quantities and cancellations, material/feature rules, Nobi and bend order, closure, containment, bend-line material clipping, view transforms and output semantics). Treat `PASS_STRUCTURAL_ONLY` or a closed rectangle as file-format evidence **only**, not manufacturing PASS.
+**G5 — Per-code semantic QA.** Actually run every applicable validation required by the **currently loaded routed module set** (real contour topology, printed numeric fidelity, datum graph, quantities and cancellations, material/feature rules, Nobi and bend order, closure, containment, bend-line material clipping, view transforms and output semantics). Treat `PASS_STRUCTURAL_ONLY` or a closed rectangle as file-format evidence **only**, not manufacturing PASS.
 
 Persist a genuine `canonical/<code>.json` after each successfully completed gate. It must contain the **actual** proved geometric entities and source provenance, not just prose inventories and placeholders. Complete one representative code through geometry + QA + DXF read-back before multiplying the same workflow across the entire job. When suitable **user-approved** regression/reference data are available, use one representative previously verified code as a canary **after independent source interpretation**. Never hardcode a particular regression job/code, numeric coordinate, version or reference result into this orchestration policy.
 
@@ -53,7 +53,7 @@ Persist a genuine `canonical/<code>.json` after each successfully completed gate
 
 If a batch contains only Magenta rectangular view envelopes, empty dimension graphs, no typed cut features and no actual contour/bend geometry, report **`PIPELINE_NO_GEOMETRY_PROGRESS`**. Do not present its 12 or 20 syntactically valid entities as a completed drawing deliverable. Stop expanding to additional codes and identify the failing stage: image receipt, source interpretation, witness/datum extraction, face transform, canonical geometry generation or DXF serialization. Preserve all caches, evidence and partially proved geometry. Never 'fix' this guard by fabricating dimensions or marking placeholders as PASS.
 
-`PREVIEW` and `VIEWS_ONLY` are **valid only after the source-specific effort required by the current skill**, not automatic responses to any hard drawing. Keep independently proven geometry exact, and apply Magenta + specific FLAG only within the authorized uncertain scope. A mixed-confidence composite remains REVIEW ONLY / NO CUT under the active output contract.
+`PREVIEW` and `VIEWS_ONLY` are **valid only after the source-specific effort required by the active routed rules**, not automatic responses to any hard drawing. Keep independently proven geometry exact, and apply Magenta + specific FLAG only within the authorized uncertain scope. A mixed-confidence composite remains REVIEW ONLY / NO CUT under the active output contract.
 
 ## 6. Cost and latency optimization that CANNOT weaken reading quality
 
