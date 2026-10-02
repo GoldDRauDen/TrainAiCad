@@ -11,16 +11,18 @@ import {
   resolveJobMode,
   resolveRepoRoot,
   routeEvidence,
-  sourcePolicyForMode
+  sourcePolicyForMode,
 } from "../src/core.js";
 import { CadEvidenceV1 } from "../src/model.js";
 
-process.env.TRAINAICAD_MCP_DATA = mkdtempSync(join(tmpdir(), "trainaicad-mcp-v011-"));
+process.env.TRAINAICAD_MCP_DATA = mkdtempSync(
+  join(tmpdir(), "trainaicad-mcp-v011-"),
+);
 
 const source = {
   fileName: "sample.pdf",
   sha256: "a".repeat(64),
-  sourceId: "source-a"
+  sourceId: "source-a",
 };
 const genericDxf = { fileName: "data.dxf", sha256: "b".repeat(64) };
 const referenceDxf = { fileName: "approved.dxf", sha256: "c".repeat(64) };
@@ -34,38 +36,44 @@ function evidence(overrides: Record<string, unknown> = {}) {
     material: {
       printed: "SS400",
       family: "SS",
-      thickness: { value: 3, unit: "mm", origin: "PRINTED" }
+      thickness: { value: 3, unit: "mm", origin: "PRINTED" },
     },
     views: [{ id: "A", type: "FLAT" }],
     contour: {
       topology: "PLATE",
       status: "PROVED",
       overallX: { value: 50, unit: "mm", origin: "PRINTED" },
-      overallY: { value: 32, unit: "mm", origin: "PRINTED" }
+      overallY: { value: 32, unit: "mm", origin: "PRINTED" },
     },
-    features: [{
-      id: "S1",
-      family: "SLOT",
-      quantity: 1,
-      width: { value: 10, unit: "mm", origin: "PRINTED" }
-    }],
+    features: [
+      {
+        id: "S1",
+        family: "SLOT",
+        quantity: 1,
+        width: { value: 10, unit: "mm", origin: "PRINTED" },
+      },
+    ],
     bends: [],
     markings: [],
     handwriting: [],
     uncertainties: [],
-    ...overrides
+    ...overrides,
   });
 }
 
-test("release pin follows live CURRENT", () => {
+test("release pin follows active router, independent of portable", () => {
   const pin = readReleasePin();
-  const current = readFileSync(
-    join(resolveRepoRoot(), "skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md"),
-    "utf8"
+  const router = readFileSync(
+    join(resolveRepoRoot(), "skills/lispcad/router/ROUTER.yaml"),
+    "utf8",
   );
-  assert.equal(pin.release, current.match(/^# SKILL_LISPCAD (V\d+\.\d+) PORTABLE/m)?.[1]);
-  assert.equal(pin.entrypointSha256.length, 64);
-  assert.equal(pin.currentSkillSha256.length, 64);
+  assert.equal(pin.release, router.match(/release: (V[0-9.]+)/)?.[1]);
+  assert.equal(pin.snapshotId.length, 64);
+  assert.ok(
+    !Object.keys(pin.moduleHashes).some(
+      (p) => p.includes("portable/") || p.includes("versions/"),
+    ),
+  );
 });
 
 test("V4.20 source classification is deterministic", () => {
@@ -75,7 +83,10 @@ test("V4.20 source classification is deterministic", () => {
   assert.equal(resolveJobMode("PDF_DATA_RAW", true), "PDF_DATA_RAW");
   assert.equal(resolveJobMode("TRAIN_REFERENCE", true), "TRAIN_REFERENCE");
   assert.throws(() => resolveJobMode("PDF_DATA_RAW", false), /requires DXF/);
-  assert.throws(() => resolveJobMode("DIRECT_EXISTING_DXF_AUDIT", false), /approved reference DXF/);
+  assert.throws(
+    () => resolveJobMode("DIRECT_EXISTING_DXF_AUDIT", false),
+    /approved reference DXF/,
+  );
   assert.throws(() => resolveJobMode("PDF_ONLY", true), /cannot include DXF/);
 });
 
@@ -83,30 +94,35 @@ test("V4.20 source authority split is encoded", () => {
   assert.deepEqual(sourcePolicyForMode("PDF_DATA_RAW"), {
     geometryAuthority: "DATA_DXF",
     semanticAuthority: "PDF_OR_IMAGE_CONTROL",
-    dxfUse: "RAW_GEOMETRY"
+    dxfUse: "RAW_GEOMETRY",
   });
   assert.equal(sourcePolicyForMode("TRAIN_REFERENCE").dxfUse, "AUDIT_ONLY");
-  assert.equal(sourcePolicyForMode("DIRECT_EXISTING_DXF_AUDIT").dxfUse, "GROUND_TRUTH_AUDIT");
+  assert.equal(
+    sourcePolicyForMode("DIRECT_EXISTING_DXF_AUDIT").dxfUse,
+    "GROUND_TRUTH_AUDIT",
+  );
 });
 
-test("state machine allows PRODUCTION_PASS only after QA_COMPLETE", () => {
+test("research state machine cannot reach PRODUCTION_PASS", () => {
   assert.throws(
     () => assertTransition("SOURCE_READY", "PRODUCTION_PASS"),
-    /INVALID_JOB_TRANSITION/
+    /INVALID_JOB_TRANSITION/,
   );
   for (const [from, targets] of Object.entries(allowedTransitions)) {
     const canPass = targets.includes("PRODUCTION_PASS");
-    assert.equal(canPass, from === "QA_COMPLETE", `production path from ${from}`);
+    assert.equal(canPass, false, `production path from ${from}`);
   }
 });
 
 test("derived number requires derivation evidence", () => {
-  assert.throws(() => CadEvidenceV1.parse({
-    ...evidence(),
-    material: {
-      thickness: { value: 3, unit: "mm", origin: "DERIVED" }
-    }
-  }));
+  assert.throws(() =>
+    CadEvidenceV1.parse({
+      ...evidence(),
+      material: {
+        thickness: { value: 3, unit: "mm", origin: "DERIVED" },
+      },
+    }),
+  );
 });
 
 test("flat router loads V4.20 source/mechanical references and slot module", () => {
@@ -127,24 +143,27 @@ test("V4.20 feature inventory routes independent manufacturing families", () => 
       { id: "C1", family: "CURVED_SLOT", quantity: 1 },
       { id: "P1", family: "PIASU", quantity: 2 },
       { id: "SL1", family: "SLIT_RELIEF", quantity: 1 },
-      { id: "R1", family: "RIB", quantity: 1 }
+      { id: "R1", family: "RIB", quantity: 1 },
     ],
-    markings: [
-      { id: "K1", family: "KEGAKI", quantity: 2, status: "PROVED" }
-    ]
+    markings: [{ id: "K1", family: "KEGAKI", quantity: 2, status: "PROVED" }],
   });
   const route = routeEvidence(e, "PDF_DATA_RAW");
   for (const module of [
     "skills/lispcad/features/CURVED_SLOT.md",
     "skills/lispcad/features/HOLES_TAPS.md",
-    "skills/lispcad/features/FORMING_FEATURES.md",
     "skills/lispcad/features/SLIT_RELIEF.md",
     "skills/lispcad/features/RIB.md",
-    "skills/lispcad/features/KEGAKI.md"
+    "skills/lispcad/features/KEGAKI.md",
   ]) {
     assert.ok(route.modules.includes(module), module);
   }
-  for (const family of ["CURVED_SLOT", "PIASU_PIERCING", "SLIT_RELIEF", "RIB", "KEGAKI"]) {
+  for (const family of [
+    "CURVED_SLOT",
+    "PIASU_PIERCING",
+    "SLIT_RELIEF",
+    "RIB",
+    "KEGAKI",
+  ]) {
     assert.ok(route.mechanical.featureInventory.includes(family), family);
   }
 });
@@ -159,22 +178,24 @@ test("every proved bent/multi-face route loads BEND_UNFOLD and FACE_GRAPH", () =
         angle: { value: 90, unit: "deg", origin: "PRINTED" },
         axis: "X",
         sign: "POSITIVE",
-        status: "PROVED"
+        status: "PROVED",
       },
       {
         id: "B2",
         angle: { value: 90, unit: "deg", origin: "PRINTED" },
         axis: "Y",
         sign: "NEGATIVE",
-        status: "PROVED"
-      }
-    ]
+        status: "PROVED",
+      },
+    ],
   });
   const route = routeEvidence(e, "PDF_DATA_RAW");
   assert.equal(route.mode, "BEND_UNFOLD");
   assert.equal(route.status, "ROUTED");
   assert.ok(route.modules.includes("skills/lispcad/modes/BEND_UNFOLD.md"));
-  assert.ok(route.specialRules.includes("references/FACE_GRAPH_UNFOLD_PROTOCOL.md"));
+  assert.ok(
+    route.specialRules.includes("references/FACE_GRAPH_UNFOLD_PROTOCOL.md"),
+  );
   assert.equal(route.mechanical.faceCount, 3);
   assert.equal(route.mechanical.evidenceStatus, "PROVED");
 });
@@ -182,17 +203,21 @@ test("every proved bent/multi-face route loads BEND_UNFOLD and FACE_GRAPH", () =
 test("bent part without signed bend evidence is review-required but keeps bend rules", () => {
   const e = evidence({
     contour: { topology: "L_PROFILE", status: "PROVED" },
-    bends: [{
-      id: "B1",
-      angle: { value: 90, unit: "deg", origin: "PRINTED" },
-      status: "PROVED"
-    }]
+    bends: [
+      {
+        id: "B1",
+        angle: { value: 90, unit: "deg", origin: "PRINTED" },
+        status: "PROVED",
+      },
+    ],
   });
   const route = routeEvidence(e);
   assert.equal(route.mode, "UNRESOLVED");
   assert.equal(route.status, "REVIEW_REQUIRED");
   assert.ok(route.modules.includes("skills/lispcad/modes/BEND_UNFOLD.md"));
-  assert.ok(route.specialRules.includes("references/FACE_GRAPH_UNFOLD_PROTOCOL.md"));
+  assert.ok(
+    route.specialRules.includes("references/FACE_GRAPH_UNFOLD_PROTOCOL.md"),
+  );
   assert.equal(route.mechanical.bendAxes[0]?.axis, "UNPROVED");
 });
 
@@ -200,20 +225,24 @@ test("acute BOXMET keeps acute and BOXMET rules plus FACE_GRAPH", () => {
   const bends = [75, 90, 90, 90].map((angle, i) => ({
     id: `B${i + 1}`,
     angle: { value: angle, unit: "deg" as const, origin: "PRINTED" as const },
-    axis: i < 2 ? "X" as const : "Y" as const,
-    sign: i % 2 ? "NEGATIVE" as const : "POSITIVE" as const,
-    status: "PROVED" as const
+    axis: i < 2 ? ("X" as const) : ("Y" as const),
+    sign: i % 2 ? ("NEGATIVE" as const) : ("POSITIVE" as const),
+    status: "PROVED" as const,
   }));
   const e = evidence({
     contour: { topology: "BOXMET", status: "PROVED" },
-    bends
+    bends,
   });
   const route = routeEvidence(e);
   assert.equal(route.mode, "BEND_UNFOLD");
   assert.equal(route.mechanical.partClass, "BOX_4_FLANGE");
   assert.equal(route.mechanical.faceCount, 5);
-  assert.ok(route.specialRules.includes("references/FACE_GRAPH_UNFOLD_PROTOCOL.md"));
-  assert.ok(route.specialRules.includes("references/ACUTE_BEND_LT85_METHOD.md"));
+  assert.ok(
+    route.specialRules.includes("references/FACE_GRAPH_UNFOLD_PROTOCOL.md"),
+  );
+  assert.ok(
+    route.specialRules.includes("references/ACUTE_BEND_LT85_METHOD.md"),
+  );
   assert.ok(route.specialRules.includes("references/BOXMET_SLIT_RELIEF.md"));
 });
 

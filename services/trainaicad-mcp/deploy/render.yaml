@@ -1,0 +1,38 @@
+# Research staging: native ChatGPT file params + Supabase OAuth. Live acceptance pending.
+# Blueprint Path: services/trainaicad-mcp/deploy/render.yaml
+services:
+  - type: web
+    name: trainaicad-mcp-research
+    runtime: docker
+    plan: free
+    autoDeploy: false
+    dockerContext: .
+    dockerfilePath: ./services/trainaicad-mcp/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: TRAINAICAD_AUTH_MODE
+        value: supabase
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: TRAINAICAD_OWNER_ID
+        sync: false
+      - key: TRAINAICAD_OAUTH_CLIENT_ID
+        sync: false
+      - key: TRAINAICAD_OAUTH_REDIRECT_URIS
+        sync: false
+      - key: TRAINAICAD_ARTIFACT_SECRET
+        generateValue: true
+      - key: TRAINAICAD_REQUIRE_DURABLE
+        value: "1"
+      - key: TRAINAICAD_PUBLIC_URL
+        sync: false
+      - key: TRAINAICAD_SOURCE_COMMIT
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: TRAINAICAD_STORAGE_BUCKET
+        value: trainaicad-private
+      - key: TRAINAICAD_STORAGE_NAMESPACE
+        value: research-owner

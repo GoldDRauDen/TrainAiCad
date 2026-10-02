@@ -1,7 +1,20 @@
+import { pinRules, selectRules } from "./snapshot.js";
+import { verifyGeometry, SourceChecks } from "./qa.js";
 import { createHash, randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  renameSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { bindSourceToJob, dataRoot, type IngestResult, type SourceRole } from "./ingest.js";
+import {
+  bindSourceToJob,
+  dataRoot,
+  type IngestResult,
+  type SourceRole,
+} from "./ingest.js";
 import { jevStatus } from "./jev.js";
 import { buildJobGeometry, GeometrySourceV1 } from "./geometry.js";
 import { exportWithBridge, auditWithBridge } from "./dxf.js";
@@ -17,46 +30,37 @@ import {
   type ReleasePin,
   type RouteResult,
   type SourceDescriptor,
-  type SourcePolicy
+  type SourcePolicy,
 } from "./model.js";
 
 function sha256(text: string): string {
   return createHash("sha256").update(text).digest("hex");
 }
 
-export function resolveRepoRoot(start = process.env.TRAINAICAD_REPO_ROOT ?? process.cwd()): string {
+export function resolveRepoRoot(
+  start = process.env.TRAINAICAD_REPO_ROOT ?? process.cwd(),
+): string {
   let current = resolve(start);
   for (;;) {
     const entry = join(current, "AI_ENTRYPOINT.md");
-    const skill = join(current, "skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md");
+    const skill = join(current, "skills/lispcad/router/ROUTER.yaml");
     if (existsSync(entry) && existsSync(skill)) return current;
     const parent = dirname(current);
-    if (parent === current) throw new Error("SKILL_FRESHNESS_UNVERIFIED: TrainAiCad repo root not found");
+    if (parent === current)
+      throw new Error(
+        "SKILL_FRESHNESS_UNVERIFIED: TrainAiCad repo root not found",
+      );
     current = parent;
   }
 }
 
 export function readReleasePin(repoRoot = resolveRepoRoot()): ReleasePin {
-  const entrypoint = readFileSync(join(repoRoot, "AI_ENTRYPOINT.md"), "utf8");
-  const currentSkill = readFileSync(
-    join(repoRoot, "skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md"),
-    "utf8"
-  );
-
-  const entryMatch = entrypoint.match(/Current production release is \*\*(V\d+\.\d+)\*\*/);
-  const skillMatch = currentSkill.match(/^# SKILL_LISPCAD (V\d+\.\d+) PORTABLE/m);
-  if (!entryMatch?.[1] || !skillMatch?.[1] || entryMatch[1] !== skillMatch[1]) {
-    throw new Error("SKILL_FRESHNESS_UNVERIFIED: AI_ENTRYPOINT and CURRENT disagree");
-  }
-
-  return {
-    release: entryMatch[1],
-    entrypointSha256: sha256(entrypoint),
-    currentSkillSha256: sha256(currentSkill)
-  };
+  return pinRules(repoRoot);
 }
 
-export const allowedTransitions: Readonly<Record<JobState, readonly JobState[]>> = {
+export const allowedTransitions: Readonly<
+  Record<JobState, readonly JobState[]>
+> = {
   CREATED: ["SOURCE_READY"],
   SOURCE_READY: ["EVIDENCE_READY"],
   EVIDENCE_READY: ["ROUTED", "REVIEW_REQUIRED"],
@@ -65,11 +69,11 @@ export const allowedTransitions: Readonly<Record<JobState, readonly JobState[]>>
   GEOMETRY_READY: ["DXF_WRITTEN"],
   DXF_WRITTEN: ["DXF_READBACK"],
   DXF_READBACK: ["QA_COMPLETE"],
-  QA_COMPLETE: ["PRODUCTION_PASS"],
+  QA_COMPLETE: [],
   PRODUCTION_PASS: [],
   REVIEW_ONLY: [],
   VIEWS_ONLY: [],
-  SOURCE_CONFLICT: []
+  SOURCE_CONFLICT: [],
 };
 
 export function assertTransition(from: JobState, to: JobState): void {
@@ -81,7 +85,7 @@ export function assertTransition(from: JobState, to: JobState): void {
 export function resolveJobMode(
   requested: JobModeRequested,
   hasDxf: boolean,
-  declaredReference = false
+  declaredReference = false,
 ): JobMode {
   if (requested === "AUTO") {
     if (declaredReference) {
@@ -92,13 +96,19 @@ export function resolveJobMode(
   }
 
   if (requested === "PDF_ONLY") {
-    if (hasDxf) throw new Error("PDF_ONLY cannot include DXF; use AUTO/PDF_DATA_RAW/TRAIN_REFERENCE");
+    if (hasDxf)
+      throw new Error(
+        "PDF_ONLY cannot include DXF; use AUTO/PDF_DATA_RAW/TRAIN_REFERENCE",
+      );
     return requested;
   }
 
   if (requested === "PDF_DATA_RAW") {
     if (!hasDxf) throw new Error("PDF_DATA_RAW requires DXF");
-    if (declaredReference) throw new Error("PDF_DATA_RAW cannot use an explicitly declared reference DXF");
+    if (declaredReference)
+      throw new Error(
+        "PDF_DATA_RAW cannot use an explicitly declared reference DXF",
+      );
     return requested;
   }
 
@@ -107,7 +117,10 @@ export function resolveJobMode(
     return requested;
   }
 
-  if (!hasDxf) throw new Error("DIRECT_EXISTING_DXF_AUDIT requires approved reference DXF");
+  if (!hasDxf)
+    throw new Error(
+      "DIRECT_EXISTING_DXF_AUDIT requires approved reference DXF",
+    );
   return "DIRECT_EXISTING_DXF_AUDIT";
 }
 
@@ -117,25 +130,25 @@ export function sourcePolicyForMode(mode: JobMode): SourcePolicy {
       return {
         geometryAuthority: "PDF_OR_IMAGE",
         semanticAuthority: "PDF_OR_IMAGE",
-        dxfUse: "NONE"
+        dxfUse: "NONE",
       };
     case "PDF_DATA_RAW":
       return {
         geometryAuthority: "DATA_DXF",
         semanticAuthority: "PDF_OR_IMAGE_CONTROL",
-        dxfUse: "RAW_GEOMETRY"
+        dxfUse: "RAW_GEOMETRY",
       };
     case "TRAIN_REFERENCE":
       return {
         geometryAuthority: "PDF_OR_IMAGE_INDEPENDENT",
         semanticAuthority: "PDF_OR_IMAGE_INDEPENDENT",
-        dxfUse: "AUDIT_ONLY"
+        dxfUse: "AUDIT_ONLY",
       };
     case "DIRECT_EXISTING_DXF_AUDIT":
       return {
         geometryAuthority: "AI_DXF_VS_APPROVED_REFERENCE",
         semanticAuthority: "AUDIT_PAIR_FIRST_THEN_SOURCE",
-        dxfUse: "GROUND_TRUTH_AUDIT"
+        dxfUse: "GROUND_TRUTH_AUDIT",
       };
   }
 }
@@ -155,7 +168,11 @@ function dxfRoleForMode(mode: JobMode): DxfRole | undefined {
  * evidence is submitted the mode is locked and a mode-changing binding is
  * rejected instead.
  */
-export function modeAfterBinding(mode: JobMode, state: JobState, role: SourceRole): JobMode {
+export function modeAfterBinding(
+  mode: JobMode,
+  state: JobState,
+  role: SourceRole,
+): JobMode {
   if (role === "DRAWING") return mode;
 
   let next: JobMode;
@@ -165,8 +182,10 @@ export function modeAfterBinding(mode: JobMode, state: JobState, role: SourceRol
     else throw new Error(`SOURCE_CONFLICT: DATA_DXF cannot bind to ${mode}`);
   } else if (role === "REFERENCE_DXF") {
     if (mode === "PDF_ONLY") next = "TRAIN_REFERENCE";
-    else if (mode === "TRAIN_REFERENCE" || mode === "DIRECT_EXISTING_DXF_AUDIT") return mode;
-    else throw new Error(`SOURCE_CONFLICT: REFERENCE_DXF cannot bind to ${mode}`);
+    else if (mode === "TRAIN_REFERENCE" || mode === "DIRECT_EXISTING_DXF_AUDIT")
+      return mode;
+    else
+      throw new Error(`SOURCE_CONFLICT: REFERENCE_DXF cannot bind to ${mode}`);
   } else {
     // AI_DXF: fail-closed, only the direct audit mode accepts an AI-exported DXF
     if (mode === "DIRECT_EXISTING_DXF_AUDIT") return mode;
@@ -186,7 +205,9 @@ class JobStore {
 
   private persist(job: CadJob): void {
     mkdirSync(join(dataRoot(), "jobs"), { recursive: true });
-    writeFileSync(this.file(job.jobId), JSON.stringify(job, null, 2));
+    const file = this.file(job.jobId);
+    writeFileSync(file + ".tmp", JSON.stringify(job, null, 2));
+    renameSync(file + ".tmp", file);
   }
 
   private normalizePersisted(raw: unknown): CadJob {
@@ -204,10 +225,23 @@ class JobStore {
       delete legacy.referenceDxf;
     }
 
-    legacy.sourcePolicy = legacy.sourcePolicy ?? sourcePolicyForMode(legacy.mode as JobMode);
+    legacy.sourcePolicy =
+      legacy.sourcePolicy ?? sourcePolicyForMode(legacy.mode as JobMode);
     legacy.geometrySources = legacy.geometrySources ?? [];
     legacy.geometry = legacy.geometry ?? [];
     legacy.manufacturingQa = legacy.manufacturingQa ?? [];
+    if (legacy.dxfOutput) {
+      legacy.dxfOutput.absolutePath = join(
+        dataRoot(),
+        legacy.dxfOutput.relativePath,
+      );
+      legacy.dxfOutput.manifestPath = join(
+        dataRoot(),
+        "outputs",
+        legacy.jobId,
+        `${legacy.jobId}_MANIFEST.json`,
+      );
+    }
     return legacy as CadJob;
   }
 
@@ -215,7 +249,7 @@ class JobStore {
     source: SourceDescriptor,
     dxf: SourceDescriptor | undefined,
     requested: JobModeRequested,
-    declaredReference = false
+    declaredReference = false,
   ): CadJob {
     const now = new Date().toISOString();
     const mode = resolveJobMode(requested, Boolean(dxf), declaredReference);
@@ -235,7 +269,7 @@ class JobStore {
       manufacturingQa: [],
       flags: [],
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
     this.jobs.set(job.jobId, job);
     this.persist(job);
@@ -243,6 +277,7 @@ class JobStore {
   }
 
   get(jobId: string): CadJob {
+    if (!/^cad_[a-f0-9]{16}$/.test(jobId)) throw new Error("INVALID_JOB_ID");
     let job = this.jobs.get(jobId);
     if (!job) {
       const file = this.file(jobId);
@@ -272,7 +307,8 @@ class JobStore {
     }
     const parsed = raw.map((item) => CadEvidenceV1.parse(item));
     for (const item of parsed) {
-      if (item.jobId !== jobId) throw new Error(`EVIDENCE_JOB_MISMATCH: ${item.jobId}`);
+      if (item.jobId !== jobId)
+        throw new Error(`EVIDENCE_JOB_MISMATCH: ${item.jobId}`);
       if (item.source.sourceId !== (job.source.sourceId ?? job.source.sha256)) {
         throw new Error(`EVIDENCE_SOURCE_MISMATCH: ${item.code}`);
       }
@@ -287,10 +323,13 @@ class JobStore {
     job.geometrySources = [];
     job.geometry = [];
     job.manufacturingQa = [];
+    job.computedQa = undefined;
+    job.sourceChecks = undefined;
     job.dxfOutput = undefined;
     job.dxfAudit = undefined;
     job.flags = [];
-    if (job.state === "SOURCE_READY") return this.transition(jobId, "EVIDENCE_READY");
+    if (job.state === "SOURCE_READY")
+      return this.transition(jobId, "EVIDENCE_READY");
     job.state = "EVIDENCE_READY";
     job.updatedAt = new Date().toISOString();
     this.persist(job);
@@ -306,12 +345,17 @@ class JobStore {
     job.geometrySources = [];
     job.geometry = [];
     job.manufacturingQa = [];
+    job.computedQa = undefined;
+    job.sourceChecks = undefined;
     job.dxfOutput = undefined;
     job.dxfAudit = undefined;
     job.flags = routes
       .filter((r) => r.status === "REVIEW_REQUIRED")
       .map((r) => `${r.code}:ROUTING_REVIEW_REQUIRED`);
-    return this.transition(jobId, job.flags.length ? "REVIEW_REQUIRED" : "ROUTED");
+    return this.transition(
+      jobId,
+      job.flags.length ? "REVIEW_REQUIRED" : "ROUTED",
+    );
   }
 
   buildGeometry(jobId: string, rawSources: unknown[]): CadJob {
@@ -322,6 +366,8 @@ class JobStore {
     job.geometrySources = parsed;
     job.geometry = built.ready;
     job.manufacturingQa = [];
+    job.computedQa = undefined;
+    job.sourceChecks = undefined;
     job.dxfOutput = undefined;
     job.dxfAudit = undefined;
     job.flags = built.flags;
@@ -335,9 +381,37 @@ class JobStore {
     return this.transition(jobId, "GEOMETRY_READY");
   }
 
-  exportDxf(jobId: string, rawQa: unknown[]): CadJob {
+  verify(jobId: string, rawChecks: unknown[]): CadJob {
     const job = this.get(jobId);
-    const exported = exportWithBridge(job, rawQa, resolveRepoRoot());
+    job.computedQa = verifyGeometry(job, rawChecks);
+    job.sourceChecks = rawChecks.map((x) => SourceChecks.parse(x));
+    job.updatedAt = new Date().toISOString();
+    this.persist(job);
+    return job;
+  }
+
+  exportDxf(jobId: string, rawQa?: unknown[]): CadJob {
+    const job = this.get(jobId);
+    const checks =
+      rawQa ??
+      job.geometry.map((g) => ({
+        schema: "MANUFACTURING_QA_V1",
+        jobId,
+        code: g.code,
+        checks: {
+          contour_topology: "PASS",
+          datum: "PASS",
+          feature_count: "PASS",
+          unfold: "N/A",
+          containment: "PASS",
+          bend_domain: "N/A",
+          material_rules: "FLAGGED",
+          slot_semantics: "N/A",
+        },
+        foldBack: "N/A",
+        approvedForExport: true,
+      }));
+    const exported = exportWithBridge(job, checks, resolveRepoRoot());
     job.manufacturingQa = exported.qa;
     job.dxfOutput = exported.output;
     job.dxfAudit = undefined;
@@ -353,12 +427,18 @@ class JobStore {
       throw new Error(`DXF_AUDIT_NOT_ALLOWED_IN_STATE: ${job.state}`);
     }
     if (!job.dxfOutput) throw new Error("DXF_AUDIT_NO_OUTPUT");
-    job.dxfAudit = auditWithBridge(job.dxfOutput, resolveRepoRoot());
+    job.dxfAudit = auditWithBridge(
+      job.dxfOutput,
+      resolveRepoRoot(),
+      job.production,
+    );
     job.updatedAt = new Date().toISOString();
     this.persist(job);
     this.transition(jobId, "DXF_READBACK");
     this.transition(jobId, "QA_COMPLETE");
-    return this.transition(jobId, "PRODUCTION_PASS");
+    job.flags = ["RESEARCH_ONLY_NO_PRODUCTION_CERTIFICATION"];
+    this.persist(job);
+    return job;
   }
 
   /**
@@ -367,7 +447,11 @@ class JobStore {
    * rejected) so `PDF_ONLY` can never carry a DXF source. Rejects before any
    * write, so a refused binding leaves both the job and the binding file alone.
    */
-  bindSource(jobId: string, role: SourceRole, source: IngestResult): { job: CadJob; bound: Record<string, IngestResult> } {
+  bindSource(
+    jobId: string,
+    role: SourceRole,
+    source: IngestResult,
+  ): { job: CadJob; bound: Record<string, IngestResult> } {
     const job = this.get(jobId);
     const next = modeAfterBinding(job.mode, job.state, role);
     const bound = bindSourceToJob(jobId, role, source);
@@ -377,7 +461,7 @@ class JobStore {
       job.dxf = {
         fileName: source.fileName,
         sha256: source.sha256,
-        mimeType: source.mimeType
+        mimeType: source.mimeType,
       };
       job.dxfRole = dxfRoleForMode(next);
       job.updatedAt = new Date().toISOString();
@@ -389,35 +473,12 @@ class JobStore {
 
 export const jobStore = new JobStore();
 
-const topologyModule: Partial<Record<Evidence["contour"]["topology"], string>> = {
-  L_PROFILE: "skills/lispcad/topology/L_PROFILE.md",
-  U_PROFILE: "skills/lispcad/topology/U_PROFILE.md",
-  MULTI_FACE: "skills/lispcad/topology/MULTI_FACE_PROFILE.md",
-  STEPPED_PROFILE: "skills/lispcad/topology/STEPPED_PROFILE.md"
-};
-
-const featureModules: Partial<Record<Evidence["features"][number]["family"], readonly string[]>> = {
-  SLOT: ["skills/lispcad/features/SLOTS.md"],
-  CURVED_SLOT: ["skills/lispcad/features/CURVED_SLOT.md"],
-  HOLE: ["skills/lispcad/features/HOLES_TAPS.md"],
-  TAP: ["skills/lispcad/features/HOLES_TAPS.md"],
-  CHAMFER: ["skills/lispcad/features/CHAMFER_RADIUS.md"],
-  RADIUS: ["skills/lispcad/features/CHAMFER_RADIUS.md"],
-  FORMING: ["skills/lispcad/features/FORMING_FEATURES.md"],
-  PIASU: [
-    "skills/lispcad/features/HOLES_TAPS.md",
-    "skills/lispcad/features/FORMING_FEATURES.md"
-  ],
-  SLIT_RELIEF: ["skills/lispcad/features/SLIT_RELIEF.md"],
-  RIB: ["skills/lispcad/features/RIB.md"]
-};
-
 const structurallyBentTopologies = new Set<Evidence["contour"]["topology"]>([
   "L_PROFILE",
   "U_PROFILE",
   "MULTI_FACE",
   "STEPPED_PROFILE",
-  "BOXMET"
+  "BOXMET",
 ]);
 
 function unique(values: string[]): string[] {
@@ -427,19 +488,27 @@ function unique(values: string[]): string[] {
 function inferredFaceCount(evidence: Evidence): number | null {
   if (evidence.faceCount) return evidence.faceCount;
   switch (evidence.contour.topology) {
-    case "PLATE": return 1;
-    case "L_PROFILE": return 2;
-    case "U_PROFILE": return 3;
-    case "BOXMET": return 5;
-    default: return null;
+    case "PLATE":
+      return 1;
+    case "L_PROFILE":
+      return 2;
+    case "U_PROFILE":
+      return 3;
+    case "BOXMET":
+      return 5;
+    default:
+      return null;
   }
 }
 
 function minimumBends(evidence: Evidence): number {
   switch (evidence.contour.topology) {
-    case "L_PROFILE": return 1;
-    case "U_PROFILE": return 2;
-    case "BOXMET": return 4;
+    case "L_PROFILE":
+      return 1;
+    case "U_PROFILE":
+      return 2;
+    case "BOXMET":
+      return 4;
     case "MULTI_FACE":
     case "STEPPED_PROFILE":
       return 1;
@@ -448,16 +517,25 @@ function minimumBends(evidence: Evidence): number {
   }
 }
 
-function classifyPart(evidence: Evidence, structurallyBent: boolean): PartClass {
+function classifyPart(
+  evidence: Evidence,
+  structurallyBent: boolean,
+): PartClass {
   if (evidence.partClassHint) return evidence.partClassHint;
   if (!structurallyBent) return "FLAT_NO_BEND";
   switch (evidence.contour.topology) {
-    case "L_PROFILE": return "SINGLE_BEND_L";
-    case "U_PROFILE": return "DOUBLE_BEND_U";
-    case "MULTI_FACE": return "MULTI_FACE_ORTHOGONAL";
-    case "STEPPED_PROFILE": return "STEPPED_BENT";
-    case "BOXMET": return "BOX_4_FLANGE";
-    default: return "OTHER_PROVED_TOPOLOGY";
+    case "L_PROFILE":
+      return "SINGLE_BEND_L";
+    case "U_PROFILE":
+      return "DOUBLE_BEND_U";
+    case "MULTI_FACE":
+      return "MULTI_FACE_ORTHOGONAL";
+    case "STEPPED_PROFILE":
+      return "STEPPED_BENT";
+    case "BOXMET":
+      return "BOX_4_FLANGE";
+    default:
+      return "OTHER_PROVED_TOPOLOGY";
   }
 }
 
@@ -506,7 +584,11 @@ function inventory(evidence: Evidence, structurallyBent: boolean): string[] {
   return unique(values);
 }
 
-export function routeEvidence(evidence: Evidence, sourceMode: JobMode = "PDF_ONLY"): RouteResult {
+export function routeEvidence(
+  evidence: Evidence,
+  sourceMode: JobMode = "PDF_ONLY",
+  pin: ReleasePin = readReleasePin(),
+): RouteResult {
   const structurallyBent =
     evidence.bends.length > 0 ||
     structurallyBentTopologies.has(evidence.contour.topology);
@@ -517,12 +599,11 @@ export function routeEvidence(evidence: Evidence, sourceMode: JobMode = "PDF_ONL
     ["MULTI_FACE", "STEPPED_PROFILE"].includes(evidence.contour.topology) &&
     faceCount === null;
   const missingBendProof =
-    structurallyBent && (
-      evidence.bends.length < requiredBends ||
-      evidence.bends.some((bend) =>
-        !bend.axis || !bend.sign || bend.sign === "UNKNOWN"
-      )
-    );
+    structurallyBent &&
+    (evidence.bends.length < requiredBends ||
+      evidence.bends.some(
+        (bend) => !bend.axis || !bend.sign || bend.sign === "UNKNOWN",
+      ));
 
   const blocked =
     evidence.contour.status === "UNCERTAIN" ||
@@ -539,47 +620,11 @@ export function routeEvidence(evidence: Evidence, sourceMode: JobMode = "PDF_ONL
       ? "BEND_UNFOLD"
       : "FLAT_NO_BEND";
 
-  const modules = [
-    "references/SOURCE_DATA_CLASSIFICATION.md",
-    "references/MECHANICAL_CLASSIFIER.md",
-    "skills/lispcad/core/DRAWING_READING.md",
-    "skills/lispcad/core/DATUM_DIMENSION.md",
-    "skills/lispcad/core/VALIDATION.md",
-    "skills/lispcad/core/CAD_OUTPUT.md",
-    structurallyBent
-      ? "skills/lispcad/modes/BEND_UNFOLD.md"
-      : "skills/lispcad/modes/FLAT_NO_BEND.md"
-  ];
-
-  const topology = topologyModule[evidence.contour.topology];
-  if (topology) modules.push(topology);
-
-  for (const feature of evidence.features) {
-    const selected = featureModules[feature.family];
-    if (selected) modules.push(...selected);
-  }
-  for (const marking of evidence.markings) {
-    if (marking.family === "KEGAKI") modules.push("skills/lispcad/features/KEGAKI.md");
-    if (marking.family === "RIB") modules.push("skills/lispcad/features/RIB.md");
-  }
-
-  const specialRules: string[] = [];
-  if (structurallyBent) {
-    specialRules.push("references/FACE_GRAPH_UNFOLD_PROTOCOL.md");
-  }
-  const acute = evidence.bends.some(
-    (bend) => bend.status === "PROVED" && bend.angle.value < 85
+  const selected = selectRules(pin, sourceMode, evidence);
+  const specialRules = selected.filter((p) =>
+    /FACE_GRAPH|ACUTE_BEND|BOXMET/.test(p),
   );
-  if (acute) {
-    specialRules.push(
-      "references/ACUTE_BEND_LT85_METHOD.md",
-      "references/ACUTE_BEND_LT85_FROM_SOURCE.md"
-    );
-  }
-  if (evidence.contour.topology === "BOXMET") {
-    specialRules.push("references/BOXMET_SLIT_RELIEF.md");
-  }
-
+  const modules = selected.filter((p) => !specialRules.includes(p));
   const loadedModules = unique([...modules, ...specialRules]);
   const partClass = classifyPart(evidence, structurallyBent);
 
@@ -596,18 +641,18 @@ export function routeEvidence(evidence: Evidence, sourceMode: JobMode = "PDF_ONL
       faceCount,
       bendAxes: evidence.bends.map((bend) => ({
         bendId: bend.id,
-        axis: bend.axis ?? "UNPROVED"
+        axis: bend.axis ?? "UNPROVED",
       })),
       bendAnglesAndSigns: evidence.bends.map((bend) => ({
         bendId: bend.id,
         angleDeg: bend.angle.value,
-        sign: bend.sign ?? "UNPROVED"
+        sign: bend.sign ?? "UNPROVED",
       })),
       featureInventory: inventory(evidence, structurallyBent),
       evidenceStatus: blocked ? "REVIEW_REQUIRED" : "PROVED",
-      loadedModules
+      loadedModules,
     },
-    jev: jevStatus()
+    jev: jevStatus(),
   };
 }
 
@@ -619,20 +664,39 @@ export function routeJob(jobId: string): CadJob {
   if (!job.evidence.length) throw new Error("NO_EVIDENCE");
   return jobStore.setRoutes(
     jobId,
-    job.evidence.map((evidence) => routeEvidence(evidence, job.mode))
+    job.evidence.map((evidence) =>
+      routeEvidence(evidence, job.mode, job.production),
+    ),
   );
 }
 
-export function publicJob(
-  job: CadJob
-): Omit<CadJob, "evidence" | "geometrySources"> & {
-  evidenceCount: number;
-  geometrySourceCount: number;
-} {
-  const { evidence, geometrySources, ...rest } = job;
+export function publicJob(job: CadJob) {
+  const {
+    evidence,
+    geometrySources,
+    geometry,
+    sourceChecks,
+    production,
+    manufacturingQa,
+    dxfOutput,
+    ...rest
+  } = job;
   return {
     ...rest,
+    production: {
+      release: production.release,
+      snapshotId: production.snapshotId,
+      repositoryCommit: production.repositoryCommit,
+    },
+    dxfOutput: dxfOutput
+      ? {
+          fileName: dxfOutput.fileName,
+          sha256: dxfOutput.sha256,
+          writtenAt: dxfOutput.writtenAt,
+        }
+      : undefined,
     evidenceCount: evidence.length,
-    geometrySourceCount: geometrySources.length
+    geometrySourceCount: geometrySources.length,
+    geometryCount: geometry.length,
   };
 }

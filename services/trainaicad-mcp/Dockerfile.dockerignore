@@ -1,0 +1,12 @@
+**/.git
+**/node_modules
+**/data
+**/__pycache__
+**/.venv
+**/.env
+**/.env.*
+**/*.pdf
+**/*.dxf
+**/*.png
+**/*.jpg
+**/tmp

@@ -1,18 +1,25 @@
 {
   "name": "@trainaicad/mcp",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
-  "description": "Experimental TrainAiCad MCP V0.3 full CAD runtime",
-  "engines": { "node": ">=22" },
+  "description": "Research MCP: source images, frozen rules, computed QA and NO CUT DXF",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "dev": "tsx src/http.ts",
+    "dev": "node --import tsx src/http.ts",
     "check": "tsc --noEmit && npm test",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "smoke:pdf": "node --import tsx scripts/smoke_pdf.ts",
+    "check:remote": "node --import tsx scripts/check_remote.ts",
+    "smoke:native": "node --import tsx scripts/smoke_native_pdf.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "^2.1.0",
     "@modelcontextprotocol/server": "^2.2.0",
+    "@supabase/supabase-js": "^2.117.2",
+    "jose": "^6.2.12",
     "zod": "^4.6.5"
   },
   "devDependencies": {

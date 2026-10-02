@@ -7,13 +7,14 @@ Commands:
 
 All JSON output is single-line on stdout. Errors are raised to stderr/nonzero.
 """
+import os
 import json
 import sys
 from pathlib import Path
 
 import ezdxf
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(os.environ.get("TRAINAICAD_RULE_SNAPSHOT", Path(__file__).resolve().parents[3])).resolve()
 sys.path.insert(0, str(ROOT / "tools"))
 from export_dxf import export_job  # noqa: E402
 
