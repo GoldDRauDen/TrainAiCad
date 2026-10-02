@@ -85,8 +85,8 @@ assert mid_tolerance(600, 0, -0.5) == Decimal("599.75")
 
 assert not data_pdf_flags(5.0, 5.0)
 assert pilot_from_table("M5") == 4.2
-assert "THREAD_PREHOLE_SOURCE" in holes
-assert "raw pre-hole" in contract or "raw pre-hole" in qa
+assert "THREAD_PREHOLE_SOURCE" in physical and "THREAD_PREHOLE_SOURCE" in contract
+assert "raw pre-hole" in holes or "raw pre-hole" in contract or "raw pre-hole" in qa
 assert "Ø4.134" in qa and "Ø4.2" in qa
 
 # Representation equality is physical, not raw entity-count identity.
