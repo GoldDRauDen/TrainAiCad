@@ -148,13 +148,24 @@ function countEntities(part: z.infer<typeof RepoDirectPart>) {
   };
 }
 
+export function isCensusItemClosed(
+  item: { state: "YES" | "NO" | "UNKNOWN"; evidence: string[] } | undefined,
+) {
+  if (!item || item.state === "UNKNOWN") return false;
+  // Explicit NO means the family was inspected and ruled out. The evidence
+  // schema intentionally permits an empty evidence[] for NO; requiring a
+  // synthetic evidence string here caused false FINAL_CENSUS failures.
+  if (item.state === "NO") return true;
+  return item.evidence.length > 0;
+}
+
 function assertCensusClosed(job: CadJob, code: string) {
   const evidence = job.evidence.find((e) => e.code === code);
   if (!evidence) throw new Error(`REPO_DIRECT_EVIDENCE_NOT_FOUND:${code}`);
   const router = readSnapshot(job.production).router;
   for (const family of Object.keys(router.feature_routes)) {
     const item = evidence.census?.[family];
-    if (!item || item.state === "UNKNOWN" || !item.evidence.length)
+    if (!isCensusItemClosed(item))
       throw new Error(`REPO_DIRECT_FINAL_CENSUS_NOT_CLOSED:${code}:${family}`);
   }
   selectRules(job.production, job.mode, evidence);
