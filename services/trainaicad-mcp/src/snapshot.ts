@@ -130,6 +130,35 @@ export function readSnapshot(pin: ReleasePin): Snapshot {
   }
   return snap;
 }
+
+function activeCensusFamilies(evidence: CadEvidenceV1) {
+  const bent =
+    evidence.bends.length > 0 || evidence.contour.topology !== "PLATE";
+  const present = new Set(["MATERIAL_RULES"]),
+    aliases: Record<string, string> = {
+      SLOT: "SLOT_STRAIGHT",
+      CHAMFER: "CHAMFER_FILLET",
+      RADIUS: "CHAMFER_FILLET",
+    };
+  for (const f of evidence.features) {
+    if (f.family === "CUTOUT") continue;
+    present.add(aliases[f.family] ?? f.family);
+  }
+  for (const m of evidence.markings) present.add(m.family);
+  if (bent) present.add("NOBI");
+  if (evidence.contour.topology === "BOXMET") present.add("BOXMET");
+  if (evidence.bends.some((b) => b.angle.value < 85))
+    present.add("ACUTE_BEND_LT85");
+  return present;
+}
+
+export function censusContradictions(evidence: CadEvidenceV1): string[] {
+  const present = activeCensusFamilies(evidence);
+  return [...present].filter(
+    (name) => evidence.census?.[name]?.state === "NO",
+  );
+}
+
 export function selectRules(
   pin: ReleasePin,
   mode: JobMode,
@@ -148,24 +177,11 @@ export function selectRules(
         : "FLAT_NO_BEND"
   ]!.load)
     selected.add(p);
-  const present = new Set(["MATERIAL_RULES"]),
-    aliases: Record<string, string> = {
-      SLOT: "SLOT_STRAIGHT",
-      CHAMFER: "CHAMFER_FILLET",
-      RADIUS: "CHAMFER_FILLET",
-    };
-  for (const f of evidence.features) {
-    if (f.family === "CUTOUT") continue;
-    const name = aliases[f.family] ?? f.family;
-    if (!r.feature_routes[name])
-      throw new Error(`ROUTING_COVERAGE_GAP:${f.family}`);
-    present.add(name);
+  const present = activeCensusFamilies(evidence);
+  for (const name of present) {
+    if (!r.feature_routes[name] && !r.dependency_aliases[name])
+      throw new Error(`ROUTING_COVERAGE_GAP:${name}`);
   }
-  for (const m of evidence.markings) present.add(m.family);
-  if (bent) present.add("NOBI");
-  if (evidence.contour.topology === "BOXMET") present.add("BOXMET");
-  if (evidence.bends.some((b) => b.angle.value < 85))
-    present.add("ACUTE_BEND_LT85");
   const visited = new Set<string>();
   const load = (name: string) => {
     if (visited.has(name)) return;
@@ -178,8 +194,9 @@ export function selectRules(
   };
   for (const name of Object.keys(r.feature_routes)) {
     const state = evidence.census?.[name]?.state ?? "UNKNOWN";
-    if (present.has(name) && state === "NO")
-      throw new Error(`CENSUS_CONTRADICTION:${name}`);
+    // A source-supported family with census=NO is an evidence contradiction,
+    // not a missing rule. Load the rule so the job can continue to REVIEW_ONLY;
+    // censusContradictions() records the issue for the repo-direct review flag.
     if (present.has(name) || state !== "NO") load(name);
   }
   return [...selected];
