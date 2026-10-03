@@ -34,16 +34,17 @@ export function createApp(
           headers: { allow: "GET" },
         });
       if (path === "/health") return new Response("ok");
+      if (
+        ["supabase", "setup", "auth0"].includes(config.mode) &&
+        [
+          "/.well-known/oauth-protected-resource",
+          "/.well-known/oauth-protected-resource/mcp",
+        ].includes(path)
+      )
+        return Response.json(authentication.metadata(), {
+          headers: { "cache-control": "no-store" },
+        });
       if (["supabase", "setup"].includes(config.mode)) {
-        if (
-          [
-            "/.well-known/oauth-protected-resource",
-            "/.well-known/oauth-protected-resource/mcp",
-          ].includes(path)
-        )
-          return Response.json(authentication.metadata(), {
-            headers: { "cache-control": "no-store" },
-          });
         if (path === "/oauth/consent")
           return config.mode === "supabase"
             ? consentPage(config)
