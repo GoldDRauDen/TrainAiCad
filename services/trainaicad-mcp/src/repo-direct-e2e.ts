@@ -176,6 +176,9 @@ export function exportRepoDirectE2E(raw: unknown): {
         ruleSnapshotId: submission.ruleSnapshotId,
         outputPolicy: "ONE_COMPOSITE_DXF_ONLY",
         gates: submission.gates,
+        reviewFlags: submission.parts.flatMap((part) =>
+          part.flags.map((flag) => `${part.code}:${flag}`),
+        ),
       },
       null,
       2,
@@ -217,7 +220,14 @@ export function exportRepoDirectE2E(raw: unknown): {
   jobStore.transition(job.jobId, "DXF_WRITTEN");
 
   job.dxfAudit = auditSavedDxf(job, submission);
-  job.flags = ["MCP_REPO_DIRECT_PARITY_NON_AUTHORITY"];
+  job.flags = [
+    "MCP_REPO_DIRECT_PARITY_NON_AUTHORITY",
+    ...new Set(
+      submission.parts.flatMap((part) =>
+        part.flags.map((flag) => `${part.code}:${flag}`),
+      ),
+    ),
+  ];
   jobStore.transition(job.jobId, "DXF_READBACK");
   jobStore.transition(job.jobId, "QA_COMPLETE");
 
