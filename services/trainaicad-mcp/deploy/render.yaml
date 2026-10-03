@@ -1,4 +1,4 @@
-# Research staging: native ChatGPT file params + Supabase OAuth. Live acceptance pending.
+# Research staging: native ChatGPT file params + Auth0 OAuth. Supabase is storage only.
 # Blueprint Path: services/trainaicad-mcp/deploy/render.yaml
 services:
   - type: web
@@ -11,14 +11,12 @@ services:
     healthCheckPath: /health
     envVars:
       - key: TRAINAICAD_AUTH_MODE
-        value: supabase
-      - key: SUPABASE_PUBLISHABLE_KEY
+        value: auth0
+      - key: TRAINAICAD_AUTH0_ISSUER
         sync: false
-      - key: TRAINAICAD_OWNER_ID
+      - key: TRAINAICAD_AUTH0_AUDIENCE
         sync: false
-      - key: TRAINAICAD_OAUTH_CLIENT_ID
-        sync: false
-      - key: TRAINAICAD_OAUTH_REDIRECT_URIS
+      - key: TRAINAICAD_AUTH0_OWNER_SUB
         sync: false
       - key: TRAINAICAD_ARTIFACT_SECRET
         generateValue: true
