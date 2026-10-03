@@ -52,7 +52,9 @@ test("repo-direct flags reviewable ambiguity and still exports one REVIEW_ONLY c
       name,
       name === "TAP"
         ? { state: "UNKNOWN", evidence: [] }
-        : { state: "NO", evidence: [] },
+        : name === "MATERIAL_RULES"
+          ? { state: "YES", evidence: ["p1:SUS304 t2"] }
+          : { state: "NO", evidence: [] },
     ]),
   );
 
@@ -154,6 +156,11 @@ test("repo-direct flags reviewable ambiguity and still exports one REVIEW_ONLY c
   assert.ok(
     result.job.dxfAudit?.labels.some((label) =>
       label.startsWith("REVIEW ONLY - NO CUT"),
+    ),
+  );
+  assert.ok(
+    result.job.flags.some((flag) =>
+      flag.includes("26-TEST-001:FINAL_CENSUS_NOT_CLOSED:TAP"),
     ),
   );
 });
