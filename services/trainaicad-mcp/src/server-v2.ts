@@ -5,10 +5,8 @@ import { checkpoint } from "./storage.js";
 import { buildServer } from "./server.js";
 import { jobStore, publicJob } from "./core.js";
 import { rulesBundle, selectRules } from "./snapshot.js";
-import {
-  exportRepoDirectDxf,
-  RepoDirectSubmissionV1,
-} from "./repo-direct.js";
+import { RepoDirectSubmissionV1 } from "./repo-direct.js";
+import { exportRepoDirectE2E } from "./repo-direct-e2e.js";
 
 async function json(value: unknown) {
   await checkpoint();
@@ -77,7 +75,7 @@ export function buildServerV2(): McpServer {
           "execute_current_validation_gates",
           "export_repo_direct_dxf",
           "automatic_saved_dxf_readback",
-          "get_cad_artifact",
+          "get_repo_direct_artifact",
         ],
         productionGate: {
           finalCensusClosed: true,
@@ -108,7 +106,7 @@ export function buildServerV2(): McpServer {
     {
       title: "Xuất DXF theo repo hiện hành",
       description:
-        "PREFERRED E2E export path that mirrors the current repo-direct production workflow instead of the limited V0.2 TypeScript canonical builder. Submit the independently interpreted canonical DXF entities plus explicit current-rule validation gates. The server binds source/DATA hashes + rule snapshot, verifies route/census/material/count/gate closure, calls the repo-approved tools/export_dxf.py serializer, reopens/audits the saved DXF, and returns a signed artifact URL. Supports bent/multi-face parts and features without V02_BENT_FEATURE_TRANSFORM_NOT_IMPLEMENTED or V02_LINEAR_CHAIN_AXIS_UNSUPPORTED because local-face transforms are solved upstream under the active repo rules, exactly as repo-direct production does.",
+        "PREFERRED E2E export path that mirrors the current repo-direct production workflow instead of the limited V0.2 TypeScript canonical builder. Submit the independently interpreted canonical DXF entities plus explicit current-rule validation gates. The server binds source/DATA hashes + rule snapshot, verifies route/census/material/count/gate closure, calls the repo-approved tools/export_dxf.py serializer, reopens/audits the saved DXF with PASS/review-aware label checks, and returns a signed artifact URL. Supports bent/multi-face parts and features without V02_BENT_FEATURE_TRANSFORM_NOT_IMPLEMENTED or V02_LINEAR_CHAIN_AXIS_UNSUPPORTED because local-face transforms are solved upstream under the active repo rules, exactly as repo-direct production does.",
       inputSchema: RepoDirectSubmissionV1,
       annotations: {
         readOnlyHint: false,
@@ -118,7 +116,7 @@ export function buildServerV2(): McpServer {
       _meta: oauthMeta(),
     },
     async (submission) => {
-      const result = exportRepoDirectDxf(submission);
+      const result = exportRepoDirectE2E(submission);
       return json({
         ...publicJob(result.job),
         repoDirect: {
