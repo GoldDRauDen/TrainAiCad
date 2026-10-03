@@ -4,7 +4,7 @@ import { mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { jobStore, routeJob } from "../src/core.js";
-import { exportRepoDirectDxf } from "../src/repo-direct.js";
+import { exportRepoDirectE2E } from "../src/repo-direct-e2e.js";
 
 process.env.TRAINAICAD_MCP_DATA = mkdtempSync(join(tmpdir(), "cad-repo-direct-"));
 process.env.TRAINAICAD_ARTIFACT_SECRET = "x".repeat(64);
@@ -127,7 +127,7 @@ test("repo-direct path exports a U-profile with Y-axis bend and bent-face featur
   assert.equal(routed.routes[0]?.status, "ROUTED");
   assert.equal(routed.routes[0]?.mechanical.partClass, "DOUBLE_BEND_U");
 
-  const result = exportRepoDirectDxf({
+  const result = exportRepoDirectE2E({
     schema: "REPO_DIRECT_DXF_V1",
     jobId: created.jobId,
     sourceSha256: sourceSha,
