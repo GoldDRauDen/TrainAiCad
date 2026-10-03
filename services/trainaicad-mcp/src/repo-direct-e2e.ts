@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { artifact } from "./artifact.js";
@@ -56,6 +63,21 @@ function expectedCodeLabels(submission: RepoDirectSubmissionV1) {
     if (part.status === "VIEWS_ONLY") return `${part.code} [VIEWS_ONLY - FLAG]`;
     return `${part.code} [FLAG]`;
   });
+}
+
+function withServerAuthority(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const input = raw as Record<string, unknown>;
+  if (typeof input.jobId !== "string") return raw;
+  const job = jobStore.get(input.jobId);
+  return {
+    ...input,
+    // Never make the model/client copy immutable authority hashes back to us.
+    // Bind them from the persisted job immediately before strict validation.
+    sourceSha256: job.source.sha256,
+    ruleSnapshotId: job.production.snapshotId,
+    ...(job.dxf ? { dxfSha256: job.dxf.sha256 } : { dxfSha256: undefined }),
+  };
 }
 
 function auditSavedDxf(job: CadJob, submission: RepoDirectSubmissionV1) {
@@ -117,7 +139,7 @@ export function exportRepoDirectE2E(raw: unknown): {
   artifact: { fileName: string; sha256: string; url: string | null };
 } {
   const { job, submission, submissionSha256 } =
-    validateRepoDirectSubmission(raw);
+    validateRepoDirectSubmission(withServerAuthority(raw));
 
   job.geometrySources = [];
   job.geometry = [];
@@ -132,6 +154,14 @@ export function exportRepoDirectE2E(raw: unknown): {
 
   const outDir = join(dataRoot(), "outputs", job.jobId);
   mkdirSync(outDir, { recursive: true });
+
+  // Repo V4.9 default contract is exactly ONE composite DXF. Remove stale DXFs
+  // from an earlier retry/legacy path so the job folder cannot expose confusing
+  // per-code files alongside the canonical combined artifact.
+  for (const name of readdirSync(outDir)) {
+    if (name.toLowerCase().endsWith(".dxf")) unlinkSync(join(outDir, name));
+  }
+
   const payload = { job_id: job.jobId, parts: submission.parts };
   const inputPath = join(outDir, "repo_direct_serializer_input.json");
   writeFileSync(inputPath, JSON.stringify(payload, null, 2));
@@ -144,6 +174,7 @@ export function exportRepoDirectE2E(raw: unknown): {
         sourceSha256: submission.sourceSha256,
         dxfSha256: submission.dxfSha256 ?? null,
         ruleSnapshotId: submission.ruleSnapshotId,
+        outputPolicy: "ONE_COMPOSITE_DXF_ONLY",
         gates: submission.gates,
       },
       null,
@@ -161,6 +192,16 @@ export function exportRepoDirectE2E(raw: unknown): {
     throw new Error("REPO_DIRECT_DXF_BRIDGE_INVALID_RESULT");
   const abs = resolve(result.dxf_path);
   if (!existsSync(abs)) throw new Error("REPO_DIRECT_DXF_FILE_MISSING");
+
+  const dxfFiles = readdirSync(outDir).filter((name) =>
+    name.toLowerCase().endsWith(".dxf"),
+  );
+  if (
+    dxfFiles.length !== 1 ||
+    dxfFiles[0] !== result.manifest.filename ||
+    !result.manifest.filename.includes("_ALL")
+  )
+    throw new Error("REPO_DIRECT_ONE_COMPOSITE_DXF_CONTRACT_VIOLATION");
 
   const codeLabels = expectedCodeLabels(submission);
   job.dxfOutput = {
