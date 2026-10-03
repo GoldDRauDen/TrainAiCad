@@ -73,9 +73,13 @@ const PortableGate = z.object({
 export const RepoDirectToolInput = z.object({
   schema: z.literal("REPO_DIRECT_DXF_V1"),
   jobId: z.string().min(1),
-  sourceSha256: z.string().min(64).max(64),
-  dxfSha256: z.string().min(64).max(64).optional(),
-  ruleSnapshotId: z.string().min(1),
+  // Optional at the MCP boundary. The server authoritatively fills these from
+  // the persisted job before strict RepoDirectSubmissionV1 validation. Keeping
+  // them optional removes a common caller error (truncated/copied hashes)
+  // without weakening the internal hash/snapshot binding.
+  sourceSha256: z.string().length(64).optional(),
+  dxfSha256: z.string().length(64).optional(),
+  ruleSnapshotId: z.string().min(1).optional(),
   parts: z.array(PortablePart).min(1),
   gates: z.array(PortableGate).min(1),
 });
