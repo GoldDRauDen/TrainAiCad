@@ -3,19 +3,36 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import type { AuthInfo } from "@modelcontextprotocol/server";
 
 export type AuthConfig = {
-  mode: "local" | "bearer" | "supabase" | "setup";
+  mode: "local" | "bearer" | "supabase" | "setup" | "auth0";
   publicUrl?: string;
   token?: string;
   issuer?: string;
+  audience?: string;
+  ownerSub?: string;
   publishableKey?: string;
   ownerId?: string;
   clientId?: string;
   redirects?: string[];
 };
+
+function publicOrigin(env: NodeJS.ProcessEnv) {
+  const publicUrl = new URL(env.TRAINAICAD_PUBLIC_URL ?? "invalid:");
+  if (
+    publicUrl.protocol !== "https:" ||
+    publicUrl.pathname !== "/" ||
+    publicUrl.search ||
+    publicUrl.hash ||
+    publicUrl.username ||
+    publicUrl.password
+  )
+    throw new Error("AUTH_PUBLIC_URL_INVALID");
+  return publicUrl.origin;
+}
+
 export function authConfig(env = process.env): AuthConfig {
   const publicBind = (env.TRAINAICAD_MCP_HOST ?? "127.0.0.1") !== "127.0.0.1";
   const mode = env.TRAINAICAD_AUTH_MODE ?? (publicBind ? "bearer" : "local");
-  if (!["local", "bearer", "supabase", "setup"].includes(mode))
+  if (!["local", "bearer", "supabase", "setup", "auth0"].includes(mode))
     throw new Error("AUTH_MODE_INVALID");
   if (mode === "local") {
     if (publicBind) throw new Error("PUBLIC_MCP_AUTH_REQUIRED");
@@ -27,17 +44,31 @@ export function authConfig(env = process.env): AuthConfig {
       throw new Error("PUBLIC_MCP_AUTH_REQUIRED");
     return { mode, token };
   }
-  const publicUrl = new URL(env.TRAINAICAD_PUBLIC_URL ?? "invalid:");
+
+  const publicUrl = publicOrigin(env);
+
+  if (mode === "auth0") {
+    const rawIssuer = new URL(env.TRAINAICAD_AUTH0_ISSUER ?? "invalid:");
+    if (
+      rawIssuer.protocol !== "https:" ||
+      rawIssuer.pathname !== "/" ||
+      rawIssuer.search ||
+      rawIssuer.hash ||
+      rawIssuer.username ||
+      rawIssuer.password
+    )
+      throw new Error("AUTH0_ISSUER_INVALID");
+    const issuer = rawIssuer.origin + "/",
+      audience = env.TRAINAICAD_AUTH0_AUDIENCE,
+      ownerSub = env.TRAINAICAD_AUTH0_OWNER_SUB;
+    if (audience !== publicUrl + "/mcp")
+      throw new Error("AUTH0_AUDIENCE_INVALID");
+    if (!ownerSub || !/^[^\s]{1,256}$/.test(ownerSub))
+      throw new Error("AUTH0_OWNER_SUB_REQUIRED");
+    return { mode, publicUrl, issuer, audience, ownerSub };
+  }
+
   const project = new URL(env.SUPABASE_URL ?? "invalid:");
-  if (
-    publicUrl.protocol !== "https:" ||
-    publicUrl.pathname !== "/" ||
-    publicUrl.search ||
-    publicUrl.hash ||
-    publicUrl.username ||
-    publicUrl.password
-  )
-    throw new Error("AUTH_PUBLIC_URL_INVALID");
   if (
     project.protocol !== "https:" ||
     !project.hostname.endsWith(".supabase.co") ||
@@ -52,7 +83,7 @@ export function authConfig(env = process.env): AuthConfig {
   if (mode === "setup")
     return {
       mode,
-      publicUrl: publicUrl.origin,
+      publicUrl,
       issuer: project.origin + "/auth/v1",
     };
   const ownerId = env.TRAINAICAD_OWNER_ID,
@@ -99,7 +130,7 @@ export function authConfig(env = process.env): AuthConfig {
     throw new Error("AUTH_EXACT_CHATGPT_REDIRECT_REQUIRED");
   return {
     mode: "supabase",
-    publicUrl: publicUrl.origin,
+    publicUrl,
     issuer: project.origin + "/auth/v1",
     publishableKey,
     ownerId,
@@ -121,12 +152,21 @@ export class Authentication {
         createRemoteJWKSet(new URL(config.issuer + "/.well-known/jwks.json"), {
           timeoutDuration: 5000,
         });
+    if (config.mode === "auth0")
+      this.keys =
+        keys ??
+        createRemoteJWKSet(new URL(config.issuer + ".well-known/jwks.json"), {
+          timeoutDuration: 5000,
+        });
   }
   metadata() {
     return {
       resource: this.config.publicUrl + "/mcp",
       authorization_servers: [this.config.issuer],
-      scopes_supported: ["openid"],
+      scopes_supported:
+        this.config.mode === "auth0"
+          ? ["openid", "email", "offline_access"]
+          : ["openid"],
       bearer_methods_supported: ["header"],
     };
   }
@@ -137,6 +177,37 @@ export class Authentication {
     if (!header || header.length > 16384 || !/^Bearer [^\s]+$/i.test(header))
       throw new Error("INVALID_TOKEN");
     const token = header.slice(7);
+    if (cfg.mode === "bearer") {
+      if (!cfg.token || !timingSafeEqual(digest(token), digest(cfg.token)))
+        throw new Error("INVALID_TOKEN");
+      return null;
+    }
+    if (cfg.mode === "auth0") {
+      const { payload } = await jwtVerify(token, this.keys!, {
+        issuer: cfg.issuer,
+        audience: cfg.audience,
+        algorithms: ["RS256"],
+        requiredClaims: ["sub", "exp", "iat"],
+      });
+      if (payload.sub !== cfg.ownerSub)
+        throw new Error("OWNER_ACCESS_DENIED");
+      const scopes =
+        typeof payload.scope === "string"
+          ? payload.scope.split(" ").filter(Boolean)
+          : [];
+      return {
+        token,
+        clientId:
+          typeof payload.azp === "string"
+            ? payload.azp
+            : typeof payload.client_id === "string"
+              ? payload.client_id
+              : "auth0",
+        scopes,
+        expiresAt: payload.exp!,
+        extra: { ownerId: payload.sub },
+      };
+    }
     if (cfg.mode !== "supabase") {
       if (!cfg.token || !timingSafeEqual(digest(token), digest(cfg.token)))
         throw new Error("INVALID_TOKEN");
@@ -167,7 +238,7 @@ export class Authentication {
     };
   }
   challenge() {
-    return ["supabase", "setup"].includes(this.config.mode)
+    return ["supabase", "setup", "auth0"].includes(this.config.mode)
       ? `Bearer resource_metadata="${this.config.publicUrl}/.well-known/oauth-protected-resource/mcp", scope="openid"`
       : 'Bearer realm="TrainAiCad developer staging"';
   }
