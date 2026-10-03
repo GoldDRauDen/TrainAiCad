@@ -61,6 +61,9 @@ function expectedCodeLabels(submission: RepoDirectSubmissionV1) {
 function auditSavedDxf(job: CadJob, submission: RepoDirectSubmissionV1) {
   if (!job.dxfOutput) throw new Error("REPO_DIRECT_AUDIT_NO_OUTPUT");
   const result = runBridge(job, ["audit", job.dxfOutput.absolutePath]);
+  const labels: string[] = Array.isArray(result.labels)
+    ? result.labels.map((value: unknown) => String(value))
+    : [];
   const audit = {
     ok: Boolean(result.ok),
     auditErrorCount: Number(result.audit_error_count ?? -1),
@@ -69,9 +72,7 @@ function auditSavedDxf(job: CadJob, submission: RepoDirectSubmissionV1) {
     entityCount: Number(result.entity_count ?? 0),
     layers: (result.layers ?? {}) as Record<string, number>,
     entityTypes: (result.entity_types ?? {}) as Record<string, number>,
-    labels: Array.isArray(result.labels)
-      ? result.labels.map((value: unknown) => String(value))
-      : [],
+    labels,
     aiMetaPlot:
       result.ai_meta_plot === null || result.ai_meta_plot === undefined
         ? null
@@ -90,14 +91,16 @@ function auditSavedDxf(job: CadJob, submission: RepoDirectSubmissionV1) {
 
   const expected = expectedCodeLabels(submission);
   const expectedSet = new Set(expected);
-  const actualCodeLabels = audit.labels.filter((label) => expectedSet.has(label));
+  const actualCodeLabels = audit.labels.filter((label: string) =>
+    expectedSet.has(label),
+  );
   if (actualCodeLabels.join("|") !== expected.join("|"))
     throw new Error("REPO_DIRECT_READBACK_CODE_ORDER_MISMATCH");
 
   const reviewOnly = submission.parts.some(
     (part) => part.status !== "PASS" || part.flags.length > 0,
   );
-  const hasNoCut = audit.labels.some((label) =>
+  const hasNoCut = audit.labels.some((label: string) =>
     label.startsWith("REVIEW ONLY - NO CUT"),
   );
   if (reviewOnly && !hasNoCut)
