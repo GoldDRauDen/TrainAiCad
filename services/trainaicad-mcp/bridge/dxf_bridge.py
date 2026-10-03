@@ -16,12 +16,85 @@ import ezdxf
 
 ROOT = Path(os.environ.get("TRAINAICAD_RULE_SNAPSHOT", Path(__file__).resolve().parents[3])).resolve()
 sys.path.insert(0, str(ROOT / "tools"))
-from export_dxf import export_job  # noqa: E402
+import export_dxf as exporter  # noqa: E402
+
+
+def mcp_validate_job(job):
+    """MCP-only review validation.
+
+    Production PASS remains strict. Reviewable uncertainty is serialized as a
+    flagged PREVIEW inside the one composite REVIEW_ONLY DXF instead of forcing
+    the chat to stop and ask the user. Structural/geometry validity still fails
+    closed here and in the base serializer.
+    """
+    jid = exporter.safe_name(job.get("job_id"))
+    parts = job.get("parts")
+    if not isinstance(parts, list) or not parts:
+        exporter.fail("Job must contain a nonempty ordered parts list")
+    codes = set()
+    for part in parts:
+        code = exporter.safe_name(part.get("code"))
+        if code in codes:
+            exporter.fail(f"Duplicate code {code}; use unique code for each manufacturing part")
+        codes.add(code)
+        if not isinstance(part.get("material"), str) or not part["material"].strip():
+            exporter.fail(f"{code}: material required")
+        if exporter.number(part.get("thickness_mm"), f"{code} thickness") <= 0:
+            exporter.fail(f"{code}: thickness must be positive")
+
+        state = part.get("status")
+        if state not in ("PASS", "PREVIEW", "VIEWS_ONLY"):
+            exporter.fail(f"{code}: status must be PASS, PREVIEW or VIEWS_ONLY")
+        checks = part.get("checks")
+        permitted = ("PASS", "N/A") if state == "PASS" else ("PASS", "N/A", "FLAGGED")
+        if not isinstance(checks, dict) or any(checks.get(key) not in permitted for key in exporter.CHECKS):
+            exporter.fail(f"{code}: invalid upstream semantic checks for {state}")
+        if state == "PASS" and (
+            part.get("flags") or
+            any(checks[k] != "PASS" for k in ("contour_topology", "datum", "feature_count", "containment", "material_rules"))
+        ):
+            exporter.fail(f"{code}: production PASS requires no flags and applicable critical checks")
+        if state == "PREVIEW":
+            if not part.get("flags"):
+                exporter.fail(f"{code}: PREVIEW requires at least one review flag")
+            reason = part.get("preview_reason")
+            if reason not in ("numeric_only_known_topology", "review_flag_known_geometry"):
+                exporter.fail(f"{code}: unsupported PREVIEW reason {reason}")
+        if state == "VIEWS_ONLY" and (
+            not part.get("flags") or part.get("preview_reason") != "separate_source_views"
+        ):
+            exporter.fail(f"{code}: VIEWS_ONLY requires independently proved source views, reason and unresolved flags")
+
+        ents = part.get("entities")
+        if not isinstance(ents, list) or not ents:
+            exporter.fail(f"{code}: entities required")
+        for ent in ents:
+            exporter.validate_entity(ent, code, state != "PASS")
+            if state == "VIEWS_ONLY" and ent["type"] != "TEXT":
+                exporter.safe_name(ent.get("view_id"))
+        if state != "VIEWS_ONLY" and sum(ent.get("role") == "outer" for ent in ents) != 1:
+            exporter.fail(f"{code}: exactly one closed outside contour required")
+        if state == "VIEWS_ONLY" and not any(ent["type"] != "TEXT" for ent in ents):
+            exporter.fail(f"{code}: no proved source-view geometry")
+
+        # Numeric-only preview keeps the repo's magenta-estimate convention.
+        # Server-generated review flags preserve known geometry unchanged; the
+        # composite is globally marked REVIEW ONLY - NO CUT in AI_META.
+        if state == "PREVIEW" and part.get("preview_reason") == "numeric_only_known_topology":
+            if not (any(e.get("color") == 6 for e in ents) and any(e.get("type") == "TEXT" for e in ents)):
+                exporter.fail(f"{code}: numeric preview requires Magenta geometry AND adjacent Magenta TEXT")
+    return jid
+
+
+# export_single_job resolves validate_job from the module global at runtime.
+# Keep the approved serializer/layout/read-back implementation, only relax the
+# MCP review policy so semantic uncertainty becomes a no-cut flagged artifact.
+exporter.validate_job = mcp_validate_job
 
 
 def cmd_export(input_json: str, output_dir: str):
     payload = json.loads(Path(input_json).read_text(encoding="utf-8"))
-    manifest = export_job(payload, Path(output_dir), mode="single", write_manifest=True)
+    manifest = exporter.export_job(payload, Path(output_dir), mode="single", write_manifest=True)
     print(json.dumps({
         "ok": True,
         "manifest": manifest,
