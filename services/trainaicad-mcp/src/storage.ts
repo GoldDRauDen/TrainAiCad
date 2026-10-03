@@ -23,6 +23,90 @@ function safe(path: string) {
   )
     throw new Error("STORAGE_UNSAFE_PATH");
 }
+
+function catalogSegment(value: unknown) {
+  const text = String(value ?? "unknown")
+    .replace(/[^A-Za-z0-9_-]/g, "_")
+    .slice(0, 64);
+  return text || "unknown";
+}
+
+function summarizeJob(raw: any) {
+  const evidence = Array.isArray(raw?.evidence) ? raw.evidence : [];
+  const routes = Array.isArray(raw?.routes) ? raw.routes : [];
+  const codes = evidence
+    .map((item: any) => String(item?.code ?? ""))
+    .filter(Boolean);
+  return {
+    schema: 1,
+    jobId: String(raw?.jobId ?? ""),
+    state: String(raw?.state ?? "UNKNOWN"),
+    mode: String(raw?.mode ?? "UNKNOWN"),
+    createdAt: raw?.createdAt ?? null,
+    updatedAt: raw?.updatedAt ?? null,
+    source: raw?.source
+      ? {
+          fileName: raw.source.fileName ?? null,
+          sha256: raw.source.sha256 ?? null,
+          mimeType: raw.source.mimeType ?? null,
+        }
+      : null,
+    dataDxf: raw?.dxf
+      ? {
+          fileName: raw.dxf.fileName ?? null,
+          sha256: raw.dxf.sha256 ?? null,
+          role: raw?.dxfRole ?? null,
+        }
+      : null,
+    codes,
+    routes: routes.map((route: any) => ({
+      code: route?.code ?? null,
+      status: route?.status ?? null,
+      partClass: route?.mechanical?.partClass ?? null,
+      mode: route?.mode ?? null,
+    })),
+    output: raw?.dxfOutput
+      ? {
+          fileName: raw.dxfOutput.fileName ?? null,
+          sha256: raw.dxfOutput.sha256 ?? null,
+          serializerContract: raw.dxfOutput.serializerContract ?? null,
+          writtenAt: raw.dxfOutput.writtenAt ?? null,
+          codeOrder: raw.dxfOutput.codeOrder ?? [],
+        }
+      : null,
+    dxfAudit: raw?.dxfAudit
+      ? {
+          ok: raw.dxfAudit.ok ?? null,
+          auditErrorCount: raw.dxfAudit.auditErrorCount ?? null,
+          entityCount: raw.dxfAudit.entityCount ?? null,
+          auditedAt: raw.dxfAudit.auditedAt ?? null,
+        }
+      : null,
+    flags: Array.isArray(raw?.flags) ? raw.flags : [],
+  };
+}
+
+function readJobSummaries(root: string) {
+  const dir = join(root, "jobs");
+  try {
+    return readdirSync(dir)
+      .filter((name) => /^cad_[a-f0-9]{16}\.json$/.test(name))
+      .map((name) => {
+        try {
+          return summarizeJob(JSON.parse(readFileSync(join(dir, name), "utf8")));
+        } catch {
+          return null;
+        }
+      })
+      .filter((value): value is NonNullable<typeof value> => Boolean(value))
+      .sort((a, b) =>
+        String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")),
+      );
+  } catch {
+    return [];
+  }
+}
+
 export class CheckpointStore {
   private known: Index = { schema: 1, files: {} };
   private queue: Promise<void> = Promise.resolve();
@@ -57,7 +141,7 @@ export class CheckpointStore {
       .catch(() => undefined)
       .then(async () => {
         const index: Index = { schema: 1, files: {} },
-          changed: { hash: string; data: Buffer }[] = [];
+          changed: { path: string; hash: string; data: Buffer }[] = [];
         const walk = (dir: string, prefix = "") => {
           for (const ent of readdirSync(dir, { withFileTypes: true })) {
             if (ent.name.endsWith(".tmp") || ent.name === "__pycache__")
@@ -78,7 +162,7 @@ export class CheckpointStore {
                 index.files[path] = hash;
                 this.stamps.set(path, { stamp, hash });
                 if (this.known.files[path] !== hash)
-                  changed.push({ hash, data });
+                  changed.push({ path, hash, data });
               }
             }
           }
@@ -96,6 +180,53 @@ export class CheckpointStore {
             "index.json",
             Buffer.from(JSON.stringify(index)),
           );
+
+        // Keep the content-addressed blob store as authority, but also publish a
+        // tiny human-readable catalog so Supabase Storage can be browsed by job
+        // and drawing code instead of opaque SHA256 blob names.
+        const changedJobIds = changed
+          .map((item) => /^jobs\/(cad_[a-f0-9]{16})\.json$/.exec(item.path)?.[1])
+          .filter((value): value is string => Boolean(value));
+        if (changedJobIds.length) {
+          const summaries = readJobSummaries(this.root);
+          const byId = new Map(summaries.map((summary) => [summary.jobId, summary]));
+          const affectedCodes = new Set<string>();
+          for (const jobId of new Set(changedJobIds)) {
+            const summary = byId.get(jobId);
+            if (!summary) continue;
+            await this.remote.put(
+              `catalog/jobs/${catalogSegment(jobId)}.json`,
+              Buffer.from(JSON.stringify(summary, null, 2)),
+            );
+            for (const code of summary.codes) {
+              const segment = catalogSegment(code);
+              affectedCodes.add(segment);
+              await this.remote.put(
+                `catalog/codes/${segment}/${catalogSegment(jobId)}.json`,
+                Buffer.from(JSON.stringify(summary, null, 2)),
+              );
+            }
+          }
+          await this.remote.put(
+            "catalog/index.json",
+            Buffer.from(JSON.stringify({ schema: 1, jobs: summaries }, null, 2)),
+          );
+          if (summaries[0])
+            await this.remote.put(
+              "catalog/latest.json",
+              Buffer.from(JSON.stringify(summaries[0], null, 2)),
+            );
+          for (const code of affectedCodes) {
+            const latest = summaries.find((summary) =>
+              summary.codes.some((value) => catalogSegment(value) === code),
+            );
+            if (latest)
+              await this.remote.put(
+                `catalog/codes/${code}/latest.json`,
+                Buffer.from(JSON.stringify(latest, null, 2)),
+              );
+          }
+        }
         this.known = index;
       });
     this.queue = task;
