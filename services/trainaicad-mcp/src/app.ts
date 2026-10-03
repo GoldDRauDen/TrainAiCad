@@ -3,7 +3,7 @@ import {
   type McpHandlerRequestOptions,
 } from "@modelcontextprotocol/server";
 import { Authentication, authConfig, type AuthConfig } from "./auth.js";
-import { buildServer } from "./server.js";
+import { buildServerV2 } from "./server-v2.js";
 import { consentPage, supabaseBrowserScript } from "./consent.js";
 import { downloadArtifact } from "./artifact.js";
 import { jobStore } from "./core.js";
@@ -12,7 +12,7 @@ export function createApp(
   config: AuthConfig = authConfig(),
   authentication = new Authentication(config),
 ) {
-  const mcp = createMcpHandler(buildServer, {
+  const mcp = createMcpHandler(buildServerV2, {
     maxRequestBodySize: MAX_HTTP_BODY,
   });
   return {
