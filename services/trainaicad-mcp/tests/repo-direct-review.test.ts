@@ -35,7 +35,7 @@ function tn(value: number) {
   return { value, unit: "mm" as const, origin: "PRINTED" as const, page: 1 };
 }
 
-test("repo-direct flags reviewable ambiguity and still exports one REVIEW_ONLY composite", () => {
+test("repo-direct flags reviewable ambiguity and contradiction, then still exports one REVIEW_ONLY composite", () => {
   const created = jobStore.create(
     {
       fileName: "review.pdf",
@@ -52,9 +52,7 @@ test("repo-direct flags reviewable ambiguity and still exports one REVIEW_ONLY c
       name,
       name === "TAP"
         ? { state: "UNKNOWN", evidence: [] }
-        : name === "MATERIAL_RULES"
-          ? { state: "YES", evidence: ["p1:SUS304 t2"] }
-          : { state: "NO", evidence: [] },
+        : { state: "NO", evidence: [] },
     ]),
   );
 
@@ -89,6 +87,8 @@ test("repo-direct flags reviewable ambiguity and still exports one REVIEW_ONLY c
     },
   ]);
 
+  // MATERIAL_RULES=NO contradicts the printed material. That inconsistency and
+  // TAP=UNKNOWN must be reviewable, not an exception that aborts the job.
   const routed = routeJob(created.jobId);
   assert.equal(routed.state, "REVIEW_REQUIRED");
 
@@ -161,6 +161,11 @@ test("repo-direct flags reviewable ambiguity and still exports one REVIEW_ONLY c
   assert.ok(
     result.job.flags.some((flag) =>
       flag.includes("26-TEST-001:FINAL_CENSUS_NOT_CLOSED:TAP"),
+    ),
+  );
+  assert.ok(
+    result.job.flags.some((flag) =>
+      flag.includes("26-TEST-001:CENSUS_CONTRADICTION:MATERIAL_RULES"),
     ),
   );
 });
