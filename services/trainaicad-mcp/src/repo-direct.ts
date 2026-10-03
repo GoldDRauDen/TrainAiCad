@@ -7,7 +7,12 @@ import { artifact } from "./artifact.js";
 import { jobStore, resolveRepoRoot } from "./core.js";
 import { dataRoot } from "./ingest.js";
 import type { CadJob } from "./model.js";
-import { readSnapshot, selectRules, snapshotRoot } from "./snapshot.js";
+import {
+  censusContradictions,
+  readSnapshot,
+  selectRules,
+  snapshotRoot,
+} from "./snapshot.js";
 import { sha256 } from "./source.js";
 
 const Finite = z.number().finite();
@@ -138,11 +143,13 @@ function validatePart(
   const route = job.routes.find((r) => r.code === part.code);
   if (!route) throw new Error(`REPO_DIRECT_ROUTE_NOT_FOUND:${part.code}`);
 
-  // Rule/snapshot resolution itself remains a hard blocker. Drawing ambiguity,
-  // however, is downgraded to a review-only flagged part so one unclear code
-  // does not stop the entire multi-code DXF job.
+  // Missing/tampered rule authority is a hard blocker. Evidence inconsistency
+  // is not: load the applicable rules, then downgrade the affected part to a
+  // review-only flag so the multi-code job can still complete.
   const router = readSnapshot(job.production).router;
   selectRules(job.production, job.mode, evidence);
+  for (const family of censusContradictions(evidence))
+    addReviewFlag(part, `CENSUS_CONTRADICTION:${family}`);
 
   for (const family of Object.keys(router.feature_routes)) {
     if (!isCensusItemClosed(evidence.census?.[family]))
