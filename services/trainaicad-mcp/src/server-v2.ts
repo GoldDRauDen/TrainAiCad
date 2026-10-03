@@ -29,7 +29,7 @@ export function buildServerV2(): McpServer {
     {
       title: "Đọc contract repo-direct hiện hành",
       description:
-        "Preferred current-repo path. Return the pinned V4.25 repo-direct flow, routed rule paths, source policy and serializer/gate contract for one job/code. Use this before final DXF construction. The legacy build_canonical_geometry tool is V0.2 research-only and is NOT required by this path.",
+        "Preferred current-repo path. CALL ONCE PER JOB after routing; for multi-code jobs omit code so all routed codes/rules are returned in one response. Do not call once per part. Reuse this contract for retries. The legacy build_canonical_geometry tool is V0.2 research-only and must NOT be inserted into the repo-direct path. Do not open a replacement job merely because export validation fails; fix the same job/submission and retry.",
       inputSchema: z.object({
         jobId: z.string().min(1),
         code: z.string().min(1).optional(),
@@ -66,14 +66,25 @@ export function buildServerV2(): McpServer {
         sourcePolicy: job.sourcePolicy,
         routed,
         rules: rulesBundle(job.production, uniquePaths),
+        workflowPolicy: {
+          oneJobPerUserRequest: true,
+          reuseSameJobIdOnRetry: true,
+          contractCallsPerJob: 1,
+          doNotCallLegacyCanonicalBuilder: true,
+          doNotFallbackToExternalEzdxfOrAdHocSerializer: true,
+          output: "ONE_COMPOSITE_DXF_ONLY",
+          individualDxf: "FORBIDDEN_UNLESS_USER_EXPLICITLY_REQUESTS_A_SEPARATE_LEGACY_FLOW",
+          callerMustEchoSourceHashes: false,
+          callerMustEchoRuleSnapshot: false,
+        },
         requiredFlow: [
           "inspect_source",
-          "submit_cad_evidence",
-          "route_cad_parts",
-          "get_cad_rules/get_repo_direct_contract",
+          "submit_cad_evidence_once",
+          "route_cad_parts_once",
+          "get_repo_direct_contract_once_for_the_job",
           "construct_one_canonical_entity_model_per_code",
           "execute_current_validation_gates",
-          "export_repo_direct_dxf",
+          "export_repo_direct_dxf_on_the_same_job",
           "automatic_saved_dxf_readback",
           "get_repo_direct_artifact",
         ],
@@ -106,7 +117,7 @@ export function buildServerV2(): McpServer {
     {
       title: "Xuất DXF theo repo hiện hành",
       description:
-        "PREFERRED E2E export path that mirrors the current repo-direct production workflow instead of the limited V0.2 TypeScript canonical builder. Submit the independently interpreted canonical DXF entities plus explicit current-rule validation gates. The server binds source/DATA hashes + rule snapshot, verifies route/census/material/count/gate closure, calls the repo-approved tools/export_dxf.py serializer, reopens/audits the saved DXF with PASS/review-aware label checks, and returns a signed artifact URL. Supports bent/multi-face parts and features without V02_BENT_FEATURE_TRANSFORM_NOT_IMPLEMENTED or V02_LINEAR_CHAIN_AXIS_UNSUPPORTED because local-face transforms are solved upstream under the active repo rules, exactly as repo-direct production does.",
+        "PREFERRED E2E export path. Use this directly after repo-direct construction; NEVER call legacy build_canonical_geometry first and NEVER fall back to ad-hoc ezdxf/Python output. The server binds source/DATA hashes and the pinned rule snapshot from jobId, so callers do not need to copy hashes. It verifies route/census/material/count/gate closure, calls repo tools/export_dxf.py in V4.9 SINGLE mode, deletes stale DXFs from prior retries, enforces exactly ONE *_ALL*.dxf composite artifact for the whole requested code set, reopens/audits it, and returns the signed artifact. Individual per-code DXFs are not produced by this path.",
       inputSchema: RepoDirectToolInput,
       annotations: {
         readOnlyHint: false,
@@ -121,6 +132,7 @@ export function buildServerV2(): McpServer {
         ...publicJob(result.job),
         repoDirect: {
           path: "REPO_DIRECT_V4_25_PARITY",
+          outputPolicy: "ONE_COMPOSITE_DXF_ONLY",
           submissionSha256: result.submissionSha256,
           savedDxfReadback: result.job.dxfAudit,
         },
@@ -134,7 +146,7 @@ export function buildServerV2(): McpServer {
     {
       title: "Lấy DXF repo-direct",
       description:
-        "Return the signed URL and hash for a repo-direct DXF after export/read-back.",
+        "Return the signed URL and hash for the single repo-direct composite DXF after export/read-back.",
       inputSchema: z.object({ jobId: z.string().min(1) }),
       annotations: {
         readOnlyHint: true,
@@ -149,6 +161,7 @@ export function buildServerV2(): McpServer {
       return json({
         jobId,
         state: job.state,
+        outputPolicy: "ONE_COMPOSITE_DXF_ONLY",
         fileName: file.fileName,
         sha256: file.sha256,
         url: file.url,
