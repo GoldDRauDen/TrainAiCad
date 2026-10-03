@@ -218,7 +218,7 @@ export class CheckpointStore {
             );
           for (const code of affectedCodes) {
             const latest = summaries.find((summary) =>
-              summary.codes.some((value) => catalogSegment(value) === code),
+              summary.codes.some((value: string) => catalogSegment(value) === code),
             );
             if (latest)
               await this.remote.put(
