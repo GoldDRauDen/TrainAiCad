@@ -4,17 +4,17 @@ import {
   TechnicalNumber,
   type CadEvidenceV1,
   type CadJob,
-  type JobMode
+  type JobMode,
 } from "./model.js";
 
 export const Point2 = z.object({
   x: z.number().finite(),
-  y: z.number().finite()
+  y: z.number().finite(),
 });
 export type Point2 = z.infer<typeof Point2>;
 
 const GateProof = z.object({
-  evidenceRefs: z.array(z.string().min(1)).min(1)
+  evidenceRefs: z.array(z.string().min(1)).min(1),
 });
 
 const FaceGraphProofs = z.object({
@@ -24,55 +24,65 @@ const FaceGraphProofs = z.object({
   faceOrderLocked: GateProof,
   bendSignLocked: GateProof,
   bendDomainLocked: GateProof,
-  constraintsClosed: GateProof
+  constraintsClosed: GateProof,
 });
 
 const CircleGeometry = z.object({
   kind: z.literal("CIRCLE"),
   center: Point2,
-  diameter: z.number().positive()
+  diameter: z.number().positive(),
 });
 
-const SlotGeometry = z.object({
-  kind: z.literal("SLOT"),
-  center: Point2,
-  overallLength: z.number().positive(),
-  width: z.number().positive(),
-  angleDeg: z.number().finite().default(0)
-}).superRefine((v, ctx) => {
-  if (v.overallLength < v.width) {
-    ctx.addIssue({ code: "custom", message: "SLOT overallLength must be >= width" });
-  }
-});
+const SlotGeometry = z
+  .object({
+    kind: z.literal("SLOT"),
+    center: Point2,
+    overallLength: z.number().positive(),
+    width: z.number().positive(),
+    angleDeg: z.number().finite().default(0),
+  })
+  .superRefine((v, ctx) => {
+    if (v.overallLength < v.width) {
+      ctx.addIssue({
+        code: "custom",
+        message: "SLOT overallLength must be >= width",
+      });
+    }
+  });
 
-const PolylineGeometry = z.object({
-  kind: z.literal("POLYLINE"),
-  closed: z.boolean(),
-  points: z.array(Point2).min(2),
-  bulges: z.array(z.number().finite()).optional()
-}).superRefine((v, ctx) => {
-  if (v.bulges && v.bulges.length !== v.points.length) {
-    ctx.addIssue({ code: "custom", message: "POLYLINE bulges length must match points length" });
-  }
-});
+const PolylineGeometry = z
+  .object({
+    kind: z.literal("POLYLINE"),
+    closed: z.boolean(),
+    points: z.array(Point2).min(2),
+    bulges: z.array(z.number().finite()).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.bulges && v.bulges.length !== v.points.length) {
+      ctx.addIssue({
+        code: "custom",
+        message: "POLYLINE bulges length must match points length",
+      });
+    }
+  });
 
 const ArcGeometry = z.object({
   kind: z.literal("ARC"),
   center: Point2,
   radius: z.number().positive(),
   startAngleDeg: z.number().finite(),
-  endAngleDeg: z.number().finite()
+  endAngleDeg: z.number().finite(),
 });
 
 const PointGeometry = z.object({
   kind: z.literal("POINT"),
-  point: Point2
+  point: Point2,
 });
 
 const LineGeometry = z.object({
   kind: z.literal("LINE"),
   start: Point2,
-  end: Point2
+  end: Point2,
 });
 
 export const LocalFeatureGeometry = z.discriminatedUnion("kind", [
@@ -81,7 +91,7 @@ export const LocalFeatureGeometry = z.discriminatedUnion("kind", [
   PolylineGeometry,
   LineGeometry,
   ArcGeometry,
-  PointGeometry
+  PointGeometry,
 ]);
 export type LocalFeatureGeometry = z.infer<typeof LocalFeatureGeometry>;
 
@@ -100,24 +110,29 @@ const GeometryFeatureSource = z.object({
     "SLIT_RELIEF",
     "RIB",
     "KEGAKI",
-    "OTHER"
+    "OTHER",
   ]),
   hostFace: z.string().min(1),
-  geometries: z.array(LocalFeatureGeometry).min(1)
+  geometries: z.array(LocalFeatureGeometry).min(1),
 });
 
-const GeometryFaceSource = z.object({
-  faceId: z.string().min(1),
-  sourceView: z.string().min(1),
-  contour: z.array(Point2).min(3),
-  contourBulges: z.array(z.number().finite()).optional(),
-  outsideLength: TechnicalNumber.optional(),
-  transverseWidth: TechnicalNumber.optional()
-}).superRefine((v, ctx) => {
-  if (v.contourBulges && v.contourBulges.length !== v.contour.length) {
-    ctx.addIssue({ code: "custom", message: "face contourBulges length must match contour length" });
-  }
-});
+const GeometryFaceSource = z
+  .object({
+    faceId: z.string().min(1),
+    sourceView: z.string().min(1),
+    contour: z.array(Point2).min(3),
+    contourBulges: z.array(z.number().finite()).optional(),
+    outsideLength: TechnicalNumber.optional(),
+    transverseWidth: TechnicalNumber.optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.contourBulges && v.contourBulges.length !== v.contour.length) {
+      ctx.addIssue({
+        code: "custom",
+        message: "face contourBulges length must match contour length",
+      });
+    }
+  });
 
 const GeometryBendSource = z.object({
   bendId: z.string().min(1),
@@ -126,7 +141,7 @@ const GeometryBendSource = z.object({
   axis: z.enum(["X", "Y", "OTHER"]),
   sign: z.enum(["POSITIVE", "NEGATIVE"]),
   angleDeg: TechnicalNumber,
-  nobi: TechnicalNumber
+  nobi: TechnicalNumber,
 });
 
 export const GeometrySourceV1 = z.object({
@@ -140,7 +155,7 @@ export const GeometrySourceV1 = z.object({
   faceOrder: z.array(z.string().min(1)).min(1),
   bends: z.array(GeometryBendSource).default([]),
   features: z.array(GeometryFeatureSource).default([]),
-  proofs: FaceGraphProofs.partial().default({})
+  proofs: FaceGraphProofs.partial().default({}),
 });
 export type GeometrySourceV1 = z.infer<typeof GeometrySourceV1>;
 
@@ -186,7 +201,7 @@ export type CanonicalGeometryV1 = {
     topologyClosed: boolean;
     faceGraphG1toG7: "NOT_APPLICABLE" | "PASS";
     foldBack: "NOT_APPLICABLE" | "STRUCTURAL_ONLY_V02";
-    numericResidualMaxMm: number;
+    numericResidualMaxMm: number | null;
   };
   flags: string[];
 };
@@ -199,7 +214,10 @@ export type GeometryBuildResult = {
 };
 
 function hashId(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 20);
+  return createHash("sha256")
+    .update(JSON.stringify(value))
+    .digest("hex")
+    .slice(0, 20);
 }
 
 function samePoint(a: Point2, b: Point2, eps = 1e-9): boolean {
@@ -211,25 +229,39 @@ function orient(a: Point2, b: Point2, c: Point2): number {
 }
 
 function onSegment(a: Point2, b: Point2, p: Point2, eps = 1e-9): boolean {
-  return Math.min(a.x, b.x) - eps <= p.x && p.x <= Math.max(a.x, b.x) + eps &&
-    Math.min(a.y, b.y) - eps <= p.y && p.y <= Math.max(a.y, b.y) + eps &&
-    Math.abs(orient(a, b, p)) <= eps;
+  return (
+    Math.min(a.x, b.x) - eps <= p.x &&
+    p.x <= Math.max(a.x, b.x) + eps &&
+    Math.min(a.y, b.y) - eps <= p.y &&
+    p.y <= Math.max(a.y, b.y) + eps &&
+    Math.abs(orient(a, b, p)) <= eps
+  );
 }
 
-function segmentsIntersect(a: Point2, b: Point2, c: Point2, d: Point2): boolean {
+function segmentsIntersect(
+  a: Point2,
+  b: Point2,
+  c: Point2,
+  d: Point2,
+): boolean {
   const o1 = orient(a, b, c);
   const o2 = orient(a, b, d);
   const o3 = orient(c, d, a);
   const o4 = orient(c, d, b);
   const eps = 1e-9;
 
-  if (((o1 > eps && o2 < -eps) || (o1 < -eps && o2 > eps)) &&
-      ((o3 > eps && o4 < -eps) || (o3 < -eps && o4 > eps))) return true;
+  if (
+    ((o1 > eps && o2 < -eps) || (o1 < -eps && o2 > eps)) &&
+    ((o3 > eps && o4 < -eps) || (o3 < -eps && o4 > eps))
+  )
+    return true;
 
-  return Math.abs(o1) <= eps && onSegment(a, b, c) ||
-    Math.abs(o2) <= eps && onSegment(a, b, d) ||
-    Math.abs(o3) <= eps && onSegment(c, d, a) ||
-    Math.abs(o4) <= eps && onSegment(c, d, b);
+  return (
+    (Math.abs(o1) <= eps && onSegment(a, b, c)) ||
+    (Math.abs(o2) <= eps && onSegment(a, b, d)) ||
+    (Math.abs(o3) <= eps && onSegment(c, d, a)) ||
+    (Math.abs(o4) <= eps && onSegment(c, d, b))
+  );
 }
 
 function polygonArea(points: Point2[]): number {
@@ -265,7 +297,8 @@ function validateSimplePolygon(points: Point2[]): string[] {
       if (i === 0 && j === points.length - 1) continue;
       const b1 = points[j]!;
       const b2 = points[(j + 1) % points.length]!;
-      if (segmentsIntersect(a1, a2, b1, b2)) flags.push("CONTOUR_SELF_INTERSECTION");
+      if (segmentsIntersect(a1, a2, b1, b2))
+        flags.push("CONTOUR_SELF_INTERSECTION");
     }
   }
   return [...new Set(flags)];
@@ -297,11 +330,16 @@ function routeForCode(job: CadJob, code: string) {
   return route;
 }
 
-function validateSourceIdentity(job: CadJob, source: GeometrySourceV1): string[] {
+function validateSourceIdentity(
+  job: CadJob,
+  source: GeometrySourceV1,
+): string[] {
   const flags: string[] = [];
   const expected = expectedGeometryAuthority(job);
   if (source.origin !== expected.origin) {
-    flags.push(`GEOMETRY_AUTHORITY_ORIGIN_MISMATCH:${source.origin}->${expected.origin}`);
+    flags.push(
+      `GEOMETRY_AUTHORITY_ORIGIN_MISMATCH:${source.origin}->${expected.origin}`,
+    );
   }
   if (source.sourceSha256.toLowerCase() !== expected.sha256.toLowerCase()) {
     flags.push("GEOMETRY_AUTHORITY_SHA_MISMATCH");
@@ -313,22 +351,38 @@ function validateFaceIds(source: GeometrySourceV1): string[] {
   const flags: string[] = [];
   const ids = source.faces.map((f) => f.faceId);
   if (new Set(ids).size !== ids.length) flags.push("DUPLICATE_FACE_ID");
-  if (new Set(source.faceOrder).size !== source.faceOrder.length) flags.push("DUPLICATE_FACE_ORDER_ID");
-  if (source.faceOrder.length !== ids.length) flags.push("FACE_ORDER_COUNT_MISMATCH");
+  if (new Set(source.faceOrder).size !== source.faceOrder.length)
+    flags.push("DUPLICATE_FACE_ORDER_ID");
+  if (source.faceOrder.length !== ids.length)
+    flags.push("FACE_ORDER_COUNT_MISMATCH");
   const a = [...ids].sort().join("|");
   const b = [...source.faceOrder].sort().join("|");
   if (a !== b) flags.push("FACE_ORDER_MEMBERSHIP_MISMATCH");
   for (const feature of source.features) {
-    if (!ids.includes(feature.hostFace)) flags.push(`FEATURE_HOST_FACE_UNKNOWN:${feature.featureId}`);
+    if (!ids.includes(feature.hostFace))
+      flags.push(`FEATURE_HOST_FACE_UNKNOWN:${feature.featureId}`);
   }
   return flags;
 }
 
-function validateEvidenceFeatureOwnership(job: CadJob, source: GeometrySourceV1): string[] {
+function validateEvidenceFeatureOwnership(
+  job: CadJob,
+  source: GeometrySourceV1,
+): string[] {
   const evidence = evidenceForCode(job, source.code);
   const flags: string[] = [];
+  if (
+    new Set(source.features.map((f) => f.featureId)).size !==
+    source.features.length
+  )
+    flags.push("DUPLICATE_GEOMETRY_FEATURE_ID");
+  for (const f of source.features)
+    if (
+      !evidence.features.some((e) => e.id === f.featureId) &&
+      !evidence.markings.some((e) => e.id === f.featureId)
+    )
+      flags.push(`EXTRA_FEATURE_GEOMETRY:${f.featureId}`);
   const byId = new Map(source.features.map((f) => [f.featureId, f] as const));
-  if (byId.size !== source.features.length) flags.push("DUPLICATE_SOURCE_FEATURE_ID");
   for (const feature of evidence.features) {
     const sourceFeature = byId.get(feature.id);
     if (!sourceFeature) {
@@ -357,48 +411,30 @@ function validateEvidenceFeatureOwnership(job: CadJob, source: GeometrySourceV1)
       }
     }
   }
-  for (const sourceFeature of source.features) {
-    const item = evidence.features.find((f) => f.id === sourceFeature.featureId) ??
-      evidence.markings.find((f) => f.id === sourceFeature.featureId);
-    if (!item) flags.push(`UNDECLARED_SOURCE_FEATURE:${sourceFeature.featureId}`);
-  }
   return flags;
-}
-
-function contourIsRectangle(contour: Point2[], length: number, width: number): boolean {
-  if (contour.length !== 4) return false;
-  const xs = contour.map((p) => p.x);
-  const ys = contour.map((p) => p.y);
-  const minX = Math.min(...xs), maxX = Math.max(...xs);
-  const minY = Math.min(...ys), maxY = Math.max(...ys);
-  const corners = new Set(contour.map((p) => `${p.x},${p.y}`));
-  const expected = new Set([
-    `${minX},${minY}`, `${minX},${maxY}`, `${maxX},${minY}`, `${maxX},${maxY}`
-  ]);
-  const tol = 1e-6;
-  return [...expected].every((p) => corners.has(p)) &&
-    Math.abs(maxX - minX - length) <= tol && Math.abs(maxY - minY - width) <= tol;
 }
 
 function buildFlat(job: CadJob, source: GeometrySourceV1): GeometryBuildResult {
   const flags = [
     ...validateSourceIdentity(job, source),
-    ...validateFaceIds(source)
+    ...validateFaceIds(source),
   ];
   const route = routeForCode(job, source.code);
   if (route.mode !== "FLAT_NO_BEND") flags.push("FLAT_SOURCE_ON_NONFLAT_ROUTE");
-  if (source.faces.length !== 1 || source.faceOrder.length !== 1) flags.push("FLAT_REQUIRES_ONE_FACE");
+  if (source.faces.length !== 1 || source.faceOrder.length !== 1)
+    flags.push("FLAT_REQUIRES_ONE_FACE");
   if (source.bends.length) flags.push("FLAT_CANNOT_HAVE_BENDS");
 
   const face = source.faces[0];
-  if (face && face.outsideLength && face.transverseWidth &&
-      !contourIsRectangle(face.contour, face.outsideLength.value, face.transverseWidth.value)) {
-    flags.push("FLAT_CONTOUR_DIMENSION_OR_TOPOLOGY_MISMATCH");
-  }
   if (face) flags.push(...validateSimplePolygon(face.contour));
   flags.push(...validateEvidenceFeatureOwnership(job, source));
 
-  if (flags.length) return { code: source.code, status: "REVIEW_REQUIRED", flags: [...new Set(flags)] };
+  if (flags.length)
+    return {
+      code: source.code,
+      status: "REVIEW_REQUIRED",
+      flags: [...new Set(flags)],
+    };
 
   const geometry: CanonicalGeometryV1 = {
     schema: "CANONICAL_GEOMETRY_V1",
@@ -417,8 +453,8 @@ function buildFlat(job: CadJob, source: GeometrySourceV1): GeometryBuildResult {
         family: f.family,
         hostFace: f.hostFace,
         instance: index + 1,
-        geometry
-      }))
+        geometry,
+      })),
     ),
     bendZones: [],
     faceMap: [{ faceId: face!.faceId }],
@@ -427,9 +463,9 @@ function buildFlat(job: CadJob, source: GeometrySourceV1): GeometryBuildResult {
       topologyClosed: true,
       faceGraphG1toG7: "NOT_APPLICABLE",
       foldBack: "NOT_APPLICABLE",
-      numericResidualMaxMm: 0
+      numericResidualMaxMm: null,
     },
-    flags: []
+    flags: [],
   };
   return { code: source.code, status: "READY", geometry, flags: [] };
 }
@@ -438,27 +474,37 @@ function allBentProofsPresent(source: GeometrySourceV1): boolean {
   const p = source.proofs;
   return Boolean(
     p.topologyLocked &&
-    p.dimensionWitnessLocked &&
-    p.featureOwnershipLocked &&
-    p.faceOrderLocked &&
-    p.bendSignLocked &&
-    p.bendDomainLocked &&
-    p.constraintsClosed
+      p.dimensionWitnessLocked &&
+      p.featureOwnershipLocked &&
+      p.faceOrderLocked &&
+      p.bendSignLocked &&
+      p.bendDomainLocked &&
+      p.constraintsClosed,
   );
 }
 
-function buildLinearChain(job: CadJob, source: GeometrySourceV1): GeometryBuildResult {
+function buildLinearChain(
+  job: CadJob,
+  source: GeometrySourceV1,
+): GeometryBuildResult {
   const flags = [
     ...validateSourceIdentity(job, source),
-    ...validateFaceIds(source)
+    ...validateFaceIds(source),
   ];
   const route = routeForCode(job, source.code);
-  if (route.mode !== "BEND_UNFOLD") flags.push("LINEAR_CHAIN_REQUIRES_BEND_UNFOLD_ROUTE");
+  if (route.mode !== "BEND_UNFOLD")
+    flags.push("LINEAR_CHAIN_REQUIRES_BEND_UNFOLD_ROUTE");
   if (!allBentProofsPresent(source)) flags.push("FACE_GRAPH_G1_G7_NOT_CLOSED");
-  if (source.faces.length < 2) flags.push("LINEAR_CHAIN_REQUIRES_AT_LEAST_TWO_FACES");
-  if (source.bends.length !== Math.max(0, source.faces.length - 1)) flags.push("BEND_COUNT_NOT_CHAIN_CLOSED");
+  if (source.faces.length < 2)
+    flags.push("LINEAR_CHAIN_REQUIRES_AT_LEAST_TWO_FACES");
+  if (source.bends.length !== Math.max(0, source.faces.length - 1))
+    flags.push("BEND_COUNT_NOT_CHAIN_CLOSED");
 
-  if (source.features.length || evidenceForCode(job, source.code).features.length || evidenceForCode(job, source.code).markings.length) {
+  if (
+    source.features.length ||
+    evidenceForCode(job, source.code).features.length ||
+    evidenceForCode(job, source.code).markings.length
+  ) {
     flags.push("V02_BENT_FEATURE_TRANSFORM_NOT_IMPLEMENTED");
   }
 
@@ -466,30 +512,52 @@ function buildLinearChain(job: CadJob, source: GeometrySourceV1): GeometryBuildR
     .map((id) => source.faces.find((f) => f.faceId === id))
     .filter((f): f is NonNullable<typeof f> => Boolean(f));
 
+  for (const f of ordered) {
+    const xs = [...new Set(f.contour.map((p) => p.x))],
+      ys = [...new Set(f.contour.map((p) => p.y))];
+    if (
+      f.contour.length !== 4 ||
+      xs.length !== 2 ||
+      ys.length !== 2 ||
+      f.contourBulges?.some((b) => b !== 0)
+    )
+      flags.push("V04_CHAIN_REQUIRES_PROVED_RECTANGULAR_FACES");
+    if (
+      xs.length === 2 &&
+      ys.length === 2 &&
+      (Math.abs(
+        Math.max(...xs) - Math.min(...xs) - (f.outsideLength?.value ?? 0),
+      ) > 1e-7 ||
+        Math.abs(
+          Math.max(...ys) - Math.min(...ys) - (f.transverseWidth?.value ?? 0),
+        ) > 1e-7)
+    )
+      flags.push("FACE_CONTOUR_SIZE_MISMATCH");
+  }
   const lengths = ordered.map((f) => f.outsideLength?.value);
   const widths = ordered.map((f) => f.transverseWidth?.value);
-  if (lengths.some((v) => v === undefined || v <= 0)) flags.push("FACE_OUTSIDE_LENGTH_MISSING");
-  if (widths.some((v) => v === undefined || v <= 0)) flags.push("FACE_TRANSVERSE_WIDTH_MISSING");
+  if (lengths.some((v) => v === undefined || v <= 0))
+    flags.push("FACE_OUTSIDE_LENGTH_MISSING");
+  if (widths.some((v) => v === undefined || v <= 0))
+    flags.push("FACE_TRANSVERSE_WIDTH_MISSING");
 
   const width0 = widths[0];
-  for (let i = 0; i < ordered.length; i++) {
-    const face = ordered[i]!;
-    const l = lengths[i], w = widths[i];
-    if (l !== undefined && w !== undefined && !contourIsRectangle(face.contour, l, w)) {
-      flags.push(`LINEAR_FACE_CONTOUR_NOT_PROVED_RECTANGLE:${face.faceId}`);
-    }
-  }
-  if (width0 !== undefined && widths.some((v) => v !== undefined && Math.abs(v - width0) > 1e-9)) {
+  if (
+    width0 !== undefined &&
+    widths.some((v) => v !== undefined && Math.abs(v - width0) > 1e-9)
+  ) {
     flags.push("V02_LINEAR_CHAIN_REQUIRES_CONSTANT_WIDTH");
   }
 
   const bendByPair = new Map<string, GeometrySourceV1["bends"][number]>();
   for (const bend of source.bends) {
-    if (bend.axis !== "X") flags.push(`V02_LINEAR_CHAIN_AXIS_UNSUPPORTED:${bend.bendId}`);
+    if (bend.axis !== "X")
+      flags.push(`V02_LINEAR_CHAIN_AXIS_UNSUPPORTED:${bend.bendId}`);
     if (bend.nobi.value < 0) flags.push(`NEGATIVE_NOBI:${bend.bendId}`);
     const key1 = `${bend.faceA}|${bend.faceB}`;
     const key2 = `${bend.faceB}|${bend.faceA}`;
-    if (bendByPair.has(key1) || bendByPair.has(key2)) flags.push(`DUPLICATE_BEND_PAIR:${bend.bendId}`);
+    if (bendByPair.has(key1) || bendByPair.has(key2))
+      flags.push(`DUPLICATE_BEND_PAIR:${bend.bendId}`);
     bendByPair.set(key1, bend);
   }
 
@@ -501,7 +569,12 @@ function buildLinearChain(job: CadJob, source: GeometrySourceV1): GeometryBuildR
     }
   }
 
-  if (flags.length) return { code: source.code, status: "REVIEW_REQUIRED", flags: [...new Set(flags)] };
+  if (flags.length)
+    return {
+      code: source.code,
+      status: "REVIEW_REQUIRED",
+      flags: [...new Set(flags)],
+    };
 
   const numericLengths = lengths as number[];
   const width = width0 as number;
@@ -519,7 +592,8 @@ function buildLinearChain(job: CadJob, source: GeometrySourceV1): GeometryBuildR
 
     if (i < ordered.length - 1) {
       const next = ordered[i + 1]!;
-      const bend = bendByPair.get(`${face.faceId}|${next.faceId}`) ??
+      const bend =
+        bendByPair.get(`${face.faceId}|${next.faceId}`) ??
         bendByPair.get(`${next.faceId}|${face.faceId}`)!;
       const nobi = bend.nobi.value;
       const x2 = end;
@@ -532,7 +606,7 @@ function buildLinearChain(job: CadJob, source: GeometrySourceV1): GeometryBuildR
         yMax: width,
         sign: bend.sign,
         angleDeg: bend.angleDeg.value,
-        nobi
+        nobi,
       });
       cumulativeNobi += nobi;
     }
@@ -540,7 +614,11 @@ function buildLinearChain(job: CadJob, source: GeometrySourceV1): GeometryBuildR
 
   const flatLength = cumulativeOutside - cumulativeNobi;
   if (!(flatLength > 0)) {
-    return { code: source.code, status: "REVIEW_REQUIRED", flags: ["NONPOSITIVE_FLAT_LENGTH"] };
+    return {
+      code: source.code,
+      status: "REVIEW_REQUIRED",
+      flags: ["NONPOSITIVE_FLAT_LENGTH"],
+    };
   }
 
   const geometry: CanonicalGeometryV1 = {
@@ -552,12 +630,14 @@ function buildLinearChain(job: CadJob, source: GeometrySourceV1): GeometryBuildR
     buildKind: "LINEAR_CHAIN",
     sourceMode: job.mode,
     sourceSha256: source.sourceSha256,
-    outerContours: [[
-      { x: 0, y: 0 },
-      { x: flatLength, y: 0 },
-      { x: flatLength, y: width },
-      { x: 0, y: width }
-    ]],
+    outerContours: [
+      [
+        { x: 0, y: 0 },
+        { x: flatLength, y: 0 },
+        { x: flatLength, y: width },
+        { x: 0, y: width },
+      ],
+    ],
     outerBulges: [[0, 0, 0, 0]],
     features: [],
     bendZones,
@@ -567,18 +647,25 @@ function buildLinearChain(job: CadJob, source: GeometrySourceV1): GeometryBuildR
       topologyClosed: true,
       faceGraphG1toG7: "PASS",
       foldBack: "STRUCTURAL_ONLY_V02",
-      numericResidualMaxMm: 0
+      numericResidualMaxMm: null,
     },
-    flags: []
+    flags: [],
   };
 
   return { code: source.code, status: "READY", geometry, flags: [] };
 }
 
-export function buildGeometrySource(job: CadJob, raw: unknown): GeometryBuildResult {
+export function buildGeometrySource(
+  job: CadJob,
+  raw: unknown,
+): GeometryBuildResult {
   const source = GeometrySourceV1.parse(raw);
   if (source.jobId !== job.jobId) {
-    return { code: source.code, status: "REVIEW_REQUIRED", flags: ["GEOMETRY_JOB_MISMATCH"] };
+    return {
+      code: source.code,
+      status: "REVIEW_REQUIRED",
+      flags: ["GEOMETRY_JOB_MISMATCH"],
+    };
   }
   evidenceForCode(job, source.code);
   routeForCode(job, source.code);
@@ -588,7 +675,10 @@ export function buildGeometrySource(job: CadJob, raw: unknown): GeometryBuildRes
     : buildLinearChain(job, source);
 }
 
-export function buildJobGeometry(job: CadJob, rawSources: unknown[]): {
+export function buildJobGeometry(
+  job: CadJob,
+  rawSources: unknown[],
+): {
   results: GeometryBuildResult[];
   ready: CanonicalGeometryV1[];
   flags: string[];
@@ -606,13 +696,16 @@ export function buildJobGeometry(job: CadJob, rawSources: unknown[]): {
   const parsed = rawSources.map((raw) => GeometrySourceV1.parse(raw));
   const codes = job.routes.map((r) => r.code).sort();
   const inputCodes = parsed.map((s) => s.code).sort();
-  if (new Set(inputCodes).size !== inputCodes.length) throw new Error("DUPLICATE_GEOMETRY_CODE");
+  if (new Set(inputCodes).size !== inputCodes.length)
+    throw new Error("DUPLICATE_GEOMETRY_CODE");
   if (codes.join("|") !== inputCodes.join("|")) {
     throw new Error("GEOMETRY_CODE_SET_MISMATCH");
   }
 
   const results = parsed.map((source) => buildGeometrySource(job, source));
-  const ready = results.flatMap((r) => r.geometry ? [r.geometry] : []);
-  const flags = results.flatMap((r) => r.flags.map((flag) => `${r.code}:${flag}`));
+  const ready = results.flatMap((r) => (r.geometry ? [r.geometry] : []));
+  const flags = results.flatMap((r) =>
+    r.flags.map((flag) => `${r.code}:${flag}`),
+  );
   return { results, ready, flags };
 }

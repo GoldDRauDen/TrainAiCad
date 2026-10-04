@@ -1,7 +1,11 @@
+import type { QaReport, SourceChecks } from "./qa.js";
 import * as z from "zod/v4";
 import type { CanonicalGeometryV1, GeometrySourceV1 } from "./geometry.js";
-import type { ManufacturingQaV1, DxfOutputRecord, DxfAuditRecord } from "./dxf.js";
-import type { RuleFilePin } from "./rules.js";
+import type {
+  ManufacturingQaV1,
+  DxfOutputRecord,
+  DxfAuditRecord,
+} from "./dxf.js";
 
 export const Provenance = z.enum([
   "PRINTED",
@@ -9,26 +13,28 @@ export const Provenance = z.enum([
   "HANDWRITTEN",
   "REFERENCE_DXF",
   "USER_CONFIRMED",
-  "AI_INFERENCE"
+  "AI_INFERENCE",
 ]);
 export type Provenance = z.infer<typeof Provenance>;
 
-export const TechnicalNumber = z.object({
-  value: z.number().finite(),
-  unit: z.enum(["mm", "deg"]).default("mm"),
-  origin: Provenance,
-  page: z.number().int().positive().optional(),
-  view: z.string().min(1).optional(),
-  derivedFrom: z.array(z.string().min(1)).optional(),
-  rule: z.string().min(1).optional()
-}).superRefine((v, ctx) => {
-  if (v.origin === "DERIVED" && (!v.derivedFrom?.length || !v.rule)) {
-    ctx.addIssue({
-      code: "custom",
-      message: "DERIVED values require derivedFrom[] and rule"
-    });
-  }
-});
+export const TechnicalNumber = z
+  .object({
+    value: z.number().finite(),
+    unit: z.enum(["mm", "deg"]).default("mm"),
+    origin: Provenance,
+    page: z.number().int().positive().optional(),
+    view: z.string().min(1).optional(),
+    derivedFrom: z.array(z.string().min(1)).optional(),
+    rule: z.string().min(1).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.origin === "DERIVED" && (!v.derivedFrom?.length || !v.rule)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "DERIVED values require derivedFrom[] and rule",
+      });
+    }
+  });
 export type TechnicalNumber = z.infer<typeof TechnicalNumber>;
 
 export const Datum = z.object({
@@ -39,11 +45,11 @@ export const Datum = z.object({
     "BOTTOM_OUTSIDE_EDGE",
     "CENTERLINE",
     "FEATURE_CENTER",
-    "OTHER"
+    "OTHER",
   ]),
   target: z.enum(["FEATURE_CENTER", "EDGE", "BEND_LINE", "OTHER"]),
   distance: TechnicalNumber,
-  axis: z.enum(["X", "Y"]).optional()
+  axis: z.enum(["X", "Y"]).optional(),
 });
 
 export const Feature = z.object({
@@ -60,7 +66,7 @@ export const Feature = z.object({
     "PIASU",
     "SLIT_RELIEF",
     "RIB",
-    "OTHER"
+    "OTHER",
   ]),
   quantity: z.number().int().positive(),
   width: TechnicalNumber.optional(),
@@ -68,7 +74,10 @@ export const Feature = z.object({
   radius: TechnicalNumber.optional(),
   callout: z.string().optional(),
   datum: Datum.optional(),
-  status: z.enum(["PROVED", "UNCERTAIN"]).default("PROVED")
+  process: z
+    .enum(["CUT", "PIERCING", "THROUGH_PIERCING", "CAPACITY_POINT"])
+    .optional(),
+  status: z.enum(["PROVED", "UNCERTAIN"]).default("PROVED"),
 });
 
 export const Bend = z.object({
@@ -78,7 +87,7 @@ export const Bend = z.object({
   sign: z.enum(["POSITIVE", "NEGATIVE", "UNKNOWN"]).optional(),
   rin: TechnicalNumber.optional(),
   nobi: TechnicalNumber.optional(),
-  status: z.enum(["PROVED", "UNCERTAIN"]).default("PROVED")
+  status: z.enum(["PROVED", "UNCERTAIN"]).default("PROVED"),
 });
 
 export const PartClass = z.enum([
@@ -91,7 +100,7 @@ export const PartClass = z.enum([
   "BOX_4_FLANGE",
   "INSIDE_VIEW_ASSEMBLY",
   "MIRROR_PART",
-  "OTHER_PROVED_TOPOLOGY"
+  "OTHER_PROVED_TOPOLOGY",
 ]);
 export type PartClass = z.infer<typeof PartClass>;
 
@@ -102,19 +111,42 @@ export const CadEvidenceV1 = z.object({
   source: z.object({
     sourceId: z.string().min(1),
     page: z.number().int().positive(),
-    visualReceiptIds: z.array(z.string().min(1)).default([]),
-    revision: z.string().nullable().optional()
+    revision: z.string().nullable().optional(),
   }),
-  material: z.object({
-    printed: z.string().min(1).optional(),
-    family: z.string().min(1).optional(),
-    thickness: TechnicalNumber.optional()
-  }).default({}),
-  views: z.array(z.object({
-    id: z.string().min(1),
-    type: z.enum(["FRONT", "SIDE", "TOP", "SECTION", "DETAIL", "FORMED", "FLAT", "OTHER"]),
-    role: z.string().optional()
-  })).default([]),
+  census: z
+    .record(
+      z.string(),
+      z.object({
+        state: z.enum(["YES", "NO", "UNKNOWN"]),
+        evidence: z.array(z.string()).default([]),
+      }),
+    )
+    .optional(),
+  material: z
+    .object({
+      printed: z.string().min(1).optional(),
+      family: z.string().min(1).optional(),
+      thickness: TechnicalNumber.optional(),
+    })
+    .default({}),
+  views: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        type: z.enum([
+          "FRONT",
+          "SIDE",
+          "TOP",
+          "SECTION",
+          "DETAIL",
+          "FORMED",
+          "FLAT",
+          "OTHER",
+        ]),
+        role: z.string().optional(),
+      }),
+    )
+    .default([]),
   contour: z.object({
     topology: z.enum([
       "PLATE",
@@ -123,28 +155,36 @@ export const CadEvidenceV1 = z.object({
       "MULTI_FACE",
       "STEPPED_PROFILE",
       "BOXMET",
-      "UNKNOWN"
+      "UNKNOWN",
     ]),
     status: z.enum(["PROVED", "UNCERTAIN"]),
     overallX: TechnicalNumber.optional(),
-    overallY: TechnicalNumber.optional()
+    overallY: TechnicalNumber.optional(),
   }),
   faceCount: z.number().int().positive().optional(),
   partClassHint: PartClass.optional(),
   features: z.array(Feature).default([]),
   bends: z.array(Bend).default([]),
-  markings: z.array(z.object({
-    id: z.string().min(1),
-    family: z.enum(["KEGAKI", "RIB", "OTHER"]),
-    quantity: z.number().int().positive(),
-    status: z.enum(["PROVED", "UNCERTAIN"]).default("PROVED")
-  })).default([]),
+  markings: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        family: z.enum(["KEGAKI", "RIB", "OTHER"]),
+        quantity: z.number().int().positive(),
+        status: z.enum(["PROVED", "UNCERTAIN"]).default("PROVED"),
+      }),
+    )
+    .default([]),
   handwriting: z.array(z.string()).default([]),
-  uncertainties: z.array(z.object({
-    code: z.string().min(1),
-    evidence: z.string().min(1),
-    blocking: z.boolean().default(true)
-  })).default([])
+  uncertainties: z
+    .array(
+      z.object({
+        code: z.string().min(1),
+        evidence: z.string().min(1),
+        blocking: z.boolean().default(true),
+      }),
+    )
+    .default([]),
 });
 export type CadEvidenceV1 = z.infer<typeof CadEvidenceV1>;
 
@@ -153,7 +193,7 @@ export const JobModeRequested = z.enum([
   "PDF_ONLY",
   "PDF_DATA_RAW",
   "TRAIN_REFERENCE",
-  "DIRECT_EXISTING_DXF_AUDIT"
+  "DIRECT_EXISTING_DXF_AUDIT",
 ]);
 export type JobModeRequested = z.infer<typeof JobModeRequested>;
 export type JobMode = Exclude<JobModeRequested, "AUTO">;
@@ -171,7 +211,7 @@ export const JobState = z.enum([
   "PRODUCTION_PASS",
   "REVIEW_ONLY",
   "VIEWS_ONLY",
-  "SOURCE_CONFLICT"
+  "SOURCE_CONFLICT",
 ]);
 export type JobState = z.infer<typeof JobState>;
 
@@ -179,7 +219,7 @@ export const SourceDescriptor = z.object({
   fileName: z.string().min(1),
   sha256: z.string().regex(/^[a-fA-F0-9]{64}$/),
   mimeType: z.string().optional(),
-  sourceId: z.string().min(1).optional()
+  sourceId: z.string().min(1).optional(),
 });
 export type SourceDescriptor = z.infer<typeof SourceDescriptor>;
 
@@ -202,52 +242,13 @@ export type SourcePolicy = {
 export type ReleasePin = {
   release: string;
   entrypointSha256: string;
-  currentSkillSha256: string;
-  ruleFiles?: RuleFilePin[];
-  ruleSnapshotSha256?: string;
-};
-
-export type SourceManifestV2 = {
-  schema: "SOURCE_MANIFEST_V2";
-  revision: number;
-  sources: Array<{
-    role: "DRAWING" | "DATA_DXF" | "REFERENCE_DXF" | "AI_DXF";
-    fileName: string;
-    sha256: string;
-    mimeType: string;
-    verified: boolean;
-  }>;
-  pageCodeMap: Array<{
-    code: string;
-    sourceSha256: string;
-    page: number;
-    visualReceiptIds: string[];
-    revision?: string | null;
-  }>;
-  updatedAt: string;
-};
-
-export type SourceGeometryHarvestV1 = {
-  schema: "TRAINSOURCE_GEOMETRY_LEDGER_V1";
-  sourceSha256: string;
-  ledgerSha256: string;
-  entityCount: number;
-  unsupportedCount: number;
-  flags: string[];
-  scaleStatus: "UNPROVED";
-  status: "REVIEW_REQUIRED";
-  updatedAt: string;
-};
-
-export type SourceViewReceipt = {
-  receiptId: string;
-  sourceSha256: string;
-  page: number;
-  imageSha256: string;
-  region: [number, number, number, number];
-  rotation?: 0 | 90 | 180 | 270;
-  dpi: number;
-  storedAt: string;
+  snapshotId: string;
+  routerSha256: string;
+  routerDataSha256: string;
+  censusSha256: string;
+  coverageSha256: string;
+  moduleHashes: Record<string, string>;
+  repositoryCommit: string | null;
 };
 
 export type MechanicalClassification = {
@@ -271,10 +272,14 @@ export type RouteResult = {
   topology: CadEvidenceV1["contour"]["topology"];
   modules: string[];
   specialRules: string[];
-  flags: string[];
   status: "ROUTED" | "REVIEW_REQUIRED";
   mechanical: MechanicalClassification;
-  jev: { mode: string; configured: boolean; verdict: "UNAVAILABLE" | "MOCK_MATCH"; detail: string };
+  jev: {
+    mode: string;
+    configured: boolean;
+    verdict: "UNAVAILABLE" | "MOCK_MATCH";
+    detail: string;
+  };
 };
 
 export type CadJob = {
@@ -284,12 +289,6 @@ export type CadJob = {
   state: JobState;
   production: ReleasePin;
   source: SourceDescriptor;
-  sourceVerified: boolean;
-  sourceBindings: Record<string, { role: string; fileName: string; sha256: string; mimeType: string; storedPath: string }>;
-  sourceManifest: SourceManifestV2;
-  sourceGeometryHarvest?: SourceGeometryHarvestV1;
-  sourceViewReceipts: SourceViewReceipt[];
-  ruleBundleReadSha256?: string;
   dxf?: SourceDescriptor;
   dxfRole?: DxfRole;
   evidence: CadEvidenceV1[];
@@ -297,6 +296,8 @@ export type CadJob = {
   geometrySources: GeometrySourceV1[];
   geometry: CanonicalGeometryV1[];
   manufacturingQa: ManufacturingQaV1[];
+  computedQa?: QaReport[];
+  sourceChecks?: SourceChecks[];
   dxfOutput?: DxfOutputRecord;
   dxfAudit?: DxfAuditRecord;
   flags: string[];
