@@ -124,7 +124,7 @@ For reference/sample audits, compare physical geometry, but do not reverse-fit a
 - **V4.22:** `SOURCE_EXHAUSTED_BEFORE_VIEWS_ONLY` and `SOURCE_FEATURE_COMPLETENESS`; regression `regression/qa/520930-10_V4_22_APPROVED.md`; executable `regression/tools/check_520930_10_v422.py`.
 - **V4.21:** `references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md`; regression `regression/qa/520930-03_V4_21_APPROVED.md`; retain `DATA_REQUIRED_MISSING` and mandatory source reprojection.
 - **V4.20:** source/mechanical classification plus independent KEGAKI / SLIT_RELIEF / RIB / CURVED_SLOT routing; regression `regression/qa/520928-20_V4_20_APPROVED.md`, `regression/qa/HD4_V4_20_APPROVED.md`, `regression/qa/SILT_GT90_V4_20_APPROVED.md`; executable `regression/tools/check_v420_source_mech.py`.
-- **V4.19:** `references/FACE_GRAPH_UNFOLD_PROTOCOL.md`; regression `regression/qa/520929-25_V4_19_APPROVED.md`; executable `regression/tools/check_520929_25_v419.py`.
+- **V4.19:** V4.19 520929-25 hard-gate routing; `references/FACE_GRAPH_UNFOLD_PROTOCOL.md`; regression `regression/qa/520929-25_V4_19_APPROVED.md`; executable `regression/tools/check_520929_25_v419.py`.
 - **V4.18:** V4.18 520929-18 hard-gate routing; detailed-source bundle, C/R semantic lock and BOXMET signed orientation; `references/BOXMET_SLIT_RELIEF.md`; regression `regression/qa/520929-18_V4_18_APPROVED.md`; executable `regression/tools/check_520929_18_v418.py`.
 - **V4.17:** V4.17 520929-10 hard-gate routing; source witness, mirror scope, datum, KEGAKI and actual-unit guards; regression `regression/qa/520929-10_V4_17_APPROVED.md`; executable `regression/tools/check_520929_10_v417.py`.
 - **V4.16:** face-first dimension ownership, explicit R/C family quantity closure and BOXMET four-flange routing through `references/BOXMET_SLIT_RELIEF.md`; regression `regression/qa/520801-04_V4_16_APPROVED.md`.
@@ -180,4 +180,4 @@ Use current `VALIDATION.md` and `CAD_OUTPUT.md`. Read back the actual saved DXF 
 
 ## 10. MCP boundary
 
-**MCP is research-only and is NOT part of the production CAD pipeline.** Default CAD behavior remains repo-direct. Experimental code under `services/trainaicad-mcp/` has no production authority unless the user explicitly asks to work on MCP.
+**MCP is research-only and is NOT part of the production CAD pipeline.** Default CAD behavior remains repo-direct. Do not route through MCP for ordinary CAD production. Experimental code under `services/trainaicad-mcp/` has no production authority unless the user explicitly asks to work on MCP.
