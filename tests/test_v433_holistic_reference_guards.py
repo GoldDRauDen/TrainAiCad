@@ -43,7 +43,7 @@ def test_part_identity_collision_is_rejected():
         {"code": "A", "complete_source_bundle_id": "bundle"},
         {"code": "B", "complete_source_bundle_id": "bundle"},
     ]}
-    assert guard.identity_collisions(job) == ["PART_IDENTITY_COLLISION:bundle"]
+    assert guard.identity_collisions(job["parts"]) == ["PART_IDENTITY_COLLISION:bundle"]
 
 
 def test_reference_only_upgrade_is_not_source_proof():
