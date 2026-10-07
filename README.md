@@ -8,6 +8,8 @@ A concise request such as `E2E` or `Read TrainAiCad and do E2E` means: bootstrap
 
 The agent must actually have access to this repo and the required source/CAD tools; otherwise it must report the concrete blocker rather than pretend the repo was read.
 
+For ChatGPT Web Projects, use the concise pointer template in `PROJECT_INSTRUCTIONS_GPT_WEB.md`; do not copy the engineering rules into Project Instructions.
+
 ## Architecture
 
 ```text
@@ -15,18 +17,18 @@ AI_BOOTSTRAP
     |
     +-- AI_ENTRYPOINT
             |
-    +-- core/                    always-on small rule set
-    +-- router/
-    |     FEATURE_CENSUS.md      what is present?
-    |     ROUTER.yaml            what must be loaded?
-    |     RULE_COVERAGE.yaml     where approved release rules live
-    |
-    +-- modes/                   flat / bend-unfold
-    +-- features/                hole, tap, slot, kegaki, slit, rib...
-    +-- references/              material, Nobi, source/DATA, FACE_GRAPH...
-    +-- regression/              approved tests/evidence
-    +-- portable/                complete compatibility snapshot; not default
-    +-- versions/                historical archive; never normal production input
+            +-- core/                    always-on small rule set
+            +-- router/
+            |     FEATURE_CENSUS.md      what is present?
+            |     ROUTER.yaml            what must be loaded?
+            |     RULE_COVERAGE.yaml     where approved release rules live
+            |
+            +-- modes/                   flat / bend-unfold
+            +-- features/                hole, tap, slot, kegaki, slit, rib...
+            +-- references/              material, Nobi, source/DATA, FACE_GRAPH...
+            +-- regression/              approved tests/evidence
+            +-- portable/                complete compatibility snapshot; not default
+            +-- versions/                historical archive; never normal production input
 ```
 
 ## Important
