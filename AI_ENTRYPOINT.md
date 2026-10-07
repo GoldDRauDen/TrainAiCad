@@ -1,6 +1,6 @@
 # AI ENTRYPOINT — TrainAiCad repo-direct production
 
-Current production release is **V4.32**.
+Current production release is **V4.33**.
 
 This file is the production routing authority. Normal CAD jobs use **repo-direct modular routing**. Do not load the complete portable skill by default.
 
@@ -14,6 +14,7 @@ SOURCE
   -> DXF PHYSICAL-CURVE DECODE when DXF source/reference exists
   -> SOURCE MANUFACTURING NOTE CENSUS
   -> SOURCE FEATURE-GROUP / REFERENCE-PARAMETER CLOSURE
+  -> PART IDENTITY GRAPH when multi-code / constituent / assembly evidence exists
   -> FEATURE CENSUS
   -> ROUTER
   -> selected mode / feature / reference modules
@@ -23,12 +24,17 @@ SOURCE
   -> CROSS-FEATURE VALIDATION
   -> SOURCE GROUP + MEMBER LEDGER
   -> DIMENSION/WITNESS GRAPH
+  -> FIRST SOURCE-ONLY SOLVE
+  -> HOLISTIC ENGINEERING CHALLENGE
+  -> local FLAG or COMPLETE VIEWS_ONLY fallback when still unresolved
+  -> FINAL ENGINEERING SANITY REVIEW
   -> CANONICAL MEMBER MODEL
   -> PROVED SOURCE MEMBERS == PROVED CANONICAL MEMBERS
   -> CANONICAL ENTITIES
   -> tools/export_canonical_dxf.py
   -> SAVED DXF ENTITY IDs == CANONICAL ENTITY IDs
   -> saved-DXF read-back / applicable source reprojection
+  -> SOURCE_ONLY_SNAPSHOT freeze before any later sample/reference calibration
 ```
 
 Mandatory router files:
@@ -37,6 +43,20 @@ Mandatory router files:
 - `skills/lispcad/router/RULE_COVERAGE.yaml`
 
 Always-on core/source-parsing references are declared in `ROUTER.yaml`. Do not invent a different core set from memory.
+
+## 2. V4.33 holistic engineering challenge / reference-exposure hard gate
+
+Load `references/HOLISTIC_ENGINEERING_CHALLENGE.md`, `references/PART_IDENTITY_GRAPH.md` and `references/REFERENCE_EXPOSURE_FIREWALL.md` from the default route.
+
+After the first source-only solve and before canonicalization, run `HOLISTIC_ENGINEERING_CHALLENGE`. This is not a confidence check. It is an evidence-accounting challenge that detects self-consistent but incomplete source models: unused DATA/views, family/group/member gaps, suspicious zero-proved ledgers, part-identity collisions, bend-edge semantic reuse, premature `VIEWS_ONLY`, and local uncertainty incorrectly escalated to whole-part failure.
+
+If the challenge finds an anomaly, re-open the source and re-solve. If no defensible flat exists only after source exhaustion, preserve **all independently proved source/orthographic view members** in a complete `VIEWS_ONLY` review representation. `VIEWS_ONLY` is forbidden as a text-only stop or as a shortcut after the first failed graph attempt.
+
+Before final canonical serialization, run `FINAL_ENGINEERING_SANITY_REVIEW`. A PASS that merely matches an incomplete source ledger is not sufficient.
+
+For calibration/reference work, freeze `SOURCE_ONLY_SNAPSHOT` before reference exposure. After the sample/reference is visible, a previously unresolved claim cannot be rewritten as source-proved unless new non-reference evidence is recorded. Otherwise retain `REFERENCE_ASSISTED_UNDERSTANDING`. Operator-declared sample FLAG/Magenta geometry remains `CUSTOMER_CONFIRMATION_PENDING` and is not approved-reference authority.
+
+V4.33 does **not** change the canonical serialization schema; continue using `TrainAiCad-CANONICAL-V4.31` and `tools/export_canonical_dxf.py`.
 
 ## 2. V4.32 bend attachment-edge / formed-profile OD hard gate
 
@@ -169,6 +189,7 @@ For reference/sample audits, compare physical geometry, but do not reverse-fit a
 
 ## 7. Release wiring index — backward-compatible regression contract
 
+- **V4.33:** `HOLISTIC_ENGINEERING_CHALLENGE`, `PART_IDENTITY_GRAPH`, `VIEWS_ONLY_SOURCE_VIEW_COMPLETENESS`, `FINAL_ENGINEERING_SANITY_REVIEW`, `SOURCE_ONLY_SNAPSHOT`, `POST_REFERENCE_SOURCE_REWRITE`; active references `references/HOLISTIC_ENGINEERING_CHALLENGE.md`, `references/PART_IDENTITY_GRAPH.md`, `references/REFERENCE_EXPOSURE_FIREWALL.md`; executable guards `tools/holistic_engineering_guard.py`, `tools/reference_exposure_guard.py`; regression `regression/qa/521007-07_V4_33_APPROVED.md`; executable `regression/tools/check_521007_07_v433.py`; tests `tests/test_v433_holistic_reference_guards.py`.
 - **V4.32:** `BEND_ATTACHMENT_EDGE_LOCKED`, physical `FACE_A.edge_i <-> BEND <-> FACE_B.edge_j`, `MEASUREMENT_CONSTRUCTION_VIEW`, `OD_actual` ownership and bent-face physical edge datum propagation; active references `references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md`, `references/FORMED_PROFILE_OD_MEASUREMENT.md`, `references/FACE_GRAPH_UNFOLD_PROTOCOL.md`; regression `regression/qa/521006-18_V4_32_APPROVED.md`; executable `regression/tools/check_521006_18_v432.py`.
 - **V4.31:** `CANONICAL_MEMBER_COMPLETENESS`, `NO_DIRECT_DXF_FROM_INTERPRETATION`, `PROVED_SOURCE_MEMBERS_EQ_CANONICAL`, `CANONICAL_ENTITY_IDS_EQ_SAVED_DXF_ENTITY_IDS`; active reference `references/CANONICAL_MEMBER_COMPLETENESS.md`; executable production path `tools/canonical_contract.py` + `tools/export_canonical_dxf.py`; schema `tools/CANONICAL_INPUT_SCHEMA_V431.md`; regression `regression/qa/521005-05_V4_31_APPROVED.md`; executable `regression/tools/check_521005_05_v431.py`.
 - **V4.30:** `RUNTIME_AUTHORITY_GUARD`, `SOURCE_FEATURE_GROUP`, `GROUP_COUNT_CLOSURE`, `SAME_PHYSICAL_PARAMETER_BEFORE_REFERENCE_CONFLICT`, `BEND_EDGE_LENGTH_LOCK`, `BEND_END_OFFSET_90`; active references `references/RUNTIME_AUTHORITY_GUARD.md`, `references/SOURCE_FEATURE_GROUP_CLOSURE.md`, `references/BEND_EDGE_RELIEF_90.md`; regression `regression/qa/521005-05_V4_30_APPROVED.md`; executable `regression/tools/check_521005_05_v430.py`. The 90-degree rule is `S>0 -> NO SLIT`, `S=0 -> T+0.2`, `S<0 -> T+0.2 from actual recessed edge / |S|+T+0.2 from zero reference`.
