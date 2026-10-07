@@ -67,9 +67,13 @@ def audit_transition(before: Dict[str, Any], after: Dict[str, Any]) -> list[str]
         old_state = str(old.get("status", "UNKNOWN"))
         new_state = str(new.get("status", "UNKNOWN"))
         if old_state in UNRESOLVED_STATES and new_state in PROVED_STATES:
+            old_provenance = set(old.get("evidence_provenance", []))
             provenance = set(new.get("evidence_provenance", []))
-            new_nonref = provenance.intersection(NON_REFERENCE_PROVENANCE)
-            if not new_nonref:
+            new_nonref_provenance = provenance.intersection(NON_REFERENCE_PROVENANCE) - old_provenance
+            old_keys = set(old.get("evidence_keys", []))
+            new_keys = set(new.get("evidence_keys", []))
+            has_new_evidence_key = bool(new_keys - old_keys)
+            if not new_nonref_provenance or not has_new_evidence_key:
                 errors.append(f"POST_REFERENCE_SOURCE_REWRITE:{claim_id}")
 
     for claim_id, new in later.items():
