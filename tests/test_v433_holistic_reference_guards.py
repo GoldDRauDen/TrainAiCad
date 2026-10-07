@@ -49,10 +49,10 @@ def test_part_identity_collision_is_rejected():
 def test_reference_only_upgrade_is_not_source_proof():
     fw = load(ROOT / "tools/reference_exposure_guard.py", "rf1")
     before = fw.freeze_snapshot({"claims": [
-        {"claim_id": "x", "status": "UNKNOWN", "evidence_provenance": ["PRINTED"]}
+        {"claim_id": "x", "status": "UNKNOWN", "evidence_provenance": ["PRINTED"], "evidence_keys": ["pdf:x"]}
     ]})
     after = {"claims": [
-        {"claim_id": "x", "status": "PROVED", "evidence_provenance": ["APPROVED_REFERENCE"]}
+        {"claim_id": "x", "status": "PROVED", "evidence_provenance": ["PRINTED", "APPROVED_REFERENCE"], "evidence_keys": ["pdf:x"]}
     ]}
     assert "POST_REFERENCE_SOURCE_REWRITE:x" in fw.audit_transition(before, after)
 
