@@ -70,13 +70,13 @@ def test_reference_firewall(root: Path):
     firewall = load_module(root / "tools/reference_exposure_guard.py", "reference_guard")
     before = firewall.freeze_snapshot({
         "claims": [
-            {"claim_id": "attach", "status": "UNKNOWN", "evidence_provenance": ["PRINTED"]},
+            {"claim_id": "attach", "status": "UNKNOWN", "evidence_provenance": ["PRINTED"], "evidence_keys": ["pdf:attach-note"]},
             {"claim_id": "sample-r", "status": "CUSTOMER_CONFIRMATION_PENDING", "sample_flagged": True},
         ]
     })
     after_bad = {
         "claims": [
-            {"claim_id": "attach", "status": "PROVED", "evidence_provenance": ["APPROVED_REFERENCE"]},
+            {"claim_id": "attach", "status": "PROVED", "evidence_provenance": ["PRINTED", "APPROVED_REFERENCE"], "evidence_keys": ["pdf:attach-note"]},
             {"claim_id": "sample-r", "status": "PROVED", "evidence_provenance": ["APPROVED_REFERENCE"], "sample_flagged": True},
         ]
     }
