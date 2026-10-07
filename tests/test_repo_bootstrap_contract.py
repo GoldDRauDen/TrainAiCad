@@ -74,4 +74,4 @@ def test_current_router_still_controls_release_and_engineering_load():
 def test_ci_tracks_bootstrap_files():
     wf = (ROOT / ".github/workflows/dxf-export-tests.yml").read_text(encoding="utf-8")
     assert "'AI_BOOTSTRAP.md'" in wf
-    assert "'AGENTS.md'" in wf
+    assert "'AGENTS.md'" in wf\n    assert "'PROJECT_INSTRUCTIONS_GPT_WEB.md'" in wf
