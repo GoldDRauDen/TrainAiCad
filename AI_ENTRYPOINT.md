@@ -11,7 +11,8 @@ SOURCE
   -> RUNTIME AUTHORITY GUARD
   -> always-on CORE
   -> SOURCE CLASSIFICATION
-  -> DXF PHYSICAL-CURVE DECODE when DXF source/reference exists
+  -> DXF PHYSICAL-CURVE DECODE for customer DATA when source-authoritative
+  -> defer calibration/sample REFERENCE exposure until SOURCE_ONLY_SNAPSHOT freeze
   -> SOURCE MANUFACTURING NOTE CENSUS
   -> SOURCE FEATURE-GROUP / REFERENCE-PARAMETER CLOSURE
   -> PART IDENTITY GRAPH when multi-code / constituent / assembly evidence exists
@@ -58,7 +59,7 @@ For calibration/reference work, freeze `SOURCE_ONLY_SNAPSHOT` before reference e
 
 V4.33 does **not** change the canonical serialization schema; continue using `TrainAiCad-CANONICAL-V4.31` and `tools/export_canonical_dxf.py`.
 
-## 2. V4.32 bend attachment-edge / formed-profile OD hard gate
+## 2A. V4.32 bend attachment-edge / formed-profile OD hard gate
 
 For every `BEND`, `MULTI_FACE`, or unresolved bend candidate, load:
 
@@ -82,7 +83,7 @@ Regression `521006-18_V4_32_APPROVED` covers the demonstrated 058648 reversed at
 
 V4.32 does **not** change the canonical serialization schema. Continue using `TrainAiCad-CANONICAL-V4.31` and `tools/export_canonical_dxf.py` until a separately approved canonical schema change exists.
 
-## 2A. V4.31 E2E canonical completeness hard gate
+## 2B. V4.31 E2E canonical completeness hard gate
 
 Load `references/CANONICAL_MEMBER_COMPLETENESS.md` before final Feature Census and use `tools/CANONICAL_INPUT_SCHEMA_V431.md` when constructing output state.
 
@@ -185,7 +186,7 @@ For `PDF_DATA_RAW`, the router loads `references/PDF_DATA_RAW_GEOMETRY_PRESERVAT
 
 V4.25 requires `RAW_DATA_SNAPSHOT`, `PHYSICAL_DATA_BASELINE`, `SAME_PARAMETER_GATE`, `MANUFACTURING_CHANGE_LEDGER` and `UNTOUCHED_DATA_INVARIANCE_CHECK`. V4.26 additionally requires decoded physical LINE/ARC/CIRCLE preservation for bulged polylines.
 
-For reference/sample audits, compare physical geometry, but do not reverse-fit a new source interpretation from sample coordinates. V4.30 additionally requires same-physical-parameter identity before a numeric source/reference conflict is declared.
+For reference/sample calibration of a new/source-only solve, freeze `SOURCE_ONLY_SNAPSHOT` before exposing or decoding the sample/reference geometry; customer DXF DATA remains source-authoritative and is decoded normally. After freeze, compare physical reference geometry without reverse-fitting the source interpretation. DIRECT_EXISTING_DXF_AUDIT may compare existing AI DXF ↔ sample as required by that audit mode, but any later claim about what the original source alone established remains bounded by the frozen/pre-existing source evidence. V4.30 additionally requires same-physical-parameter identity before a numeric source/reference conflict is declared.
 
 ## 7. Release wiring index — backward-compatible regression contract
 
