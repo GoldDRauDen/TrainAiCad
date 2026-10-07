@@ -4,6 +4,7 @@ on:
     paths:
       - 'AGENTS.md'
       - 'AI_BOOTSTRAP.md'
+      - 'PROJECT_INSTRUCTIONS_GPT_WEB.md'
       - 'AI_ENTRYPOINT.md'
       - 'skills/**'
       - 'references/**'
@@ -16,6 +17,7 @@ on:
     paths:
       - 'AGENTS.md'
       - 'AI_BOOTSTRAP.md'
+      - 'PROJECT_INSTRUCTIONS_GPT_WEB.md'
       - 'AI_ENTRYPOINT.md'
       - 'skills/**'
       - 'references/**'
