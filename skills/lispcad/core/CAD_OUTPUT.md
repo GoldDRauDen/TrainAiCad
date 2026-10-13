@@ -83,11 +83,11 @@ Write real DXF with millimeter `$INSUNITS=4`, `$MEASUREMENT=1`, decimal `$LUNITS
 
 | V4.6 feature | DXF entity | Color 62 | Linetype |
 | :-- | :-- | :-- | :-- |
-| Outer/inner contour and slot | Closed LWPOLYLINE with real bulges | ByLayer (omit/256) | ByLayer |
+| Outer/inner contour and slot | Final DXF: disconnected LINE/ARC entities with exactly joined contour endpoints (canonical JSON: closed bulged LWPOLYLINE) | ByLayer (omit/256) | ByLayer |
 | Verified cut circle/M pilot | CIRCLE | ByLayer | ByLayer |
 | Ordinary PIERCING or capability POINT | actual POINT | ByLayer | ByLayer |
 | Explicit PDF PIERCING + THROUGH HOLE | actual POINT | Green 3 | ByLayer |
-| Kegaki/formed mark | LINE or proved LWPOLYLINE | Red 1 | ByLayer |
+| Kegaki/formed mark | Final DXF: LINE/ARC as proved (canonical JSON may use bulged LWPOLYLINE) | Red 1 | ByLayer |
 | Double bend lines on material only | LINE ×2 | ByLayer | DASHED |
 | Proven explicitly Green slit/relief | LINE or ARC per source | Green 3 | ByLayer |
 | Non-production estimate and adjacent note | appropriate entity and TEXT | Magenta 6 | ByLayer |
@@ -108,7 +108,7 @@ A single unresolved `PREVIEW`/`VIEWS_ONLY`/FLAG invalidates *production use of t
 
 Execute all routed validation checks for every production PASS part before serialization. A source view with no proveable flat retains explicit `VIEWS_ONLY` flags and does NOT inherit invented PASS results. PREVIEW keeps proved members exact and uncertainty local.
 
-V4.31 first runs source-member -> canonical-member equality. Then reopen/audit the ONE saved DXF for units mm, all manufacturing primitives Layer 0 and their approved properties, actual CCW/CW bulges and counts, source-cluster geometry equality by inverse XY translation, correct distinct descending-Y source-code labels on non-plot `AI_META`, >=10 mm layout gaps and explicit NO CUT filename/global note whenever a FLAG exists. Finally verify `TRAINAICAD` XDATA `ENTITY_ID` values on the exact saved Layer-0 entities equal the canonical entity-ID sequence/set. Check canceled families for zero surviving machining members/entities. Labels must be excluded from CAM toolpaths.
+V4.31 first runs source-member -> canonical-member equality. Then audit the saved composite for units mm, all manufactured primitives on Layer 0, exact analytic LINE/ARC/CIRCLE preservation (including decoded bulge signed sweep), source-cluster geometry, code order, non-plot AI_META labels, >=10 mm layout clearance and explicit REVIEW_ONLY when **blocking** flags exist. Finally verify `TRAINAICAD` XDATA maps every canonical entity ID to all its exact saved segment IDs with no missing/extra curves. DATA source-only flags on AI_META do not downgrade independently proved PASS CUT. Check canceled families for zero surviving machining members/entities.
 
 The lower-level exporter performs structural serialization, schema, packaging and geometry read-back checks; it never proves PDF datum/face order, missing Nobi, material selection or source-member completeness by itself. The V4.31 wrapper adds executable member/identity closure but still depends on the routed drawing interpretation and canonicalization stages being source-correct.
 
