@@ -143,6 +143,19 @@ def _owner_map(part):
     return owners
 
 
+def _inverse_signature_equal(source_sig, restored_sig):
+    """ARC angle 0/360 and negative/positive turns are the same physical arc."""
+    if source_sig[0] != restored_sig[0]:
+        return False
+    if source_sig[0][0] != "ARC":
+        return source_sig == restored_sig
+    ac, ar, a0, a1 = source_sig[1]
+    bc, br, b0, b1 = restored_sig[1]
+    def angle_match(a, b):
+        return abs((a - b + 180) % 360 - 180) <= 2e-6
+    return ac == bc and ar == br and angle_match(a0, b0) and angle_match(a1, b1)
+
+
 def _xdata(entry):
     return [tag.value for tag in entry.get_xdata(APPID) if tag.code == 1000]
 
@@ -194,7 +207,7 @@ def _plan_cut_doc(part):
         dx, dy = orientation["translation_mm"]
         restored.transform(Matrix44.translate(-dx, -dy, 0))
         restored.transform(Matrix44.z_rotate(-math.radians(orientation["rotation_deg"])))
-        if entity_signature(restored) != source_sig:
+        if not _inverse_signature_equal(source_sig, entity_signature(restored)):
             fail(f"{part['code']}/{eid}: INVERSE_TRANSFORM_MISMATCH")
         updated.append((entity_signature(obj), eid, parent, members))
     return doc, updated, cut_count, contour_count, orientation
