@@ -99,7 +99,9 @@ def validate_data_gap_flags(part, source_mode):
         if kind not in CLASSES:
             fail(f"{place}: unknown/non-proved gap classification")
         _ids(flag.get("source_entity_ids"), place + "/source")
-        _nonempty(flag.get("source_view_id"), place + "/source_view")
+        view_id = flag.get("source_view_id")
+        if not isinstance(view_id, str) or not _ID.fullmatch(view_id):
+            fail(f"{place}: source_view_id must be a scoped stable ID")
         _nonempty(flag.get("source_evidence"), place + "/source")
         _nonempty(flag.get("raw_data_snapshot_ref"), place + "/RAW_DATA_SNAPSHOT")
         _nonempty(flag.get("physical_data_baseline_ref"), place + "/PHYSICAL_DATA_BASELINE")
@@ -137,8 +139,9 @@ def validate_data_gap_flags(part, source_mode):
                    entity_by_id[eid].get("closed") is not True
                    for eid in canonical_ids):
                 fail(f"{place}: proved corrected CUT must be a separately proved closed contour")
-            change_id = _nonempty(flag.get("manufacturing_change_ledger_ref"),
-                                  place + "/manufacturing change")
+            change_id = flag.get("manufacturing_change_ledger_ref")
+            if not isinstance(change_id, str) or not _ID.fullmatch(change_id):
+                fail(f"{place}: manufacturing change ledger ref must be a stable ID")
             _nonempty(flag.get("closure_witness"), place + "/PDF closure witness")
             changes = part.get("manufacturing_change_ledger", [])
             if not isinstance(changes, list) or not any(
