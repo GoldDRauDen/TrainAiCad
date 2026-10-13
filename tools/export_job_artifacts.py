@@ -240,11 +240,16 @@ def export_part_artifacts(job, output_dir):
         keep_codes.add(code)
         wrapper = {"canonical_contract": CONTRACT, "job_id": job["job_id"],
                    "parts": [part]}
+        if "source_mode" in job:
+            wrapper["source_mode"] = job["source_mode"]
+        if "customer_code" in job:
+            wrapper["customer_code"] = job["customer_code"]
         data = (json.dumps(wrapper, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
         target_json = json_dir / f"{code}.json"
         json_changed = _atomic_text(target_json, data)
         entry = {"code": code, "status": part["status"], "geometry_json": str(target_json.relative_to(root)),
-                 "geometry_sha256": hashlib.sha256(data).hexdigest(), "json_changed": json_changed}
+                 "geometry_sha256": hashlib.sha256(data).hexdigest(), "json_changed": json_changed,
+                  "nonblocking_data_gap_flag_count": len(part.get("data_gap_flags", []))}
         if part["status"] == "PASS" and not part.get("flags"):
             doc, expected, members, contours = _plan_cut_doc(part)
             target_dxf = cut_dir / f"{code}.dxf"
