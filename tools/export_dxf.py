@@ -257,8 +257,24 @@ def write_and_audit(doc, target, expected_count):
     if errors.has_errors:
         fail(f"DXF audit failed: {target.name}")
     ents = list(loaded.modelspace())
+
+    def is_approved_annotation(ent):
+        if ent.dxf.layer != "AI_META":
+            return False
+        if ent.dxftype() == "TEXT":
+            return True
+        if ent.dxftype() == "CIRCLE" and ent.dxf.get("color") == 6:
+            try:
+                tags = ent.get_xdata("AICAD")
+                return any(tag.code == 1000 and isinstance(tag.value, str) and
+                           tag.value.startswith("NON_CUT_DATA_GAP_FLAG=")
+                           for tag in tags)
+            except ezdxf.DXFError:
+                return False
+        return False
+
     if len(ents) != expected_count or any(ent.dxf.layer != "0" and
-            not (ent.dxf.layer == "AI_META" and ent.dxftype() == "TEXT") for ent in ents):
+            not is_approved_annotation(ent) for ent in ents):
         fail(f"DXF read-back/layer/entity-count failure: {target.name}")
     if "AI_META" in loaded.layers and loaded.layers.get("AI_META").dxf.get("plot", 1) != 0:
         fail(f"AI_META must be non-plot annotation: {target.name}")
