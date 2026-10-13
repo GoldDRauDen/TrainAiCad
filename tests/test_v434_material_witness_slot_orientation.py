@@ -62,6 +62,7 @@ def test_excel_material_aliases_and_process_split():
     for name, group in cases:
         assert resolve_material(name)["material_family"] == group
     assert resolve_material("ボンデ")["source_cell"].endswith("A32")
+    assert resolve_material("SECC=ボンデ")["material_family"] == "SS"
     assert resolve_material("SUS430", "NOBI")["process_group"] == "SS_SUS430_BRASS"
     assert resolve_material("SUS430", "LASER_R")["process_group"] == "SUS"
     assert is_hairline("SUS304 HL")
@@ -130,6 +131,12 @@ def test_v434_blocks_missing_hole_witness_while_v431_works():
     })
     validate_canonical_job(job(part))
     with pytest.raises(CanonicalContractError, match="WITNESS_REQUIRED_FEATURE_MISSING"):
+        validate_canonical_job(job(part, "TrainAiCad-CANONICAL-V4.34"))
+    # A real source witness and X/Y coordinates are mandatory for V4.34 HOLE.
+    part["witness_required_feature_ids"] = ["M_HOLE"]
+    part["feature_witness_graph"] = chain()
+    with pytest.raises(CanonicalContractError, match="WITNESS_CANONICAL_ENTITY_LINK_MISSING"):
+        part["feature_witness_graph"]["targets"][0]["feature_id"] = "M_HOLE"
         validate_canonical_job(job(part, "TrainAiCad-CANONICAL-V4.34"))
 
 

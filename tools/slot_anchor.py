@@ -46,6 +46,8 @@ def validate_slot_anchor(record):
         actual = tuple(float(v) for v in record["canonical_midpoint"])
         if len(actual) != 2 or math.hypot(expected[0]-actual[0], expected[1]-actual[1]) > 1e-7:
             raise SlotAnchorError("SLOT_ANCHOR_MISMATCH")
+    except SlotAnchorError:
+        raise
     except (KeyError, TypeError, ValueError) as exc:
         raise SlotAnchorError("SLOT_ANCHOR_RECORD_INCOMPLETE") from exc
     return expected

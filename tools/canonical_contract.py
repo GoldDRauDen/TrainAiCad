@@ -232,6 +232,18 @@ def validate_canonical_job(job: dict) -> dict:
                 fail(f"{code}: WITNESS_REQUIRED_FEATURE_MISSING:{sorted(proven - required)}")
             if proven and not part.get("feature_witness_graph"):
                 fail(f"{code}: WITNESS_GRAPH_MISSING")
+            hole_members = {
+                member["member_id"] for group in part["source_groups"]
+                if group["family"].upper() == "HOLE" and group["status"] == "PROVED"
+                for member in group.get("members", [])
+                if member.get("status", "PROVED") == "PROVED"
+            }
+            trace_targets = part.get("feature_witness_graph", {}).get("targets", [])
+            if hole_members and any(
+                not target.get("entity_id")
+                for target in trace_targets if target.get("feature_id") in hole_members
+            ):
+                fail(f"{code}: WITNESS_CANONICAL_ENTITY_LINK_MISSING")
             slots = {
                 member["member_id"] for group in part["source_groups"]
                 if group["family"].upper() == "SLOT" and group["status"] == "PROVED"

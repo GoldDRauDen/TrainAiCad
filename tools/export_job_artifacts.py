@@ -17,6 +17,7 @@ import ezdxf
 from canonical_contract import CONTRACT, CanonicalContractError
 from export_dxf import entity_signature, new_doc, safe_name
 from cut_orientation import orient_cut_doc
+from ezdxf.math import Matrix44
 
 APPID = "TRAINAICAD"
 CUT_ROLES = frozenset({"outer", "cutout", "slot", "hole", "relief", "slit", "cut"})
@@ -186,7 +187,15 @@ def _plan_cut_doc(part):
         fail(f"{part['code']}: missing proved outside contour")
     orientation = orient_cut_doc(doc, part)
     updated = []
-    for obj, (_, eid, parent, members) in zip(doc.modelspace(), expected):
+    for obj, (source_sig, eid, parent, members) in zip(doc.modelspace(), expected):
+        # Reverse-check final physical geometry against the unrotated canonical
+        # manufacturing curve, independently of saved-file signature equality.
+        restored = obj.copy()
+        dx, dy = orientation["translation_mm"]
+        restored.transform(Matrix44.translate(-dx, -dy, 0))
+        restored.transform(Matrix44.z_rotate(-math.radians(orientation["rotation_deg"])))
+        if entity_signature(restored) != source_sig:
+            fail(f"{part['code']}/{eid}: INVERSE_TRANSFORM_MISMATCH")
         updated.append((entity_signature(obj), eid, parent, members))
     return doc, updated, cut_count, contour_count, orientation
 
