@@ -217,7 +217,13 @@ def main():
         doc = ezdxf.readfile(target)
         layer0 = [e for e in doc.modelspace() if e.dxf.layer == "0"]
         ids = [xdata_entity_id(e) for e in layer0]
-        assert ids == validation["entity_ids"]
+        parents = [next(t.value.split("=", 1)[1] for t in e.get_xdata("TRAINAICAD")
+                        if t.code == 1000 and str(t.value).startswith("SOURCE_ENTITY_ID="))
+                   for e in layer0]
+        assert set(parents) == set(validation["entity_ids"])
+        assert len(ids) == len(set(ids)) and len(ids) > len(validation["entity_ids"])
+        assert not any(e.dxftype() in ("LWPOLYLINE", "POLYLINE") for e in layer0)
+        assert manifest["canonical_completeness"]["canonical_to_saved_dxf_segment_ids"] == "PASS"
 
         circles = [(xdata_entity_id(e), round(e.dxf.radius, 4)) for e in layer0 if e.dxftype() == "CIRCLE"]
         assert len([x for x in circles if "G862_" in x[0]]) == 16
