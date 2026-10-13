@@ -74,7 +74,7 @@ SOURCE
   -> PROVED SOURCE MEMBERS == PROVED CANONICAL MEMBERS
   -> CANONICAL ENTITIES
   -> tools/export_canonical_dxf.py
-  -> EVERY CANONICAL ENTITY MAPS TO ITS SAVED PHYSICAL LINE/ARC/CIRCLE SEGMENT ID(s)
+  -> SAVED DXF ENTITY IDs: EVERY CANONICAL ENTITY MAPS TO ITS SAVED PHYSICAL LINE/ARC/CIRCLE SEGMENT ID(s)
   -> saved-DXF read-back / applicable source reprojection
   -> SOURCE_ONLY_SNAPSHOT freeze before any later sample/reference calibration
 ```
