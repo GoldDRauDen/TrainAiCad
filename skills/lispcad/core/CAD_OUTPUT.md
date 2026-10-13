@@ -3,6 +3,14 @@
 This section supersedes inherited V4.9/V4.11 composite-only defaults below,
 without changing approved geometry, material/Nobi/bend or canonical schema.
 Normal E2E uses `tools/export_canonical_dxf.py`; on successful canonical
+A source-only open DATA gap can be **nonblocking** only when the
+manufacturing geometry is independently proved PASS (see
+references/DATA_GAP_FLAG_POLICY.md). Retain data_gap_flags per code;
+composite AI_META marks the exact open-source warning location. Standalone
+PASS CUT includes no warning entities. Blocking manufacturing flags retain
+their existing REVIEW semantics. An unresolved CUT boundary NEVER becomes
+PASS via this exception.
+
 member and composite saved-DXF XDATA read-back, it persists per-code
 `geometry_json/<CODE>.json` even for REVIEW, emits
 `parts_dxf/<PASS_CODE>.dxf` **only for verified PASS** using analytic
