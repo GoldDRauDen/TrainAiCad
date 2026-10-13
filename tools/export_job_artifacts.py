@@ -254,7 +254,9 @@ def export_part_artifacts(job, output_dir):
             doc, expected, members, contours = _plan_cut_doc(part)
             target_dxf = cut_dir / f"{code}.dxf"
             # Always read back cached PASS DXF; replace if stale or corrupted.
-            cached = not json_changed and target_dxf.exists() and _verify_cut(target_dxf, expected)
+            # Metadata-only RAW DATA gap warnings do not change CUT geometry.
+            # Reuse only after exact existing saved-DXF geometry/XDATA read-back.
+            cached = target_dxf.exists() and _verify_cut(target_dxf, expected)
             if not cached:
                 pending = target_dxf.with_name(target_dxf.name + ".pending")
                 doc.saveas(pending)
