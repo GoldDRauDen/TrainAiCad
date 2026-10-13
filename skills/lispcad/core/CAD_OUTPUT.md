@@ -15,6 +15,10 @@ REVIEW_ONLY. Existing lower-level V4.9/dual serializations are compatibility,
 not the canonical production entry point. Canonical data remain the sole
 physical geometry source, and saved-DXF read-back is mandatory.
 
+## Composite physical output: LINE / ARC / CIRCLE
+
+Both standalone PASS CUT and the entire-job composite use physical LINE/ARC/CIRCLE for their contours. The canonical Geometry JSON may retain closed bulged LWPOLYLINE as its internally audited contour representation, but the canonical exporter decomposes its physical segments analytically before writing final composite DXF; no output LWPOLYLINE/POLYLINE remains. Preserve source entity ID -> uniquely indexed saved physical segment IDs via TRAINAICAD XDATA and verify exact physical geometry/read-back. The legacy lower-level serializer is not a final production artifact. The standalone CUT remains unaffected by composite-only annotations.
+
 ## Nonblocking RAW DATA source gap — composite-only FLAG
 
 When PDF_DATA_RAW has an open source DATA gap but **all manufacturing CUT
@@ -40,7 +44,7 @@ Normal production/review DXF emission must use `tools/export_canonical_dxf.py` w
 
 Before any DXF save, persist `source_groups`, enumerable source `members`, `canonical_members`, and globally unique canonical `entity_id` values. Hard-fail when a PROVED source member has no PROVED source-backed canonical member. FLAGGED source members remain explicitly represented as PREVIEW/SOURCE_VIEW/FLAGGED_NO_GEOMETRY; a review flag never authorizes deletion of another proved member.
 
-The normal production path must not bypass this contract by writing a hand-picked source subset directly to `ezdxf.modelspace()` / `saveas()`. The lower-level `tools/export_dxf.py` remains a packaging component only. After packaging, V4.31 stamps `TRAINAICAD` XDATA entity IDs into every saved Layer-0 entity, saves/reopens the exact file, and requires `CANONICAL_ENTITY_IDS == SAVED_DXF_LAYER0_ENTITY_IDS` before delivery.
+The normal production path must not bypass this contract by writing a hand-picked source subset directly to `ezdxf.modelspace()` / `saveas()`. The lower-level `tools/export_dxf.py` remains a packaging component only. After packaging, canonical export decomposes composite bulged polylines to analytic LINE/ARC, stamps TRAINAICAD XDATA on every saved physical entity and verifies the 1:N canonical ID -> saved segment ID mapping before delivery.
 
 ## V4.12 approved local-FLAG precedence
 
