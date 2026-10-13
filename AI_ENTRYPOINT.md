@@ -2,6 +2,16 @@
 
 Current production release is **V4.33**.
 
+**Nonblocking DATA source gap policy:** PDF_DATA_RAW jobs must independently
+classify raw open endpoints before any contour closure or canonical PASS. A
+source gap with fully proved manufacturing geometry is recorded in
+data_gap_flags, highlighted only in composite AI_META, while the matching
+standalone PASS CUT stays geometry-only. Unknown/missing manufacturing CUT
+remains REVIEW. Follow references/DATA_GAP_FLAG_POLICY.md and execute
+tools/data_gap_advisory.py through canonical validation. Never auto-close raw
+DATA merely to satisfy the exporter.
+
+
 **KH851 weld-location KEGAKI completeness:** after reading numeric customer
 code and before declaring KEGAKI=NO, follow
 references/WELD_SITE_KEGAKI_CLOSURE.md. Independently enumerate every
