@@ -457,7 +457,8 @@ def export_single_job(job, output_dir, gap_mm=10.0, write_manifest=False):
     actual_geometry = [entity_signature(e) for e in loaded.modelspace() if e.dxf.layer == "0"]
     if actual_geometry != expected_geometry:
         fail("Combined source geometry does not match canonical translated part-local geometry")
-    labels = [e.dxf.text for e in loaded.modelspace() if e.dxf.layer == "AI_META"]
+    labels = [e.dxf.text for e in loaded.modelspace()
+              if e.dxf.layer == "AI_META" and e.dxftype() == "TEXT"]
     if [x for x in labels if x in expected_labels] != expected_labels:
         fail("Missing or misordered code labels in combined DXF")
     if review and "REVIEW ONLY - NO CUT - UNRESOLVED CODES PRESENT" not in labels:
