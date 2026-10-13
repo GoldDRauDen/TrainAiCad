@@ -4,7 +4,7 @@ The input schema is unchanged. The **normal E2E output packaging** of the
 validated canonical job is now one JSON per part at
 `geometry_json/<CODE>.json`, one individual CUT DXF per PASS code at
 `parts_dxf/<PASS_CODE>.dxf` (LINE/ARC/CIRCLE only), plus the one existing
-top-to-bottom composite file. REVIEW/PREVIEW/VIEWS_ONLY still receive JSON
+top-to-bottom composite file (physical LINE/ARC/CIRCLE, no LWPOLYLINE). REVIEW/PREVIEW/VIEWS_ONLY still receive JSON
 and composite review geometry/flags, never a standalone CUT DXF.
 The individual geometry is derived from source-canonical entities and
 undergoes independent exact saved-DXF/XDATA read-back; no second interpretation
@@ -115,9 +115,7 @@ All Layer-0 manufacturing entities must be owned by at least one canonical membe
 - no orphan manufacturing entity;
 - derived-rule entities name their controlling rule and source members.
 
-`tools/export_canonical_dxf.py` then delegates composite geometric packaging to `tools/export_dxf.py`, stamps `TRAINAICAD` XDATA `ENTITY_ID` into every saved Layer-0 entity, saves again, reopens the exact DXF and proves:
-
-`CANONICAL_ENTITY_IDS == SAVED_DXF_LAYER0_ENTITY_IDS`.
+`tools/export_canonical_dxf.py` delegates physical packaging to `tools/export_dxf.py`, then analytically decomposes every composite Layer-0 LWPOLYLINE into LINE/ARC while preserving individual attributes and source provenance. Saved DXF read-back verifies physical signatures plus a complete **1:N source entity -> physical segment** mapping in `TRAINAICAD` XDATA (`ENTITY_ID`, `SOURCE_ENTITY_ID`, `CANONICAL_MEMBER_IDS`). A source contour with four edges produces four unique segment IDs. Every canonical source ID must own all its physical output segments, with no extra or missing segment.
 
 A failure blocks delivery even for REVIEW_ONLY output. REVIEW_ONLY controls cut authorization; it does not permit silently missing PROVED members.
 
