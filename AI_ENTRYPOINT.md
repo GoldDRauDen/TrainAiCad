@@ -74,7 +74,7 @@ SOURCE
   -> PROVED SOURCE MEMBERS == PROVED CANONICAL MEMBERS
   -> CANONICAL ENTITIES
   -> tools/export_canonical_dxf.py
-  -> SAVED DXF ENTITY IDs == CANONICAL ENTITY IDs
+  -> EVERY CANONICAL ENTITY MAPS TO ITS SAVED PHYSICAL LINE/ARC/CIRCLE SEGMENT ID(s)
   -> saved-DXF read-back / applicable source reprojection
   -> SOURCE_ONLY_SNAPSHOT freeze before any later sample/reference calibration
 ```
@@ -138,9 +138,7 @@ Before serialization, hard-fail unless:
 
 FLAGGED source members remain represented as PREVIEW/SOURCE_VIEW/FLAGGED_NO_GEOMETRY; uncertainty is local and never authorizes deletion of independently proved members. CANCELED source members must not appear in canonical manufacturing geometry.
 
-Every canonical Layer-0 entity has a stable `entity_id`. The V4.31 serializer writes the composite, stamps `TRAINAICAD` XDATA IDs, saves again, reopens the exact file and hard-fails unless:
-
-`SAVED DXF ENTITY IDs == CANONICAL ENTITY IDs`.
+Every canonical Layer-0 entity has a stable `entity_id`. The canonical exporter decomposes composite bulged polylines into exact LINE/ARC, stamps `TRAINAICAD` provenance on every physical segment, then saves/reopens and requires **complete 1:N canonical entity ID → saved DXF segment ID and source-owner mapping**, without losing source members, geometry or member ownership.
 
 A syntactically valid/readable DXF, clean bbox, selected count check or generic READBACK PASS cannot override `SOURCE_FEATURE_COMPLETENESS_FAIL` or `CANONICAL_SERIALIZATION_COMPLETENESS_FAIL`.
 
