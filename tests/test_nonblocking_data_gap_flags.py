@@ -64,6 +64,7 @@ def test_noncut_data_open_warnings_only_in_composite_pass_individual(tmp_path):
     assert set(e.dxftype() for e in cut.modelspace()) <= {"LINE", "ARC", "CIRCLE"}
     assert not any(e.dxf.layer == "AI_META" for e in cut.modelspace())
     composite = ezdxf.readfile(tmp_path / "TESTJOB_ALL.dxf")
+    assert not any(e.dxftype() in {"LWPOLYLINE", "POLYLINE"} for e in composite.modelspace())
     label = [l for l in _text_labels(composite) if "DATA GAP FLAG" in l]
     assert len(label) == 1 and "SOURCE ONLY; CUT PASS" in label[0]
     marker = [e for e in composite.modelspace()
