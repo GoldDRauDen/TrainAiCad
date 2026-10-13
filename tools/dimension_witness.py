@@ -93,6 +93,7 @@ def validate_part_witnesses(part):
         return {}
     solved = validate_graph(graph)
     for feature in required:
-        if not any(fid == feature for fid, _ in solved):
-            raise WitnessError(f"WITNESS_REQUIRED_FEATURE_MISSING:{feature}")
+        for axis in ("X", "Y"):
+            if (feature, axis) not in solved:
+                raise WitnessError(f"WITNESS_REQUIRED_AXIS_MISSING:{feature}:{axis}")
     return solved

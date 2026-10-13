@@ -16,6 +16,7 @@ import ezdxf
 
 from canonical_contract import CONTRACT, CanonicalContractError
 from export_dxf import entity_signature, new_doc, safe_name
+from cut_orientation import orient_cut_doc
 
 APPID = "TRAINAICAD"
 CUT_ROLES = frozenset({"outer", "cutout", "slot", "hole", "relief", "slit", "cut"})
@@ -183,7 +184,11 @@ def _plan_cut_doc(part):
         fail(f"{part['code']}: no closed verified contour or circle for CUT")
     if not any(e["role"] == "outer" for e in part["entities"]):
         fail(f"{part['code']}: missing proved outside contour")
-    return doc, expected, cut_count, contour_count
+    orientation = orient_cut_doc(doc, part)
+    updated = []
+    for obj, (_, eid, parent, members) in zip(doc.modelspace(), expected):
+        updated.append((entity_signature(obj), eid, parent, members))
+    return doc, updated, cut_count, contour_count, orientation
 
 
 def _verify_cut(path, expected):
@@ -220,7 +225,7 @@ def _atomic_text(path, payload):
     return True
 
 
-def export_part_artifacts(job, output_dir):
+def export_part_artifacts(job, output_dir, composite_only=False):
     """Persist one canonical JSON per code and validated independent PASS CUTs.
 
     This is intentionally downstream of validate_canonical_job and successful
@@ -245,8 +250,8 @@ def export_part_artifacts(job, output_dir):
         json_changed = _atomic_text(target_json, data)
         entry = {"code": code, "status": part["status"], "geometry_json": str(target_json.relative_to(root)),
                  "geometry_sha256": hashlib.sha256(data).hexdigest(), "json_changed": json_changed}
-        if part["status"] == "PASS" and not part.get("flags"):
-            doc, expected, members, contours = _plan_cut_doc(part)
+        if part["status"] == "PASS" and not part.get("flags") and not composite_only:
+            doc, expected, members, contours, orientation = _plan_cut_doc(part)
             target_dxf = cut_dir / f"{code}.dxf"
             # Always read back cached PASS DXF; replace if stale or corrupted.
             cached = not json_changed and target_dxf.exists() and _verify_cut(target_dxf, expected)
@@ -260,9 +265,11 @@ def export_part_artifacts(job, output_dir):
             keep_pass.add(code)
             entry.update({"cut_dxf": str(target_dxf.relative_to(root)), "cut_entity_count": len(expected),
                           "canonical_cut_member_count": members, "closed_contours": contours,
-                          "cut_readback": "PASS", "reused_verified_dxf": cached})
+                          "cut_readback": "PASS", "reused_verified_dxf": cached,
+                          "orientation": orientation})
         else:
-            entry.update({"cut_dxf": None, "cut_readback": "NOT_PRODUCTION"})
+            entry.update({"cut_dxf": None,
+                          "cut_readback": "COMPOSITE_ONLY" if composite_only else "NOT_PRODUCTION"})
         statuses.append(entry)
     # These are generated-only directories. Drop stale results on status changes.
     for p in json_dir.glob("*.json"):
