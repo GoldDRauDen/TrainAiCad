@@ -15,6 +15,8 @@ from pathlib import Path
 import ezdxf
 from ezdxf import bbox
 
+from data_gap_advisory import validate_data_gap_flags
+
 CHECKS = ("contour_topology", "datum", "feature_count", "unfold", "containment",
           "bend_domain", "material_rules", "slot_semantics")
 TYPES = {"LWPOLYLINE", "CIRCLE", "LINE", "ARC", "POINT", "TEXT"}
@@ -140,6 +142,7 @@ def validate_job(job):
     codes = set()
     for part in parts:
         code = safe_name(part.get("code"))
+        validate_data_gap_flags(part, job.get("source_mode"))
         if code in codes:
             fail(f"Duplicate code {code}; use unique code for each manufacturing part")
         codes.add(code)
@@ -346,7 +349,7 @@ def source_view_boxes(part):
 
 
 def export_single_job(job, output_dir, gap_mm=10.0, write_manifest=False):
-    """One composite, source-order labels, all-code review downgrade on ANY FLAG."""
+    """Composite keeps blocking REVIEW and source DATA advisory flags separate."""
     jid = validate_job(job)
     gap_mm = number(gap_mm, "gap_mm")
     if gap_mm < 10:
@@ -365,7 +368,8 @@ def export_single_job(job, output_dir, gap_mm=10.0, write_manifest=False):
                         "thickness_mm": p["thickness_mm"], "status": p["status"],
                         "bbox_mm": extents_of(scratch), "entity_count": len(p["entities"]),
                         "flags": p.get("flags", []), "checks": p["checks"],
-                        "source_view_boxes": view_boxes})
+                        "source_view_boxes": view_boxes,
+                        "data_gap_flags": validate_data_gap_flags(p, job.get("source_mode"))})
     total_height = sum(r["bbox_mm"][3] - r["bbox_mm"][1] for r in records) + gap_mm * (len(records) - 1)
     merged = new_doc()
     merged.layers.new("AI_META", dxfattribs={"color": 8, "plot": 0})
@@ -376,6 +380,8 @@ def export_single_job(job, output_dir, gap_mm=10.0, write_manifest=False):
     expected_labels = []
     cursor = total_height
     annotation_count = 0
+    advisory_labels = []
+    advisory_count = 0
 
     def label(text_value, where, color=8):
         nonlocal annotation_count
@@ -403,6 +409,20 @@ def export_single_job(job, output_dir, gap_mm=10.0, write_manifest=False):
         expected_labels.append(code_label)
         if p.get("flags"):
             label(p["code"] + " FLAG: SEE STAGE1; NO CUT", (max(xmax - xmin, 20), cursor + 2), color=6)
+        for gap in rec["data_gap_flags"]:
+            # RAW DATA warning is deliberately AI_META only: no fabricated
+            # manufacturing bridge and no annotation in parts_dxf.
+            x, y = gap["marker_local"]
+            x, y = x + dx, y + dy
+            circle = msp.add_circle((x, y), 1.5, dxfattribs={
+                "layer": "AI_META", "color": 6})
+            circle.set_xdata("AICAD", [(1000, "NON_CUT_DATA_GAP_FLAG=" + gap["gap_id"])])
+            annotation_count += 1
+            advisory_count += 1
+            msg = (p["code"] + " DATA GAP FLAG " + gap["gap_id"] +
+                   " [SOURCE ONLY; CUT PASS] " + format(gap["gap_mm"], ".6g") + "mm")
+            label(msg, (x + 2.5, y + 2.5), color=6)
+            advisory_labels.append(msg)
         if p["status"] == "VIEWS_ONLY":
             for view_id, bounds in rec["source_view_boxes"].items():
                 label(p["code"] + " VIEW " + view_id, (bounds[0] + dx, bounds[3] + dy + 2))
@@ -426,6 +446,11 @@ def export_single_job(job, output_dir, gap_mm=10.0, write_manifest=False):
         fail("Missing or misordered code labels in combined DXF")
     if review and "REVIEW ONLY - NO CUT - UNRESOLVED CODES PRESENT" not in labels:
         fail("REVIEW_ONLY output missing global NO CUT label")
+    if any(msg not in labels for msg in advisory_labels):
+        fail("DATA gap source flags missing from composite AI_META")
+    saved_markers = [e for e in loaded.modelspace() if e.dxf.layer == "AI_META" and e.dxftype() == "CIRCLE"]
+    if len(saved_markers) != advisory_count:
+        fail("DATA gap annotation marker count changed after DXF read-back")
     for upper, lower in zip(layout, layout[1:]):
         if upper["combined_bbox_mm"][1] - lower["combined_bbox_mm"][3] < gap_mm - 1e-5:
             fail("Combined source-code clusters overlap or lack required gap")
@@ -433,8 +458,9 @@ def export_single_job(job, output_dir, gap_mm=10.0, write_manifest=False):
                 "coordinate_units": "mm", "layout": "code-labeled top-to-bottom",
                 "status": "REVIEW_ONLY" if review else "PASS",
                 "filename": filename, "parts": records, "positions": layout,
+                "nonblocking_data_gap_flag_count": advisory_count,
                 "source": "independently checked canonical geometry",
-                "warning": "AI_META is non-cut; review-only files are NEVER production CAD"}
+                "warning": "AI_META is non-cut; source DATA gap FLAG does not authorize missing CUT geometry; review-only files are NEVER production CAD"}
     if write_manifest:
         (out / f"{jid}_MANIFEST.json").write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
