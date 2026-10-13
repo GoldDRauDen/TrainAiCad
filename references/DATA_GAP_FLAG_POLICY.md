@@ -86,7 +86,9 @@ is still a process failure.
 - Source/CUT geometry entities and XDATA read-back remain invariant.
   Nonblocking source gap flags do not erase blocking warnings.
 
-The geometric data model currently uses source-proved LWPOLYLINE for
-canonical closed CUT contours, and decomposes standalone PASS into
-LINE/ARC/CIRCLE. This policy does NOT attempt the separate requested
-all-composite LINE/ARC/CIRCLE migration.
+The canonical geometric data model may retain proved bulged LWPOLYLINE, but
+both the standalone PASS and the combined final DXF are emitted as physical
+LINE/ARC/CIRCLE primitives. The combined exporter decomposes all Layer-0
+polylines without faceting, preserves individual colors/linetypes, and audits
+source entity -> serialized segment 1:N provenance. A source DATA gap warning
+on AI_META must never create or alter manufactured CUT.
