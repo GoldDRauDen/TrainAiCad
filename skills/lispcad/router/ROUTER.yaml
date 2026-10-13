@@ -193,6 +193,7 @@ post_route_checks:
   - weld_site_kegaki_source_census_closure
   - same_physical_parameter_before_reference_conflict
   - source_feature_completeness
+  - data_gap_disposition_before_pass
   - dependency_closure
   - bend_attachment_edge_lock
   - formed_profile_od_measurement_when_applicable
