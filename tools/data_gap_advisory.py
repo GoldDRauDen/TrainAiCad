@@ -101,6 +101,9 @@ def validate_data_gap_flags(part, source_mode):
         _ids(flag.get("source_entity_ids"), place + "/source")
         _nonempty(flag.get("source_view_id"), place + "/source_view")
         _nonempty(flag.get("source_evidence"), place + "/source")
+        _nonempty(flag.get("raw_data_snapshot_ref"), place + "/RAW_DATA_SNAPSHOT")
+        _nonempty(flag.get("physical_data_baseline_ref"), place + "/PHYSICAL_DATA_BASELINE")
+        _nonempty(flag.get("bidirectional_qa_ref"), place + "/source/canonical reprojection")
         _nonempty(flag.get("disposition_evidence"), place + "/disposition")
         points = flag.get("source_endpoints")
         if not isinstance(points, list) or len(points) != 2:
@@ -134,9 +137,18 @@ def validate_data_gap_flags(part, source_mode):
                    entity_by_id[eid].get("closed") is not True
                    for eid in canonical_ids):
                 fail(f"{place}: proved corrected CUT must be a separately proved closed contour")
-            _nonempty(flag.get("manufacturing_change_ledger_ref"),
-                      place + "/manufacturing change")
+            change_id = _nonempty(flag.get("manufacturing_change_ledger_ref"),
+                                  place + "/manufacturing change")
             _nonempty(flag.get("closure_witness"), place + "/PDF closure witness")
+            changes = part.get("manufacturing_change_ledger", [])
+            if not isinstance(changes, list) or not any(
+                isinstance(c, dict) and c.get("change_id") == change_id and
+                c.get("status") == "PROVED" and
+                set(c.get("canonical_entity_ids", [])) >= set(canonical_ids) and
+                isinstance(c.get("controlling_rule"), str) and c.get("controlling_rule")
+                for c in changes
+            ):
+                fail(f"{place}: missing proved manufacturing_change_ledger scope")
         validated.append({
             "gap_id": gap_id, "classification": kind,
             "gap_mm": length, "marker_local": local,
