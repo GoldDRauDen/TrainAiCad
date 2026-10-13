@@ -6,6 +6,7 @@ import re
 from collections import defaultdict
 
 from weld_kegaki_guard import WeldKegakiError, validate_weld_kegaki
+from data_gap_advisory import DataGapFlagError, validate_data_gap_flags
 
 CONTRACT = "TrainAiCad-CANONICAL-V4.31"
 SOURCE_STATUSES = {"PROVED", "FLAGGED", "CANCELED"}
@@ -34,7 +35,7 @@ def _members_of(group):
     return members
 
 
-def validate_part(part: dict, customer_code: str | None = None) -> dict:
+def validate_part(part: dict, customer_code: str | None = None, source_mode: str | None = None) -> dict:
     code = ident(part.get("code"), "part code")
     entities = part.get("entities")
     if not isinstance(entities, list) or not entities:
@@ -170,8 +171,14 @@ def validate_part(part: dict, customer_code: str | None = None) -> dict:
     except WeldKegakiError as exc:
         fail(str(exc))
 
+    try:
+        data_gap_advisories = validate_data_gap_flags(part, source_mode)
+    except DataGapFlagError as exc:
+        fail(str(exc))
+
     return {
         "code": code,
+        "data_gap_advisories": data_gap_advisories,
         "weld_kegaki_closure": weld_closure,
         "source_group_count": len(groups),
         "source_member_count": len(source_member),
@@ -197,7 +204,9 @@ def validate_canonical_job(job: dict) -> dict:
         customer_code = str(int(str(raw_customer_code).strip()))
     else:
         customer_code = None
-    records = [validate_part(part, customer_code=customer_code) for part in parts]
+    source_mode = job.get("source_mode")
+    records = [validate_part(part, customer_code=customer_code,
+                             source_mode=source_mode) for part in parts]
     all_ids = []
     for rec in records:
         all_ids.extend(rec["entity_ids"])
