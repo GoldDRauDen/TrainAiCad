@@ -48,6 +48,7 @@ source_routes:
       - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
       - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
       - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
+      - references/DATA_GAP_FLAG_POLICY.md
   TRAIN_REFERENCE:
     load:
       - references/DXF_PHYSICAL_CURVE_DECODING.md
