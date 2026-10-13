@@ -155,7 +155,10 @@ def test_pass_and_review_export_separation(tmp_path):
     assert types.count("LINE") == 8 and types.count("ARC") == 3 and types.count("CIRCLE") == 1
     assert len(types) == 12
     composite = ezdxf.readfile(tmp_path / result["filename"])
-    assert "LWPOLYLINE" in [e.dxftype() for e in composite.modelspace()]
+    assert "LWPOLYLINE" not in [e.dxftype() for e in composite.modelspace()]
+    layer0 = [e for e in composite.modelspace() if e.dxf.layer == "0"]
+    assert all(e.dxftype() in {"LINE", "ARC", "CIRCLE", "POINT", "TEXT"} for e in layer0)
+    assert all(any(v.startswith("SOURCE_ENTITY_ID=") for v in _xdata(e)) for e in layer0)
     assert any("NO CUT" in e.dxf.text for e in composite.modelspace() if e.dxftype() == "TEXT")
 
 
