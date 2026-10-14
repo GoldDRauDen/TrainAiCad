@@ -101,12 +101,11 @@ gates:
   - skills/lispcad/features/HOLES_TAPS.md
 - id: DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA
   files:
-  - AI_ENTRYPOINT.md
   - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
+  - references/SOURCE_DATA_CLASSIFICATION.md
 - id: DATA_RAW_TO_MANUFACTURING_CONTRACT
   files:
-  - AI_ENTRYPOINT.md
   - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
@@ -154,7 +153,6 @@ gates:
   - skills/lispcad/core/VALIDATION.md
 - id: MANUFACTURING_CHANGE_LEDGER
   files:
-  - AI_ENTRYPOINT.md
   - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
@@ -181,7 +179,6 @@ gates:
   - skills/lispcad/modes/BEND_UNFOLD.md
 - id: PHYSICAL_DATA_BASELINE
   files:
-  - AI_ENTRYPOINT.md
   - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
@@ -192,7 +189,6 @@ gates:
   - skills/lispcad/core/VALIDATION.md
 - id: RAW_DATA_SNAPSHOT
   files:
-  - AI_ENTRYPOINT.md
   - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/DXF_PHYSICAL_CURVE_DECODING.md
@@ -214,7 +210,6 @@ gates:
   - references/FACE_CREATION_BEND_EVIDENCE.md
 - id: SAME_PARAMETER_GATE
   files:
-  - AI_ENTRYPOINT.md
   - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
@@ -261,6 +256,7 @@ gates:
   files:
   - AI_ENTRYPOINT.md
   - references/REFERENCE_EXPOSURE_FIREWALL.md
+  - references/SOURCE_DATA_CLASSIFICATION.md
   - skills/lispcad/core/VALIDATION.md
 - id: SOURCE_PHYSICAL_TO_CANONICAL
   files:
@@ -292,7 +288,6 @@ gates:
   - skills/lispcad/modes/BEND_UNFOLD.md
 - id: UNTOUCHED_DATA_INVARIANCE_CHECK
   files:
-  - AI_ENTRYPOINT.md
   - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md

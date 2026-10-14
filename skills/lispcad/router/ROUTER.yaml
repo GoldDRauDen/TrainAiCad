@@ -225,6 +225,16 @@ history_policy:
     - skills/lispcad/versions/
     - docs/history/
   never_select_highest_version_filename: true
+  retired_from_working_tree:
+    - skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md  # byte-identical copy of V4.24
+    - skills/lispcad/versions/**
+  pinned_archive: docs/history/SNAPSHOT_MANIFEST.json  # pinned commit 173c098, sha256-verified, read via tools/snapshot_manifest.py
+  read_only_for:
+    - ROUTING_COVERAGE_GAP diagnosis
+    - historical coverage audit
+    - explicitly requested portability check
+  historical_snapshots_override_active_rules: false
+  must_be_version_equal_to_current_release: false
 
 portable_compatibility:
   path: docs/history/SNAPSHOT_MANIFEST.json  # pinned, hash-verified archive; see tools/snapshot_manifest.py

@@ -221,17 +221,7 @@ Before production unfold/output:
 
 ## 6. Source and mode routing
 
-Classify exactly one source relationship using `references/SOURCE_DATA_CLASSIFICATION.md`:
-- `PDF_ONLY`
-- `PDF_DATA_RAW`
-- `TRAIN_REFERENCE`
-- `DIRECT_EXISTING_DXF_AUDIT`
-
-For `PDF_DATA_RAW`, the router loads `references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md`, `references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md` and `references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md`. Customer DATA supplies physical geometry; PDF controls semantics, dimensions, revisions and manufacturing meaning under the approved rules.
-
-V4.25 requires `RAW_DATA_SNAPSHOT`, `PHYSICAL_DATA_BASELINE`, `SAME_PARAMETER_GATE`, `MANUFACTURING_CHANGE_LEDGER` and `UNTOUCHED_DATA_INVARIANCE_CHECK`. V4.26 additionally requires decoded physical LINE/ARC/CIRCLE preservation for bulged polylines.
-
-For reference/sample calibration of a new/source-only solve, freeze `SOURCE_ONLY_SNAPSHOT` before exposing or decoding the sample/reference geometry; customer DXF DATA remains source-authoritative and is decoded normally. After freeze, compare physical reference geometry without reverse-fitting the source interpretation. DIRECT_EXISTING_DXF_AUDIT may compare existing AI DXF ↔ sample as required by that audit mode, but any later claim about what the original source alone established remains bounded by the frozen/pre-existing source evidence. V4.30 additionally requires same-physical-parameter identity before a numeric source/reference conflict is declared.
+Classify exactly one source relationship (`PDF_ONLY`, `PDF_DATA_RAW`, `TRAIN_REFERENCE`, `DIRECT_EXISTING_DXF_AUDIT`) per the section "Source relationship classes and mode loads" in `references/SOURCE_DATA_CLASSIFICATION.md` (default-loaded). Mode loads: `ROUTER.yaml` `source_routes`.
 
 ## 7. Release wiring index
 
@@ -263,15 +253,7 @@ If a source-supported family has no route, stop with `ROUTING_COVERAGE_GAP`. Do 
 
 ## 9. Portable and history policy
 
-The compatibility/audit snapshots (the former `skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md`, a byte-identical copy of V4.24, and `skills/lispcad/versions/**`) were retired from the working tree. They are pinned, sha256-verified, in `docs/history/SNAPSHOT_MANIFEST.json` at commit `173c098` and read through `tools/snapshot_manifest.py`. They are **NOT part of the normal repo-direct load path** and are not required to be version-equal to the current release.
-
-They may be read only to diagnose `ROUTING_COVERAGE_GAP`, audit historical coverage, or perform an explicitly requested portability check. After a gap is found, do not silently continue production from snapshot text.
-
-Normal production retrieval excludes:
-- the retired snapshot archive (`docs/history/SNAPSHOT_MANIFEST.json`, pinned commit)
-- `docs/history/**`
-
-Historical snapshots never override active modular rules.
+Snapshots and `docs/history/**` are outside normal production retrieval. Rules, pinned archive and read-only uses: `skills/lispcad/router/ROUTER.yaml` `history_policy` and `portable_compatibility`. After a `ROUTING_COVERAGE_GAP`, stop; do not silently continue production from snapshot text.
 
 ## 10. Regression and output
 

@@ -1,5 +1,20 @@
 # SOURCE_DATA_CLASSIFICATION — V4.25 repo-direct source routing
 
+## Source relationship classes and mode loads (moved from AI_ENTRYPOINT.md §6)
+
+Classify exactly one source relationship using this section:
+- `PDF_ONLY`
+- `PDF_DATA_RAW`
+- `TRAIN_REFERENCE`
+- `DIRECT_EXISTING_DXF_AUDIT`
+
+For `PDF_DATA_RAW`, the router loads `references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md`, `references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md` and `references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md`. Customer DATA supplies physical geometry; PDF controls semantics, dimensions, revisions and manufacturing meaning under the approved rules.
+
+V4.25 requires `RAW_DATA_SNAPSHOT`, `PHYSICAL_DATA_BASELINE`, `SAME_PARAMETER_GATE`, `MANUFACTURING_CHANGE_LEDGER` and `UNTOUCHED_DATA_INVARIANCE_CHECK`. V4.26 additionally requires decoded physical LINE/ARC/CIRCLE preservation for bulged polylines.
+
+For reference/sample calibration of a new/source-only solve, freeze `SOURCE_ONLY_SNAPSHOT` before exposing or decoding the sample/reference geometry; customer DXF DATA remains source-authoritative and is decoded normally. After freeze, compare physical reference geometry without reverse-fitting the source interpretation. DIRECT_EXISTING_DXF_AUDIT may compare existing AI DXF ↔ sample as required by that audit mode, but any later claim about what the original source alone established remains bounded by the frozen/pre-existing source evidence. V4.30 additionally requires same-physical-parameter identity before a numeric source/reference conflict is declared.
+
+
 ## 2026-10-12 numeric customer-code dimensional authority exception
 The selected `references/CUSTOMER_CAD_RULES.yaml` record is authoritative for per-customer DATA/PDF dimensional comparison, only when a numeric **customer_code** was independently identified on the job statistics sheet. `DATA_NO_DIM_COMPARE` waives generic numerical PDF-vs-DATA discrepancy flags for that customer's DATA-derived parameters, never missing/mismatched holes, nominal M identity, source family/member completeness, dimensional witnesses belonging to an absent member, topology, revisions, unchanged DATA geometry, or DXF saved read-back. `PDF_PRIORITY` uses proved PDF dimensions with DATA provenance. `CONFIRM_CONFLICT` locally REVIEWs true same-parameter disagreement. With no customer_code use general existing thresholds. The historical job-family 646 DATA-required rule below is independent of numeric customer code 646.
 
