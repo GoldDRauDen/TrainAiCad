@@ -23,13 +23,13 @@ def test_v426_release_wiring_and_portable_compatibility():
     assert router["portable_compatibility"]["runtime_default"] is False
 
 
-def test_v426_decoder_is_always_loaded_before_feature_census():
+def test_v426_decoder_loaded_at_l1_unless_proven_pdf_only_no_reference():
     router = yaml.safe_load((ROOT / "skills/lispcad/router/ROUTER.yaml").read_text(encoding="utf-8"))
-    loads = router["default_load"]
     decoder = "references/DXF_PHYSICAL_CURVE_DECODING.md"
-    census = "skills/lispcad/router/FEATURE_CENSUS.md"
-    assert decoder in loads
-    assert loads.index(decoder) < loads.index(census)
+    # V4.35: loaded at L1 for every job except PDF_ONLY with PROVEN no reference/DXF.
+    cond = {e["path"]: e["skip_when"] for e in router["conditional_default_load"]}
+    assert decoder not in router["default_load"]
+    assert cond[decoder] == {"source_mode": "PDF_ONLY", "reference_present": "NO"}
     assert "physical_curve_decode_before_feature_census" in router["post_route_checks"]
 
 

@@ -1,10 +1,23 @@
 schema_version: 1
-release: V4.34
+release: V4.35
 purpose: ROUTING_COVERAGE_AUDIT
 
 # This file proves where approved release families live after modular routing.
 # It is an audit map, not an instruction to load every file for every job.
 release_coverage:
+  V4.35:
+    active:
+      - AI_ENTRYPOINT.md
+      - skills/lispcad/core/CAD_OUTPUT.md
+      - skills/lispcad/router/ROUTER.yaml
+      - references/MATERIAL_RULES.md
+      - tools/export_dxf.py
+      - tools/export_canonical_dxf.py
+      - tools/export_job_artifacts.py
+      - tools/resolve_rules.py
+    regression:
+      - tests/test_export_artifacts.py
+      - tests/test_release_consistency.py
   V4.34:
     active:
       - AI_ENTRYPOINT.md

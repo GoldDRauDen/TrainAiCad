@@ -42,7 +42,7 @@ AI_BOOTSTRAP
             +-- skills/lispcad/router/
             |     FEATURE_CENSUS.md         what is present?
             |     ROUTER.yaml               what must be loaded?
-            |     RULE_COVERAGE.yaml        where approved release rules live
+            |     RULE_COVERAGE.yaml        audit map only (not loaded per job)
             |
             +-- skills/lispcad/modes/       flat / bend-unfold
             +-- skills/lispcad/features/    hole, tap, slot, kegaki, slit, rib...

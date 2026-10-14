@@ -83,19 +83,24 @@ def test_staged_deferred_validation_is_mandatory_but_not_preloaded():
 
 
 def test_source_mode_drives_data_curve_decoder():
+    """V4.35: skipped ONLY for PDF_ONLY with PROVEN no reference; unknown/YES fail closed."""
     p = "references/DXF_PHYSICAL_CURVE_DECODING.md"
-    x = census(source="PDF_ONLY")
-    assert p in resolve_rules(x)["stage_plans"]["L1_SOURCE_CENSUS"]["rule_paths"]
+    plain = resolve_rules(census(source="PDF_ONLY", reference="NO"))
+    assert p not in plain["rule_paths"]
+    for ref in ("YES", "UNKNOWN"):
+        x = census(source="PDF_ONLY", reference=ref)
+        assert p in resolve_rules(x)["stage_plans"]["L1_SOURCE_CENSUS"]["rule_paths"]
     for mode in ("PDF_DATA_RAW", "TRAIN_REFERENCE", "DIRECT_EXISTING_DXF_AUDIT"):
         x = census(source=mode)
-        assert p in resolve_rules(x)["stage_plans"]["L1_SOURCE_CENSUS"]["rule_paths"]
+        assert p in resolve_rules(x)["rule_paths"]
 
 
 def test_reference_firewall_not_skipped_when_unknown():
     p = "references/REFERENCE_EXPOSURE_FIREWALL.md"
-    assert p in resolve_rules(census(reference="NO"))["stage_plans"]["L1_SOURCE_CENSUS"]["rule_paths"]
+    # V4.35: only a PROVEN absence of any reference skips the firewall.
+    assert p not in resolve_rules(census(reference="NO"))["rule_paths"]
     for state in ("YES", "UNKNOWN"):
-        assert p in resolve_rules(census(reference=state))["rule_paths"]
+        assert p in resolve_rules(census(reference=state))["stage_plans"]["L1_SOURCE_CENSUS"]["rule_paths"]
 
 
 def test_unknown_topology_loads_rule_instead_of_assuming_no():

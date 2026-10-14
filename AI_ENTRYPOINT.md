@@ -3,7 +3,7 @@ Production E2E for **new** jobs uses `TrainAiCad-CANONICAL-V4.34` plus `tools/CA
 
 # AI ENTRYPOINT — TrainAiCad repo-direct production
 
-Current production release is **V4.34**.
+Current production release is **V4.35**.
 
 **KH851 weld-location KEGAKI completeness:** after reading numeric customer
 code and before declaring KEGAKI=NO, follow
@@ -17,18 +17,7 @@ source-member census, DXF read-back or a copied reference mark.
 
 This file is the production routing authority. Normal CAD jobs use **repo-direct modular routing**. Do not load the complete portable skill by default.
 
-**Current packaging contract (supersedes inherited V4.9 one-composite-only
-wording; retains V4.31 canonical input and all engineering/QA gates):** after
-`tools/export_canonical_dxf.py` validates source/canonical completeness and
-reopens the composite with verified `TRAINAICAD ENTITY_ID`, the same canonical
-job writes no JSON output and, by default, only the combined DXF. Individual `parts_dxf/<PASS_CODE>.dxf` (PASS codes only; file name = delivery-slip work number, e.g. `26-056522`; slip `サイズ X/Y` is reference only) are produced **only on explicit user request** (`--individual-dxf`), and exactly one
-`<JOB>_ALL.dxf` or `<JOB>_ALL_REVIEW_ONLY.dxf` at the output root.
-Individual PASS DXFs are CUT-only LINE/ARC/CIRCLE and exclude bend/marking,
-POINT, notes and every unproved entity; their derived provenance and physical
-geometry are validated by actual saved-DXF read-back. One code's REVIEW
-does not suppress other proved codes' PASS cut files, while it always makes
-the combined DXF REVIEW_ONLY. Existing `tools/export_dxf.py` compatibility
-modes do not override this canonical E2E contract.
+**Output packaging (single source: `skills/lispcad/core/CAD_OUTPUT.md` §1).** After `tools/export_canonical_dxf.py` validates source/canonical completeness and reopens the composite with verified `TRAINAICAD ENTITY_ID`, the default deliverable is ONE `<JOB>_ALL.dxf` / `<JOB>_ALL_REVIEW_ONLY.dxf`; no JSON is written; individual `parts_dxf/<slip-no>.dxf` (verified PASS only, named by the delivery-slip work number such as `26-056522`) only on explicit user request (`--individual-dxf`); slip `サイズ X/Y` is reference only. `tools/export_dxf.py` compatibility modes never override this contract.
 
 ## Invocation contract
 
@@ -74,7 +63,8 @@ SOURCE
 Mandatory router files:
 - `skills/lispcad/router/FEATURE_CENSUS.md`
 - `skills/lispcad/router/ROUTER.yaml`
-- `skills/lispcad/router/RULE_COVERAGE.yaml`
+
+`skills/lispcad/router/RULE_COVERAGE.yaml` is an audit map only (`tools/audit_rule_coverage.py`); it is not loaded for a CAD job.
 
 Always-on core/source-parsing references are declared in `ROUTER.yaml`. Do not invent a different core set from memory.
 

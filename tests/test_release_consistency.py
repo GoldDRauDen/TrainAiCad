@@ -45,7 +45,7 @@ def test_new_jobs_use_v434_schema_not_v431_only():
 
 def test_release_wiring_index_lives_in_docs_and_covers_latest():
     index = _text("docs/RELEASE_WIRING_INDEX.md")
-    assert "- **V4.34:**" in index and "- **V4.33:**" in index
+    assert "- **V4.35:**" in index and "- **V4.34:**" in index
     assert "## 7. Release wiring index" not in _text("AI_ENTRYPOINT.md") or \
         "Moved to `docs/RELEASE_WIRING_INDEX.md`" in _text("AI_ENTRYPOINT.md")
     assert not re.search(r"^- \*\*V4\.\d+:\*\*", _text("AI_ENTRYPOINT.md"), re.M)

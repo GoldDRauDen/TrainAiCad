@@ -14,13 +14,13 @@ The serializer accepts **independently interpreted and verified** PDF drawing ge
 
 ## Default and filenames
 
-`python tools/export_dxf.py job.json out/` emits exactly ONE DXF, with all declared drawing codes in `job.parts` order from **top to bottom**, visible code annotation and >=10 mm layout-only geometric bbox clearance:
+`python tools/export_dxf.py job.json out/` emits exactly ONE DXF, with all declared drawing codes in `job.parts` order from **top to bottom**, visible code annotation, >=150 mm between code clusters and >=10 mm between source views inside one code (`CAD_OUTPUT.md` §4):
 - All statuses PASS: `<JOB>_ALL.dxf`, production only if upstream Section 5 validations were actually executed.
 - One or more PREVIEW/VIEWS_ONLY/FLAG codes: `<JOB>_ALL_REVIEW_ONLY.dxf` including *every* code; explicit global **REVIEW ONLY - NO CUT**; no misleading production file.
 
 Part labels and review/status annotation are `TEXT` on generated **non-plot, non-cut `AI_META`** (not machining Layer 0). Code labels sit outside each part geometry bounding box; source views are also labeled. ALL actual geometric primitives remain on Layer 0. Exclude `AI_META` from CAM. Review-only composites are never cut, even if some individual clusters are accurate.
 
-No individual DXFs or external JSON by default; an internal canonical-to-layout manifest is ALWAYS built and used for verification. `--write-manifest` requests its JSON copy. `--mode dual` explicitly requests historical V4.7 separate per-code + separated PASS/review composites + JSON manifest **only when the job contains PASS/PREVIEW and no VIEWS_ONLY**. DXF order and geometry must be derived from one shared canonical model, never solved twice.
+No individual DXFs and no JSON output by default (individual DXFs only via `export_canonical_dxf.py --individual-dxf`); an internal canonical-to-layout manifest is ALWAYS built and used for verification. `--write-manifest` requests its JSON copy. `--mode dual` explicitly requests historical V4.7 separate per-code + separated PASS/review composites + JSON manifest **only when the job contains PASS/PREVIEW and no VIEWS_ONLY**. DXF order and geometry must be derived from one shared canonical model, never solved twice.
 
 ## Input JSON
 

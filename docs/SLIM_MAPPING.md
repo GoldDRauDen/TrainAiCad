@@ -69,6 +69,6 @@ Trạng thái: **đã áp dụng (2026-10-14)**. Mọi mục dưới đây đã 
 - `AI_ENTRYPOINT.md`: 20864 → 13290 byte. `SKILL.md`: 8523 → 5991 byte. Tổng giảm khoảng 10.1 KB (34%).
 - §6 và §9 của ENTRYPOINT: nội dung chuyển sang `references/SOURCE_DATA_CLASSIFICATION.md` và `ROUTER.yaml` `history_policy` (tổng byte gần như không đổi; lợi ích là rule nằm ở file máy đọc).
 - §2, §2A, §2B, §3, §4a–4e, §5, §8, §10 của ENTRYPOINT và §2, §3 của SKILL: mọi câu được đối chiếu với file đích. Câu đã có thì bỏ, chỉ giữ điều kiện nạp và định danh gate.
-- Phán đoán "phủ về ngữ nghĩa" (không trùng nguyên văn): câu cảnh báo cuối SKILL §3 (so với `CAD_OUTPUT.md` §8.4); câu "valid DXF/bbox không override" của §2B (đã có dạng mạnh hơn ở ENTRYPOINT §8); các ghi chú "Vx.y không đổi schema" (đã có ở phần bổ sung V4.34 đầu file); danh sách "load" của §2A (đã có ở `ROUTER.yaml` `mode_routes`).
+- Phán đoán "phủ về ngữ nghĩa" (không trùng nguyên văn): câu cảnh báo cuối SKILL §3 (so với `CAD_OUTPUT.md` §7); câu "valid DXF/bbox không override" của §2B (đã có dạng mạnh hơn ở ENTRYPOINT §8); các ghi chú "Vx.y không đổi schema" (đã có ở phần bổ sung V4.34 đầu file); danh sách "load" của §2A (đã có ở `ROUTER.yaml` `mode_routes`).
 - Không sửa test khóa cụm chữ nào (chỉ `tests/test_gate_index.py` và một assertion regression `check_521001_03_v423.py`, ở các commit trước).
 

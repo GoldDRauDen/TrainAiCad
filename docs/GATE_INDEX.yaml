@@ -1,4 +1,4 @@
-release: V4.34
+release: V4.35
 generated_by: tools/build_gate_index.py
 note: Derived lookup only. Routed rule files stay authoritative; this index defines no gate. 'gates' match a gate suffix.
   'review_candidates' are other upper-case identifiers in 2+ sources, excluding file names and Router route names; a human

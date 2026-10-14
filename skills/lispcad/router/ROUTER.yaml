@@ -1,5 +1,5 @@
 schema_version: 1
-release: V4.34
+release: V4.35
 authority: ROUTING_ONLY
 production_mode: repo_direct
 unknown_policy: LOAD_ROUTE
@@ -9,11 +9,9 @@ default_load:
   - references/RUNTIME_AUTHORITY_GUARD.md
   - skills/lispcad/core/DRAWING_READING.md
   - references/SOURCE_DATA_CLASSIFICATION.md
-  - references/DXF_PHYSICAL_CURVE_DECODING.md
   - references/CANONICAL_MEMBER_COMPLETENESS.md
   - references/MECHANICAL_CLASSIFIER.md
   - references/HOLISTIC_ENGINEERING_CHALLENGE.md
-  - references/REFERENCE_EXPOSURE_FIREWALL.md
   - references/SOURCE_MANUFACTURING_NOTE_CENSUS.md
   - references/SOURCE_FEATURE_GROUP_CLOSURE.md
   - references/CAD_CUSTOMER_POLICY.md
@@ -25,6 +23,14 @@ default_load:
 conditional_default_load:
   - path: references/PART_IDENTITY_GRAPH.md
     skip_when: {multi_code_or_assembly: "NO"}
+  # Skipped only for a PDF-only job with PROVEN no DXF reference/sample/audit source.
+  - path: references/DXF_PHYSICAL_CURVE_DECODING.md
+    skip_when: {source_mode: "PDF_ONLY", reference_present: "NO"}
+  - path: references/REFERENCE_EXPOSURE_FIREWALL.md
+    skip_when: {reference_present: "NO"}
+
+# Files in default_load that are ALSO listed in a later stage (e.g. L3) are loaded once;
+# never re-read them.
 
 # Stage-specific mandatory gates, not optional rules.
 # A normal E2E must execute all stages. Rule paths are deferred until needed.
