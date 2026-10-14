@@ -32,7 +32,7 @@ BASE_FILES = (
     "references/CUSTOMER_CAD_RULES.yaml",
 )
 EXCLUDED = ("skills/lispcad/portable/", "skills/lispcad/versions/",
-            "docs/history/", "regression/", "services/trainaicad-mcp/")
+            "docs/history/", "regression/")
 
 
 class BundleError(ValueError):

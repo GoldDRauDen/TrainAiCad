@@ -26,7 +26,7 @@ def build_index(root: Path = ROOT) -> dict:
     verified = audit(root)
     router = yaml.safe_load((root / ROUTER).read_text(encoding="utf-8"))
     ignored = ("skills/lispcad/portable/", "skills/lispcad/versions/",
-               "docs/history/", "services/trainaicad-mcp/")
+               "docs/history/")
     evidence = sorted(p.relative_to(root).as_posix()
                       for p in (root / "regression").rglob("*") if p.is_file())
     history = sorted(p.relative_to(root).as_posix() for prefix in ignored[2:3]
@@ -34,9 +34,6 @@ def build_index(root: Path = ROOT) -> dict:
     # Snapshots retired from the working tree are listed from the pinned manifest.
     manifest = json.loads((root / "docs/history/SNAPSHOT_MANIFEST.json").read_text(encoding="utf-8"))
     history = sorted(set(history) | set(manifest["snapshots"]))
-    experimental = sorted(p.relative_to(root).as_posix()
-                          for p in (root / "services/trainaicad-mcp").rglob("*")
-                          if p.is_file())
     executable = sorted(p.relative_to(root).as_posix()
                         for prefix in ("tools", "tests")
                         for p in (root / prefix).rglob("*.py") if p.is_file())
@@ -73,10 +70,6 @@ def build_index(root: Path = ROOT) -> dict:
         "history_audit_only": {
             "paths": history,
             "policy": "EXCLUDED_FROM_PRODUCTION_CONTEXT",
-        },
-        "experimental_mcp": {
-            "paths": experimental,
-            "policy": "RESEARCH_ONLY_NO_DEFAULT_PRODUCTION",
         },
         "forbidden_user_files": "NEVER_OPEN_READ_COPY_OR_INDEX",
     }

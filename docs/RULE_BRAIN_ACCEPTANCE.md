@@ -5,7 +5,7 @@
 - Source baseline: `ce4c825b7515e7c222daf665c34e3a8eaf9d4d78` on PR #24.
 - Immutable rollback branch: `archive/pr24-pre-token-optimization-20261012`.
 - Scope: `refactor/rule-brain-20261012` only. No main merge, no production
-  formulas/Nobi changes, no experimental MCP activation.
+  formulas/Nobi changes, no MCP activation.
 - Target: fewer rules read **before** source classification; every stage
   and every approved manufacturing gate still executed by completion.
 
@@ -55,7 +55,7 @@ rule union is still needed and its total bytes are listed.
 
 - Generated `RAG_INDEX.yaml`: `python tools/build_rule_index.py --output ../RAG_INDEX.yaml`.
   Derived from active Router, separates production, QA-only, evidence,
-  executable tools, archived history and MCP research.
+  executable tools, archived history.
 - Generated portable one-file skill:
   `python tools/build_rule_bundle.py --output ../TrainAiCad_E2E_RULEPACK.md`.
   Includes current routed/stage modules with SHA-256 source manifest.

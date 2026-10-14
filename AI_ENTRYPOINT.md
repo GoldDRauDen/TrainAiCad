@@ -270,4 +270,4 @@ Use current `VALIDATION.md` and `CAD_OUTPUT.md`. For normal new CAD jobs, build 
 
 ## 11. MCP boundary
 
-**MCP is research-only and is NOT part of the production CAD pipeline.** Default CAD behavior remains repo-direct. Do not route through MCP for ordinary CAD production. Experimental code under `services/trainaicad-mcp/` has no production authority unless the user explicitly asks to work on MCP.
+**The experimental MCP service has been removed from this repository.** It was never part of the production CAD pipeline. Default CAD behavior is repo-direct. Do not route CAD production through any MCP service.

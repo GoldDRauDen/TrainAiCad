@@ -42,7 +42,6 @@ do not hardcode it from this file.
 Default retrieval **excludes** `skills/lispcad/versions/`,
 `skills/lispcad/portable/`, `docs/history/`, and `regression/`.
 Regression documents are QA evidence, never new customer dimensional inputs.
-MCP under `services/trainaicad-mcp/` is research-only, not the default engine.
 
 ## 2. Trigger and complete per-code workflow
 

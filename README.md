@@ -100,8 +100,8 @@ python tools/benchmark_rule_routes.py
 
 `RAG_INDEX.yaml` is an on-demand derivative of Router; it is **not**
 another manually maintained source of production authority. Regression
-documents and history remain evidence, not live rule context; experimental
-MCP stays isolated. Exact duplicate-paragraph analysis is available via
+documents and history remain evidence, not live rule context.
+Exact duplicate-paragraph analysis is available via
 `python tools/audit_rule_duplicates.py`, but never auto-deletes formulas.
 
 ## Deterministic rule retrieval

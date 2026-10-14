@@ -26,7 +26,7 @@ ACTIVE_GLOBS = (
 ROUTE_GROUPS = ("stage_routes", "source_routes", "mode_routes", "feature_routes", "customer_routes")
 EXCLUDED_PREFIXES = (
     "regression/", "skills/lispcad/portable/", "skills/lispcad/versions/",
-    "docs/history/", "services/trainaicad-mcp/",
+    "docs/history/",
 )
 
 

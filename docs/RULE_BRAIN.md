@@ -17,9 +17,6 @@ load path. Old versions remain in the tree because CI regression tests refer
 to them directly. Migrate those tests to immutable references before removing
 their checked-in fixtures; do not break existing coverage to shrink the repo.
 
-**Experimental runtime**: `services/trainaicad-mcp/`; separately tested,
-no default CAD production authority.
-
 ## Stage-specific routing (PR #24 optimization)
 
 The validated `ROUTER.yaml` now classifies active rule modules in four
@@ -47,7 +44,7 @@ reachability; approval and semantic correctness still require regression.
 
 `tools/build_rule_index.py` generates a scoped `RAG_INDEX.yaml` on demand
 from the Router, separating production, opt-in QA, evidence, executable
-tools, history and experimental MCP. Do not maintain another live rule list.
+tools and history. Do not maintain another live rule list.
 
 Benchmark: `python tools/benchmark_rule_routes.py`. It measures UTF-8 bytes
 for five fixed synthetic routing scenarios. Earlier-stage savings are not

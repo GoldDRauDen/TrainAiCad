@@ -30,11 +30,10 @@ def test_index_is_generated_from_live_router_and_complete_coverage():
     ).hexdigest()
     assert "QA_ENTRYPOINT.md" not in index["production"]["active_modules"]
     assert all(not p.startswith(("regression/", "skills/lispcad/versions/",
-            "skills/lispcad/portable/", "services/trainaicad-mcp/"))
+            "skills/lispcad/portable/"))
                for p in index["production"]["active_modules"])
     assert len(index["history_audit_only"]["paths"]) >= 24
     assert len(index["regression_evidence"]["paths"]) >= 20
-    assert index["experimental_mcp"]["policy"] == "RESEARCH_ONLY_NO_DEFAULT_PRODUCTION"
 
 
 def test_rag_index_cli_outputs_reproducible_manifest(tmp_path):
