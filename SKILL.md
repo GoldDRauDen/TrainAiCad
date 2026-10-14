@@ -76,13 +76,8 @@ executable job, not only a textual interpretation. Follow the order in
 
 ## 3. Canonical status and artifact contracts
 
-**Current canonical exporter behavior** (consult active
-`skills/lispcad/core/CAD_OUTPUT.md` and `tools/DXF_INPUT_SCHEMA.md`):
-- PASS-only job: `<JOB>_ALL.dxf`.
-- Any unresolved code/flag: `<JOB>_ALL_REVIEW_ONLY.dxf` and explicit non-cut
-  warnings. No unsupported local geometry should be represented as proved CUT.
-- The canonical exporter stamps and verifies Layer-0 `TRAINAICAD ENTITY_ID`
-  XDATA. REVIEW_ONLY output is not safe to manufacture.
+Output packaging, XDATA entity IDs and CUT-file contents are defined in
+`skills/lispcad/core/CAD_OUTPUT.md` and `tools/DXF_INPUT_SCHEMA.md`.
 
 **Implemented canonical production artifact contract** (after upstream
 source/engineering QA and composite canonical read-back):
@@ -95,18 +90,9 @@ source/engineering QA and composite canonical read-back):
   <JOB>_ALL_REVIEW_ONLY.dxf        # otherwise all codes, warnings intact
 ```
 
-The canonical exporter now also persists per-code JSON for **every** code and
-produces individual DXFs for PASS codes only. Contours are decomposed
-analytically from their canonical bulges into LINE/ARC/CIRCLE with exact
-endpoints, identity/provenance XDATA and saved-file verification. Non-cut
-bends, Kegaki, POINT and warnings never enter individual CUT files.
-Known REVIEW geometry stays in the combined non-production DXF only.
-
-The historic lower-level `tools/export_dxf.py` still provides its original
-one-composite/opt-in-legacy mode; it is not the default E2E producer.
-Do not fabricate a claim of customer-drawing correctness merely because
-the structural export tests pass. Full source-grounded multi-job acceptance
-remains necessary for manufacturing PASS.
+REVIEW_ONLY output is not safe to manufacture. Do not fabricate a claim of
+customer-drawing correctness merely because the structural export tests pass;
+full source-grounded acceptance remains necessary for manufacturing PASS.
 
 ## 4. Execution and QA rules
 

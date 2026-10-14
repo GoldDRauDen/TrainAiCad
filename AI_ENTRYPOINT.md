@@ -142,21 +142,7 @@ Each gate's rules live in its file; load it at the stated point.
 
 Every bent or multi-face part loads `skills/lispcad/modes/BEND_UNFOLD.md`, `references/FACE_GRAPH_UNFOLD_PROTOCOL.md`, `references/FACE_CREATION_BEND_EVIDENCE.md`, `references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md`, `references/FORMED_PROFILE_OD_MEASUREMENT.md`, and `references/BEND_EDGE_RELIEF_90.md`.
 
-Before production unfold/output:
-
-1. close FACE_GRAPH topology, witnesses, host faces, order, bend sign and material domain;
-2. prove `BEND_ATTACHMENT_EDGE_LOCKED` for the exact physical edge on both adjacent faces; never choose by nearest graphical edge;
-3. when applicable, reconstruct formed/profile outside geometry, close `OD_actual` ownership and `THICKNESS_SINGLE_USE`;
-4. lock each **chiều dài cạnh uốn / bend-edge length** from the actual shared material edge, never from bbox;
-5. for a scoped 90-degree bend-end relief candidate, prove signed bend-end offset `S`;
-6. apply `BEND_END_OFFSET_90` only within its approved scope:
-   - `S > 0` -> NO SLIT from this mechanism;
-   - `S = 0` -> slit `T + 0.2` from the actual edge;
-   - `S < 0` -> slit `T + 0.2` from the actual recessed edge; the endpoint distance from the zero/outside reference is `|S| + T + 0.2`;
-   - there is no active `T/2` threshold/FLAG branch;
-7. explicit source custom slit, BOXMET, opposite-fold `R=t`, and non-90-degree relief mechanisms remain separately routed and take precedence when their own triggers are proved;
-8. do not create duplicate reliefs for one physical junction;
-9. fold-back must verify attachment-edge identity and bent-face datum ownership.
+Before production unfold/output close the `*_LOCKED` set in `BEND_UNFOLD.md` (including `BEND_ATTACHMENT_EDGE_LOCKED`), `OD_actual` ownership with `THICKNESS_SINGLE_USE`, and the bend-edge length from the actual shared edge. The `BEND_END_OFFSET_90` relief decision (signed `S`), mechanism precedence and no-duplicate-relief rule are in `BEND_EDGE_RELIEF_90.md`; fold-back identity checks are in `CROSS_FEATURE_VALIDATION.md`.
 
 ## 6. Source and mode routing
 
@@ -168,23 +154,7 @@ Moved to `docs/RELEASE_WIRING_INDEX.md`. It is a QA/audit index, not a load list
 
 ## 8. Production completeness
 
-Before production PASS or REVIEW_ONLY delivery, close:
-
-```text
-SOURCE MANUFACTURING NOTES
-  -> SOURCE FEATURE GROUPS
-  -> SOURCE MEMBERS
-  -> SOURCE ACTIVE FAMILIES
-  -> FINAL FEATURE CENSUS
-  -> LOADED ROUTES
-  -> DIMENSION/WITNESS GRAPH
-  -> CANONICAL MEMBERS
-  -> CANONICAL ENTITIES
-  -> SERIALIZED OUTPUT
-  -> SAVED ENTITY-ID READ-BACK
-```
-
-For bent parts also close FACE_GRAPH, `BEND_ATTACHMENT_EDGE_LOCKED`, applicable formed-profile `OD_actual` ownership, per-bend witness ledger, bend-edge material domain and any applicable 90-degree bend-end relief decision before serialization.
+Before production PASS or REVIEW_ONLY delivery, close every step of the §1 flow (notes -> groups -> members -> families -> census -> routes -> witness graph -> canonical members/entities -> serialized output -> saved entity-ID read-back) and every `ROUTER.yaml` `post_route_checks` item. For bent parts this includes FACE_GRAPH, `BEND_ATTACHMENT_EDGE_LOCKED`, `OD_actual` ownership, per-bend witness ledger, bend-edge material domain and any 90-degree bend-end relief decision (§5).
 
 A correct bbox, raw entity count, syntactically valid DXF or successful generic read-back cannot compensate for a missing source note/group/member/family, false parameter comparison, wrong attachment edge, wrong bend domain, or missing/extra relief.
 
@@ -198,7 +168,7 @@ Snapshots and `docs/history/**` are outside normal production retrieval. Rules, 
 
 Load only regressions relevant to the routed rule/family or an explicit audit. Regression geometry is evidence/tests, not a source of missing dimensions for a new drawing.
 
-Use current `VALIDATION.md` and `CAD_OUTPUT.md`. For normal new CAD jobs, build the V4.34 canonical contract (see the top supplement) and call `tools/export_canonical_dxf.py`; then read back the actual saved DXF before calling production complete. For DXF-bearing sources, source/reprojection QA compares decoded physical curves, not only vertices, bbox or raw entity count.
+Use current `VALIDATION.md` and `CAD_OUTPUT.md`. New CAD jobs follow the canonical contract in the top supplement: export through `tools/export_canonical_dxf.py`, then read back the actual saved DXF before calling production complete. Reprojection QA rules: `references/DXF_PHYSICAL_CURVE_DECODING.md` §6.
 
 ## 11. MCP boundary
 
