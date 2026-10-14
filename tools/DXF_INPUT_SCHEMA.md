@@ -3,8 +3,8 @@
 **Production E2E** uses `tools/export_canonical_dxf.py` and
 `tools/CANONICAL_INPUT_SCHEMA_V431.md`, not this lower-level CLI directly.
 After canonical source/member validation, it writes one
-`geometry_json/<CODE>.json` per part, PASS-only individual
-`parts_dxf/<PASS_CODE>.dxf` with LINE/ARC/CIRCLE CUT primitives and one
+and, only when explicitly requested (`--individual-dxf`), PASS-only individual
+`parts_dxf/<slip-no>.dxf` (slip work no., e.g. `26-056522`; no JSON output) with LINE/ARC/CIRCLE CUT primitives and one
 all-code composite (`<JOB>_ALL.dxf` or `<JOB>_ALL_REVIEW_ONLY.dxf`).
 See `tools/export_job_artifacts.py` for analytic bulge decomposition and
 independent DXF read-back. The historical lower-level API described below

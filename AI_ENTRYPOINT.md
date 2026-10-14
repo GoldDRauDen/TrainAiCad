@@ -21,8 +21,7 @@ This file is the production routing authority. Normal CAD jobs use **repo-direct
 wording; retains V4.31 canonical input and all engineering/QA gates):** after
 `tools/export_canonical_dxf.py` validates source/canonical completeness and
 reopens the composite with verified `TRAINAICAD ENTITY_ID`, the same canonical
-job emits `geometry_json/<CODE>.json` for every code, including REVIEW/FLAG,
-`parts_dxf/<PASS_CODE>.dxf` for PASS codes only, and exactly one
+job writes no JSON output and, by default, only the combined DXF. Individual `parts_dxf/<PASS_CODE>.dxf` (PASS codes only; file name = delivery-slip work number, e.g. `26-056522`; slip `サイズ X/Y` is reference only) are produced **only on explicit user request** (`--individual-dxf`), and exactly one
 `<JOB>_ALL.dxf` or `<JOB>_ALL_REVIEW_ONLY.dxf` at the output root.
 Individual PASS DXFs are CUT-only LINE/ARC/CIRCLE and exclude bend/marking,
 POINT, notes and every unproved entity; their derived provenance and physical

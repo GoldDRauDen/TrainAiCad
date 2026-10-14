@@ -19,24 +19,31 @@ These rules supersede the older output wording below where they conflict. Canoni
 8. **Customer conflicts.** When a customer's explicit corner instruction conflicts with an automatic rule (for example SS t>=19 R3 against a customer sharp corner), set FLAG and wait for customer confirmation. Do not silently override either way.
 
 ## V4.34 orientation and composite-only export (2026-10-13)
-`tools/export_canonical_dxf.py --composite-only` persists per-code canonical JSON and exports ONE composite, without any standalone CUT DXFs. Individual PASS CUT DXFs alone are pose-normalized: if there is no proved HL, choose bounding-box X>=Y (90-degree rotate only if Y>X); with proved HL, align the source-proved part-local grain vector parallel to X even when Y>X. HL direction missing relative to the part => REVIEW and NO individual PASS file. No scale/mirror, no user-visible TEXT/BEND/POINT in standalone CUT, and no change to source-canonical coordinate records. Record orientation transform and read back transformed LINE/ARC/CIRCLE/XDATA. Composite uses the readable source orientation (translation/layout only) and remains independent of the standalone rotation. Old V4.31 canonical jobs are accepted; NEW source jobs use V4.34 to require witness and grain proof.
+`tools/export_canonical_dxf.py` exports ONE composite by default, without any standalone CUT DXFs (`--composite-only` is a legacy no-op). Individual PASS CUT DXFs alone are pose-normalized: if there is no proved HL, choose bounding-box X>=Y (90-degree rotate only if Y>X); with proved HL, align the source-proved part-local grain vector parallel to X even when Y>X. HL direction missing relative to the part => REVIEW and NO individual PASS file. No scale/mirror, no user-visible TEXT/BEND/POINT in standalone CUT, and no change to source-canonical coordinate records. Record orientation transform and read back transformed LINE/ARC/CIRCLE/XDATA. Composite uses the readable source orientation (translation/layout only) and remains independent of the standalone rotation. Old V4.31 canonical jobs are accepted; NEW source jobs use V4.34 to require witness and grain proof.
 
-# Current production packaging — canonical code JSON + isolated PASS cuts
+# Current production packaging — combined DXF by default; individual PASS cuts only on request (no JSON output)
 
 This section supersedes inherited V4.9/V4.11 composite-only defaults below,
 without changing approved geometry, material/Nobi/bend or canonical schema.
 Normal E2E uses `tools/export_canonical_dxf.py`; on successful canonical
-member and composite saved-DXF XDATA read-back, it persists per-code
-`geometry_json/<CODE>.json` even for REVIEW, emits
-`parts_dxf/<PASS_CODE>.dxf` **only for verified PASS** using analytic
-LINE/ARC/CIRCLE CUT primitives, and retains one entire-job composite
-`<JOB>_ALL.dxf` or `<JOB>_ALL_REVIEW_ONLY.dxf` with all codes and warnings.
+member and composite saved-DXF XDATA read-back, it writes **no JSON output**
+(the canonical job JSON is an input only) and by **default delivers only the one
+entire-job composite** `<JOB>_ALL.dxf` or `<JOB>_ALL_REVIEW_ONLY.dxf` with all
+codes and warnings. Individual DXFs are written **only when the user explicitly
+requests them** (`--individual-dxf`): then `parts_dxf/<slip-no>.dxf` for
+**verified PASS only**, using analytic LINE/ARC/CIRCLE CUT primitives.
 No non-cut marks, annotations, bend entities, preview or VIEWS_ONLY source
 views may enter individual CUT files. A REVIEW in one code cannot downgrade
 another's independent proved geometry, but the combined file always becomes
 REVIEW_ONLY. Existing lower-level V4.9/dual serializations are compatibility,
 not the canonical production entry point. Canonical data remain the sole
 physical geometry source, and saved-DXF read-back is mandatory.
+
+## Delivery-slip identity and reference-only slip size (V4.35, 2026-10-14)
+
+- **Code = 作業No on the delivery slip (CAD依頼書 / 納品書), verbatim.** The part `code` in the canonical job, the composite label and the individual file name are all the slip work number `<YY>-<serial>`, e.g. the drawing barcode `*056522*` with slip entry `26-056522` is written as `26-056522` (`parts_dxf/26-056522.dxf`), never `056522`. The `YY` year prefix changes by year; always copy the slip as printed, never derive or hard-code the prefix. When the barcode and the slip disagree, the slip wins and the mismatch is reported. `export_canonical_dxf.py` rejects non-slip codes (`SLIP_WORK_NO_FORMAT`; test/synthetic jobs only may pass `--allow-nonslip-codes`). The composite name uses the slip order number (注番), e.g. `520928-06_ALL.dxf`.
+- **Slip サイズ X/Y is reference only.** The size columns on the slip are never geometry, never a datum, never a bbox/closure proof and never a reason to PASS or to override the drawing. Use them only as a plausibility cross-check of the independently solved flat; a mismatch is reported as a note, and the drawing-derived flat stays authoritative.
+- **No JSON deliverable.** The exporter writes no per-code JSON. With no explicit request the only deliverable is the combined DXF; PASS-only individual DXFs are produced only when the user asks for them.
 
 # V4.33 VIEWS_ONLY completeness / reference provenance output gate
 

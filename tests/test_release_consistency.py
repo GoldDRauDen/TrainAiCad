@@ -26,12 +26,14 @@ def test_latest_release_block_is_first_in_coverage():
     assert next(iter(coverage["release_coverage"])) == coverage["release"]
 
 
-def test_geometry_json_scope_is_every_code_everywhere():
-    for rel in ("AI_ENTRYPOINT.md", "SKILL.md", "skills/lispcad/core/CAD_OUTPUT.md"):
-        text = _text(rel)
-        assert "PASS/PREVIEW/VIEWS_ONLY code" not in text, rel
-    assert "every code, including REVIEW/FLAG" in _text("AI_ENTRYPOINT.md")
-    assert "every code, including REVIEW/FLAG" in _text("SKILL.md")
+def test_no_json_output_and_slip_identity_documented_everywhere():
+    for rel in ("AI_ENTRYPOINT.md", "SKILL.md", "README.md", "skills/lispcad/core/CAD_OUTPUT.md",
+                "tools/DXF_INPUT_SCHEMA.md", "tools/CANONICAL_INPUT_SCHEMA_V431.md"):
+        assert "geometry_json" not in _text(rel), rel
+    core = _text("skills/lispcad/core/CAD_OUTPUT.md")
+    assert "作業No" in core and "26-056522" in core and "reference only" in core
+    assert "SLIP_WORK_NO_FORMAT" in core
+    assert "--individual-dxf" in core and "--individual-dxf" in _text("AI_ENTRYPOINT.md")
 
 
 def test_new_jobs_use_v434_schema_not_v431_only():

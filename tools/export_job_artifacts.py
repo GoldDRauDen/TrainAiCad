@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verified per-code canonical JSON and PASS-only cut-contour DXF packaging.
+"""Verified PASS-only cut-contour DXF packaging (one DXF per PASS code, named by the slip work number).
 
 The existing canonical composite exporter remains the source of drawing
 identity, geometrical truth and review annotations. This module only
@@ -7,14 +7,12 @@ deterministically decomposes its approved cut entities and checks read-back.
 """
 from __future__ import annotations
 
-import hashlib
-import json
 import math
 from pathlib import Path
 
 import ezdxf
 
-from canonical_contract import CONTRACT, CanonicalContractError
+from canonical_contract import CanonicalContractError
 from export_dxf import entity_signature, new_doc, safe_name
 from cut_orientation import orient_cut_doc
 from ezdxf.math import Matrix44
@@ -237,68 +235,45 @@ def _verify_cut(path, expected):
         return False
 
 
-def _atomic_text(path, payload):
-    # Write only if changed: a corrected part must not rebuild unrelated JSON.
-    if path.exists() and path.read_bytes() == payload:
-        return False
-    pending = path.with_name(path.name + ".pending")
-    pending.write_bytes(payload)
-    pending.replace(path)
-    return True
-
-
 def export_part_artifacts(job, output_dir, composite_only=False):
-    """Persist one canonical JSON per code and validated independent PASS CUTs.
+    """Persist validated independent PASS CUT DXFs, one per PASS code, ONLY on explicit request
+    (``composite_only=False``); the default E2E path passes composite_only=True and writes none.
 
+    No per-code JSON is written (V4.35 output contract). The DXF file name is the
+    part code exactly as printed on the delivery slip (作業No, e.g. ``26-056522``).
     This is intentionally downstream of validate_canonical_job and successful
-    composite canonical XDATA read-back. A review part always has JSON, but no
-    individual DXF. Unchanged, QA-verifiable PASS parts are not regenerated.
+    composite canonical XDATA read-back. A review part has no individual DXF.
+    Every PASS DXF is rebuilt and read back on each run (no stale cache).
     """
     root = Path(output_dir)
-    json_dir = root / "geometry_json"
     cut_dir = root / "parts_dxf"
-    json_dir.mkdir(parents=True, exist_ok=True)
-    cut_dir.mkdir(parents=True, exist_ok=True)
+    if not composite_only:  # individual DXFs only on explicit request (default: combined DXF only)
+        cut_dir.mkdir(parents=True, exist_ok=True)
     statuses = []
-    keep_codes = set()
     keep_pass = set()
     for part in job["parts"]:
         code = safe_name(part["code"])
-        keep_codes.add(code)
-        wrapper = {"canonical_contract": CONTRACT, "job_id": job["job_id"],
-                   "parts": [part]}
-        data = (json.dumps(wrapper, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
-        target_json = json_dir / f"{code}.json"
-        json_changed = _atomic_text(target_json, data)
-        entry = {"code": code, "status": part["status"], "geometry_json": str(target_json.relative_to(root)),
-                 "geometry_sha256": hashlib.sha256(data).hexdigest(), "json_changed": json_changed}
+        entry = {"code": code, "status": part["status"]}
         if part["status"] == "PASS" and not part.get("flags") and not composite_only:
             doc, expected, members, contours, orientation = _plan_cut_doc(part)
             target_dxf = cut_dir / f"{code}.dxf"
-            # Always read back cached PASS DXF; replace if stale or corrupted.
-            cached = not json_changed and target_dxf.exists() and _verify_cut(target_dxf, expected)
-            if not cached:
-                pending = target_dxf.with_name(target_dxf.name + ".pending")
-                doc.saveas(pending)
-                if not _verify_cut(pending, expected):
-                    pending.unlink(missing_ok=True)
-                    fail(f"{code}: individual DXF QA read-back failed")
-                pending.replace(target_dxf)
+            pending = target_dxf.with_name(target_dxf.name + ".pending")
+            doc.saveas(pending)
+            if not _verify_cut(pending, expected):
+                pending.unlink(missing_ok=True)
+                fail(f"{code}: individual DXF QA read-back failed")
+            pending.replace(target_dxf)
             keep_pass.add(code)
             entry.update({"cut_dxf": str(target_dxf.relative_to(root)), "cut_entity_count": len(expected),
                           "canonical_cut_member_count": members, "closed_contours": contours,
-                          "cut_readback": "PASS", "reused_verified_dxf": cached,
-                          "orientation": orientation})
+                          "cut_readback": "PASS", "orientation": orientation})
         else:
             entry.update({"cut_dxf": None,
                           "cut_readback": "COMPOSITE_ONLY" if composite_only else "NOT_PRODUCTION"})
         statuses.append(entry)
-    # These are generated-only directories. Drop stale results on status changes.
-    for p in json_dir.glob("*.json"):
-        if p.stem not in keep_codes:
-            p.unlink()
-    for p in cut_dir.glob("*.dxf"):
-        if p.stem not in keep_pass:
-            p.unlink()
-    return {"geometry_json_dir": "geometry_json", "parts_dxf_dir": "parts_dxf",
-            "parts": statuses}
+    # Generated-only directory: drop stale DXFs after status/code changes.
+    if not composite_only:
+        for p in cut_dir.glob("*.dxf"):
+            if p.stem not in keep_pass:
+                p.unlink()
+    return {"parts_dxf_dir": None if composite_only else "parts_dxf", "parts": statuses}

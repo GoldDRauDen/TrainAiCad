@@ -142,7 +142,7 @@ def test_v434_blocks_missing_hole_witness_while_v431_works():
 
 def test_cut_x_long_y_short_and_xdata_readback(tmp_path):
     part = model(width=12, height=40)
-    result = export_canonical_job(job(part), tmp_path)
+    result = export_canonical_job(job(part), tmp_path, individual_dxf=True)
     cut = tmp_path / "parts_dxf/A.dxf"
     assert cut.exists()
     doc = ezdxf.readfile(cut)
@@ -156,7 +156,7 @@ def test_cut_x_long_y_short_and_xdata_readback(tmp_path):
 def test_hl_proof_takes_priority_over_x_long(tmp_path):
     part = model(width=12, height=40, material="SUS304 HL",
                  grain={"is_hl":True,"direction_xy":[1,0],"evidence_ref":"PDF:grain-arrow"})
-    result = export_canonical_job(job(part, "TrainAiCad-CANONICAL-V4.34"), tmp_path)
+    result = export_canonical_job(job(part, "TrainAiCad-CANONICAL-V4.34"), tmp_path, individual_dxf=True)
     cut = ezdxf.readfile(tmp_path / "parts_dxf/A.dxf")
     ext = bbox.extents(cut.modelspace(), fast=False)
     assert math.isclose(ext.extmax.x-ext.extmin.x,12,abs_tol=1e-7)
@@ -183,6 +183,6 @@ def test_composite_only_preserves_json_and_no_parts(tmp_path):
     part = model()
     result = export_canonical_job(job(part), tmp_path, composite_only=True)
     assert result["filename"] == "QA_V434_ALL.dxf"
-    assert (tmp_path/"geometry_json/A.json").is_file()
+    assert not (tmp_path/"geometry_json").exists()
     assert not list((tmp_path/"parts_dxf").glob("*.dxf"))
     assert result["artifacts"]["parts"][0]["cut_readback"] == "COMPOSITE_ONLY"

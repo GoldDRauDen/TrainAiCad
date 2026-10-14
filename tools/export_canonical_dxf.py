@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 import ezdxf
@@ -14,6 +15,16 @@ from export_job_artifacts import export_part_artifacts
 from holistic_engineering_guard import canonical_job_anomalies
 
 APPID = "TRAINAICAD"
+# Delivery-slip work number (作業No), e.g. "26-056522": YY year prefix (changes yearly) + serial.
+SLIP_WORK_NO = re.compile(r"^\d{2}-\d{5,}$")
+
+
+def check_slip_codes(job: dict) -> None:
+    """Part codes must be the work numbers printed on the delivery slip, not barcode digits."""
+    bad = [str(p.get("code")) for p in job.get("parts", []) if not SLIP_WORK_NO.fullmatch(str(p.get("code")))]
+    if bad:
+        fail("SLIP_WORK_NO_FORMAT: part code must equal the delivery-slip work number "
+             f"(<YY>-<serial>, e.g. 26-056522); got {bad}")
 
 
 def fail(message: str) -> None:
@@ -89,8 +100,15 @@ def _stamp_and_verify(job: dict, manifest: dict, output_dir: Path, validation: d
 
 
 def export_canonical_job(job: dict, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=False,
-                         composite_only=False) -> dict:
-    """Validate full member ledger, serialize single composite, stamp/read back entity IDs."""
+                         composite_only=False, require_slip_codes=False, individual_dxf=False) -> dict:
+    """Validate full member ledger, serialize single composite, stamp/read back entity IDs.
+
+    ``require_slip_codes`` (always on in the CLI) enforces <YY>-<serial> slip work numbers.
+    Default output is the combined DXF only; ``individual_dxf=True`` (CLI ``--individual-dxf``,
+    only on explicit user request) also writes parts_dxf/<slip code>.dxf for each verified PASS.
+    """
+    if require_slip_codes:
+        check_slip_codes(job)
     validation = validate_canonical_job(job)
     source_anomalies = canonical_job_anomalies(job)
     if source_anomalies:
@@ -99,7 +117,7 @@ def export_canonical_job(job: dict, output_dir, gap_mm=COMPOSITE_GAP_MM, write_m
     out.mkdir(parents=True, exist_ok=True)
     manifest = export_job(job, out, gap_mm=gap_mm, mode="single", write_manifest=False)
     manifest = _stamp_and_verify(job, manifest, out, validation)
-    manifest["artifacts"] = export_part_artifacts(job, out, composite_only=composite_only)
+    manifest["artifacts"] = export_part_artifacts(job, out, composite_only=composite_only or not individual_dxf)
     # Avoid stale production composites after PASS -> REVIEW (or reverse).
     obsolete = (f"{manifest['job_id']}_ALL.dxf"
                 if manifest["status"] == "REVIEW_ONLY"
@@ -118,11 +136,16 @@ def main() -> None:
     ap.add_argument("output_dir", type=Path)
     ap.add_argument("--gap-mm", type=float, default=COMPOSITE_GAP_MM)
     ap.add_argument("--write-manifest", action="store_true")
-    ap.add_argument("--composite-only", action="store_true", help="Emit combined DXF and per-code JSON only")
+    ap.add_argument("--composite-only", action="store_true", help="legacy no-op: combined DXF only is already the default")
+    ap.add_argument("--individual-dxf", action="store_true",
+                    help="ONLY when the user explicitly requests it: also write parts_dxf/<slip code>.dxf per PASS code")
+    ap.add_argument("--allow-nonslip-codes", action="store_true",
+                    help="synthetic/test jobs only: skip the delivery-slip work-number check")
     args = ap.parse_args()
     job = json.loads(args.input_json.read_text(encoding="utf-8"))
     manifest = export_canonical_job(job, args.output_dir, args.gap_mm, args.write_manifest,
-                                    composite_only=args.composite_only)
+                                    composite_only=args.composite_only, individual_dxf=args.individual_dxf,
+                                    require_slip_codes=not args.allow_nonslip_codes)
     print(json.dumps({
         "job_id": manifest["job_id"],
         "file": manifest["filename"],

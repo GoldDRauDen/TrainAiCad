@@ -1,8 +1,7 @@
-"""Per-code JSON and manufacturing-only DXF regression tests (synthetic source)."""
+"""PASS-only manufacturing DXF regression tests (synthetic source). No JSON output."""
 from __future__ import annotations
 
 import copy
-import json
 import math
 import sys
 from pathlib import Path
@@ -127,21 +126,15 @@ def test_pass_and_review_export_separation(tmp_path):
     a, b, r = part("A"), part("B", bent=False, slot=False, relief=False), review_part("REVIEW")
     src = job([a, r, b])
     assert validate_canonical_job(src)["contract"] == src["canonical_contract"]
-    result = export_canonical_job(src, tmp_path, write_manifest=True)
+    result = export_canonical_job(src, tmp_path, individual_dxf=True, write_manifest=True)
     assert result["filename"] == "TESTJOB_ALL_REVIEW_ONLY.dxf"
-    assert set(x.name for x in (tmp_path / "geometry_json").glob("*.json")) == {
-        "A.json", "REVIEW.json", "B.json",
-    }
+    assert not (tmp_path / "geometry_json").exists()
+    assert not list((tmp_path / "parts_dxf").glob("*.json"))  # only the opt-in manifest may exist
     assert set(x.name for x in (tmp_path / "parts_dxf").glob("*.dxf")) == {"A.dxf", "B.dxf"}
     assert not (tmp_path / "TESTJOB_ALL.dxf").exists()
     assert (tmp_path / result["filename"]).is_file()
     assert result["artifacts"]["parts"][1]["cut_dxf"] is None
     assert result["artifacts"]["parts"][1]["cut_readback"] == "NOT_PRODUCTION"
-    for part_json in (tmp_path / "geometry_json").glob("*.json"):
-        loaded = json.loads(part_json.read_text())
-        assert loaded["canonical_contract"] == "TrainAiCad-CANONICAL-V4.31"
-        assert validate_canonical_job(loaded)["parts"][0]["source_group_count"] > 0
-        assert loaded["parts"][0]["code"] == part_json.stem
     for cut in (tmp_path / "parts_dxf").glob("*.dxf"):
         d = ezdxf.readfile(cut)
         ents = list(d.modelspace())
@@ -161,34 +154,28 @@ def test_pass_and_review_export_separation(tmp_path):
     assert any("NO CUT" in e.dxf.text for e in composite.modelspace() if e.dxftype() == "TEXT")
 
 
-def test_all_pass_total_name_and_unchanged_part_cache(tmp_path):
+def test_all_pass_total_name_and_rebuild_without_json(tmp_path):
     src = job([part("A"), part("B", bent=False)])
-    r1 = export_canonical_job(src, tmp_path)
+    r1 = export_canonical_job(src, tmp_path, individual_dxf=True)
     assert r1["filename"] == "TESTJOB_ALL.dxf"
-    before_json = (tmp_path / "geometry_json/B.json").stat().st_mtime_ns
-    before_cut = (tmp_path / "parts_dxf/B.dxf").stat().st_mtime_ns
-    r2 = export_canonical_job(src, tmp_path)
-    assert all(p["reused_verified_dxf"] for p in r2["artifacts"]["parts"])
-    assert not any(p["json_changed"] for p in r2["artifacts"]["parts"])
-    src["parts"][0]["entities"][1]["center"] = [8, 8]
-    r3 = export_canonical_job(src, tmp_path)
-    assert r3["artifacts"]["parts"][0]["json_changed"]
-    assert not r3["artifacts"]["parts"][0]["reused_verified_dxf"]
-    assert r3["artifacts"]["parts"][1]["reused_verified_dxf"]
-    assert (tmp_path / "geometry_json/B.json").stat().st_mtime_ns == before_json
-    assert (tmp_path / "parts_dxf/B.dxf").stat().st_mtime_ns == before_cut
+    assert not list(tmp_path.rglob("*.json"))
+    assert all(p["cut_readback"] == "PASS" for p in r1["artifacts"]["parts"])
+    r2 = export_canonical_job(src, tmp_path, individual_dxf=True)
+    assert all(p["cut_readback"] == "PASS" for p in r2["artifacts"]["parts"])
+    assert {p.name for p in (tmp_path / "parts_dxf").glob("*.dxf")} == {"A.dxf", "B.dxf"}
+    assert not list((tmp_path / "parts_dxf").glob("*.pending"))
 
 
 def test_status_downgrade_removes_stale_pass_cut(tmp_path):
     src = job([part("A"), part("B", bent=False)])
-    export_canonical_job(src, tmp_path)
+    export_canonical_job(src, tmp_path, individual_dxf=True)
     src["parts"][1] = review_part("B")
-    result = export_canonical_job(src, tmp_path)
+    result = export_canonical_job(src, tmp_path, individual_dxf=True)
     assert result["filename"] == "TESTJOB_ALL_REVIEW_ONLY.dxf"
     assert not (tmp_path / "parts_dxf/B.dxf").exists()
     assert (tmp_path / "parts_dxf/A.dxf").exists()
     assert not (tmp_path / "TESTJOB_ALL.dxf").exists()
-    assert json.loads((tmp_path / "geometry_json/B.json").read_text())["parts"][0]["status"] == "PREVIEW"
+    assert not (tmp_path / "geometry_json").exists()
 
 
 @pytest.mark.parametrize("start,end,bulge", [
@@ -217,16 +204,16 @@ def test_unclassified_potential_cut_does_not_disappear_silently(tmp_path):
     src["parts"][0]["source_groups"].append(g)
     src["parts"][0]["canonical_members"].append(c)
     with pytest.raises(CanonicalContractError, match="unclassified entity role"):
-        export_canonical_job(src, tmp_path)
+        export_canonical_job(src, tmp_path, individual_dxf=True)
 
 
 def test_corrupt_pass_dxf_is_regenerated_after_read_back(tmp_path):
     src = job([part("A")])
-    export_canonical_job(src, tmp_path)
+    export_canonical_job(src, tmp_path, individual_dxf=True)
     cut = tmp_path / "parts_dxf/A.dxf"
     cut.write_bytes(b"definitely not a DXF")
-    output = export_canonical_job(src, tmp_path)
-    assert not output["artifacts"]["parts"][0]["reused_verified_dxf"]
+    output = export_canonical_job(src, tmp_path, individual_dxf=True)
+    assert output["artifacts"]["parts"][0]["cut_readback"] == "PASS"
     assert ezdxf.readfile(cut).audit().has_errors is False
 
 
@@ -239,12 +226,10 @@ def test_v431_multi_code_regression_keeps_every_proved_hole_and_bend_non_cut(tmp
     assert spec and spec.loader
     spec.loader.exec_module(fixture)
     source = fixture.build_job()
-    result = export_canonical_job(source, tmp_path)
+    result = export_canonical_job(source, tmp_path, individual_dxf=True)
     assert result["status"] == "REVIEW_ONLY"
     assert result["filename"].endswith("_ALL_REVIEW_ONLY.dxf")
-    assert {p.name for p in (tmp_path / "geometry_json").glob("*.json")} == {
-        "057862.json", "057864.json", "057873.json",
-    }
+    assert not list(tmp_path.rglob("*.json"))
     assert {p.name for p in (tmp_path / "parts_dxf").glob("*.dxf")} == {
         "057862.dxf", "057873.dxf",
     }
@@ -255,6 +240,37 @@ def test_v431_multi_code_regression_keeps_every_proved_hole_and_bend_non_cut(tmp
         assert all(e.dxftype() in {"LINE", "ARC", "CIRCLE"} for e in geometry)
         assert len([e for e in geometry if e.dxftype() == "CIRCLE"]) == hole_quantity
         assert not any(e.dxf.get("linetype", "") == "DASHED" for e in geometry)
-    flagged = json.loads((tmp_path / "geometry_json/057864.json").read_text())
-    assert flagged["parts"][0]["flags"] and flagged["parts"][0]["status"] == "PREVIEW"
-    assert len(flagged["parts"][0]["source_groups"]) == len(source["parts"][1]["source_groups"])
+    flagged = source["parts"][1]
+    assert flagged["flags"] and flagged["status"] == "PREVIEW"
+
+
+def test_cli_rejects_non_slip_codes_and_accepts_slip_work_numbers(tmp_path):
+    from export_canonical_dxf import check_slip_codes
+    check_slip_codes({"parts": [{"code": "26-056522"}, {"code": "27-1000001"}]})
+    for bad in ("056522", "A", "26_056522", "26-05"):
+        with pytest.raises(CanonicalContractError, match="SLIP_WORK_NO_FORMAT"):
+            check_slip_codes({"parts": [{"code": bad}]})
+    with pytest.raises(CanonicalContractError, match="SLIP_WORK_NO_FORMAT"):
+        export_canonical_job(job([part("A")]), tmp_path, require_slip_codes=True)
+    assert not list(tmp_path.glob("*.dxf"))
+
+
+def test_individual_dxf_is_named_by_slip_work_number(tmp_path):
+    src = job([part("26-056522", relief=False)])
+    result = export_canonical_job(src, tmp_path, individual_dxf=True, require_slip_codes=True)
+    assert (tmp_path / "parts_dxf/26-056522.dxf").is_file()
+    assert result["artifacts"]["parts"][0]["cut_dxf"] == "parts_dxf/26-056522.dxf"
+    assert not list(tmp_path.rglob("*.json"))
+
+
+def test_default_output_is_combined_dxf_only(tmp_path):
+    src = job([part("A"), part("B", bent=False)])
+    result = export_canonical_job(src, tmp_path)
+    assert result["filename"] == "TESTJOB_ALL.dxf"
+    assert (tmp_path / "TESTJOB_ALL.dxf").is_file()
+    assert not (tmp_path / "parts_dxf").exists()
+    assert all(p["cut_dxf"] is None and p["cut_readback"] == "COMPOSITE_ONLY"
+               for p in result["artifacts"]["parts"])
+    assert not list(tmp_path.rglob("*.json"))
+    export_canonical_job(src, tmp_path, individual_dxf=True)  # explicit request only
+    assert {p.name for p in (tmp_path / "parts_dxf").glob("*.dxf")} == {"A.dxf", "B.dxf"}
