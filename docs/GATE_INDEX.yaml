@@ -1,0 +1,184 @@
+release: V4.34
+generated_by: tools/build_gate_index.py
+note: Derived lookup only. Routed rule files stay authoritative; this index defines no gate.
+post_route_checks:
+- runtime_authority_guard
+- physical_curve_decode_before_feature_census
+- source_manufacturing_note_census
+- source_feature_group_closure
+- source_group_member_ledger
+- part_identity_graph_when_applicable
+- weld_site_kegaki_source_census_closure
+- same_physical_parameter_before_reference_conflict
+- source_feature_completeness
+- dependency_closure
+- bend_attachment_edge_lock
+- formed_profile_od_measurement_when_applicable
+- bend_edge_length_lock
+- bend_end_offset_relief_90
+- cross_feature_validation
+- weld_site_kegaki_canonical_closure
+- holistic_engineering_challenge
+- views_only_source_view_completeness
+- final_engineering_sanity_review
+- raw_data_snapshot_freeze
+- same_parameter_gate_before_canonicalization
+- manufacturing_change_ledger
+- canonical_geometry_validation
+- proved_source_to_canonical_member_equality
+- untouched_data_invariance
+- source_reprojection_when_applicable
+- canonical_to_saved_dxf_entity_id_equality
+- source_only_snapshot_before_reference
+- no_post_reference_source_rewrite
+- saved_dxf_readback
+gates:
+- id: BEND_EDGE_LENGTH_LOCK
+  files:
+  - references/BEND_EDGE_RELIEF_90.md
+- id: BIDIRECTIONAL_SOURCE_CANONICAL_CLOSURE
+  files:
+  - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
+- id: BIDIRECTIONAL_SOURCE_CANONICAL_QA
+  files:
+  - skills/lispcad/core/VALIDATION.md
+- id: CANONICALIZATION_LEDGER_CHECK
+  files:
+  - skills/lispcad/core/VALIDATION.md
+- id: CANONICAL_MEMBER_COMPLETENESS
+  files:
+  - AI_ENTRYPOINT.md
+  - references/CANONICAL_MEMBER_COMPLETENESS.md
+  - skills/lispcad/core/CAD_OUTPUT.md
+- id: CANONICAL_SERIALIZATION_COMPLETENESS_FAIL
+  files:
+  - AI_ENTRYPOINT.md
+  - references/CANONICAL_MEMBER_COMPLETENESS.md
+- id: CANONICAL_TO_SOURCE_PHYSICAL_PASS
+  files:
+  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
+- id: DATA_AUTO_R_CANONICALIZATION_CHECK
+  files:
+  - skills/lispcad/core/VALIDATION.md
+- id: DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA
+  files:
+  - AI_ENTRYPOINT.md
+  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
+  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
+- id: DATA_RAW_TO_MANUFACTURING_CONTRACT
+  files:
+  - AI_ENTRYPOINT.md
+  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
+  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
+  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
+  - references/SOURCE_DATA_CLASSIFICATION.md
+- id: DATA_TAP_NOMINAL_VALIDATION_CHECK
+  files:
+  - skills/lispcad/core/VALIDATION.md
+- id: DATUM_WITNESS_FAIL
+  files:
+  - skills/lispcad/core/VALIDATION.md
+- id: GROUP_COUNT_CLOSURE
+  files:
+  - AI_ENTRYPOINT.md
+  - references/SOURCE_FEATURE_GROUP_CLOSURE.md
+- id: KEGAKI_SCOPE_FAIL
+  files:
+  - skills/lispcad/core/VALIDATION.md
+- id: MANUFACTURING_CHANGE_LEDGER
+  files:
+  - AI_ENTRYPOINT.md
+  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
+  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
+  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
+  - references/SOURCE_DATA_CLASSIFICATION.md
+- id: MIRROR_SCOPE_FAIL
+  files:
+  - skills/lispcad/core/VALIDATION.md
+- id: PER_BEND_WITNESS_LEDGER
+  files:
+  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
+  - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
+  - skills/lispcad/core/VALIDATION.md
+  - skills/lispcad/modes/BEND_UNFOLD.md
+- id: RUNTIME_AUTHORITY_GUARD
+  files:
+  - AI_ENTRYPOINT.md
+  - references/RUNTIME_AUTHORITY_GUARD.md
+- id: R_C_SOURCE_CLOSURE
+  files:
+  - references/DXF_PHYSICAL_CURVE_DECODING.md
+- id: R_SEMANTIC_LOCK
+  files:
+  - skills/lispcad/features/CHAMFER_RADIUS.md
+- id: SAME_PARAMETER_GATE
+  files:
+  - AI_ENTRYPOINT.md
+  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
+  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
+  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
+  - references/SOURCE_DATA_CLASSIFICATION.md
+- id: SAVED_DXF_READBACK_PASS
+  files:
+  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
+- id: SLOT_WITNESS_FAIL
+  files:
+  - skills/lispcad/core/VALIDATION.md
+- id: SOURCE_CALLOUT_CANONICAL_CHECK
+  files:
+  - skills/lispcad/core/VALIDATION.md
+- id: SOURCE_FEATURE_COMPLETENESS
+  files:
+  - skills/lispcad/core/VALIDATION.md
+- id: SOURCE_FEATURE_COMPLETENESS_FAIL
+  files:
+  - AI_ENTRYPOINT.md
+  - references/CANONICAL_MEMBER_COMPLETENESS.md
+- id: SOURCE_FEATURE_GROUP_CLOSURE
+  files:
+  - AI_ENTRYPOINT.md
+  - references/SOURCE_FEATURE_GROUP_CLOSURE.md
+- id: SOURCE_LEDGER_PLAUSIBILITY_FAIL
+  files:
+  - references/CANONICAL_MEMBER_COMPLETENESS.md
+- id: SOURCE_NOTE_FEATURE_COMPLETENESS
+  files:
+  - references/SOURCE_MANUFACTURING_NOTE_CENSUS.md
+- id: SOURCE_PHYSICAL_TO_CANONICAL_PASS
+  files:
+  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
+- id: SOURCE_REPROJECTION_PASS
+  files:
+  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
+  - skills/lispcad/core/VALIDATION.md
+- id: STALE_PREVIEW_FAIL
+  files:
+  - skills/lispcad/core/VALIDATION.md
+- id: UNTOUCHED_DATA_INVARIANCE_CHECK
+  files:
+  - AI_ENTRYPOINT.md
+  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
+  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
+  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
+  - references/SOURCE_DATA_CLASSIFICATION.md
+- id: UNTOUCHED_DATA_INVARIANCE_FAIL
+  files:
+  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
+- id: UNTOUCHED_DATA_INVARIANCE_PASS
+  files:
+  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
+- id: VIEWS_ONLY_SOURCE_VIEW_COMPLETENESS
+  files:
+  - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
+  - references/HOLISTIC_ENGINEERING_CHALLENGE.md
+  - skills/lispcad/core/CAD_OUTPUT.md
+  - skills/lispcad/core/VALIDATION.md
+- id: WELD_SITE_KEGAKI_CLOSURE
+  files:
+  - AI_ENTRYPOINT.md
+  - references/CAD_CUSTOMER_POLICY.md
+  - references/PART_IDENTITY_GRAPH.md
+  - references/WELD_SITE_KEGAKI_CLOSURE.md
+  - skills/lispcad/core/CROSS_FEATURE_VALIDATION.md
+  - skills/lispcad/features/KEGAKI.md
+  - skills/lispcad/router/FEATURE_CENSUS.md
