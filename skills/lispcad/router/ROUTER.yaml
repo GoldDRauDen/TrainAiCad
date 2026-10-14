@@ -1,5 +1,5 @@
 schema_version: 1
-release: V4.33
+release: V4.34
 authority: ROUTING_ONLY
 production_mode: repo_direct
 unknown_policy: LOAD_ROUTE
@@ -221,9 +221,9 @@ history_policy:
   never_select_highest_version_filename: true
 
 portable_compatibility:
-  path: skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md
+  path: docs/history/SNAPSHOT_MANIFEST.json  # pinned, hash-verified archive; see tools/snapshot_manifest.py
   runtime_default: false
-  purpose: complete compatibility/audit snapshot
+  purpose: complete compatibility/audit snapshot (retired from working tree)
   on_route_gap: STOP_WITH_ROUTING_COVERAGE_GAP
   may_read_for_gap_diagnosis: true
   may_silently_continue_production_after_gap: false

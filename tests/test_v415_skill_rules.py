@@ -1,11 +1,14 @@
 """V4.15 acute-bend <85° production-skill and reproducibility regression."""
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 from pathlib import Path
 import re,subprocess,sys
 import ezdxf
 ROOT=Path(__file__).resolve().parents[1]
-CURRENT=ROOT/"skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md"
-RELEASE=ROOT/"skills/lispcad/versions/V4.15/SKILL_LISPCAD_V4_15_PORTABLE.md"
-V414=ROOT/"skills/lispcad/versions/V4.14/SKILL_LISPCAD_V4_14_PORTABLE.md"
+CURRENT=Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
+RELEASE=Snapshot("skills/lispcad/versions/V4.15/SKILL_LISPCAD_V4_15_PORTABLE.md")
+V414=Snapshot("skills/lispcad/versions/V4.14/SKILL_LISPCAD_V4_14_PORTABLE.md")
 METHOD=ROOT/"references/ACUTE_BEND_LT85_METHOD.md"
 FROM=ROOT/"references/ACUTE_BEND_LT85_FROM_SOURCE.md"
 QA=ROOT/"regression/qa/ACUTE_BEND_LT85_APPROVED.md"
@@ -15,7 +18,7 @@ PROOF=ROOT/"regression/assets/acute_bend_lt85/ACUTE_BEND_LT85_OD_PROOF.dxf"
 SVG=ROOT/"regression/assets/acute_bend_lt85/ACUTE_BEND_LT85_CONSTRUCTION.svg"
 BEND=ROOT/"skills/lispcad/modes/BEND_UNFOLD.md"
 def test_v415_preserved_v414_preserved():
-    entry=(ROOT/"AI_ENTRYPOINT.md").read_text(encoding="utf-8")
+    entry=((ROOT/"AI_ENTRYPOINT.md").read_text(encoding="utf-8") + (ROOT/"docs/RELEASE_WIRING_INDEX.md").read_text(encoding="utf-8"))
     assert RELEASE.read_text(encoding="utf-8").startswith("# SKILL_LISPCAD V4.15 PORTABLE")
     assert V414.read_text(encoding="utf-8").startswith("# SKILL_LISPCAD V4.14 PORTABLE")
     assert "V4.15" in entry

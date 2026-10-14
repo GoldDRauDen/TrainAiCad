@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 import os
 from pathlib import Path
 ROOT = Path(os.environ.get("TRAINAICAD_ROOT", Path(__file__).resolve().parents[2]))
@@ -12,10 +15,10 @@ def normalize_coincident(lines,ndigits=9):
     def c(line):
         a,b=line; a=(round(a[0],ndigits),round(a[1],ndigits)); b=(round(b[0],ndigits),round(b[1],ndigits)); return tuple(sorted((a,b)))
     return sorted(set(c(x) for x in lines))
-current=read("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
-v423=read("skills/lispcad/versions/V4.23/SKILL_LISPCAD_V4_23_PORTABLE.md")
-v422=read("skills/lispcad/versions/V4.22/SKILL_LISPCAD_V4_22_PORTABLE.md")
-entry=read("AI_ENTRYPOINT.md"); physical=read("references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md")
+current=Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md").read_text(encoding="utf-8")
+v423=Snapshot("skills/lispcad/versions/V4.23/SKILL_LISPCAD_V4_23_PORTABLE.md").read_text(encoding="utf-8")
+v422=Snapshot("skills/lispcad/versions/V4.22/SKILL_LISPCAD_V4_22_PORTABLE.md").read_text(encoding="utf-8")
+entry=(read("AI_ENTRYPOINT.md") + read("docs/RELEASE_WIRING_INDEX.md")); physical=read("references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md")
 geom=read("references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md"); mech=read("references/MECHANICAL_CLASSIFIER.md")
 face=read("references/FACE_GRAPH_UNFOLD_PROTOCOL.md"); val=read("skills/lispcad/core/VALIDATION.md")
 bend=read("skills/lispcad/modes/BEND_UNFOLD.md"); qa=read("regression/qa/521001-03_V4_23_APPROVED.md")

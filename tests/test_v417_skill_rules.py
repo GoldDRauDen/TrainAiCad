@@ -1,16 +1,19 @@
 """V4.17 520929-10 historical hardening regression retained under later CURRENT releases."""
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 from pathlib import Path
 import subprocess,sys
 ROOT=Path(__file__).resolve().parents[1]
-CURRENT=ROOT/"skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md"
-RELEASE=ROOT/"skills/lispcad/versions/V4.17/SKILL_LISPCAD_V4_17_PORTABLE.md"
-OLD=ROOT/"skills/lispcad/versions/V4.16/SKILL_LISPCAD_V4_16_PORTABLE.md"
+CURRENT=Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
+RELEASE=Snapshot("skills/lispcad/versions/V4.17/SKILL_LISPCAD_V4_17_PORTABLE.md")
+OLD=Snapshot("skills/lispcad/versions/V4.16/SKILL_LISPCAD_V4_16_PORTABLE.md")
 QA=ROOT/"regression/qa/520929-10_V4_17_APPROVED.md"
 RUNNER=ROOT/"regression/tools/check_520929_10_v417.py"
 VALID=ROOT/"skills/lispcad/core/VALIDATION.md"
 
 def test_release_and_routing():
-    entry=(ROOT/"AI_ENTRYPOINT.md").read_text(encoding="utf-8")
+    entry=((ROOT/"AI_ENTRYPOINT.md").read_text(encoding="utf-8") + (ROOT/"docs/RELEASE_WIRING_INDEX.md").read_text(encoding="utf-8"))
     skill=CURRENT.read_text(encoding="utf-8")
     assert RELEASE.read_text(encoding="utf-8").startswith("# SKILL_LISPCAD V4.17 PORTABLE")
     assert "V4.17 direct approval" in skill

@@ -1,15 +1,18 @@
 """V4.25 DATA-first / manufacturing-second source-preservation hardening."""
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 from pathlib import Path
 
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-CURRENT = ROOT / "skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md"
-V424 = ROOT / "skills/lispcad/versions/V4.24/SKILL_LISPCAD_V4_24_PORTABLE.md"
+CURRENT = Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
+V424 = Snapshot("skills/lispcad/versions/V4.24/SKILL_LISPCAD_V4_24_PORTABLE.md")
 
 
 def test_v425_release_wiring_and_portable_compatibility():
-    entry = (ROOT / "AI_ENTRYPOINT.md").read_text(encoding="utf-8")
+    entry = ((ROOT / "AI_ENTRYPOINT.md").read_text(encoding="utf-8") + (ROOT / "docs/RELEASE_WIRING_INDEX.md").read_text(encoding="utf-8"))
     router = yaml.safe_load((ROOT / "skills/lispcad/router/ROUTER.yaml").read_text(encoding="utf-8"))
     coverage = yaml.safe_load((ROOT / "skills/lispcad/router/RULE_COVERAGE.yaml").read_text(encoding="utf-8"))
     assert "- **V4.25:**" in entry

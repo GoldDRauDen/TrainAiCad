@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """V4.18 520929-18 approved source-authority / C-R / BOXMET regression."""
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 from pathlib import Path
 from math import isclose
 
@@ -57,12 +60,12 @@ def main():
 
     # Release wiring guards: checker should be run from the repository.
     root = Path(__file__).resolve().parents[2]
-    portable = (root / "skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md").read_text(encoding="utf-8")
+    portable = (Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")).read_text(encoding="utf-8")
     drawing = (root / "skills/lispcad/core/DRAWING_READING.md").read_text(encoding="utf-8")
     chamfer = (root / "skills/lispcad/features/CHAMFER_RADIUS.md").read_text(encoding="utf-8")
     validation = (root / "skills/lispcad/core/VALIDATION.md").read_text(encoding="utf-8")
     boxmet = (root / "references/BOXMET_SLIT_RELIEF.md").read_text(encoding="utf-8")
-    entry = (root / "AI_ENTRYPOINT.md").read_text(encoding="utf-8")
+    entry = ((root / "AI_ENTRYPOINT.md").read_text(encoding="utf-8") + (root / "docs/RELEASE_WIRING_INDEX.md").read_text(encoding="utf-8"))
 
     assert "V4.18 DETAILED_SOURCE_BUNDLE" in drawing and "DETAILED_SOURCE_BUNDLE" in portable
     assert "V4.18 C/R_SEMANTIC_LOCK" in chamfer and "C/R_SEMANTIC_LOCK" in portable

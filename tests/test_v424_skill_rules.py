@@ -1,13 +1,16 @@
 """V4.24 DATA manufacturing canonicalization and universal M* nominal validation."""
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CURRENT = ROOT / "skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md"
-RELEASE = ROOT / "skills/lispcad/versions/V4.24/SKILL_LISPCAD_V4_24_PORTABLE.md"
-PREV = ROOT / "skills/lispcad/versions/V4.23/SKILL_LISPCAD_V4_23_PORTABLE.md"
+CURRENT = Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
+RELEASE = Snapshot("skills/lispcad/versions/V4.24/SKILL_LISPCAD_V4_24_PORTABLE.md")
+PREV = Snapshot("skills/lispcad/versions/V4.23/SKILL_LISPCAD_V4_23_PORTABLE.md")
 
 def test_v424_current_release_and_immutable_v423():
-    entry = (ROOT / "AI_ENTRYPOINT.md").read_text(encoding="utf-8")
+    entry = ((ROOT / "AI_ENTRYPOINT.md").read_text(encoding="utf-8") + (ROOT / "docs/RELEASE_WIRING_INDEX.md").read_text(encoding="utf-8"))
     skill = CURRENT.read_text(encoding="utf-8")
     assert "- **V4.24:**" in entry
     assert CURRENT.read_bytes() == RELEASE.read_bytes()

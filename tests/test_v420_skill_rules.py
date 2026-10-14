@@ -1,9 +1,12 @@
 """V4.20 historical source/data classification + mechanical feature hardening."""
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 from pathlib import Path
 import subprocess,sys
 ROOT=Path(__file__).resolve().parents[1]
-RELEASE=ROOT/"skills/lispcad/versions/V4.20/SKILL_LISPCAD_V4_20_PORTABLE.md"
-OLD=ROOT/"skills/lispcad/versions/V4.19/SKILL_LISPCAD_V4_19_PORTABLE.md"
+RELEASE=Snapshot("skills/lispcad/versions/V4.20/SKILL_LISPCAD_V4_20_PORTABLE.md")
+OLD=Snapshot("skills/lispcad/versions/V4.19/SKILL_LISPCAD_V4_19_PORTABLE.md")
 RUNNER=ROOT/"regression/tools/check_v420_source_mech.py"
 
 def test_v420_historical_release_intact():

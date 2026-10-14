@@ -200,7 +200,7 @@ export type SourcePolicy = {
 export type ReleasePin = {
   release: string;
   entrypointSha256: string;
-  currentSkillSha256: string;
+  routerSha256: string;
 };
 
 export type MechanicalClassification = {

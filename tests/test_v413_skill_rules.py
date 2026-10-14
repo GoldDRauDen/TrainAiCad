@@ -3,14 +3,17 @@
 Passing these tests cannot certify a regenerated production DXF; these
 tests are arithmetic, scope and portable-document checks only.
 """
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 from pathlib import Path
 from decimal import Decimal, ROUND_HALF_UP
 from math import radians, tan
 
 ROOT = Path(__file__).resolve().parents[1]
-CURRENT = ROOT / "skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md"
-RELEASE = ROOT / "skills/lispcad/versions/V4.13/SKILL_LISPCAD_V4_13_PORTABLE.md"
-HISTORICAL = ROOT / "skills/lispcad/versions/V4.12/SKILL_LISPCAD_V4_12_PORTABLE.md"
+CURRENT = Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
+RELEASE = Snapshot("skills/lispcad/versions/V4.13/SKILL_LISPCAD_V4_13_PORTABLE.md")
+HISTORICAL = Snapshot("skills/lispcad/versions/V4.12/SKILL_LISPCAD_V4_12_PORTABLE.md")
 QA = ROOT / "regression/qa/520315-18_V4_13_APPROVED.md"
 
 

@@ -3,12 +3,15 @@
 No PDF parsing or reference DXF comparison takes place in these tests; passing
 them never certifies a corrected 520217-27 production DXF.
 """
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 from pathlib import Path
 from math import isclose
 
 ROOT = Path(__file__).resolve().parents[1]
-CURRENT = ROOT / "skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md"
-RELEASE = ROOT / "skills/lispcad/versions/V4.12/SKILL_LISPCAD_V4_12_PORTABLE.md"
+CURRENT = Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
+RELEASE = Snapshot("skills/lispcad/versions/V4.12/SKILL_LISPCAD_V4_12_PORTABLE.md")
 
 
 def test_v412_release_preserved_as_immutable_historical_snapshot():

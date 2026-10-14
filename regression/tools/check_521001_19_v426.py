@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 import math
 import os
 import tempfile
@@ -23,15 +26,15 @@ def arc_radii(entity):
     return [float(e.dxf.radius) for e in entity.virtual_entities() if e.dxftype() == "ARC"]
 
 
-entry = read("AI_ENTRYPOINT.md")
+entry = (read("AI_ENTRYPOINT.md") + read("docs/RELEASE_WIRING_INDEX.md"))
 router = read("skills/lispcad/router/ROUTER.yaml")
 coverage = read("skills/lispcad/router/RULE_COVERAGE.yaml")
 ref = read("references/DXF_PHYSICAL_CURVE_DECODING.md")
 census = read("skills/lispcad/router/FEATURE_CENSUS.md")
 qa = read("regression/qa/521001-19_V4_26_APPROVED.md")
 workflow = read(".github/workflows/dxf-export-tests.yml")
-current = read("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
-v424 = read("skills/lispcad/versions/V4.24/SKILL_LISPCAD_V4_24_PORTABLE.md")
+current = Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md").read_text(encoding="utf-8")
+v424 = Snapshot("skills/lispcad/versions/V4.24/SKILL_LISPCAD_V4_24_PORTABLE.md").read_text(encoding="utf-8")
 
 # V4.26 is an immutable historical regression. A later active release may be current,
 # so assert retained release wiring rather than pinning the repository head to V4.26.

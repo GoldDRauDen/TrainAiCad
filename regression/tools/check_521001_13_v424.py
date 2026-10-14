@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 import os
 import re
 import sys
@@ -25,10 +28,10 @@ def pilot_from_table(m_name):
         raise AssertionError(f"pilot not found: {m_name}")
     return float(m.group(1))
 
-current = read("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
-v424 = read("skills/lispcad/versions/V4.24/SKILL_LISPCAD_V4_24_PORTABLE.md")
-v423 = read("skills/lispcad/versions/V4.23/SKILL_LISPCAD_V4_23_PORTABLE.md")
-entry = read("AI_ENTRYPOINT.md")
+current = Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md").read_text(encoding="utf-8")
+v424 = Snapshot("skills/lispcad/versions/V4.24/SKILL_LISPCAD_V4_24_PORTABLE.md").read_text(encoding="utf-8")
+v423 = Snapshot("skills/lispcad/versions/V4.23/SKILL_LISPCAD_V4_23_PORTABLE.md").read_text(encoding="utf-8")
+entry = (read("AI_ENTRYPOINT.md") + read("docs/RELEASE_WIRING_INDEX.md"))
 router = read("skills/lispcad/router/ROUTER.yaml")
 coverage = read("skills/lispcad/router/RULE_COVERAGE.yaml")
 geom = read("references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md")

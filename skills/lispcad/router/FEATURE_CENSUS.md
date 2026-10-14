@@ -94,6 +94,17 @@ part_mode: FLAT_NO_BEND | BEND | MULTI_FACE | UNKNOWN
 reference_present: YES | NO | UNKNOWN    # sample/reference present or planned; UNKNOWN loads firewall
 source_manufacturing_notes:
   - {note_text: "...", code_scope: "...", candidate_family: "...", resolution: ROUTED|CANCELLED|IRRELEVANT_TO_MANUFACTURING|UNRESOLVED}
+## V4.34 material / HL / witness census (non-feature fields)
+These fields are NOT feature families; they must not be added to `features:` (the resolver requires that key set to equal the Router's feature routes).
+```yaml
+material_and_grain:
+  printed_grade: "..."            # exact printed grade, e.g. SECC/ボンデ
+  alias_resolved: "...|UNRESOLVED" # via references/MATERIAL_ALIASES.yaml + tools/material_resolver.py
+  hairline_HL: {state: YES|NO|UNKNOWN, grain_vector_part_relative: PROVED|UNPROVED|NOT_APPLICABLE, evidence: []}
+  witness_graph_closed_for_HOLE_SLOT: YES|NO|NOT_APPLICABLE   # typed X/Y witness graph, slot anchor endpoints
+```
+HL with `grain_vector_part_relative: UNPROVED` forces REVIEW regardless of any Excel 横目 note.
+
 features:
   HOLE: {state: YES|NO|UNKNOWN, evidence: []}
   TAP: {state: YES|NO|UNKNOWN, evidence: []}
