@@ -1,11 +1,11 @@
 # TrainAiCad Canonical Input Schema — V4.31
 
 The input schema is unchanged. The **normal E2E output packaging** of the
-validated canonical job is now one JSON per part at
-`geometry_json/<CODE>.json`, one individual CUT DXF per PASS code at
-`parts_dxf/<PASS_CODE>.dxf` (LINE/ARC/CIRCLE only), plus the one existing
-top-to-bottom composite file. REVIEW/PREVIEW/VIEWS_ONLY still receive JSON
-and composite review geometry/flags, never a standalone CUT DXF.
+validated canonical job is the combined DXF; only on explicit request (`--individual-dxf`) also one individual CUT DXF per PASS code at
+`parts_dxf/<slip-no>.dxf` (LINE/ARC/CIRCLE only; `code` = delivery-slip work
+number, e.g. `26-056522`), plus the one existing top-to-bottom composite file.
+No JSON is written. REVIEW/PREVIEW/VIEWS_ONLY appear only in the composite
+review geometry/flags, never as a standalone CUT DXF.
 The individual geometry is derived from source-canonical entities and
 undergoes independent exact saved-DXF/XDATA read-back; no second interpretation
 of PDF measurements occurs.

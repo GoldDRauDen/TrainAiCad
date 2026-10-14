@@ -84,8 +84,7 @@ source/engineering QA and composite canonical read-back):
 
 ```text
 <JOB>/
-  geometry_json/<CODE>.json       # every code, including REVIEW/FLAG
-  parts_dxf/<PASS_CODE>.dxf        # QA PASS only; LINE/ARC/CIRCLE CUT only
+  parts_dxf/<slip-no>.dxf        # ONLY on explicit request (--individual-dxf); QA PASS only; LINE/ARC/CIRCLE CUT only; slip-no = slip work no., e.g. 26-056522
   <JOB>_ALL.dxf                    # if all PASS
   <JOB>_ALL_REVIEW_ONLY.dxf        # otherwise all codes, warnings intact
 ```

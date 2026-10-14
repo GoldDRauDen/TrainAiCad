@@ -124,7 +124,7 @@ def _job():
 def test_hd1_approved_semantic_members_and_dxf_readback(tmp_path):
     j = _job()
     assert canonical_job_anomalies(j) == []
-    result = export_canonical_job(j, tmp_path)
+    result = export_canonical_job(j, tmp_path, individual_dxf=True)
     assert result["status"] == "PASS"
     assert result["filename"] == "HD1_SEMANTIC_FIXTURE_ALL.dxf"
     dxf = ezdxf.readfile(tmp_path / result["filename"])
@@ -134,7 +134,7 @@ def test_hd1_approved_semantic_members_and_dxf_readback(tmp_path):
     assert sum(e.dxftype() == "LINE" and e.dxf.get("linetype") == "DASHED"
                for e in physical) == 4
     assert len(list((tmp_path / "parts_dxf").glob("*.dxf"))) == 6
-    assert len(list((tmp_path / "geometry_json").glob("*.json"))) == 6
+    assert not (tmp_path / "geometry_json").exists()  # V4.35: no JSON output
     for code in (*BENDS, *MARKS):
         individual = ezdxf.readfile(tmp_path / "parts_dxf" / f"{code}.dxf")
         assert {e.dxftype() for e in individual.modelspace()} <= {

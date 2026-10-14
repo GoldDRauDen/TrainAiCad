@@ -60,8 +60,7 @@ source-to-canonical members and composite XDATA read-back, then writes:
 
 ```text
 OUT/
-  geometry_json/<CODE>.json           every code, including REVIEW
-  parts_dxf/<PASS_CODE>.dxf           PASS only; LINE/ARC/CIRCLE cut geometry
+  parts_dxf/<slip-no>.dxf           ONLY on explicit request (--individual-dxf); PASS only; named by slip work no. (e.g. 26-056522); LINE/ARC/CIRCLE cut geometry
   <JOB>_ALL.dxf                       when all PASS
   <JOB>_ALL_REVIEW_ONLY.dxf           otherwise (all codes + warnings)
 ```
