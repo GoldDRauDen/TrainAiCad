@@ -1,3 +1,7 @@
+import sys as _compact_sys
+from pathlib import Path as _CompactPath
+_compact_sys.path.insert(0, str(_CompactPath(__file__).resolve().parents[2] / "tools"))
+from compact_rules import module_view, read_rule_text
 """V4.27 521005-01 production regression.
 
 Checks approved weld-cue/KEGAKI routing text, drawing-specific slot/datum facts,
@@ -38,9 +42,9 @@ def _release_number(value):
 
 
 def check_rule_wiring():
-    kegaki = (ROOT / "skills/lispcad/features/KEGAKI.md").read_text(encoding="utf-8")
+    kegaki = (module_view("skills/lispcad/features/KEGAKI.md", ROOT)).read_text(encoding="utf-8")
     census = (ROOT / "skills/lispcad/router/FEATURE_CENSUS.md").read_text(encoding="utf-8")
-    cross = (ROOT / "skills/lispcad/core/CROSS_FEATURE_VALIDATION.md").read_text(encoding="utf-8")
+    cross = (module_view("skills/lispcad/core/CROSS_FEATURE_VALIDATION.md", ROOT)).read_text(encoding="utf-8")
     reg = (ROOT / "regression/qa/521005-01_V4_27_APPROVED.md").read_text(encoding="utf-8")
     text = "\n".join((kegaki, census, cross, reg))
     for token in [

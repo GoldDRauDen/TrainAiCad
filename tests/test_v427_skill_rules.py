@@ -1,4 +1,5 @@
 """V4.27 weld-cue / RIB-KEGAKI census guardrails."""
+from tools.compact_rules import read_rule_text, module_view
 from pathlib import Path
 
 import yaml
@@ -28,7 +29,7 @@ def test_v427_weld_cue_and_kegaki_guardrails():
         "regression/qa/521005-01_V4_27_APPROVED.md",
         "regression/tools/check_521005_01_v427.py",
     ]
-    text = "\n".join((ROOT / p).read_text(encoding="utf-8") for p in paths)
+    text = "\n".join(read_rule_text(p, ROOT) for p in paths)
     for token in [
         "REVERSED_E_ABOVE_BARCODE",
         "WELD_REQUIRED_CUE",

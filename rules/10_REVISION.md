@@ -1,3 +1,8 @@
+# 10 — REVISION / CANCELLATION | Production rules V4.34
+
+> Revision, cancellation, substitution and customer source precedence retain the original rules.
+
+<!-- BEGIN MODULE: skills/lispcad/features/REVISION_CANCELLATION.md -->
 # Feature — Revision and Cancellation Scope
 
 ## Authority and trigger
@@ -34,3 +39,4 @@ two whole Ø8H7 holes were canceled. Its code IDs, coordinates and quantities
 are case-specific regression evidence, **not universal manufacturing rules**.
 Load that regression only for relevant QA or explicit audit; never use it
 as the ordinary feature rule or as a source of missing dimensions.
+<!-- END MODULE: skills/lispcad/features/REVISION_CANCELLATION.md -->

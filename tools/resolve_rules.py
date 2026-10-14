@@ -13,6 +13,8 @@ import sys
 import yaml
 
 from weld_kegaki_guard import WeldKegakiError, check_weld_site_census
+from compact_rules import (CompactRuleError, resolve_rule_path, read_rule_text,
+                           rule_physical_paths, rule_module_map)
 
 ROOT = Path(__file__).resolve().parents[1]
 ROUTER = "skills/lispcad/router/ROUTER.yaml"
@@ -54,6 +56,9 @@ def resolve_rules(census: dict, root: Path = ROOT, router: dict | None = None) -
         router = yaml.safe_load((root / ROUTER).read_text(encoding="utf-8"))
     if not isinstance(census, dict) or not isinstance(router, dict):
         raise ResolutionError("Census and Router must be mappings")
+    pin = yaml.safe_load((root / "config/RELEASE.yaml").read_text(encoding="utf-8"))
+    if pin.get("current") != router.get("release"):
+        raise ResolutionError("Release mismatch with config/RELEASE.yaml")
     if router.get("production_mode") != "repo_direct" or router.get("unknown_policy") != "LOAD_ROUTE":
         raise ResolutionError("Unsupported Router authority or UNKNOWN handling")
 
@@ -135,14 +140,15 @@ def resolve_rules(census: dict, root: Path = ROOT, router: dict | None = None) -
             raise ResolutionError(f"Invalid route path: {path!r}")
         if path.startswith(FORBIDDEN) or path.startswith("/") or ".." in Path(path).parts:
             raise ResolutionError(f"Forbidden production route: {path}")
-        resolved = (root / path).resolve()
-        if not resolved.is_relative_to(root) or not resolved.is_file():
-            raise ResolutionError(f"Missing or unsafe route file: {path}")
+        try:
+            resolved = resolve_rule_path(path, root)
+        except CompactRuleError as exc:
+            raise ResolutionError(f"Missing or unsafe route file: {path}: {exc}") from exc
         if path not in seen_paths:
             seen_paths.add(path)
             result.append(path)
             stage_plans[current_stage]["rule_paths"].append(path)
-            stage_plans[current_stage]["new_bytes"] += resolved.stat().st_size
+            stage_plans[current_stage]["new_bytes"] += len(read_rule_text(path, root).encode("utf-8"))
 
     def add_group(group: str, name: str) -> None:
         routes = router.get(group, {})
@@ -203,8 +209,17 @@ def resolve_rules(census: dict, root: Path = ROOT, router: dict | None = None) -
     current_stage = stages[3]
     add_group("stage_routes", current_stage)
 
+    # Each legacy logical path is an exact section ID inside one of eleven packs.
+    # A caller MUST use read_routed_rules.py to extract these sections; reading
+    # every entire packed file would negate source-scoped loading.
+    for stage in stages:
+        stage_plans[stage]["physical_paths"] = rule_physical_paths(
+            stage_plans[stage]["rule_paths"], root)
+    mappings = rule_module_map(root)
     return {
         "release": router["release"],
+        "physical_rule_paths": rule_physical_paths(result, root),
+        "section_sources": {p: mappings[p] for p in result if p in mappings},
         "production_mode": "repo_direct",
         "source_mode": source_mode,
         "customer_code": customer_code,
@@ -229,7 +244,7 @@ def main() -> int:
     try:
         census = json.loads(args.census.read_text(encoding="utf-8"))
         result = resolve_rules(census, args.repo_root)
-    except (ValueError, OSError, KeyError, yaml.YAMLError) as exc:
+    except (ValueError, CompactRuleError, OSError, KeyError, yaml.YAMLError) as exc:
         print(f"ROUTING_COVERAGE_GAP: {exc}", file=sys.stderr)
         return 2
     print(json.dumps(result, ensure_ascii=False, indent=2))

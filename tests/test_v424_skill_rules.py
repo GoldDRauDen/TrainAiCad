@@ -1,4 +1,5 @@
 """V4.24 DATA manufacturing canonicalization and universal M* nominal validation."""
+from tools.compact_rules import read_rule_text, module_view
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -31,7 +32,7 @@ def test_v424_rule_wiring():
         "regression/tools/check_521001_13_v424.py",
         "skills/lispcad/router/RULE_COVERAGE.yaml",
     ]
-    text = "\n".join((ROOT / p).read_text(encoding="utf-8") for p in paths)
+    text = "\n".join(read_rule_text(p, ROOT) for p in paths)
     for token in [
         "DATA_MANUFACTURING_CANONICALIZATION", "DATA_AUTO_R_CANONICALIZATION",
         "DATA_TAP_NOMINAL_VALIDATION", "THREAD_NOMINAL_REFERENCE",

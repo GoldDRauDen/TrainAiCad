@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import sys as _compact_sys
+from pathlib import Path as _CompactPath
+_compact_sys.path.insert(0, str(_CompactPath(__file__).resolve().parents[2] / "tools"))
+from compact_rules import module_view, read_rule_text
 """V4.19 520929-25 approved constraint-closed FACE_GRAPH / fold-back regression."""
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2] / "tools"))
@@ -75,10 +79,10 @@ def main():
     release = (Snapshot("skills/lispcad/versions/V4.19/SKILL_LISPCAD_V4_19_PORTABLE.md")).read_text(encoding="utf-8")
     old = (Snapshot("skills/lispcad/versions/V4.18/SKILL_LISPCAD_V4_18_PORTABLE.md")).read_text(encoding="utf-8")
     entry = ((root/"AI_ENTRYPOINT.md").read_text(encoding="utf-8") + (root/"docs/RELEASE_WIRING_INDEX.md").read_text(encoding="utf-8"))
-    protocol = (root/"references/FACE_GRAPH_UNFOLD_PROTOCOL.md").read_text(encoding="utf-8")
-    bend = (root/"skills/lispcad/modes/BEND_UNFOLD.md").read_text(encoding="utf-8")
-    validation = (root/"skills/lispcad/core/VALIDATION.md").read_text(encoding="utf-8")
-    drawing = (root/"skills/lispcad/core/DRAWING_READING.md").read_text(encoding="utf-8")
+    protocol = (module_view("references/FACE_GRAPH_UNFOLD_PROTOCOL.md", root)).read_text(encoding="utf-8")
+    bend = (module_view("skills/lispcad/modes/BEND_UNFOLD.md", root)).read_text(encoding="utf-8")
+    validation = (module_view("skills/lispcad/core/VALIDATION.md", root)).read_text(encoding="utf-8")
+    drawing = (module_view("skills/lispcad/core/DRAWING_READING.md", root)).read_text(encoding="utf-8")
 
     assert release.startswith("# SKILL_LISPCAD V4.19 PORTABLE")
     assert "V4.19 direct approval / PUSH" in portable

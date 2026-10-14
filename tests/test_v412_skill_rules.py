@@ -3,6 +3,7 @@
 No PDF parsing or reference DXF comparison takes place in these tests; passing
 them never certifies a corrected 520217-27 production DXF.
 """
+from tools.compact_rules import module_view
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -31,7 +32,7 @@ def test_user_approved_arithmetic():
 
 def test_material_prefix_and_sus430_exception_documented():
     skill = CURRENT.read_text(encoding="utf-8")
-    rules = (ROOT / "references/MATERIAL_RULES.md").read_text(
+    rules = (module_view("references/MATERIAL_RULES.md", ROOT)).read_text(
         encoding="utf-8"
     )
     for document in (skill, rules):
@@ -42,7 +43,7 @@ def test_material_prefix_and_sus430_exception_documented():
 
 def test_unknown_round_hole_kept_as_preview_circle():
     skill = CURRENT.read_text(encoding="utf-8")
-    holes = (ROOT / "skills/lispcad/features/HOLES_TAPS.md").read_text(
+    holes = (module_view("skills/lispcad/features/HOLES_TAPS.md", ROOT)).read_text(
         encoding="utf-8"
     )
     assert "V4.12 unresolved circular-hole Ø gate" in skill
@@ -53,10 +54,10 @@ def test_unknown_round_hole_kept_as_preview_circle():
 
 
 def test_slot_radius_and_advisory_rules_in_modules():
-    slots = (ROOT / "skills/lispcad/features/SLOTS.md").read_text(
+    slots = (module_view("skills/lispcad/features/SLOTS.md", ROOT)).read_text(
         encoding="utf-8"
     )
-    validation = (ROOT / "skills/lispcad/core/VALIDATION.md").read_text(
+    validation = (module_view("skills/lispcad/core/VALIDATION.md", ROOT)).read_text(
         encoding="utf-8"
     )
     assert "V4.12 count-only n-R" in slots and "R6" in slots

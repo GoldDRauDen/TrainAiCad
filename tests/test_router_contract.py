@@ -1,3 +1,4 @@
+from tools.compact_rules import module_view
 from pathlib import Path
 
 import yaml
@@ -59,7 +60,7 @@ def test_runtime_paths_exist_and_exclude_history():
     for rel in paths:
         assert not rel.startswith("skills/lispcad/versions/")
         assert not rel.startswith("docs/history/")
-        assert (ROOT / rel).is_file(), rel
+        assert module_view(rel, ROOT).is_file(), rel
 
 
 def test_dependencies_resolve():
@@ -76,7 +77,7 @@ def test_coverage_map_paths_exist():
     for release in coverage["release_coverage"].values():
         for key in ("active", "regression"):
             for rel in release.get(key, []):
-                assert (ROOT / rel).is_file(), rel
+                assert module_view(rel, ROOT).is_file(), rel
 
 
 def test_entrypoint_and_agents_use_router_not_full_portable():

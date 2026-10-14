@@ -1,3 +1,5 @@
+> **Packed rule lookup:** Normal production rule IDs now resolve via `config/RULE_MODULES.yaml`; use `tools/read_routed_rules.py` to extract exact sections. This QA-only entrypoint remains opt-in and cannot replace production source proof.
+
 # QA ENTRYPOINT — TrainAiCad explicit reverse-audit role
 
 Status: explicit opt-in QA role only.

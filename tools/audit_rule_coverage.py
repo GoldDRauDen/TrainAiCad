@@ -13,6 +13,9 @@ import sys
 
 import yaml
 
+from compact_rules import (CompactRuleError, rule_module_map, resolve_rule_path,
+                           validate_rule_manifest)
+
 ROOT = Path(__file__).resolve().parents[1]
 ROUTER = "skills/lispcad/router/ROUTER.yaml"
 COVERAGE = "skills/lispcad/router/RULE_COVERAGE.yaml"
@@ -44,11 +47,21 @@ def audit(root: Path = ROOT, router: dict | None = None) -> dict:
         raise CoverageError("Unsupported production Router")
     if not isinstance(coverage, dict) or coverage.get("release") != router.get("release"):
         raise CoverageError("Current Router / Coverage release mismatch")
+    pin = yaml.safe_load((root / "config/RELEASE.yaml").read_text(encoding="utf-8"))
+    if pin.get("current") != router.get("release"):
+        raise CoverageError("Current Router / single RELEASE pin mismatch")
+    manifest = yaml.safe_load((root / "config/RULE_MODULES.yaml").read_text(encoding="utf-8"))
+    if manifest.get("release") != pin["current"]:
+        raise CoverageError("Rule pack release mismatch")
+    try:
+        packed = validate_rule_manifest(root)
+    except CompactRuleError as exc:
+        raise CoverageError(str(exc)) from exc
 
     catalog = router.get("customer_rule_catalog")
     if catalog != "references/CUSTOMER_CAD_RULES.yaml" or not (root / catalog).is_file():
         raise CoverageError("Missing or unauthorized customer CAD catalog")
-    active = {p.relative_to(root).as_posix()
+    active = set(rule_module_map(root)) | {p.relative_to(root).as_posix()
               for pattern in ACTIVE_GLOBS for p in root.glob(pattern) if p.is_file()}
     if not active:
         raise CoverageError("No production modules discovered")
@@ -73,9 +86,10 @@ def audit(root: Path = ROOT, router: dict | None = None) -> dict:
         if (p.startswith(EXCLUDED_PREFIXES) or p.startswith("/") or "\\" in p
                 or ".." in Path(p).parts):
             raise CoverageError(f"Forbidden active route {p}")
-        resolved = (root / p).resolve()
-        if not resolved.is_relative_to(root) or not resolved.is_file():
-            raise CoverageError(f"Invalid route path {p}")
+        try:
+            resolve_rule_path(p, root)
+        except CompactRuleError as exc:
+            raise CoverageError(f"Invalid route path {p}: {exc}") from exc
 
     missing = sorted(active - all_paths)
     if missing:
@@ -94,7 +108,9 @@ def audit(root: Path = ROOT, router: dict | None = None) -> dict:
     for release, info in coverage.get("release_coverage", {}).items():
         for kind in ("active", "regression"):
             for p in info.get(kind, []):
-                if not (root / p).is_file():
+                try:
+                    resolve_rule_path(p, root)
+                except CompactRuleError:
                     missing_refs.append((release, kind, p))
     if missing_refs:
         raise CoverageError(f"Broken release coverage/evidence references: {missing_refs}")
@@ -106,6 +122,7 @@ def audit(root: Path = ROOT, router: dict | None = None) -> dict:
         "routed_active_module_count": len(active & all_paths),
         "unreachable_active_modules": [],
         "active_modules": sorted(active),
+        "physical_rule_file_count": packed["physical_rule_files"],
     }
 
 
@@ -115,7 +132,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         result = audit(args.repo_root)
-    except (CoverageError, OSError, KeyError, yaml.YAMLError) as exc:
+    except (CoverageError, CompactRuleError, OSError, KeyError, yaml.YAMLError) as exc:
         print(f"RULE_COVERAGE_FAIL: {exc}", file=sys.stderr)
         return 2
     print(json.dumps(result, ensure_ascii=False, indent=2))

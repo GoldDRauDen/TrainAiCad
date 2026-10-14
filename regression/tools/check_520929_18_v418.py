@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import sys as _compact_sys
+from pathlib import Path as _CompactPath
+_compact_sys.path.insert(0, str(_CompactPath(__file__).resolve().parents[2] / "tools"))
+from compact_rules import module_view, read_rule_text
 """V4.18 520929-18 approved source-authority / C-R / BOXMET regression."""
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2] / "tools"))
@@ -61,10 +65,10 @@ def main():
     # Release wiring guards: checker should be run from the repository.
     root = Path(__file__).resolve().parents[2]
     portable = (Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")).read_text(encoding="utf-8")
-    drawing = (root / "skills/lispcad/core/DRAWING_READING.md").read_text(encoding="utf-8")
-    chamfer = (root / "skills/lispcad/features/CHAMFER_RADIUS.md").read_text(encoding="utf-8")
-    validation = (root / "skills/lispcad/core/VALIDATION.md").read_text(encoding="utf-8")
-    boxmet = (root / "references/BOXMET_SLIT_RELIEF.md").read_text(encoding="utf-8")
+    drawing = (module_view("skills/lispcad/core/DRAWING_READING.md", root)).read_text(encoding="utf-8")
+    chamfer = (module_view("skills/lispcad/features/CHAMFER_RADIUS.md", root)).read_text(encoding="utf-8")
+    validation = (module_view("skills/lispcad/core/VALIDATION.md", root)).read_text(encoding="utf-8")
+    boxmet = (module_view("references/BOXMET_SLIT_RELIEF.md", root)).read_text(encoding="utf-8")
     entry = ((root / "AI_ENTRYPOINT.md").read_text(encoding="utf-8") + (root / "docs/RELEASE_WIRING_INDEX.md").read_text(encoding="utf-8"))
 
     assert "V4.18 DETAILED_SOURCE_BUNDLE" in drawing and "DETAILED_SOURCE_BUNDLE" in portable

@@ -1,3 +1,4 @@
+from tools.compact_rules import module_view, read_rule_text
 "V4.29 source-manufacturing-note / custom slit guardrails."
 from pathlib import Path
 
@@ -39,7 +40,7 @@ def test_v429_custom_slit_is_instruction_driven_not_hardcoded():
         "regression/qa/521005-13_V4_29_APPROVED.md",
         "regression/tools/check_521005_13_v429.py",
     ]
-    text = "\n".join((ROOT / p).read_text(encoding="utf-8") for p in paths)
+    text = "\n".join(read_rule_text(p, ROOT) for p in paths)
     for token in [
         "SOURCE_MANUFACTURING_NOTE_CENSUS",
         "SOURCE_NOTE_TO_FAMILY",

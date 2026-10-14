@@ -1,4 +1,5 @@
 """V4.14 documentation and approved arithmetic regression; NOT a manufacturing DXF certification."""
+from tools.compact_rules import module_view
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -62,11 +63,11 @@ def test_all_new_semantic_rules_are_in_portable_and_modular_files():
     assert "3.1.1 V4.14" in skill
     assert "4.5.1 V4.14" in skill
     assert "Appendix L — V4.14" in skill
-    reading = (ROOT/"skills/lispcad/core/DRAWING_READING.md").read_text(encoding="utf-8")
-    datum = (ROOT/"skills/lispcad/core/DATUM_DIMENSION.md").read_text(encoding="utf-8")
-    radius = (ROOT/"skills/lispcad/features/CHAMFER_RADIUS.md").read_text(encoding="utf-8")
-    holes = (ROOT/"skills/lispcad/features/HOLES_TAPS.md").read_text(encoding="utf-8")
-    validation = (ROOT/"skills/lispcad/core/VALIDATION.md").read_text(encoding="utf-8")
+    reading = (module_view("skills/lispcad/core/DRAWING_READING.md", ROOT)).read_text(encoding="utf-8")
+    datum = (module_view("skills/lispcad/core/DATUM_DIMENSION.md", ROOT)).read_text(encoding="utf-8")
+    radius = (module_view("skills/lispcad/features/CHAMFER_RADIUS.md", ROOT)).read_text(encoding="utf-8")
+    holes = (module_view("skills/lispcad/features/HOLES_TAPS.md", ROOT)).read_text(encoding="utf-8")
+    validation = (module_view("skills/lispcad/core/VALIDATION.md", ROOT)).read_text(encoding="utf-8")
     assert "TWO DXFs FIRST" in reading
     assert "outer-edge dimension" in datum
     assert "semicircular notch/groove" in radius

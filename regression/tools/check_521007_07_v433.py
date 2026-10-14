@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import sys as _compact_sys
+from pathlib import Path as _CompactPath
+_compact_sys.path.insert(0, str(_CompactPath(__file__).resolve().parents[2] / "tools"))
+from compact_rules import module_view, read_rule_text
 """V4.33 521007-07 holistic challenge and reference-exposure regression."""
 from pathlib import Path
 import importlib.util
@@ -96,9 +100,9 @@ def test_reference_firewall(root: Path):
 def test_rule_wiring(root: Path):
     router = yaml.safe_load((root / "skills/lispcad/router/ROUTER.yaml").read_text(encoding="utf-8"))
     coverage = yaml.safe_load((root / "skills/lispcad/router/RULE_COVERAGE.yaml").read_text(encoding="utf-8"))
-    challenge = (root / "references/HOLISTIC_ENGINEERING_CHALLENGE.md").read_text(encoding="utf-8")
-    firewall = (root / "references/REFERENCE_EXPOSURE_FIREWALL.md").read_text(encoding="utf-8")
-    identity = (root / "references/PART_IDENTITY_GRAPH.md").read_text(encoding="utf-8")
+    challenge = (module_view("references/HOLISTIC_ENGINEERING_CHALLENGE.md", root)).read_text(encoding="utf-8")
+    firewall = (module_view("references/REFERENCE_EXPOSURE_FIREWALL.md", root)).read_text(encoding="utf-8")
+    identity = (module_view("references/PART_IDENTITY_GRAPH.md", root)).read_text(encoding="utf-8")
 
     # V4.33 gates remain required; the latest release may be a later one (e.g. V4.34).
     assert router["release"] in ("V4.33", "V4.34")

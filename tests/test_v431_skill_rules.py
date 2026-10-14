@@ -1,4 +1,5 @@
 """V4.31 E2E source-member -> canonical -> saved-DXF completeness hardening."""
+from tools.compact_rules import module_view, read_rule_text
 from pathlib import Path
 import subprocess
 import sys
@@ -46,7 +47,7 @@ def test_v431_contract_and_serializer_tokens():
         "regression/qa/521005-05_V4_31_APPROVED.md",
         "regression/tools/check_521005_05_v431.py",
     ]
-    text = "\n".join((ROOT / p).read_text(encoding="utf-8") for p in paths)
+    text = "\n".join(read_rule_text(p, ROOT) for p in paths)
     for token in [
         "NO_DIRECT_DXF_FROM_INTERPRETATION",
         "SOURCE_FEATURE_COMPLETENESS_FAIL",

@@ -1,3 +1,7 @@
+# Compact rule migration (CURRENT V4.34)
+
+50 legacy path identifiers in the Router are **logical module IDs**, not physical files. Read precisely using `python tools/read_routed_rules.py --census census.json --stage L2_GEOMETRY`; `tools/compact_rules.py` validates the 11 physical `rules/*.md` documents. `config/RULE_MODULES.yaml` is the one-to-one lookup. No old individual Markdown paths are required on disk.
+
 # TrainAiCad rule brain — deterministic retrieval, not embedding RAG
 
 ## Responsibility boundary
@@ -39,8 +43,7 @@ A mandatory rule may be listed only once in its earliest valid stage. Its
 saved availability is not a waiver for the later checks: the user must
 actually perform L0, L1, L2 and L3 on each code.
 
-`tools/audit_rule_coverage.py` cross-checks **all 44 currently active
-module files**, not just the few Router-selected for a given job. In
+`tools/audit_rule_coverage.py` cross-checks **all 50 logical modules packed in 11 physical rule files**, not just the few Router-selected for a given job. In
 particular it blocks silently omitting `STEPPED_PROFILE.md`,
 `FORMING_FEATURES.md`, and any new active rule file. This is file-level
 reachability; approval and semantic correctness still require regression.

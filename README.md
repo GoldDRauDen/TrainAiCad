@@ -1,3 +1,5 @@
+> **Production layout V4.34:** 50 engineering modules are stored in 11 `rules/*.md` packs with individual exact section identities in `config/RULE_MODULES.yaml`. Legacy file paths in Router are module IDs, not fetchable files. Use `tools/read_routed_rules.py`; keep all four L0-L3 engineering/QA gates. Release authority is `config/RELEASE.yaml`.
+
 # TrainAiCad
 
 TrainAiCad is a user-approved sheet-metal CAD production rule repository. It is **not an automatic training store** and historical files are not production authority.

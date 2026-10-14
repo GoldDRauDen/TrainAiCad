@@ -1,0 +1,7 @@
+# Sole editable release pin. Other release labels must match this value or fail closed.
+schema_version: 1
+current: V4.34
+canonical_contract: TrainAiCad-CANONICAL-V4.34
+canonical_schema: tools/CANONICAL_INPUT_SCHEMA_V434.md
+legacy_canonical_contracts:
+  - TrainAiCad-CANONICAL-V4.31

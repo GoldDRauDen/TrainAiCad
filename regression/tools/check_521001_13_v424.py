@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import sys as _compact_sys
+from pathlib import Path as _CompactPath
+_compact_sys.path.insert(0, str(_CompactPath(__file__).resolve().parents[2] / "tools"))
+from compact_rules import module_view, read_rule_text
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -15,7 +19,7 @@ from export_dxf import export_job  # noqa: E402
 import ezdxf  # noqa: E402
 
 def read(rel):
-    return (ROOT / rel).read_text(encoding="utf-8")
+    return read_rule_text(rel, ROOT)
 
 def nominal_delta_flags(pdf_m_nominal, data_nominal):
     return abs(Decimal(str(data_nominal)) - Decimal(str(pdf_m_nominal))) >= Decimal("0.1")

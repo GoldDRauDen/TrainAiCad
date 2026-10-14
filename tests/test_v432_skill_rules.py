@@ -1,4 +1,5 @@
 """V4.32 bend attachment edge ownership and formed-profile OD hardening."""
+from tools.compact_rules import read_rule_text, module_view
 from pathlib import Path
 import subprocess
 import sys
@@ -42,7 +43,7 @@ def test_v432_rule_tokens():
         "skills/lispcad/core/CROSS_FEATURE_VALIDATION.md",
         "regression/qa/521006-18_V4_32_APPROVED.md",
     ]
-    text = "\n".join((ROOT / p).read_text(encoding="utf-8") for p in paths)
+    text = "\n".join(read_rule_text(p, ROOT) for p in paths)
     for token in [
         "BEND_ATTACHMENT_EDGE_LOCKED",
         "NEAREST_VIEW_EDGE",

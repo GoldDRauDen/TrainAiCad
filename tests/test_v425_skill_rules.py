@@ -1,4 +1,5 @@
 """V4.25 DATA-first / manufacturing-second source-preservation hardening."""
+from tools.compact_rules import read_rule_text, module_view
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -47,7 +48,7 @@ def test_v425_rule_tokens_and_52100120_regression():
         "regression/tools/check_521001_20_v425.py",
         "skills/lispcad/router/RULE_COVERAGE.yaml",
     ]
-    text = "\n".join((ROOT / p).read_text(encoding="utf-8") for p in paths)
+    text = "\n".join(read_rule_text(p, ROOT) for p in paths)
     for token in [
         "RAW_DATA_SNAPSHOT",
         "PHYSICAL_DATA_BASELINE",

@@ -1,3 +1,8 @@
+# 02 — DIMENSION & SOURCE EVIDENCE | Production rules V4.34
+
+> Consolidated modules; original source path identifies section and preserves rule provenance. No guessed coordinates or dimensions.
+
+<!-- BEGIN MODULE: skills/lispcad/core/DATUM_DIMENSION.md -->
 ## V4.34 typed witness node closure (2026-10-13)
 For every **proved HOLE/SLOT member** in V4.34, declare `witness_required_feature_ids` and a `feature_witness_graph` for both X and Y. Every used dimension edge records a physical `from_node`/`to_node`, endpoint types (`OUTER_EDGE`, `HOLE_CENTER`, `SLOT_MIDPOINT`, `ARC_CENTER`, `TANGENT_POINT`, ...), signed axis/value, dimension kind, source page and a verifiable PDF crop/witness ref. `tools/dimension_witness.py` independently solves signed paths, rejects disconnected graphs/contradictory cycles, and cross-checks declared canonical CIRCLE coordinates. A claim `endpoint_verified=true` is not source proof by itself: source QA must inspect the crop and confirm the physical endpoints. 521013-21/059759 negative regression: taking 265 from the external RIGHT_EDGE rather than the RIGHT_HOLE_CENTER adds 10 mm to the group; sample/reference geometry cannot supply a missing witness. Old V4.31 jobs retain compatibility while V4.34 imposes the stronger evidence record.
 
@@ -174,3 +179,395 @@ $$X_{\text{mid}} = X_{\text{nominal}} + \frac{\text{Tolerance}_{\text{upper}} + 
 - **No bounding-box substitution**: A known overall width/height may be reported as a bounding extent, but MUST NOT be emitted as a closed rectangular outline unless the contour trace proves that all four rectangle edges actually exist.
 - **Color Code 6 (Magenta)**: Assign DXF Group `(62 . 6)` to any line, circle, or polyline whose size/position was estimated or ambiguous.
 - **Adjacent Text Annotation**: Add a `TEXT` entity on DXF Group `(62 . 6)` immediately adjacent to the ambiguous feature (e.g., `"(ESTIMATED GEOMETRY - CHECK DRAWING)"` or `"(M6 OR M8)"`).
+<!-- END MODULE: skills/lispcad/core/DATUM_DIMENSION.md -->
+
+---
+
+<!-- BEGIN MODULE: references/SOURCE_MANUFACTURING_NOTE_CENSUS.md -->
+# SOURCE_MANUFACTURING_NOTE_CENSUS — V4.29 source-instruction closure gate
+
+**Approved:** 2026-10-05 from calibration/audit job `521005-13`.
+
+## Purpose
+
+Prevent a manufacturing feature from disappearing because its evidence is carried primarily by a printed/handwritten instruction rather than by visually prominent geometry.
+
+This is an always-on source-reading gate. It adds no Nobi, material, tolerance, hole, slit-length, or bend-position formula.
+
+## 1. SOURCE_MANUFACTURING_NOTE_CENSUS
+
+Before final preliminary Feature Census, inspect every production-affecting Japanese/English printed note, handwritten note, revision note, leader, witness, and locally scoped instruction.
+
+For every potentially production-affecting note retain an evidence-equivalent record:
+
+`note_text | evidence_type | code_scope | target/leader/witness | candidate_family | quantity | explicit_value | location/direction evidence | resolution`
+
+Allowed `resolution` states include:
+- `ROUTED`
+- `CANCELLED`
+- `IRRELEVANT_TO_MANUFACTURING`
+- `UNRESOLVED`
+
+A note may not disappear merely because its feature is small, edge-open, visually similar to CUT geometry, or absent from OCR output.
+
+## 2. SOURCE_NOTE_TO_FAMILY gate
+
+A source instruction that proves or plausibly indicates a known manufacturing family must affect Feature Census before that family may be marked `NO`.
+
+- Identity and scope proved -> route the family as `YES`.
+- A manufacturing instruction exists but identity, scope, quantity, host, value, location, or direction remains materially unresolved -> route the relevant family as `UNKNOWN` until source exhaustion.
+- `NO` is allowed only after applicable manufacturing notes have been resolved as cancelled, irrelevant to that family, or positively shown to belong elsewhere.
+
+`UNKNOWN != NO`; unresolved notes must not be suppressed to avoid loading a route.
+
+## 3. CUSTOM_SOURCE_SLIT
+
+`スリット`, `SLIT`, or an equivalent explicit slit instruction can define a **custom source-instructed slit**.
+
+Rules:
+
+1. **Instruction required for this custom branch.** Do not create a custom anti-deformation slit merely because a bend exists, because a location looks mechanically useful, or because an approved sample has one.
+2. The slit value is drawing-specific. `スリット 8` means the controlling explicit slit value for that scoped feature is `8` in that drawing; `8` is not a universal slit size.
+3. Quantity, edge/host, position, direction, and relation to BEND come from source instruction/witness/geometry. Slits are often used near bend regions to reduce deformation, but that mechanical purpose does **not** prove a centerline location.
+4. Never hardcode `BEND_CENTER -> SLIT`, and never copy coordinates from a reference DXF into a new drawing.
+5. When an explicit source slit dimension controls the custom feature, preserve that value. Do not replace it with a generic relief formula such as `t+0.2` or `t*sin(theta)`.
+6. If `スリット/SLIT` identity is proved but the exact construction remains incomplete, keep the feature routed and FLAG only the unresolved fields; do not delete the family.
+7. Existing separately-triggered mechanisms such as crossing-bend relief, opposite-fold `R=t`, BOXMET slit/relief, or other approved relief families remain independent. This custom-instruction gate does not disable or redefine their trigger rules.
+
+## 4. SOURCE_NOTE_FEATURE_COMPLETENESS
+
+Before production PASS, close:
+
+`SOURCE MANUFACTURING NOTES -> FEATURE CENSUS -> LOADED ROUTES -> CANONICAL FAMILY -> SERIALIZED DXF -> READ-BACK`
+
+Any source-active manufacturing instruction that has no resolved family/output status is a production FAIL/FLAG.
+
+For source-instructed custom slit, validate at minimum:
+- source instruction scope;
+- slit family identity;
+- quantity when specified/proved;
+- explicit size/value when specified;
+- host edge/face and direction;
+- source-proved relationship to BEND, if any;
+- canonical representation;
+- serialized physical geometry;
+- saved-DXF read-back.
+
+## 5. 521005-13 regression intent
+
+For `058155` and `058156`, the source carries `スリット 8`; the approved sample confirms two edge-open slit features for each code. The job-specific value `8` and approved local coordinates belong only to that regression.
+
+The generalized lesson is only:
+
+**Do not lose an explicitly instructed manufacturing slit during source-note census/routing. Do not invent its size or position when the source does not specify them.**
+<!-- END MODULE: references/SOURCE_MANUFACTURING_NOTE_CENSUS.md -->
+
+---
+
+<!-- BEGIN MODULE: references/SOURCE_FEATURE_GROUP_CLOSURE.md -->
+# SOURCE_FEATURE_GROUP_CLOSURE — leader/callout group closure + reference parameter identity
+
+**Status:** USER APPROVED 2026-10-05 from calibration job `521005-05`.
+
+## Purpose
+
+Prevent same-family features from being collapsed into one dimension graph, and prevent false PDF/reference conflicts caused by comparing different physical parameters or different witness frames.
+
+This reference is always-on source parsing before final preliminary Feature Census. It adds no hole size, Nobi, material, tolerance, or slit formula.
+
+## 1. FEATURE_FAMILY versus SOURCE_FEATURE_GROUP
+
+A **FEATURE_FAMILY** is the manufacturing class such as `HOLE`, `TAP`, `SLOT_STRAIGHT`, `CHAMFER_FILLET`, `SLIT_RELIEF`, etc.
+
+A **SOURCE_FEATURE_GROUP** is one source-scoped cluster controlled by its own callout/leader/quantity and dimension ownership. Two groups may have the same family and the same nominal size and still remain separate groups.
+
+Required group record:
+
+`group_id | family | source callout | quantity | leader/target scope | source view | host face | X witness graph | Y witness graph | local datum | size semantics | evidence status`
+
+Do not merge source groups merely because they share:
+- the same diameter/thread/slot size;
+- a continuous or nearby X dimension string;
+- visual alignment;
+- projection proximity;
+- a common family label;
+- a convenient aggregate count.
+
+### Group closure rule
+
+Close each source group independently:
+
+`leader/callout -> quantity -> feature size -> X witnesses -> Y witnesses -> datum -> host face -> canonical members`.
+
+A dimension string may be shared by multiple groups only where the actual witness graph proves that shared ownership. A shared X chain does **not** authorize borrowing another group's Y chain, and vice versa.
+
+`GROUP_COUNT_CLOSURE` is mandatory before aggregate family count closure. If the final total count is numerically correct but one source group is short and another is over-produced, the result is FAIL.
+
+### 057862 regression intent
+
+For calibration code `057862`, the source contains separate `2-Ø9` left, `6-Ø9`, and `2-Ø9` right source groups. They are the same broad HOLE/Ø9 family but have independent leader/quantity/dimension ownership. Those job-specific groups are regression evidence only; they do not establish universal coordinates.
+
+## 2. DETAIL_VIEW_MAPPING
+
+The paper location of a Detail/Section/Auxiliary view may be arbitrary. Its placement on the sheet is not a manufacturing coordinate.
+
+Use the detail identifier/leader and projection/source mapping to bind the detail back to the actual physical target. Dimensions inside the detail retain their own witness endpoints and local feature ownership. Do not transfer the detail's page position into part geometry.
+
+## 3. CUSTOMER_CONFIRMATION_PENDING boundary
+
+A customer/sample/reference DXF does not automatically resolve a source value that is explicitly or genuinely `CUSTOMER_CONFIRMATION_PENDING`.
+
+- Keep every independently proved geometry exact.
+- Keep the unresolved source field locally FLAGGED.
+- A TRAIN_REFERENCE may diagnose likely intent, but it may not promote the pending value into production authority unless the user/customer explicitly confirms that value or the active source authority itself resolves it.
+
+Calibration examples `057861` and the `8-R5` corner family on `057864` remain local customer-confirmation cases; their sample geometry must not become a universal or silent source substitute.
+
+## 4. SAME_PHYSICAL_PARAMETER_BEFORE_REFERENCE_CONFLICT
+
+Before declaring a PDF/source value to conflict with customer DATA or an approved/sample/reference DXF, prove that both measurements describe the **same physical parameter**.
+
+At minimum lock:
+
+`code + source group + host face + physical witness A + physical witness B + dimension semantics + inside/outside state + source/local frame + units`.
+
+Only after those fields match may a numeric difference be classified as an actual source/reference parameter conflict.
+
+Do not compare:
+- an inside bend dimension with a measurement from an outside/free edge;
+- a formed-face local dimension with a global-flat coordinate;
+- a hole-center distance with a contour-edge distance;
+- a theoretical-sharp dimension with the trimmed physical R/C bbox;
+- two visually similar values whose witness endpoints differ.
+
+If parameter identity is not closed, re-trace the source/reference witnesses. Use `UNVERIFIED`/local FLAG as applicable; do not report `SOURCE_CONFLICT` merely because two numbers differ.
+
+### 057865 regression intent
+
+For calibration code `057865`, `10.5 / 8.5` are inside bend dimensions. A reference measurement of `10.0 / 8.0` taken from an outside edge is not the same physical parameter. The earlier comparison was an `AI_RULE_MISAPPLICATION`, not evidence that the source and sample disagreed.
+
+## 5. Feature Census interaction
+
+Before a family may be `NO`, first determine whether source leaders/callouts imply one or more unresolved source groups. A proved group makes the family `YES`; an apparent group with unresolved family/scope/quantity/host/datum makes the relevant family at least `UNKNOWN`.
+
+For bent parts, if a bend-end/corner junction may require a relief decision but the signed bend-end offset has not yet been closed, retain `SLIT_RELIEF = UNKNOWN` until the routed 90-degree bend-end relief gate is evaluated. Do not require the literal word `SLIT` for topology-triggered relief mechanisms already approved elsewhere.
+
+## 6. QA
+
+Before production PASS:
+
+- every active source group has a closed quantity and datum/witness record;
+- no group borrows an unproved X/Y chain from another group;
+- aggregate family count equals the sum of independently closed groups;
+- Detail views map to their physical target rather than page position;
+- customer-pending fields remain pending unless source/user authority resolves them;
+- every claimed source/reference numeric conflict passes `SAME_PHYSICAL_PARAMETER_BEFORE_REFERENCE_CONFLICT`.
+<!-- END MODULE: references/SOURCE_FEATURE_GROUP_CLOSURE.md -->
+
+---
+
+<!-- BEGIN MODULE: references/PART_IDENTITY_GRAPH.md -->
+# PART_IDENTITY_GRAPH — V4.33
+
+**Status:** USER APPROVED / PUSH 2026-10-07.
+
+## 1. Scope
+
+Use when one drawing/detail/DATA cluster contains multiple barcodes/codes, constituent marks such as ①/②, weld/assembly relationships, or multiple candidate manufacturing parts.
+
+The purpose is to prevent assigning one whole view/DATA bundle to multiple part codes without evidence.
+
+## 2. Required graph
+
+Persist an evidence-equivalent mapping:
+
+```text
+BARCODE/CODE
+<-> PART_ID / CONSTITUENT_ID
+<-> SOURCE_VIEW(S)
+<-> DATA_CLUSTER(S)
+<-> MATERIAL / THICKNESS
+<-> ASSEMBLY / WELD RELATION
+```
+
+Each edge requires source provenance.
+
+A drawing can show an assembly and its child parts together; paper proximity does not merge them into one manufacturing part.
+
+## 2A. Assembly datum ownership and indirect feature positions
+
+When an assembly/installation view provides the only route to a child part's hole, slot or KEGAKI position, keep its shared **assembly-frame dimension witnesses** distinct from the child's physical manufacturing geometry. Before flagging that child feature as undimensioned:
+
+- prove each participating barcode/part code, target feature, host face and related parent/child part;
+- resolve physical assembly contact/attachment and witness identities, not proximity of views or nominal symmetry;
+- hand the proved, signed relation graph to `skills/lispcad/core/DATUM_DIMENSION.md` §4.2.2b, then apply any required face-to-flat transform;
+- audit each derived feature from the child's own datum with the source evidence and assembly-fit closure;
+- retain unresolved physical relationships as local FLAG. Do not copy reference/sample coordinates or silently duplicate child contours under the parent code.
+
+The graph solves *positions*, not part ownership; it cannot replace PART_IDENTITY_GRAPH or create a manufacturing feature not actually called out in the source.
+
+## 2B. Welded parent/child contact ownership
+
+For an assembly or A/B detail, identify which code owns the main
+manufacturing sheet, which constituent is mounted/welded to it, and
+which actual physical face hosts each proved contact. Preserve the
+assembly-view ID and contact-site provenance in the independent
+WELD_SITE_KEGAKI_CLOSURE ledger. A side-positioning view beside a
+part is not ignorable merely because its curves are not CUT.
+The KH851 customer exception requires marking proved weld sites even
+if a KEGAKI callout is absent. Do not transfer the site to an
+adjacent barcode solely by paper proximity.
+
+## 3. Collision gate
+
+Raise `PART_IDENTITY_COLLISION` when:
+
+- two independent codes receive the same complete DATA/source-view bundle;
+- a constituent marker is present but unowned;
+- a view is assigned to a code only because it is nearest that barcode;
+- material/thickness or explicit part identity conflicts with the proposed ownership;
+- a welded child is dropped because its geometry appears inside an assembly drawing.
+
+Shared assembly views are allowed only with an explicit shared-view role; manufacturing child geometry must still be separated by proved ownership.
+
+## 4. Output behavior
+
+If identity is unresolved but source views are identifiable, preserve the views under REVIEW ONLY and FLAG the ownership question. Do not duplicate the same manufacturing geometry under multiple codes as if each were independently solved.
+
+If only one local ownership is unresolved, keep other proved parts/members executable.
+
+## 5. Non-generalization
+
+Constituent symbols, numbering style and weld notation identify candidate ownership structure only within the actual drawing. Do not hardcode a universal meaning for a particular circled number, page position or barcode order without source evidence.
+<!-- END MODULE: references/PART_IDENTITY_GRAPH.md -->
+
+---
+
+<!-- BEGIN MODULE: references/HOLISTIC_ENGINEERING_CHALLENGE.md -->
+# HOLISTIC_ENGINEERING_CHALLENGE — V4.33
+
+**Status:** USER APPROVED / PUSH 2026-10-07.
+
+## 1. Purpose
+
+This is a pre-canonical engineering challenge. It does not replace feature-specific rules, FACE_GRAPH proof, source-member completeness, fold-back, or saved-DXF read-back.
+
+Its purpose is to catch a different failure mode: the AI may build a self-consistent but incomplete or wrongly interpreted source model and then pass downstream checks against its own bad ledger.
+
+The challenge asks whether the current interpretation is mechanically plausible and whether all available source evidence has actually been consumed before the job is allowed to proceed, downgrade to VIEWS_ONLY, or ask the customer.
+
+## 2. Mandatory position in the flow
+
+Run after the first source-based solve and routed feature checks, but before final canonical serialization:
+
+```text
+SOURCE
+-> census / groups / members / identity
+-> first solve
+-> HOLISTIC_ENGINEERING_CHALLENGE
+   -> anomaly? re-open source and re-solve
+   -> no anomaly? continue
+-> local FLAG or proved flat / justified VIEWS_ONLY
+-> FINAL_ENGINEERING_SANITY_REVIEW
+-> canonical
+-> DXF
+```
+
+The challenge is source-first. A later sample/reference must not be used to retroactively make this stage appear solved.
+
+## 3. Mandatory anomaly triggers
+
+At minimum raise `ENGINEERING_ANOMALY_DETECTED` when any applicable condition is true:
+
+- source contains substantial physical DATA or multiple proved source views while the persisted proved-source-member inventory is empty or implausibly small;
+- a source feature family is YES/UNKNOWN but no corresponding source group/member or explicit drawing-only/canceled classification exists;
+- a printed/handwritten flat arithmetic or Nobi chain closes a meaningful part dimension while the part is downgraded directly to VIEWS_ONLY without testing the corresponding formed topology;
+- relevant source views/faces/primitives were harvested but have no downstream role and no explicit drawing-only/duplicate/helper classification;
+- two declared part codes or constituent identifiers are assigned the same whole source bundle without proved shared-assembly scope;
+- a dimension classified as a shared bend-edge length is also used as a whole face/blank extent without same-physical-parameter proof;
+- a local unresolved feature causes the whole part to become VIEWS_ONLY even though a defensible flat exists independently;
+- VIEWS_ONLY is selected before every source-supported FACE_GRAPH candidate has been tested through the routed constraints;
+- the output is materially simpler than the source inventory without a member-by-member explanation;
+- a PASS depends only on ledger self-equality while upstream census/inventory/ledger cardinalities or ownership disagree.
+- source assembly/welding views were available but no independent weld-site inventory or explicit negative disposition exists, or a proved KH851 weld site has no corresponding KEGAKI member/local FLAG.
+
+An anomaly is not proof that a particular alternative answer is correct. It is a mandatory reason to re-open the source and test the interpretation.
+
+## 3A. Assembly-derived feature-position challenge
+
+For assemblies, a hole, slot or KEGAKI whose local drawing lacks a direct coordinate is not automatically source-ambiguous. If related source assembly views and other parts' positions can provide a physical dimension path, record an `assembly_indirect_candidate` and attempt the §4.2.2b ASSEMBLY_DATUM_GRAPH before leaving that member FLAGGED/VIEWS_ONLY.
+
+Retain the candidate in `assembly_indirect_candidates` and a `assembly_datum_traces` entry including source-backed constraint graph, witness nodes, source frame, computed offset or specific failed constraint and status. The L3 source/canonical guard must recompute a declared proved offset and reject fabricated `PASS`, inconsistent cycles, unsupported attachment or a derived coordinate left FLAGGED. If no source-proved path exists, preserve the feature FLAG and ask for the missing mate/witness datum.
+
+No assembly evidence means no extra constraint: the existing direct datum and single-part workflow remains unchanged.
+
+## 4. Unresolved-cause analysis
+
+Before a part may remain unresolved, persist an evidence-equivalent record:
+
+```text
+UNRESOLVED_OBJECT
+CANDIDATES
+EVIDENCE_USED
+EVIDENCE_NOT_YET_USED
+CONSTRAINT_RESULT_PER_CANDIDATE
+TRUE_REMAINING_DOF
+BLOCKER_CLASS
+```
+
+For bent/multi-face parts, candidate attachment/order/sign hypotheses must be tested against all applicable formed/profile topology, view correspondence, dimension witnesses, DATA physical curves, feature ownership, handwritten arithmetic and fold-back constraints.
+
+Do not write only "bend unclear", "attachment unknown", or "complex part".
+
+## 5. Blocker vocabulary
+
+Use the most specific class supported by evidence:
+
+- `TRUE_SOURCE_AMBIGUITY`: two or more materially different interpretations remain source-compatible after source exhaustion.
+- `AI_INTERPRETATION_GAP`: source evidence exists but the current solver has not established a unique solution; do not blame the source.
+- `SOURCE_MEMBER_CENSUS_GAP`: relevant source geometry/families have not been fully harvested/classified.
+- `PART_IDENTITY_GAP`: barcode/code/constituent/view/DATA ownership is unresolved.
+- `GEOMETRY_DECODE_GAP`: source physical curves exist but decoding/classification is incomplete.
+- `ROUTING_COVERAGE_GAP`: a detected family has no current repo route.
+- `CUSTOMER_CONFIRMATION_PENDING`: the source/user explicitly leaves a field pending.
+
+`AI_INTERPRETATION_GAP` is not interchangeable with `TRUE_SOURCE_AMBIGUITY`.
+
+## 6. VIEWS_ONLY is a last executable fallback, not a text-only stop
+
+If no defensible flat exists after source exhaustion and this challenge, but independently proved source/orthographic views exist, execute the current DRAW -> FLAG -> CONFIRM policy:
+
+- redraw/preserve every independently proved source-view member needed to represent the unresolved part;
+- preserve physical customer-DATA curves instead of replacing them with simplified analytic lookalikes;
+- keep views as separate labeled subgroups under the correct code;
+- include all proved holes/slots/R/C/marks represented in those source views;
+- mark only the unresolved relationship/topology/dimension as FLAGGED;
+- set part status VIEWS_ONLY and whole composite REVIEW ONLY — NO CUT.
+
+Hard fail `VIEWS_ONLY_SOURCE_VIEW_COMPLETENESS` when proved source-view members are omitted from the VIEWS_ONLY canonical representation.
+
+## 7. Local uncertainty stays local
+
+When a unique flat is proved but one relief, hole, slit, datum or other feature remains unresolved, retain the proved flat and proved members. FLAG/PREVIEW only the unresolved local member.
+
+Do not use one local uncertainty to downgrade the whole part to VIEWS_ONLY.
+
+## 8. Final engineering sanity review
+
+Immediately before canonical serialization, ask again:
+
+- Does every source physical/view member have a downstream role?
+- Does every used dimension/note/Nobi have a semantic owner?
+- Is any source view silently unused?
+- Are any two codes suspiciously sharing the same complete source bundle?
+- Is any shared bend-edge dimension being used as an unrelated face/blank extent?
+- Is any output unexpectedly simple compared with the source inventory?
+- Is any VIEWS_ONLY status still carrying an untested source-supported candidate?
+- Is any PASS merely self-consistent with an incomplete ledger?
+
+Any affirmative result returns the job to source interpretation; it does not authorize guessing.
+
+## 9. Non-generalization
+
+This gate creates no drawing-specific geometry, no new Nobi formula, and no rule that a complex drawing must have a complex flat. It only requires evidence accounting, challenge/re-solve behavior and an executable source-view fallback when the flat truly remains unresolved.
+<!-- END MODULE: references/HOLISTIC_ENGINEERING_CHALLENGE.md -->

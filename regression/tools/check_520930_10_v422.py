@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import sys as _compact_sys
+from pathlib import Path as _CompactPath
+_compact_sys.path.insert(0, str(_CompactPath(__file__).resolve().parents[2] / "tools"))
+from compact_rules import module_view, read_rule_text
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -7,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 def read(rel: str) -> str:
-    return (ROOT / rel).read_text(encoding="utf-8")
+    return read_rule_text(rel, ROOT)
 
 def allow_views_only(total_relevant_data: int, harvested: int, family_inventory_complete: bool,
                      graph_attempts_complete: bool, unresolved_after_exhaustion: bool) -> bool:

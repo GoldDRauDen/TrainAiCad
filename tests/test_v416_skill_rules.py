@@ -1,4 +1,5 @@
 """V4.16 production-skill regression."""
+from tools.compact_rules import module_view
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -18,10 +19,10 @@ def test_v416_preserved_and_routing_retained():
     assert "BOXMET-style four-flange box slit relief" in skill
     assert "BOXMET_SLIT_RELIEF.md" in entry
 def test_modules():
-    assert "V4.16 Face-First Dimension Ownership" in (ROOT/"skills/lispcad/core/DATUM_DIMENSION.md").read_text(encoding="utf-8")
-    assert "V4.16 Explicit R/C family quantity closure" in (ROOT/"skills/lispcad/features/CHAMFER_RADIUS.md").read_text(encoding="utf-8")
-    assert "V4.16 BOXMET-style four-flange box routing" in (ROOT/"skills/lispcad/modes/BEND_UNFOLD.md").read_text(encoding="utf-8")
-    assert "Trigger / no-trigger gate" in (ROOT/"references/BOXMET_SLIT_RELIEF.md").read_text(encoding="utf-8")
+    assert "V4.16 Face-First Dimension Ownership" in (module_view("skills/lispcad/core/DATUM_DIMENSION.md", ROOT)).read_text(encoding="utf-8")
+    assert "V4.16 Explicit R/C family quantity closure" in (module_view("skills/lispcad/features/CHAMFER_RADIUS.md", ROOT)).read_text(encoding="utf-8")
+    assert "V4.16 BOXMET-style four-flange box routing" in (module_view("skills/lispcad/modes/BEND_UNFOLD.md", ROOT)).read_text(encoding="utf-8")
+    assert "Trigger / no-trigger gate" in (module_view("references/BOXMET_SLIT_RELIEF.md", ROOT)).read_text(encoding="utf-8")
 def test_executable():
     cp=subprocess.run([sys.executable,str(ROOT/"regression/tools/check_520801_04_v416.py")],cwd=ROOT,text=True,capture_output=True,check=True)
     assert cp.stdout.startswith("PASS:")

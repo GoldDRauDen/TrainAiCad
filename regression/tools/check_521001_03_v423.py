@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
+import sys as _compact_sys
+from pathlib import Path as _CompactPath
+_compact_sys.path.insert(0, str(_CompactPath(__file__).resolve().parents[2] / "tools"))
+from compact_rules import module_view, read_rule_text
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
 import os
 from pathlib import Path
 ROOT = Path(os.environ.get("TRAINAICAD_ROOT", Path(__file__).resolve().parents[2]))
-def read(rel): return (ROOT / rel).read_text(encoding="utf-8")
+def read(rel): return read_rule_text(rel, ROOT)
 def missing_source_physical(src, can, canceled=()): return sorted((set(src)-set(canceled))-set(can))
 def extra_canonical_physical(src, can, allowed=()): return sorted(set(can)-(set(src)|set(allowed)))
 def pair_matches(a,e,tol=1e-9): return len(a)==len(e) and all(abs(x-y)<=tol for x,y in zip(a,e))

@@ -3,6 +3,7 @@
 Passing these tests cannot certify a regenerated production DXF; these
 tests are arithmetic, scope and portable-document checks only.
 """
+from tools.compact_rules import module_view
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -60,13 +61,13 @@ def test_strict_derived_comparison_tolerance_not_source_tolerance():
 
 def test_new_nonduplicate_rules_in_portable_and_modules():
     skill = CURRENT.read_text(encoding="utf-8")
-    reading = (ROOT / "skills/lispcad/core/DRAWING_READING.md").read_text(
+    reading = (module_view("skills/lispcad/core/DRAWING_READING.md", ROOT)).read_text(
         encoding="utf-8"
     )
-    bend = (ROOT / "skills/lispcad/modes/BEND_UNFOLD.md").read_text(
+    bend = (module_view("skills/lispcad/modes/BEND_UNFOLD.md", ROOT)).read_text(
         encoding="utf-8"
     )
-    validation = (ROOT / "skills/lispcad/core/VALIDATION.md").read_text(
+    validation = (module_view("skills/lispcad/core/VALIDATION.md", ROOT)).read_text(
         encoding="utf-8"
     )
     for key in (

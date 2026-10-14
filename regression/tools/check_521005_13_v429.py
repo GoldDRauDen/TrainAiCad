@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import sys as _compact_sys
+from pathlib import Path as _CompactPath
+_compact_sys.path.insert(0, str(_CompactPath(__file__).resolve().parents[2] / "tools"))
+from compact_rules import module_view, read_rule_text
 """V4.29 521005-13 source-instructed custom SLIT regression."""
 from math import isclose
 from pathlib import Path
@@ -37,10 +41,10 @@ def test_job_specific_numeric_facts():
 
 def test_source_note_rule_wiring():
     root = Path(__file__).resolve().parents[2]
-    ref = (root / "references/SOURCE_MANUFACTURING_NOTE_CENSUS.md").read_text(encoding="utf-8")
+    ref = (module_view("references/SOURCE_MANUFACTURING_NOTE_CENSUS.md", root)).read_text(encoding="utf-8")
     census = (root / "skills/lispcad/router/FEATURE_CENSUS.md").read_text(encoding="utf-8")
-    slit = (root / "skills/lispcad/features/SLIT_RELIEF.md").read_text(encoding="utf-8")
-    cross = (root / "skills/lispcad/core/CROSS_FEATURE_VALIDATION.md").read_text(encoding="utf-8")
+    slit = (module_view("skills/lispcad/features/SLIT_RELIEF.md", root)).read_text(encoding="utf-8")
+    cross = (module_view("skills/lispcad/core/CROSS_FEATURE_VALIDATION.md", root)).read_text(encoding="utf-8")
     reg = (root / "regression/qa/521005-13_V4_29_APPROVED.md").read_text(encoding="utf-8")
 
     text = "\n".join([ref, census, slit, cross, reg])

@@ -1,4 +1,5 @@
 """V4.30 source-feature-group, reference-parameter and 90-degree bend-end relief hardening."""
+from tools.compact_rules import module_view, read_rule_text
 from pathlib import Path
 import subprocess
 import sys
@@ -53,7 +54,7 @@ def test_v430_rule_tokens_and_boundaries():
         "regression/qa/521005-05_V4_30_APPROVED.md",
         "regression/tools/check_521005_05_v430.py",
     ]
-    text = "\n".join((ROOT / p).read_text(encoding="utf-8") for p in paths)
+    text = "\n".join(read_rule_text(p, ROOT) for p in paths)
     for token in [
         "RUNTIME_AUTHORITY_GUARD",
         "LEGACY_COMPATIBILITY_TEXT",
@@ -76,7 +77,7 @@ def test_v430_rule_tokens_and_boundaries():
     ]:
         assert token in text
 
-    bend_ref = (ROOT / "references/BEND_EDGE_RELIEF_90.md").read_text(encoding="utf-8")
+    bend_ref = (module_view("references/BEND_EDGE_RELIEF_90.md", ROOT)).read_text(encoding="utf-8")
     assert "Case A — `S > 0`" in bend_ref
     assert "NO bend-relief slit" in bend_ref
     assert "There is no active `T/2` threshold" in bend_ref

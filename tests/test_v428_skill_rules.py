@@ -1,4 +1,5 @@
 """V4.28 face-creation / local bend-domain guardrails."""
+from tools.compact_rules import read_rule_text, module_view
 from pathlib import Path
 
 import yaml
@@ -33,7 +34,7 @@ def test_v428_rule_tokens_and_regression_assets():
         "regression/qa/521005-02_V4_28_APPROVED.md",
         "regression/tools/check_521005_02_v428.py",
     ]
-    text = "\n".join((ROOT / p).read_text(encoding="utf-8") for p in paths)
+    text = "\n".join(read_rule_text(p, ROOT) for p in paths)
     for token in [
         "FACE_CREATION_REQUIRES_BEND_EVIDENCE",
         "SAME_FACE_FIRST",

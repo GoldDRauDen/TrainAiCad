@@ -1,4 +1,5 @@
 """V4.26 DXF source physical-curve decoding hardening."""
+from tools.compact_rules import read_rule_text, module_view
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -41,7 +42,7 @@ def test_v426_bulge_hard_gate_tokens_and_regression_wiring():
         "regression/tools/check_521001_19_v426.py",
         "skills/lispcad/router/RULE_COVERAGE.yaml",
     ]
-    text = "\n".join((ROOT / p).read_text(encoding="utf-8") for p in paths)
+    text = "\n".join(read_rule_text(p, ROOT) for p in paths)
     for token in [
         "DXF_PHYSICAL_CURVE_DECODE_BEFORE_CENSUS",
         "POLYLINE_BULGE_IS_ARC",

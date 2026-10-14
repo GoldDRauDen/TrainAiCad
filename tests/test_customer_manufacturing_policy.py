@@ -1,4 +1,5 @@
 """Approved 2026-10-12 manufacturing and numeric customer-code routing."""
+from tools.compact_rules import module_view
 from pathlib import Path
 import sys
 import re
@@ -53,13 +54,13 @@ def test_data_authority_override_is_explicit_and_hole_qa_is_retained():
     assert resolve_rules(census(829))["customer_rules"]["data_pdf_policy"] == "DATA_NO_DIM_COMPARE"
     assert resolve_rules(census(240))["customer_rules"]["data_pdf_policy"] == "DATA_NO_DIM_COMPARE"
     assert resolve_rules(census(395))["customer_rules"]["data_pdf_policy"] == "PDF_PRIORITY"
-    policy = (ROOT / "references/CAD_CUSTOMER_POLICY.md").read_text(encoding="utf-8")
+    policy = (module_view("references/CAD_CUSTOMER_POLICY.md", ROOT)).read_text(encoding="utf-8")
     assert "hole" in policy.lower() and "REVIEW" in policy
     assert "NC is deferred" in policy
 
 
 def test_646_standard_tooling_and_review_boundaries():
-    txt = (ROOT / "references/AIKOKU_646_NOBI.md").read_text(encoding="utf-8")
+    txt = (module_view("references/AIKOKU_646_NOBI.md", ROOT)).read_text(encoding="utf-8")
     for expected in ("|4.5|3|V25|7.84|17.8|", "|0.8|0.6|V8|1.68|",
                      "|5|3|V40|10.20|", "7.48", "7.72", "non-90°"):
         assert expected in txt
@@ -67,8 +68,8 @@ def test_646_standard_tooling_and_review_boundaries():
 
 
 def test_nobi_and_laser_regressions_from_approved_workbook():
-    n = (ROOT / "references/NOBI_TABLES.md").read_text(encoding="utf-8")
-    r = (ROOT / "references/MATERIAL_RULES.md").read_text(encoding="utf-8")
+    n = (module_view("references/NOBI_TABLES.md", ROOT)).read_text(encoding="utf-8")
+    r = (module_view("references/MATERIAL_RULES.md", ROOT)).read_text(encoding="utf-8")
     assert "| **3.0** | 1801 ~ 2400 | V40 | 7.84 | 7.80 |" in n
     assert "without documented 2B/#1 uses **2B**" in n
     assert "OUTER material perimeter" in r and "interior holes" in r
@@ -80,10 +81,10 @@ def test_new_reference_routes_cover_hole_and_fine_tap():
     ps = resolve_rules(x)["rule_paths"]
     assert "references/THREAD_FINE_PILOT_TABLE.md" in ps
     assert "references/COUNTERSINK_COUNTERBORE.md" in ps
-    fine = (ROOT / "references/THREAD_FINE_PILOT_TABLE.md").read_text(encoding="utf-8")
+    fine = (module_view("references/THREAD_FINE_PILOT_TABLE.md", ROOT)).read_text(encoding="utf-8")
     assert "| M8×1 | 7 |" in fine
     assert "| M12×1.25 | 10.8 |" in fine
-    holes = (ROOT / "references/COUNTERSINK_COUNTERBORE.md").read_text(encoding="utf-8")
+    holes = (module_view("references/COUNTERSINK_COUNTERBORE.md", ROOT)).read_text(encoding="utf-8")
     assert "| M6 | 6.6 | 11.0 | 12.5 |" in holes
 
 
@@ -117,7 +118,7 @@ def test_bend_feasibility_is_warning_only_and_routed_on_nobi():
     x = census(646, "BEND")
     x["features"]["NOBI"]["state"] = "YES"
     assert "references/BEND_TOOLING_FEASIBILITY.md" in resolve_rules(x)["rule_paths"]
-    doc = (ROOT / "references/BEND_TOOLING_FEASIBILITY.md").read_text(encoding="utf-8")
+    doc = (module_view("references/BEND_TOOLING_FEASIBILITY.md", ROOT)).read_text(encoding="utf-8")
     assert "| SUS | 3 | V40 | 28.4 | 29.6 |" in doc
     assert "| SS | 4.5 | V25 | 17.8 | 26 |" in doc
     assert "| AL | 4 | V40 | 27.4 | - |" in doc

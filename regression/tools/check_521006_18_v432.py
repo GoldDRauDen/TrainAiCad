@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import sys as _compact_sys
+from pathlib import Path as _CompactPath
+_compact_sys.path.insert(0, str(_CompactPath(__file__).resolve().parents[2] / "tools"))
+from compact_rules import module_view, read_rule_text
 """V4.32 521006-18 bend attachment and formed-profile OD regression."""
 from math import isclose
 from pathlib import Path
@@ -71,11 +75,11 @@ def test_attachment_evidence_contract():
 
 def test_rule_wiring():
     root = Path(__file__).resolve().parents[2]
-    edge = (root / "references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md").read_text(encoding="utf-8")
-    od = (root / "references/FORMED_PROFILE_OD_MEASUREMENT.md").read_text(encoding="utf-8")
-    face = (root / "references/FACE_GRAPH_UNFOLD_PROTOCOL.md").read_text(encoding="utf-8")
-    datum = (root / "skills/lispcad/core/DATUM_DIMENSION.md").read_text(encoding="utf-8")
-    cross = (root / "skills/lispcad/core/CROSS_FEATURE_VALIDATION.md").read_text(encoding="utf-8")
+    edge = (module_view("references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md", root)).read_text(encoding="utf-8")
+    od = (module_view("references/FORMED_PROFILE_OD_MEASUREMENT.md", root)).read_text(encoding="utf-8")
+    face = (module_view("references/FACE_GRAPH_UNFOLD_PROTOCOL.md", root)).read_text(encoding="utf-8")
+    datum = (module_view("skills/lispcad/core/DATUM_DIMENSION.md", root)).read_text(encoding="utf-8")
+    cross = (module_view("skills/lispcad/core/CROSS_FEATURE_VALIDATION.md", root)).read_text(encoding="utf-8")
     router = yaml.safe_load((root / "skills/lispcad/router/ROUTER.yaml").read_text(encoding="utf-8"))
     coverage = yaml.safe_load((root / "skills/lispcad/router/RULE_COVERAGE.yaml").read_text(encoding="utf-8"))
 

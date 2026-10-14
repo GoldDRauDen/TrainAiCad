@@ -1,4 +1,5 @@
 """V4.20 historical source/data classification + mechanical feature hardening."""
+from tools.compact_rules import read_rule_text, module_view
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -25,7 +26,7 @@ def test_source_threshold_and_modes():
 
 def test_mechanical_modules():
     for p in ["references/MECHANICAL_CLASSIFIER.md","skills/lispcad/features/KEGAKI.md","skills/lispcad/features/SLIT_RELIEF.md","skills/lispcad/features/RIB.md","skills/lispcad/features/CURVED_SLOT.md"]:
-        assert (ROOT/p).exists()
+        assert module_view(p, ROOT).exists()
     assert "D = t * sin(theta)" in (ROOT/"skills/lispcad/features/SLIT_RELIEF.md").read_text(encoding="utf-8")
     assert "exactly ONE closed internal CUT contour" in (ROOT/"skills/lispcad/features/CURVED_SLOT.md").read_text(encoding="utf-8")
 

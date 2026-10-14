@@ -1,4 +1,5 @@
 """V4.22 source exhaustion and feature completeness hard gates."""
+from tools.compact_rules import module_view
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -23,8 +24,8 @@ def test_v422_historical_release_and_v424_inheritance():
 
 def test_v422_source_exhaustion_and_feature_completeness_wiring():
     entry=((ROOT/"AI_ENTRYPOINT.md").read_text(encoding="utf-8") + (ROOT/"docs/RELEASE_WIRING_INDEX.md").read_text(encoding="utf-8"))
-    graph=(ROOT/"references/FACE_GRAPH_UNFOLD_PROTOCOL.md").read_text(encoding="utf-8")
-    validation=(ROOT/"skills/lispcad/core/VALIDATION.md").read_text(encoding="utf-8")
+    graph=(module_view("references/FACE_GRAPH_UNFOLD_PROTOCOL.md", ROOT)).read_text(encoding="utf-8")
+    validation=(module_view("skills/lispcad/core/VALIDATION.md", ROOT)).read_text(encoding="utf-8")
     qa=(ROOT/"regression/qa/520930-10_V4_22_APPROVED.md").read_text(encoding="utf-8")
     checker=(ROOT/"regression/tools/check_520930_10_v422.py").read_text(encoding="utf-8")
     for token in [

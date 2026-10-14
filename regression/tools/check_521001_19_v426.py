@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import sys as _compact_sys
+from pathlib import Path as _CompactPath
+_compact_sys.path.insert(0, str(_CompactPath(__file__).resolve().parents[2] / "tools"))
+from compact_rules import module_view, read_rule_text
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -14,7 +18,7 @@ B90 = math.tan(math.radians(90.0) / 4.0)
 
 
 def read(rel):
-    return (ROOT / rel).read_text(encoding="utf-8")
+    return read_rule_text(rel, ROOT)
 
 
 def radius_from_bulge(p0, p1, bulge):

@@ -1,4 +1,5 @@
 """V4.21 customer DATA geometry-preservation hard gate."""
+from tools.compact_rules import module_view
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -27,7 +28,7 @@ def test_v421_historical_release_and_inheritance():
         assert token in (entry + "\n" + skill)
 
 def test_v421_source_classification_hard_gate():
-    s=(ROOT/"references/SOURCE_DATA_CLASSIFICATION.md").read_text(encoding="utf-8")
+    s=(module_view("references/SOURCE_DATA_CLASSIFICATION.md", ROOT)).read_text(encoding="utf-8")
     for token in [
         "DATA geometry must be harvested/preserved",
         "do not redraw",
@@ -38,7 +39,7 @@ def test_v421_source_classification_hard_gate():
         assert token in s
 
 def test_v421_reference_and_regression_present():
-    ref=(ROOT/"references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md").read_text(encoding="utf-8")
+    ref=(module_view("references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md", ROOT)).read_text(encoding="utf-8")
     qa=(ROOT/"regression/qa/520930-03_V4_21_APPROVED.md").read_text(encoding="utf-8")
     assert "every job" in ref
     assert "geometry authority" in ref

@@ -1,3 +1,5 @@
+> **Packed rule runtime:** 50 stable logical IDs route to 11 files in `rules/`, via `config/RULE_MODULES.yaml`. Read exact selected sections with `tools/read_routed_rules.py`, not by opening retired individual module paths. Current version is pinned in `config/RELEASE.yaml`. L0/L1/L2/L3 and canonical→DXF→read-back remain mandatory.
+
 ---
 name: trainaicad-e2e
 description: Source-grounded mechanical sheet-metal CAD from PDF, images and customer DXF DATA through canonical Geometry JSON, validation, export and saved-DXF QA.

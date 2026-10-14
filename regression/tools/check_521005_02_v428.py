@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import sys as _compact_sys
+from pathlib import Path as _CompactPath
+_compact_sys.path.insert(0, str(_CompactPath(__file__).resolve().parents[2] / "tools"))
+from compact_rules import module_view, read_rule_text
 """V4.28 521005-02 topology anti-overclassification regression."""
 from math import isclose
 from pathlib import Path
@@ -34,7 +38,7 @@ def test_numeric_regression_facts():
 
 def test_rule_wiring():
     root = Path(__file__).resolve().parents[2]
-    module = (root / "references/FACE_CREATION_BEND_EVIDENCE.md").read_text(encoding="utf-8")
+    module = (module_view("references/FACE_CREATION_BEND_EVIDENCE.md", root)).read_text(encoding="utf-8")
     for token in [
         "FACE_CREATION_REQUIRES_BEND_EVIDENCE",
         "SAME_FACE_FIRST",

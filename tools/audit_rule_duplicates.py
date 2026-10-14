@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 
 from audit_rule_coverage import ROOT, audit
+from compact_rules import read_rule_text
 
 
 def scan(root: Path = ROOT, min_chars: int = 170) -> dict:
@@ -21,7 +22,7 @@ def scan(root: Path = ROOT, min_chars: int = 170) -> dict:
     index: dict[str, list[str]] = defaultdict(list)
     samples = {}
     for p in active:
-        content = (root / p).read_text(encoding="utf-8")
+        content = read_rule_text(p, root)
         for para in re.split(r"\n\s*\n", content):
             normalized = re.sub(r"\s+", " ", para).strip().casefold()
             if len(normalized) < min_chars:

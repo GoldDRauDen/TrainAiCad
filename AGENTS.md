@@ -1,3 +1,5 @@
+> **Compact rule lookup:** Router paths for former `references/*.md` and `skills/lispcad/(core|features|modes|topology)/*.md` are stable logical section IDs, not physical files. Load via `config/RULE_MODULES.yaml` and `tools/read_routed_rules.py`. Never bypass the active Router or mandatory QA stages.
+
 # AGENTS.md — TrainAiCad execution/orchestration policy
 
 This root file is for agents that automatically read repository instructions (for example local/Codex-style execution). It is **not** a second CAD skill and contains no engineering formulas or pinned production release.

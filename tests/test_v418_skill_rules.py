@@ -1,4 +1,5 @@
 """V4.18 520929-18 production-skill regression."""
+from tools.compact_rules import module_view
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -23,10 +24,10 @@ def test_release_and_routing():
     assert "V4.18 520929-18 hard-gate routing" in entry
 
 def test_v418_hardening_present():
-    drawing=(ROOT/"skills/lispcad/core/DRAWING_READING.md").read_text(encoding="utf-8")
-    chamfer=(ROOT/"skills/lispcad/features/CHAMFER_RADIUS.md").read_text(encoding="utf-8")
-    valid=(ROOT/"skills/lispcad/core/VALIDATION.md").read_text(encoding="utf-8")
-    boxmet=(ROOT/"references/BOXMET_SLIT_RELIEF.md").read_text(encoding="utf-8")
+    drawing=(module_view("skills/lispcad/core/DRAWING_READING.md", ROOT)).read_text(encoding="utf-8")
+    chamfer=(module_view("skills/lispcad/features/CHAMFER_RADIUS.md", ROOT)).read_text(encoding="utf-8")
+    valid=(module_view("skills/lispcad/core/VALIDATION.md", ROOT)).read_text(encoding="utf-8")
+    boxmet=(module_view("references/BOXMET_SLIT_RELIEF.md", ROOT)).read_text(encoding="utf-8")
     skill=CURRENT.read_text(encoding="utf-8")
     assert "V4.18 DETAILED_SOURCE_BUNDLE" in drawing
     assert "V4.18 C/R_SEMANTIC_LOCK" in chamfer

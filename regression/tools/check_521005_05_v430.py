@@ -1,4 +1,8 @@
 from __future__ import annotations
+import sys as _compact_sys
+from pathlib import Path as _CompactPath
+_compact_sys.path.insert(0, str(_CompactPath(__file__).resolve().parents[2] / "tools"))
+from compact_rules import module_view, read_rule_text
 
 import math
 import tempfile
@@ -21,9 +25,9 @@ def relief90(t: float, s: float):
 
 def _assert_text_contract() -> None:
     paths = [
-        ROOT / "references/RUNTIME_AUTHORITY_GUARD.md",
-        ROOT / "references/SOURCE_FEATURE_GROUP_CLOSURE.md",
-        ROOT / "references/BEND_EDGE_RELIEF_90.md",
+        module_view("references/RUNTIME_AUTHORITY_GUARD.md", ROOT),
+        module_view("references/SOURCE_FEATURE_GROUP_CLOSURE.md", ROOT),
+        module_view("references/BEND_EDGE_RELIEF_90.md", ROOT),
         ROOT / "regression/qa/521005-05_V4_30_APPROVED.md",
     ]
     text = "\n".join(p.read_text(encoding="utf-8") for p in paths)
@@ -52,7 +56,7 @@ def _assert_text_contract() -> None:
         assert token in text, token
 
     # The superseded provisional branch must not remain active.
-    bend_ref = (ROOT / "references/BEND_EDGE_RELIEF_90.md").read_text(encoding="utf-8")
+    bend_ref = (module_view("references/BEND_EDGE_RELIEF_90.md", ROOT)).read_text(encoding="utf-8")
     assert "There is no active `T/2` threshold" in bend_ref
     assert "`S = +1` -> NO SLIT" in bend_ref
     assert "`S = +1.5` -> NO SLIT" in bend_ref

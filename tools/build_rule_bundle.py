@@ -45,7 +45,7 @@ def approved_paths(root: Path = ROOT) -> tuple[str, list[str]]:
     # or forming rule omitted from the router.
     try:
         audit_active_rule_coverage(root)
-    except CoverageError as exc:
+    except (CoverageError, OSError, CompactRuleError, KeyError) as exc:
         raise BundleError(f"Missing or unsafe active rule coverage: {exc}") from exc
     router = yaml.safe_load((root / ROUTER_PATH).read_text(encoding="utf-8"))
     if not isinstance(router, dict) or router.get("production_mode") != "repo_direct":

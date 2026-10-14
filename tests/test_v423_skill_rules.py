@@ -1,4 +1,5 @@
 """V4.23 physical DATA census, bidirectional QA and per-bend witness hard gates."""
+from tools.compact_rules import module_view
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
@@ -22,9 +23,9 @@ def test_v423_historical_release_and_v424_inheritance():
 
 def test_v423_physical_census_bidirectional_and_bend_wiring():
     entry=((ROOT/"AI_ENTRYPOINT.md").read_text(encoding="utf-8") + (ROOT/"docs/RELEASE_WIRING_INDEX.md").read_text(encoding="utf-8"))
-    physical=(ROOT/"references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md").read_text(encoding="utf-8")
-    graph=(ROOT/"references/FACE_GRAPH_UNFOLD_PROTOCOL.md").read_text(encoding="utf-8")
-    validation=(ROOT/"skills/lispcad/core/VALIDATION.md").read_text(encoding="utf-8")
+    physical=(module_view("references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md", ROOT)).read_text(encoding="utf-8")
+    graph=(module_view("references/FACE_GRAPH_UNFOLD_PROTOCOL.md", ROOT)).read_text(encoding="utf-8")
+    validation=(module_view("skills/lispcad/core/VALIDATION.md", ROOT)).read_text(encoding="utf-8")
     qa=(ROOT/"regression/qa/521001-03_V4_23_APPROVED.md").read_text(encoding="utf-8")
     checker=(ROOT/"regression/tools/check_521001_03_v423.py").read_text(encoding="utf-8")
     for token in [
