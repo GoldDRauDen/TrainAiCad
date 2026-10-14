@@ -170,6 +170,15 @@ For each part page, inspect in this sequence before writing any geometry:
 
 Do not generate provisional production geometry while the contour topology or datum graph is unresolved.
 
+### 2.2.2 Read-Cost Protocol — cheaper reading, never lower accuracy
+This protocol reduces image and context cost only. It does not relax any dimension, witness, or topology check.
+- Extract the text layer first (for example `pdftotext -layout`). Use it to index title block, barcode, material, thickness, and dimension strings. Do not treat OCR text as the geometry source.
+- Check page orientation on a thumbnail at 50 dpi or less. If the sheet is rotated 90°, rotate it at render time, not afterwards.
+- Crop to the geometry region and render each needed region once at 200 dpi or more, then read it. Dimensions and witness endpoints are read only from a render at that resolution. If a render was low-dpi or unrotated, re-render it; do not guess from it.
+- Customer and job-list pages need 100 dpi or less and only the row for the current code.
+- Load customer rules, material rows, and thread or Nobi table rows for the single matching key (code, material, thickness). Do not load whole tables into context.
+- Re-open an already-read region only when a new witness, leader, or handwritten-note question requires it.
+
 ### 2.3 OCR Error Correction & Context Engine
 Correct optical character recognition errors using engineering context rules:
 - `B` ↔ `8` | `O` ↔ `0` | `S` ↔ `5` | `M6` ↔ `MG` | `Ø` ↔ `O` | `0.5` ↔ `O.5`
