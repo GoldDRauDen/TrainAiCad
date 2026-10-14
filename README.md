@@ -38,18 +38,19 @@ AI_BOOTSTRAP
     |
     +-- AI_ENTRYPOINT
             |
-            +-- core/                    always-on small rule set
-            +-- router/
-            |     FEATURE_CENSUS.md      what is present?
-            |     ROUTER.yaml            what must be loaded?
-            |     RULE_COVERAGE.yaml     where approved release rules live
+            +-- skills/lispcad/core/        always-on small rule set
+            +-- skills/lispcad/router/
+            |     FEATURE_CENSUS.md         what is present?
+            |     ROUTER.yaml               what must be loaded?
+            |     RULE_COVERAGE.yaml        where approved release rules live
             |
-            +-- modes/                   flat / bend-unfold
-            +-- features/                hole, tap, slot, kegaki, slit, rib...
-            +-- references/              material, Nobi, source/DATA, FACE_GRAPH...
-            +-- regression/              approved tests/evidence (not universal rules)
+            +-- skills/lispcad/modes/       flat / bend-unfold
+            +-- skills/lispcad/features/    hole, tap, slot, kegaki, slit, rib...
+            +-- skills/lispcad/topology/    L / U / stepped / multi-face profiles
+            +-- references/                 material, Nobi, source/DATA, FACE_GRAPH...
+            +-- regression/                 approved tests/evidence (not universal rules)
             +-- docs/history/SNAPSHOT_MANIFEST.json   pinned, sha256-verified archive of retired
-                                         portable/ and versions/ snapshots; never production input
+                                            portable/ and versions/ snapshots; never production input
 ```
 
 ## Canonical E2E artifacts
@@ -119,9 +120,10 @@ snapshots, portable skills, or regression documents for production rules.
 See `docs/RULE_BRAIN.md`. The AI still has to inspect the actual source,
 perform geometry interpretation, apply mandatory gates, and verify saved DXF.
 
-Historical portable releases remain checked in because existing immutable-release
-regressions currently read them directly. Removing them safely requires migrating
-those tests first, not deleting the evidence.
+Retired `portable/` and `versions/` snapshots are pinned in
+`docs/history/SNAPSHOT_MANIFEST.json` at commit `173c098` and read through
+`tools/snapshot_manifest.py`. Several version regression tests read them from that
+commit, so the commit must stay reachable on the remote; do not rewrite or prune it.
 
 ## Important
 
