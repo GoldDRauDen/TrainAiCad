@@ -1,11 +1,14 @@
 """V4.18 520929-18 production-skill regression."""
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 from pathlib import Path
 import subprocess,sys
 
 ROOT=Path(__file__).resolve().parents[1]
-CURRENT=ROOT/"skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md"
-RELEASE=ROOT/"skills/lispcad/versions/V4.18/SKILL_LISPCAD_V4_18_PORTABLE.md"
-OLD=ROOT/"skills/lispcad/versions/V4.17/SKILL_LISPCAD_V4_17_PORTABLE.md"
+CURRENT=Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
+RELEASE=Snapshot("skills/lispcad/versions/V4.18/SKILL_LISPCAD_V4_18_PORTABLE.md")
+OLD=Snapshot("skills/lispcad/versions/V4.17/SKILL_LISPCAD_V4_17_PORTABLE.md")
 QA=ROOT/"regression/qa/520929-18_V4_18_APPROVED.md"
 RUNNER=ROOT/"regression/tools/check_520929_18_v418.py"
 

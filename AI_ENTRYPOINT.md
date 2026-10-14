@@ -147,7 +147,7 @@ Load `references/RUNTIME_AUTHORITY_GUARD.md` before inherited core text. Repo-di
 
 Inherited compatibility prose inside an active module that says the portable skill must be read in full is `LEGACY_COMPATIBILITY_TEXT`; it does not override repo-direct routing. Likewise, the current routed `CAD_OUTPUT.md` controls packaging over older wording that described automatic individual + combined output.
 
-Portable CURRENT remains compatibility/audit only. A route gap is `ROUTING_COVERAGE_GAP`; do not silently continue from portable/history.
+Archived portable snapshot remains compatibility/audit only. A route gap is `ROUTING_COVERAGE_GAP`; do not silently continue from portable/history.
 
 ## 4. Census before specialized rules
 
@@ -252,12 +252,12 @@ If a source-supported family has no route, stop with `ROUTING_COVERAGE_GAP`. Do 
 
 ## 9. Portable and history policy
 
-`skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md` is retained as a complete compatibility/audit snapshot (currently V4.24). It is **NOT part of the normal repo-direct load path** and is not required to be version-equal to the current repo-direct release.
+The compatibility/audit snapshots (the former `skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md`, a byte-identical copy of V4.24, and `skills/lispcad/versions/**`) were retired from the working tree. They are pinned, sha256-verified, in `docs/history/SNAPSHOT_MANIFEST.json` at commit `173c098` and read through `tools/snapshot_manifest.py`. They are **NOT part of the normal repo-direct load path** and are not required to be version-equal to the current release.
 
-It may be read only to diagnose `ROUTING_COVERAGE_GAP`, audit historical coverage, or perform an explicitly requested portability check. After a gap is found, do not silently continue production from portable text.
+They may be read only to diagnose `ROUTING_COVERAGE_GAP`, audit historical coverage, or perform an explicitly requested portability check. After a gap is found, do not silently continue production from snapshot text.
 
 Normal production retrieval excludes:
-- `skills/lispcad/versions/**`
+- the retired snapshot archive (`docs/history/SNAPSHOT_MANIFEST.json`, pinned commit)
 - `docs/history/**`
 
 Historical snapshots never override active modular rules.

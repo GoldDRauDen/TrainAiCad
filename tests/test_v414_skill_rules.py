@@ -1,12 +1,15 @@
 """V4.14 documentation and approved arithmetic regression; NOT a manufacturing DXF certification."""
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 from pathlib import Path
 import re
 from decimal import Decimal as D
 
 ROOT = Path(__file__).resolve().parents[1]
-CURRENT = ROOT / "skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md"
-RELEASE = ROOT / "skills/lispcad/versions/V4.14/SKILL_LISPCAD_V4_14_PORTABLE.md"
-OLDER = ROOT / "skills/lispcad/versions/V4.13/SKILL_LISPCAD_V4_13_PORTABLE.md"
+CURRENT = Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
+RELEASE = Snapshot("skills/lispcad/versions/V4.14/SKILL_LISPCAD_V4_14_PORTABLE.md")
+OLDER = Snapshot("skills/lispcad/versions/V4.13/SKILL_LISPCAD_V4_13_PORTABLE.md")
 QA = ROOT / "regression/qa/520217-26_V4_14_APPROVED.md"
 
 

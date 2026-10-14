@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 import math
 import os
 import re
@@ -51,9 +54,9 @@ physical = read("references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md")
 holes = read("skills/lispcad/features/HOLES_TAPS.md")
 qa = read("regression/qa/521001-20_V4_25_APPROVED.md")
 workflow = read(".github/workflows/dxf-export-tests.yml")
-current = read("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
-v424 = read("skills/lispcad/versions/V4.24/SKILL_LISPCAD_V4_24_PORTABLE.md")
-v423 = read("skills/lispcad/versions/V4.23/SKILL_LISPCAD_V4_23_PORTABLE.md")
+current = Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md").read_text(encoding="utf-8")
+v424 = Snapshot("skills/lispcad/versions/V4.24/SKILL_LISPCAD_V4_24_PORTABLE.md").read_text(encoding="utf-8")
+v423 = Snapshot("skills/lispcad/versions/V4.23/SKILL_LISPCAD_V4_23_PORTABLE.md").read_text(encoding="utf-8")
 
 # V4.25 must remain wired after later repo-direct releases are promoted.
 assert "- **V4.25:**" in entry

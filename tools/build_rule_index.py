@@ -29,8 +29,11 @@ def build_index(root: Path = ROOT) -> dict:
                "docs/history/", "services/trainaicad-mcp/")
     evidence = sorted(p.relative_to(root).as_posix()
                       for p in (root / "regression").rglob("*") if p.is_file())
-    history = sorted(p.relative_to(root).as_posix() for prefix in ignored[:3]
+    history = sorted(p.relative_to(root).as_posix() for prefix in ignored[2:3]
                      for p in (root / prefix).rglob("*") if p.is_file())
+    # Snapshots retired from the working tree are listed from the pinned manifest.
+    manifest = json.loads((root / "docs/history/SNAPSHOT_MANIFEST.json").read_text(encoding="utf-8"))
+    history = sorted(set(history) | set(manifest["snapshots"]))
     experimental = sorted(p.relative_to(root).as_posix()
                           for p in (root / "services/trainaicad-mcp").rglob("*")
                           if p.is_file())

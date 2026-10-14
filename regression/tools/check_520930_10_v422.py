@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -25,9 +28,9 @@ def unchanged_curve_signature_ok(source_signature, output_signature, canonicaliz
     return tuple(source_signature) == tuple(output_signature)
 
 # Release wiring / immutability guards.
-current = read("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
-v422 = read("skills/lispcad/versions/V4.22/SKILL_LISPCAD_V4_22_PORTABLE.md")
-v421 = read("skills/lispcad/versions/V4.21/SKILL_LISPCAD_V4_21_PORTABLE.md")
+current = Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md").read_text(encoding="utf-8")
+v422 = Snapshot("skills/lispcad/versions/V4.22/SKILL_LISPCAD_V4_22_PORTABLE.md").read_text(encoding="utf-8")
+v421 = Snapshot("skills/lispcad/versions/V4.21/SKILL_LISPCAD_V4_21_PORTABLE.md").read_text(encoding="utf-8")
 entry = (read("AI_ENTRYPOINT.md") + read("docs/RELEASE_WIRING_INDEX.md"))
 face_graph = read("references/FACE_GRAPH_UNFOLD_PROTOCOL.md")
 validation = read("skills/lispcad/core/VALIDATION.md")

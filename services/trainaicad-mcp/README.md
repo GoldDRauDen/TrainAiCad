@@ -7,7 +7,7 @@ This service is an experimental MCP runtime boundary for TrainAiCad. It does **n
 Implemented:
 - `CAD_EVIDENCE_V1` schema with provenance on technical numbers.
 - Job state machine with fail-closed transitions.
-- Runtime production-release pinning from repository `AI_ENTRYPOINT.md` + `SKILL_LISPCAD_CURRENT.md`.
+- Runtime production-release pinning from repository `AI_ENTRYPOINT.md` + `skills/lispcad/router/ROUTER.yaml`.
 - V4.20 source classification: `PDF_ONLY`, `PDF_DATA_RAW`, `TRAIN_REFERENCE`, `DIRECT_EXISTING_DXF_AUDIT`.\n- Mandatory mechanical classification record and V4.20 feature routing (KEGAKI, SLIT/RELIEF, RIB, curved slot, PIASU).\n- Every bent/multi-face route loads `BEND_UNFOLD` + `FACE_GRAPH_UNFOLD_PROTOCOL`; missing signed bend/face evidence is REVIEW_REQUIRED.
 - Jev policy boundary plus disabled/mock/shadow adapter contract. V0.1 performs no Jev network call.
 - Six MCP tools: `ingest_cad_file`, `open_cad_job`, `submit_cad_evidence`, `route_cad_parts`, `build_canonical_geometry`, `get_cad_job`.

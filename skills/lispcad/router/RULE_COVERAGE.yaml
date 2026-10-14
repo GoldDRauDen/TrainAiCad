@@ -273,6 +273,5 @@ release_coverage:
       - references/THREAD_PILOT_TABLE.md
 
 audit_only_snapshots:
-  - skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md
-  - skills/lispcad/versions/
+  - docs/history/SNAPSHOT_MANIFEST.json  # pinned archive of versions/ and portable/ (retired from working tree)
   - docs/history/

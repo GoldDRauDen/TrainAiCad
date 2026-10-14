@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """V4.19 520929-25 approved constraint-closed FACE_GRAPH / fold-back regression."""
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 from pathlib import Path
 from math import isclose
 
@@ -68,9 +71,9 @@ def main():
     assert not required_feature.issubset(bad_feature)
 
     root = Path(__file__).resolve().parents[2]
-    portable = (root/"skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md").read_text(encoding="utf-8")
-    release = (root/"skills/lispcad/versions/V4.19/SKILL_LISPCAD_V4_19_PORTABLE.md").read_text(encoding="utf-8")
-    old = (root/"skills/lispcad/versions/V4.18/SKILL_LISPCAD_V4_18_PORTABLE.md").read_text(encoding="utf-8")
+    portable = (Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")).read_text(encoding="utf-8")
+    release = (Snapshot("skills/lispcad/versions/V4.19/SKILL_LISPCAD_V4_19_PORTABLE.md")).read_text(encoding="utf-8")
+    old = (Snapshot("skills/lispcad/versions/V4.18/SKILL_LISPCAD_V4_18_PORTABLE.md")).read_text(encoding="utf-8")
     entry = ((root/"AI_ENTRYPOINT.md").read_text(encoding="utf-8") + (root/"docs/RELEASE_WIRING_INDEX.md").read_text(encoding="utf-8"))
     protocol = (root/"references/FACE_GRAPH_UNFOLD_PROTOCOL.md").read_text(encoding="utf-8")
     bend = (root/"skills/lispcad/modes/BEND_UNFOLD.md").read_text(encoding="utf-8")

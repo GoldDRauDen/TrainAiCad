@@ -1,10 +1,13 @@
 """V4.17 520929-10 historical hardening regression retained under later CURRENT releases."""
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 from pathlib import Path
 import subprocess,sys
 ROOT=Path(__file__).resolve().parents[1]
-CURRENT=ROOT/"skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md"
-RELEASE=ROOT/"skills/lispcad/versions/V4.17/SKILL_LISPCAD_V4_17_PORTABLE.md"
-OLD=ROOT/"skills/lispcad/versions/V4.16/SKILL_LISPCAD_V4_16_PORTABLE.md"
+CURRENT=Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
+RELEASE=Snapshot("skills/lispcad/versions/V4.17/SKILL_LISPCAD_V4_17_PORTABLE.md")
+OLD=Snapshot("skills/lispcad/versions/V4.16/SKILL_LISPCAD_V4_16_PORTABLE.md")
 QA=ROOT/"regression/qa/520929-10_V4_17_APPROVED.md"
 RUNNER=ROOT/"regression/tools/check_520929_10_v417.py"
 VALID=ROOT/"skills/lispcad/core/VALIDATION.md"

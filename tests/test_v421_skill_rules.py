@@ -1,10 +1,13 @@
 """V4.21 customer DATA geometry-preservation hard gate."""
+import sys as _sys
+_sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
+from snapshot_manifest import Snapshot  # noqa: E402
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-CURRENT=ROOT/"skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md"
-RELEASE=ROOT/"skills/lispcad/versions/V4.21/SKILL_LISPCAD_V4_21_PORTABLE.md"
-BASE=ROOT/"skills/lispcad/versions/V4.20/SKILL_LISPCAD_V4_20_PORTABLE.md"
+CURRENT=Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md")
+RELEASE=Snapshot("skills/lispcad/versions/V4.21/SKILL_LISPCAD_V4_21_PORTABLE.md")
+BASE=Snapshot("skills/lispcad/versions/V4.20/SKILL_LISPCAD_V4_20_PORTABLE.md")
 
 def test_v421_historical_release_and_inheritance():
     entry=((ROOT/"AI_ENTRYPOINT.md").read_text(encoding="utf-8") + (ROOT/"docs/RELEASE_WIRING_INDEX.md").read_text(encoding="utf-8"))

@@ -57,15 +57,12 @@ function evidence(overrides: Record<string, unknown> = {}) {
   });
 }
 
-test("release pin follows live CURRENT", () => {
+test("release pin follows live ROUTER", () => {
   const pin = readReleasePin();
-  const current = readFileSync(
-    join(resolveRepoRoot(), "skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md"),
-    "utf8"
-  );
-  assert.equal(pin.release, current.match(/^# SKILL_LISPCAD (V\d+\.\d+) PORTABLE/m)?.[1]);
+  const router = readFileSync(join(resolveRepoRoot(), "skills/lispcad/router/ROUTER.yaml"), "utf8");
+  assert.equal(pin.release, router.match(/^release: (V\d+\.\d+)$/m)?.[1]);
   assert.equal(pin.entrypointSha256.length, 64);
-  assert.equal(pin.currentSkillSha256.length, 64);
+  assert.equal(pin.routerSha256.length, 64);
 });
 
 test("V4.20 source classification is deterministic", () => {

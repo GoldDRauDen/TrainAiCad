@@ -28,8 +28,8 @@ export function resolveRepoRoot(start = process.env.TRAINAICAD_REPO_ROOT ?? proc
   let current = resolve(start);
   for (;;) {
     const entry = join(current, "AI_ENTRYPOINT.md");
-    const skill = join(current, "skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md");
-    if (existsSync(entry) && existsSync(skill)) return current;
+    const router = join(current, "skills/lispcad/router/ROUTER.yaml");
+    if (existsSync(entry) && existsSync(router)) return current;
     const parent = dirname(current);
     if (parent === current) throw new Error("SKILL_FRESHNESS_UNVERIFIED: TrainAiCad repo root not found");
     current = parent;
@@ -38,21 +38,18 @@ export function resolveRepoRoot(start = process.env.TRAINAICAD_REPO_ROOT ?? proc
 
 export function readReleasePin(repoRoot = resolveRepoRoot()): ReleasePin {
   const entrypoint = readFileSync(join(repoRoot, "AI_ENTRYPOINT.md"), "utf8");
-  const currentSkill = readFileSync(
-    join(repoRoot, "skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md"),
-    "utf8"
-  );
+  const router = readFileSync(join(repoRoot, "skills/lispcad/router/ROUTER.yaml"), "utf8");
 
   const entryMatch = entrypoint.match(/Current production release is \*\*(V\d+\.\d+)\*\*/);
-  const skillMatch = currentSkill.match(/^# SKILL_LISPCAD (V\d+\.\d+) PORTABLE/m);
-  if (!entryMatch?.[1] || !skillMatch?.[1] || entryMatch[1] !== skillMatch[1]) {
-    throw new Error("SKILL_FRESHNESS_UNVERIFIED: AI_ENTRYPOINT and CURRENT disagree");
+  const routerMatch = router.match(/^release: (V\d+\.\d+)$/m);
+  if (!entryMatch?.[1] || !routerMatch?.[1] || entryMatch[1] !== routerMatch[1]) {
+    throw new Error("SKILL_FRESHNESS_UNVERIFIED: AI_ENTRYPOINT and ROUTER disagree");
   }
 
   return {
     release: entryMatch[1],
     entrypointSha256: sha256(entrypoint),
-    currentSkillSha256: sha256(currentSkill)
+    routerSha256: sha256(router)
   };
 }
 

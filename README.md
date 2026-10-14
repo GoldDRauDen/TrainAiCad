@@ -48,8 +48,8 @@ AI_BOOTSTRAP
             +-- features/                hole, tap, slot, kegaki, slit, rib...
             +-- references/              material, Nobi, source/DATA, FACE_GRAPH...
             +-- regression/              approved tests/evidence (not universal rules)
-            +-- portable/                complete compatibility snapshot; not default
-            +-- versions/                CI-pinned historical snapshots; never production input
+            +-- docs/history/SNAPSHOT_MANIFEST.json   pinned, sha256-verified archive of retired
+                                         portable/ and versions/ snapshots; never production input
 ```
 
 ## Canonical E2E artifacts
@@ -126,7 +126,7 @@ those tests first, not deleting the evidence.
 ## Important
 
 - `UNKNOWN` is not `NO`.
-- Do not search `skills/lispcad/versions/**` for normal production.
+- Do not look for retired snapshots (`versions/**`, former `portable/`) for normal production; they are pinned in `docs/history/SNAPSHOT_MANIFEST.json`.
 - Do not read the full portable skill unless diagnosing a router coverage gap or explicitly auditing portability.
 - New engineering lessons require direct user approval before production promotion.
 - Production CAD is repo-direct by default.
