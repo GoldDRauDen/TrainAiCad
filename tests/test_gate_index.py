@@ -31,10 +31,20 @@ def test_every_indexed_gate_is_mentioned_in_a_cited_source():
 def test_review_candidates_catch_names_the_suffix_rule_misses():
     index = yaml.safe_load((ROOT / "docs/GATE_INDEX.yaml").read_text(encoding="utf-8"))
     candidates = {c["id"]: c["files"] for c in index["review_candidates"]}
-    assert "SOURCE_ONLY_SNAPSHOT" in candidates
+    assert "DATA_NO_DIM_COMPARE" in candidates
     gate_ids = {g["id"] for g in index["gates"]}
     assert not (gate_ids & set(candidates)), "a token must be either a gate or a review candidate"
     for token, files in candidates.items():
         assert len(files) >= 2
         for rel in files:
             assert token in (ROOT / rel).read_text(encoding="utf-8"), (token, rel)
+
+
+def test_approved_gates_are_listed_as_gates_not_candidates():
+    index = yaml.safe_load((ROOT / "docs/GATE_INDEX.yaml").read_text(encoding="utf-8"))
+    gate_ids = {g["id"] for g in index["gates"]}
+    candidate_ids = {c["id"] for c in index["review_candidates"]}
+    for gate in builder.APPROVED_GATES:
+        assert gate in gate_ids, gate
+        assert gate not in candidate_ids, gate
+    assert "DATA_NO_DIM_COMPARE" in candidate_ids

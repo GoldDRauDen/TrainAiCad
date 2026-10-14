@@ -1,6 +1,6 @@
 # Rà soát danh sách `review_candidates` của docs/GATE_INDEX.yaml
 
-Trạng thái: **đánh giá ban đầu, chờ người duyệt**. Chỉ mục không định nghĩa rule, nên phân loại sai chỉ làm sai bảng tra cứu, không đổi hành vi CAD.
+Trạng thái: **đã duyệt (2026-10-14)**. Quyết định nằm ở cuối file. Chỉ mục không định nghĩa rule, nên phân loại sai chỉ làm sai bảng tra cứu, không đổi hành vi CAD.
 
 Tổng: 81 định danh. Chia 3 nhóm.
 
@@ -40,3 +40,11 @@ Các tên này mô tả một kiểm tra hoặc một khóa phải thỏa trư�
 ## Ghi chú
 
 - Chỉ mục vẫn sinh tự động và không định nghĩa rule. Khi bạn chốt nhóm, mình sẽ đưa nhóm A vào `gates` và chuyển phần còn lại sang danh sách đã biết.
+
+## Quyết định đã duyệt
+
+1. `THICKNESS_SINGLE_USE`, `RAW_DATA_SNAPSHOT`, `PHYSICAL_DATA_BASELINE`, `DATA_PDF_DIM_DIFF` là gate.
+2. `NEAREST_VIEW_EDGE` là gate.
+3. `DATA_NO_DIM_COMPARE` giữ ngoài chỉ mục gate, thuộc catalog khách hàng.
+
+Các gate đã duyệt được liệt kê trong `APPROVED_GATES` của `tools/build_gate_index.py`. Gate đã duyệt gồm nhóm A, cộng thêm `NEAREST_VIEW_EDGE`. `FOLD_BACK` được thay bằng tên đầy đủ `FOLD_BACK_SOURCE_REPROJECTION`.
