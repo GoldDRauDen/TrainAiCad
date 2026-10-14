@@ -28,7 +28,7 @@ assert "V4.23 direct approval / PUSH (2026-10-01)" in current
 assert "V4.23 direct approval" not in v422
 assert "V4.24 direct approval" not in v423
 assert "- **V4.23:**" in entry
-assert "check_521001_03_v423.py" in entry and "DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md" in entry
+assert "check_521001_03_v423.py" in entry and "DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md" in entry + read("skills/lispcad/router/ROUTER.yaml")
 assert "SOURCE_PHYSICAL_TO_CANONICAL" in physical and "CANONICAL_TO_SOURCE_PHYSICAL" in physical
 assert "THICKNESS_REPRESENTATION" in geom and "source_entity_census" in mech
 assert "PER_BEND_WITNESS_LEDGER" in face and "THICKNESS_SINGLE_USE" in face

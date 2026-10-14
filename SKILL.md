@@ -44,69 +44,40 @@ Default retrieval **excludes** `skills/lispcad/versions/`,
 Regression documents are QA evidence, never new customer dimensional inputs.
 MCP under `services/trainaicad-mcp/` is research-only, not the default engine.
 
-## 2. Trigger and complete per-code workflow
+## 2. Trigger and per-code workflow
 
 A CAD source plus `E2E` or `Read TrainAiCad and do E2E` starts the full
-executable job, not only a textual interpretation.
+executable job, not only a textual interpretation. Follow the order in
+`AI_ENTRYPOINT.md` §1 and its per-code rules:
 
-1. **Job/source census:** Identify all codes and source pages/views; associate
-   barcode, material, thickness, manufacturing notes, revisions and customer
-   DATA with their physical parts. Keep forbidden/user-excluded files closed.
-2. **Read/exhaust source:** Inspect *every* relevant source view and detail,
-   zoom/crop unclear regions, trace dimension witnesses and scope, preserve
-   raw DATA physical curves, explicitly distinguish sample/reference evidence
-   from original production source.
-3. **Feature routing:** Build a complete census for each code using
-   `skills/lispcad/router/FEATURE_CENSUS.md`. Each Router family must be
-   `YES`, `NO` or `UNKNOWN`; UNKNOWN loads its rule. Consult current
-   `ROUTER.yaml` and `RULE_COVERAGE.yaml`. Deterministic resolver:
-   `python tools/resolve_rules.py census.json` when Python is available.
-   Consume its mandatory L0 bootstrap, L1 source/physical census, L2
-   selected mode/feature/geometry, and L3 validation/export/QA stage plans
-   at their actual execution stages. **All four stages are mandatory**;
-   reduced initial reading never permits skipping a later gate. Reroute
-   any code whose source feature classification changes after zoom/DATA audit.
-   Actually read the selected rule files; never treat a selected path as proof
-   that its contents were loaded.
-4. **Engineering geometry:** Establish part identity, datum, witness graph,
-   source group/member inventory, hole/slot/R/C families and, when applicable,
-   FACE_GRAPH, attachment edge, Nobi, bend relief and fold-back ownership.
-   Build per-code canonical Geometry JSON using the current contract
-   (`tools/CANONICAL_INPUT_SCHEMA_V431.md` at the present repo revision).
-   Preserve source evidence, entity IDs, flags and unresolved local members.
-   Geometry JSON — not a manually repaired DXF — is the canonical model.
-5. **Independent validation:** Challenge the proposed complete source model;
-   execute all relevant checks from Router and current `VALIDATION.md`,
-   including manufacturing family counts, topology, source-to-canonical
-   completeness, DATA diff/reprojection when applicable, and physical
-   engineering plausibility. No PASS from bbox, entity count or visually
-   plausible contour alone. If still unresolved after source exhaustion,
-   retain proved geometry/source views with REVIEW semantics; do not invent
-   missing dimensions or terminate unrelated codes.
-6. **Deterministic export:** Use the current repository canonical exporter,
-   `tools/export_canonical_dxf.py` for supported jobs. Do not bypass it by
-   ad hoc `ezdxf` writing. The exporter reads canonical entities; it must
-   never infer geometry anew.
-7. **Saved-file QA:** Reopen actual emitted DXF, validate geometry, physical
-   entities and canonical Entity IDs/XDATA, then compare with original source
-   and permitted reference evidence. Only an independently verified part can
-   be called PASS.
-8. **Deliver/report:** Deliver actual verified files, concise per-code
-   PASS/REVIEW with unresolved dimensions/features and source references.
-   A local flag cannot silently become an approved CUT.
-
-Process codes independently where possible; store proved work by code so a
-failed part does not force geometry reconstruction of already-verified parts.
+1. **Job/source census:** all codes and source views; link barcode, material,
+   thickness, notes, revisions and customer DATA to their parts. Keep
+   forbidden/user-excluded files closed.
+2. **Read/exhaust source:** every relevant view and detail; zoom/crop unclear
+   regions; trace witnesses; keep raw DATA physical curves; separate
+   sample/reference evidence from production source.
+3. **Feature routing:** FEATURE_CENSUS per code (`skills/lispcad/router/FEATURE_CENSUS.md`),
+   each family YES/NO/UNKNOWN, UNKNOWN loads its rule. Resolver:
+   `python tools/resolve_rules.py census.json` when Python is available. All
+   four stages (L0 bootstrap, L1 census, L2 selected rules, L3 validation/export/QA)
+   are mandatory.
+4. **Engineering geometry:** part identity, datum, witness graph, member
+   inventory, families and, when applicable, FACE_GRAPH and bend terms. Build
+   per-code canonical Geometry JSON per `tools/CANONICAL_INPUT_SCHEMA_V431.md`
+   at the current revision.
+5. **Independent validation:** run all Router and `VALIDATION.md` checks,
+   including source-to-canonical completeness. Unresolved after source
+   exhaustion means REVIEW semantics, not invented dimensions.
+6. **Deterministic export:** `tools/export_canonical_dxf.py` for supported jobs.
+7. **Saved-DXF QA:** reopen the emitted DXF; validate geometry and canonical
+   Entity IDs/XDATA against source and permitted reference evidence.
+8. **Deliver/report:** verified files; per-code PASS/REVIEW with unresolved
+   dimensions/features and source references.
 
 ## 3. Canonical status and artifact contracts
 
-**Current canonical exporter behavior** (consult active
-`skills/lispcad/core/CAD_OUTPUT.md` and `tools/DXF_INPUT_SCHEMA.md`):
-- PASS-only job: `<JOB>_ALL.dxf`.
-- Any unresolved code/flag: `<JOB>_ALL_REVIEW_ONLY.dxf` and explicit non-cut
-  warnings. No unsupported local geometry should be represented as proved CUT.
-- The canonical exporter stamps and verifies Layer-0 `TRAINAICAD ENTITY_ID`
-  XDATA. REVIEW_ONLY output is not safe to manufacture.
+Output packaging, XDATA entity IDs and CUT-file contents are defined in
+`skills/lispcad/core/CAD_OUTPUT.md` and `tools/DXF_INPUT_SCHEMA.md`.
 
 **Implemented canonical production artifact contract** (after upstream
 source/engineering QA and composite canonical read-back):
@@ -119,18 +90,9 @@ source/engineering QA and composite canonical read-back):
   <JOB>_ALL_REVIEW_ONLY.dxf        # otherwise all codes, warnings intact
 ```
 
-The canonical exporter now also persists per-code JSON for **every** code and
-produces individual DXFs for PASS codes only. Contours are decomposed
-analytically from their canonical bulges into LINE/ARC/CIRCLE with exact
-endpoints, identity/provenance XDATA and saved-file verification. Non-cut
-bends, Kegaki, POINT and warnings never enter individual CUT files.
-Known REVIEW geometry stays in the combined non-production DXF only.
-
-The historic lower-level `tools/export_dxf.py` still provides its original
-one-composite/opt-in-legacy mode; it is not the default E2E producer.
-Do not fabricate a claim of customer-drawing correctness merely because
-the structural export tests pass. Full source-grounded multi-job acceptance
-remains necessary for manufacturing PASS.
+REVIEW_ONLY output is not safe to manufacture. Do not fabricate a claim of
+customer-drawing correctness merely because the structural export tests pass;
+full source-grounded acceptance remains necessary for manufacturing PASS.
 
 ## 4. Execution and QA rules
 

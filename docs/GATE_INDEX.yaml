@@ -72,7 +72,6 @@ gates:
   - skills/lispcad/core/CAD_OUTPUT.md
 - id: CANONICAL_SERIALIZATION_COMPLETENESS_FAIL
   files:
-  - AI_ENTRYPOINT.md
   - references/CANONICAL_MEMBER_COMPLETENESS.md
 - id: CANONICAL_TO_SOURCE_PHYSICAL
   files:
@@ -101,12 +100,11 @@ gates:
   - skills/lispcad/features/HOLES_TAPS.md
 - id: DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA
   files:
-  - AI_ENTRYPOINT.md
   - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
+  - references/SOURCE_DATA_CLASSIFICATION.md
 - id: DATA_RAW_TO_MANUFACTURING_CONTRACT
   files:
-  - AI_ENTRYPOINT.md
   - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
@@ -138,19 +136,21 @@ gates:
   - AI_ENTRYPOINT.md
   - references/HOLISTIC_ENGINEERING_CHALLENGE.md
   - skills/lispcad/core/VALIDATION.md
+- id: FOLD_BACK_MATCH
+  files:
+  - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
+  - skills/lispcad/modes/BEND_UNFOLD.md
 - id: FOLD_BACK_SOURCE_REPROJECTION
   files:
   - skills/lispcad/core/VALIDATION.md
 - id: GROUP_COUNT_CLOSURE
   files:
-  - AI_ENTRYPOINT.md
   - references/SOURCE_FEATURE_GROUP_CLOSURE.md
 - id: KEGAKI_SCOPE_FAIL
   files:
   - skills/lispcad/core/VALIDATION.md
 - id: MANUFACTURING_CHANGE_LEDGER
   files:
-  - AI_ENTRYPOINT.md
   - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
@@ -177,7 +177,6 @@ gates:
   - skills/lispcad/modes/BEND_UNFOLD.md
 - id: PHYSICAL_DATA_BASELINE
   files:
-  - AI_ENTRYPOINT.md
   - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
@@ -188,7 +187,6 @@ gates:
   - skills/lispcad/core/VALIDATION.md
 - id: RAW_DATA_SNAPSHOT
   files:
-  - AI_ENTRYPOINT.md
   - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/DXF_PHYSICAL_CURVE_DECODING.md
@@ -206,18 +204,15 @@ gates:
   - skills/lispcad/features/CHAMFER_RADIUS.md
 - id: SAME_FACE_FIRST
   files:
-  - AI_ENTRYPOINT.md
   - references/FACE_CREATION_BEND_EVIDENCE.md
 - id: SAME_PARAMETER_GATE
   files:
-  - AI_ENTRYPOINT.md
   - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
   - references/SOURCE_DATA_CLASSIFICATION.md
 - id: SAME_PHYSICAL_PARAMETER_BEFORE_REFERENCE_CONFLICT
   files:
-  - AI_ENTRYPOINT.md
   - references/SOURCE_FEATURE_GROUP_CLOSURE.md
 - id: SAVED_DXF_LAYER0_ENTITY_IDS
   files:
@@ -241,7 +236,6 @@ gates:
   - skills/lispcad/core/VALIDATION.md
 - id: SOURCE_FEATURE_COMPLETENESS_FAIL
   files:
-  - AI_ENTRYPOINT.md
   - references/CANONICAL_MEMBER_COMPLETENESS.md
 - id: SOURCE_FEATURE_GROUP_CLOSURE
   files:
@@ -257,6 +251,7 @@ gates:
   files:
   - AI_ENTRYPOINT.md
   - references/REFERENCE_EXPOSURE_FIREWALL.md
+  - references/SOURCE_DATA_CLASSIFICATION.md
   - skills/lispcad/core/VALIDATION.md
 - id: SOURCE_PHYSICAL_TO_CANONICAL
   files:
@@ -288,7 +283,6 @@ gates:
   - skills/lispcad/modes/BEND_UNFOLD.md
 - id: UNTOUCHED_DATA_INVARIANCE_CHECK
   files:
-  - AI_ENTRYPOINT.md
   - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
@@ -314,289 +308,61 @@ gates:
   - skills/lispcad/core/CROSS_FEATURE_VALIDATION.md
   - skills/lispcad/features/KEGAKI.md
   - skills/lispcad/router/FEATURE_CENSUS.md
-review_candidates:
-- id: ASSEMBLY_DATUM_GRAPH
-  files:
-  - references/HOLISTIC_ENGINEERING_CHALLENGE.md
-  - skills/lispcad/core/DATUM_DIMENSION.md
-- id: BEND_EDGE
-  files:
-  - AI_ENTRYPOINT.md
-  - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
-  - skills/lispcad/core/CROSS_FEATURE_VALIDATION.md
-  - skills/lispcad/core/DATUM_DIMENSION.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
-- id: BEND_END_OFFSET_90
-  files:
-  - AI_ENTRYPOINT.md
-  - references/BEND_EDGE_RELIEF_90.md
-- id: BEND_SUPPORT
-  files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
-- id: CANONICAL_ENTITY_IDS
-  files:
-  - references/CANONICAL_MEMBER_COMPLETENESS.md
-  - skills/lispcad/core/CAD_OUTPUT.md
-- id: CONFIRM_CONFLICT
-  files:
-  - references/CAD_CUSTOMER_POLICY.md
-  - references/SOURCE_DATA_CLASSIFICATION.md
-- id: CONTOUR_EDGE
-  files:
-  - skills/lispcad/core/DATUM_DIMENSION.md
-  - skills/lispcad/core/VALIDATION.md
-- id: CUSTOMER_CONFIRMATION_PENDING
-  files:
-  - AI_ENTRYPOINT.md
-  - references/HOLISTIC_ENGINEERING_CHALLENGE.md
-  - references/REFERENCE_EXPOSURE_FIREWALL.md
-  - references/SOURCE_FEATURE_GROUP_CLOSURE.md
-  - references/WELD_SITE_KEGAKI_CLOSURE.md
-  - skills/lispcad/core/CAD_OUTPUT.md
-  - skills/lispcad/core/VALIDATION.md
-- id: DATA_NO_DIM_COMPARE
-  files:
-  - references/CAD_CUSTOMER_POLICY.md
-  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
-  - references/SOURCE_DATA_CLASSIFICATION.md
-  - skills/lispcad/core/VALIDATION.md
-- id: DATA_REQUIRED_MISSING
-  files:
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
-  - references/SOURCE_DATA_CLASSIFICATION.md
-- id: DETAILED_SOURCE_BUNDLE
-  files:
-  - skills/lispcad/core/DRAWING_READING.md
-  - skills/lispcad/core/VALIDATION.md
-- id: DIMENSION_HELPER_OR_CONSTRUCTION
-  files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
-- id: DUPLICATE_COINCIDENT
-  files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
-- id: ENTITY_ID
-  files:
-  - AI_ENTRYPOINT.md
-  - SKILL.md
-  - skills/lispcad/core/CAD_OUTPUT.md
-- id: FACE_GRAPH
-  files:
-  - AI_ENTRYPOINT.md
-  - SKILL.md
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/FACE_CREATION_BEND_EVIDENCE.md
-  - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
-  - references/FORMED_PROFILE_OD_MEASUREMENT.md
-  - references/HOLISTIC_ENGINEERING_CHALLENGE.md
-  - references/MECHANICAL_CLASSIFIER.md
-  - references/REFERENCE_EXPOSURE_FIREWALL.md
-  - skills/lispcad/core/DRAWING_READING.md
-  - skills/lispcad/core/VALIDATION.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
-- id: FEATURE_FAMILY
-  files:
-  - AI_ENTRYPOINT.md
-  - references/SOURCE_FEATURE_GROUP_CLOSURE.md
-- id: FLAGGED_NO_GEOMETRY
-  files:
-  - AI_ENTRYPOINT.md
-  - references/CANONICAL_MEMBER_COMPLETENESS.md
-  - references/WELD_SITE_KEGAKI_CLOSURE.md
-  - skills/lispcad/core/CAD_OUTPUT.md
-- id: FOLD_BACK
-  files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
-- id: FOLD_BACK_MATCH
-  files:
-  - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
-- id: FREE_EDGE
-  files:
-  - AI_ENTRYPOINT.md
-  - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
-  - skills/lispcad/core/CROSS_FEATURE_VALIDATION.md
-  - skills/lispcad/core/DATUM_DIMENSION.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
-- id: GEOMETRY_DECODE_GAP
-  files:
-  - references/HOLISTIC_ENGINEERING_CHALLENGE.md
-  - skills/lispcad/core/VALIDATION.md
-- id: HANDWRITTEN_NOBI_DIFFERS_FROM_TABLE
-  files:
-  - skills/lispcad/core/VALIDATION.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
-- id: HIDDEN_OR_PROJECTION_ONLY
-  files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
-- id: HOLE_CENTER
-  files:
-  - skills/lispcad/core/DATUM_DIMENSION.md
-  - skills/lispcad/core/VALIDATION.md
-- id: INSIDE_VIEW
-  files:
-  - skills/lispcad/core/VALIDATION.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
-- id: IRRELEVANT_TO_MANUFACTURING
-  files:
-  - references/SOURCE_MANUFACTURING_NOTE_CENSUS.md
-  - skills/lispcad/router/FEATURE_CENSUS.md
-- id: LEFT_EDGE
-  files:
-  - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
-  - skills/lispcad/core/DATUM_DIMENSION.md
-- id: LEGACY_COMPATIBILITY_TEXT
-  files:
-  - AI_ENTRYPOINT.md
-  - references/RUNTIME_AUTHORITY_GUARD.md
-- id: MANUFACTURING_CANONICAL
-  files:
-  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
-- id: MEASUREMENT_CONSTRUCTION_VIEW
-  files:
-  - AI_ENTRYPOINT.md
-  - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
-  - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
-  - references/FORMED_PROFILE_OD_MEASUREMENT.md
-  - skills/lispcad/core/CROSS_FEATURE_VALIDATION.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
-- id: NEW_PDF_TO_DXF
-  files:
-  - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
-  - skills/lispcad/core/DRAWING_READING.md
-  - skills/lispcad/core/VALIDATION.md
-- id: OUTER_EDGE
-  files:
-  - skills/lispcad/core/DATUM_DIMENSION.md
-  - skills/lispcad/core/VALIDATION.md
-- id: PART_IDENTITY_GAP
-  files:
-  - references/HOLISTIC_ENGINEERING_CHALLENGE.md
-  - skills/lispcad/core/VALIDATION.md
-- id: PASS_CODE
-  files:
-  - AI_ENTRYPOINT.md
-  - SKILL.md
-  - skills/lispcad/core/CAD_OUTPUT.md
-- id: PDF_PRIORITY
-  files:
-  - references/CAD_CUSTOMER_POLICY.md
-  - references/SOURCE_DATA_CLASSIFICATION.md
-- id: PHYSICAL_CUT_OR_FACE_EDGE
-  files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
-- id: PHYSICAL_DATA_BASELINE_COMPLETE
-  files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
-- id: PHYSICAL_HOLE_SLOT_OR_FEATURE
-  files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
-- id: RAW_DATA_SNAPSHOT_COMPLETE
-  files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
-- id: REFERENCE_ANOMALY
-  files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - skills/lispcad/core/VALIDATION.md
-- id: REFERENCE_ASSISTED_UNDERSTANDING
-  files:
-  - AI_ENTRYPOINT.md
-  - references/REFERENCE_EXPOSURE_FIREWALL.md
-- id: REVIEW_ONLY
-  files:
-  - AI_ENTRYPOINT.md
-  - SKILL.md
-  - skills/lispcad/core/CAD_OUTPUT.md
-  - skills/lispcad/core/VALIDATION.md
-- id: RIGHT_EDGE
-  files:
-  - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
-  - skills/lispcad/core/DATUM_DIMENSION.md
-- id: ROUTING_COVERAGE_GAP
-  files:
-  - AI_ENTRYPOINT.md
-  - references/HOLISTIC_ENGINEERING_CHALLENGE.md
-  - references/RUNTIME_AUTHORITY_GUARD.md
-  - skills/lispcad/core/VALIDATION.md
-  - skills/lispcad/router/FEATURE_CENSUS.md
-- id: SKILL_LISPCAD_CURRENT
-  files:
-  - AI_ENTRYPOINT.md
-  - references/RUNTIME_AUTHORITY_GUARD.md
-- id: SLOT_MIDPOINT
-  files:
-  - skills/lispcad/core/DATUM_DIMENSION.md
-  - skills/lispcad/features/SLOTS.md
-- id: SOURCE_CONFLICT
-  files:
-  - references/DXF_PHYSICAL_CURVE_DECODING.md
-  - references/SOURCE_FEATURE_GROUP_CLOSURE.md
-- id: SOURCE_FEATURE_GROUP
-  files:
-  - AI_ENTRYPOINT.md
-  - references/CANONICAL_MEMBER_COMPLETENESS.md
-  - references/SOURCE_FEATURE_GROUP_CLOSURE.md
-- id: SOURCE_MEMBER_CENSUS_GAP
-  files:
-  - references/HOLISTIC_ENGINEERING_CHALLENGE.md
-  - skills/lispcad/core/VALIDATION.md
-- id: SOURCE_UNIT_CONFLICT
-  files:
-  - skills/lispcad/core/DRAWING_READING.md
-  - skills/lispcad/core/VALIDATION.md
-- id: SOURCE_VIEW
-  files:
-  - AI_ENTRYPOINT.md
-  - references/FORMED_PROFILE_OD_MEASUREMENT.md
-  - references/PART_IDENTITY_GRAPH.md
-  - skills/lispcad/core/CAD_OUTPUT.md
-- id: THICKNESS_REPRESENTATION
-  files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/MECHANICAL_CLASSIFIER.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
-- id: THREAD_NOMINAL_REFERENCE
-  files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
-  - skills/lispcad/core/CROSS_FEATURE_VALIDATION.md
-  - skills/lispcad/features/HOLES_TAPS.md
-- id: THREAD_PREHOLE_SOURCE
-  files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
-  - skills/lispcad/core/CROSS_FEATURE_VALIDATION.md
-- id: TRUE_SOURCE_AMBIGUITY
-  files:
-  - references/HOLISTIC_ENGINEERING_CHALLENGE.md
-  - skills/lispcad/core/VALIDATION.md
-- id: VIEWS_ONLY
-  files:
-  - AI_ENTRYPOINT.md
-  - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
-  - references/CANONICAL_MEMBER_COMPLETENESS.md
-  - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
-  - references/HOLISTIC_ENGINEERING_CHALLENGE.md
-  - skills/lispcad/core/CAD_OUTPUT.md
-  - skills/lispcad/core/CROSS_FEATURE_VALIDATION.md
-  - skills/lispcad/core/DATUM_DIMENSION.md
-  - skills/lispcad/core/DRAWING_READING.md
-  - skills/lispcad/core/VALIDATION.md
-  - skills/lispcad/features/HOLES_TAPS.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
-  - skills/lispcad/router/FEATURE_CENSUS.md
-- id: WELD_REQUIRED_CUE
-  files:
-  - AI_ENTRYPOINT.md
-  - skills/lispcad/core/CROSS_FEATURE_VALIDATION.md
-  - skills/lispcad/features/KEGAKI.md
-  - skills/lispcad/router/FEATURE_CENSUS.md
+review_candidates: []
+reviewed_non_gates:
+- ASSEMBLY_DATUM_GRAPH
+- BEND_EDGE
+- BEND_END_OFFSET_90
+- BEND_SUPPORT
+- CANONICAL_ENTITY_IDS
+- CONFIRM_CONFLICT
+- CONTOUR_EDGE
+- CUSTOMER_CONFIRMATION_PENDING
+- DATA_NO_DIM_COMPARE
+- DATA_REQUIRED_MISSING
+- DETAILED_SOURCE_BUNDLE
+- DIMENSION_HELPER_OR_CONSTRUCTION
+- DUPLICATE_COINCIDENT
+- ENTITY_ID
+- FACE_GRAPH
+- FEATURE_FAMILY
+- FLAGGED_NO_GEOMETRY
+- FOLD_BACK
+- FREE_EDGE
+- GEOMETRY_DECODE_GAP
+- HANDWRITTEN_NOBI_DIFFERS_FROM_TABLE
+- HIDDEN_OR_PROJECTION_ONLY
+- HOLE_CENTER
+- INSIDE_VIEW
+- IRRELEVANT_TO_MANUFACTURING
+- LEFT_EDGE
+- LEGACY_COMPATIBILITY_TEXT
+- MANUFACTURING_CANONICAL
+- MEASUREMENT_CONSTRUCTION_VIEW
+- NEW_PDF_TO_DXF
+- OUTER_EDGE
+- PART_IDENTITY_GAP
+- PASS_CODE
+- PDF_PRIORITY
+- PHYSICAL_CUT_OR_FACE_EDGE
+- PHYSICAL_DATA_BASELINE_COMPLETE
+- PHYSICAL_HOLE_SLOT_OR_FEATURE
+- RAW_DATA_SNAPSHOT_COMPLETE
+- REFERENCE_ANOMALY
+- REFERENCE_ASSISTED_UNDERSTANDING
+- REVIEW_ONLY
+- RIGHT_EDGE
+- ROUTING_COVERAGE_GAP
+- SKILL_LISPCAD_CURRENT
+- SLOT_MIDPOINT
+- SOURCE_CONFLICT
+- SOURCE_FEATURE_GROUP
+- SOURCE_MEMBER_CENSUS_GAP
+- SOURCE_UNIT_CONFLICT
+- SOURCE_VIEW
+- THICKNESS_REPRESENTATION
+- THREAD_NOMINAL_REFERENCE
+- THREAD_PREHOLE_SOURCE
+- TRUE_SOURCE_AMBIGUITY
+- VIEWS_ONLY
+- WELD_REQUIRED_CUE

@@ -79,65 +79,38 @@ Mandatory router files:
 
 Always-on core/source-parsing references are declared in `ROUTER.yaml`. Do not invent a different core set from memory.
 
+### Per-code workflow rules (moved from SKILL.md §2)
+
+- Process codes independently where possible; store proved work by code so a failed part does not force geometry reconstruction of already-verified parts.
+- Actually read the selected rule files; never treat a selected path as proof that its contents were loaded.
+- Reroute any code whose source feature classification changes after zoom/DATA audit.
+- If still unresolved after source exhaustion, retain proved geometry/source views with REVIEW semantics; do not invent missing dimensions or terminate unrelated codes.
+- No PASS from bbox, entity count or visually plausible contour alone.
+- Geometry JSON, not a manually repaired DXF, is the canonical model. The exporter reads canonical entities and must never infer geometry anew; do not bypass it by ad hoc `ezdxf` writing.
+- Reopen the actual emitted DXF for saved-file QA. Only an independently verified part can be called PASS.
+- A local flag cannot silently become an approved CUT.
+
 ## 2. V4.33 holistic engineering challenge / reference-exposure hard gate
 
 Load `references/HOLISTIC_ENGINEERING_CHALLENGE.md`, `references/PART_IDENTITY_GRAPH.md` and `references/REFERENCE_EXPOSURE_FIREWALL.md` from the default route.
 
-After the first source-only solve and before canonicalization, run `HOLISTIC_ENGINEERING_CHALLENGE`. This is not a confidence check. It is an evidence-accounting challenge that detects self-consistent but incomplete source models: unused DATA/views, family/group/member gaps, suspicious zero-proved ledgers, part-identity collisions, bend-edge semantic reuse, premature `VIEWS_ONLY`, and local uncertainty incorrectly escalated to whole-part failure.
-
-If the challenge finds an anomaly, re-open the source and re-solve. If no defensible flat exists only after source exhaustion, preserve **all independently proved source/orthographic view members** in a complete `VIEWS_ONLY` review representation. `VIEWS_ONLY` is forbidden as a text-only stop or as a shortcut after the first failed graph attempt.
-
-Before final canonical serialization, run `FINAL_ENGINEERING_SANITY_REVIEW`. A PASS that merely matches an incomplete source ledger is not sufficient.
-
-For calibration/reference work, freeze `SOURCE_ONLY_SNAPSHOT` before reference exposure. After the sample/reference is visible, a previously unresolved claim cannot be rewritten as source-proved unless new non-reference evidence is recorded. Otherwise retain `REFERENCE_ASSISTED_UNDERSTANDING`. Operator-declared sample FLAG/Magenta geometry remains `CUSTOMER_CONFIRMATION_PENDING` and is not approved-reference authority.
-
-V4.33 does **not** change the canonical serialization schema. New jobs use the V4.34 schema (see the supplement at the top); V4.31 fixtures remain readable. `tools/export_canonical_dxf.py` remains the exporter.
+- After the first source-only solve and before canonicalization, run `HOLISTIC_ENGINEERING_CHALLENGE`; on an anomaly, re-open the source and re-solve. `VIEWS_ONLY` is only a complete executable fallback after source exhaustion, never a text-only stop.
+- Before final canonical serialization, run `FINAL_ENGINEERING_SANITY_REVIEW`.
+- For calibration/reference work, freeze `SOURCE_ONLY_SNAPSHOT` before reference exposure; later reclassification follows `REFERENCE_EXPOSURE_FIREWALL.md` (`REFERENCE_ASSISTED_UNDERSTANDING`, `CUSTOMER_CONFIRMATION_PENDING`).
 
 ## 2A. V4.32 bend attachment-edge / formed-profile OD hard gate
 
-For every `BEND`, `MULTI_FACE`, or unresolved bend candidate, load:
+For every `BEND`, `MULTI_FACE`, or unresolved bend candidate the Router loads `references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md` and, when outside face length must come from formed/profile geometry, `references/FORMED_PROFILE_OD_MEASUREMENT.md`, together with `BEND_UNFOLD.md`, `FACE_GRAPH_UNFOLD_PROTOCOL.md`, `FACE_CREATION_BEND_EVIDENCE.md` and the relief/Nobi rules (`ROUTER.yaml` `mode_routes`).
 
-- `references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md`;
-- `references/FORMED_PROFILE_OD_MEASUREMENT.md` when outside face length must be established from formed/profile geometry;
-- existing `skills/lispcad/modes/BEND_UNFOLD.md`, `references/FACE_GRAPH_UNFOLD_PROTOCOL.md`, `references/FACE_CREATION_BEND_EVIDENCE.md`, and applicable relief/Nobi rules.
-
-Before unfold, `BEND_ATTACHMENT_EDGE_LOCKED` must prove the exact physical material edge on both adjacent faces:
-
-`FACE_A.edge_i <-> physical BEND <-> FACE_B.edge_j`.
-
-Face adjacency or correct face order alone is insufficient. `NEAREST_VIEW_EDGE`, paper proximity, page-side assumptions and visual symmetry are not attachment evidence. Thickness/hidden-line evidence is optional; formed/profile/side/section topology, view correspondence, dimension/witness connectivity, bend notation and other explicit source cues may prove the edge relationship.
-
-A formed/profile view used to prove topology or measure actual outside length is a `MEASUREMENT_CONSTRUCTION_VIEW`, not manufacturing CUT geometry merely because it appears on Layer 0 or beside the flat in a reference.
-
-When applicable, construct the source-supported formed profile, establish the outside envelope and retain `OD_actual` plus thickness/offset ownership before applying Nobi. `THICKNESS_SINGLE_USE` remains mandatory.
-
-Bent-face features retain physical datum-edge identity such as `BEND_EDGE` or `FREE_EDGE` through local-face -> flat transforms. Fold-back must reproduce the same attachment edge identities, not merely the same total length/bbox/silhouette.
-
-Regression `521006-18_V4_32_APPROVED` covers the demonstrated 058648 reversed attachment, 058653/058655 outside-length ownership, 058649/058650 R3 depth endpoint semantics, 058652 180-degree equivalence control, and 058654 unresolved-reference boundary. Job-specific directions/numbers remain regression evidence only.
-
-V4.32 does **not** change the canonical serialization schema. The V4.34 supplement at the top governs new-job serialization; `tools/export_canonical_dxf.py` remains the exporter.
+Before unfold, `BEND_ATTACHMENT_EDGE_LOCKED` must prove the exact physical material edge on both adjacent faces. `NEAREST_VIEW_EDGE`, paper proximity and visual symmetry are not evidence. A formed/profile view is a `MEASUREMENT_CONSTRUCTION_VIEW`, not CUT geometry. `THICKNESS_SINGLE_USE` remains mandatory. Regression: `regression/qa/521006-18_V4_32_APPROVED.md`.
 
 ## 2B. V4.31 E2E canonical completeness hard gate
 
 Load `references/CANONICAL_MEMBER_COMPLETENESS.md` before final Feature Census and use `tools/CANONICAL_INPUT_SCHEMA_V431.md` when constructing output state.
 
-**NO_DIRECT_DXF_FROM_INTERPRETATION:** normal production/review jobs must not write a hand-picked subset directly from source interpretation into `ezdxf.modelspace()` and call `saveas()`. First persist source groups/members, dimension/witness ownership and canonical members/entities. Then serialize through `tools/export_canonical_dxf.py`.
+**NO_DIRECT_DXF_FROM_INTERPRETATION:** never write a hand-picked subset from source interpretation straight into `ezdxf.modelspace()`; persist source groups/members and canonical members first, then serialize through `tools/export_canonical_dxf.py`. `tools/export_dxf.py` is a lower-level packaging component, not evidence of completeness.
 
-The lower-level `tools/export_dxf.py` remains a packaging component and backward-compatible tool; it is not independently sufficient evidence of source-member completeness.
-
-Before serialization, hard-fail unless:
-
-`PROVED SOURCE MEMBERS == PROVED SOURCE-BACKED CANONICAL MEMBERS`.
-
-FLAGGED source members remain represented as PREVIEW/SOURCE_VIEW/FLAGGED_NO_GEOMETRY; uncertainty is local and never authorizes deletion of independently proved members. CANCELED source members must not appear in canonical manufacturing geometry.
-
-Every canonical Layer-0 entity has a stable `entity_id`. The V4.31 serializer writes the composite, stamps `TRAINAICAD` XDATA IDs, saves again, reopens the exact file and hard-fails unless:
-
-`SAVED DXF ENTITY IDs == CANONICAL ENTITY IDs`.
-
-A syntactically valid/readable DXF, clean bbox, selected count check or generic READBACK PASS cannot override `SOURCE_FEATURE_COMPLETENESS_FAIL` or `CANONICAL_SERIALIZATION_COMPLETENESS_FAIL`.
-
-Regression `521005-05_V4_31_APPROVED` specifically prevents the demonstrated V4.30 failure where 057862/057864/057873 families were recognized in prose/family census but proved members were omitted before serialization.
+Hard-fail before serialization unless `PROVED SOURCE MEMBERS == PROVED SOURCE-BACKED CANONICAL MEMBERS`, and after saving unless `SAVED DXF ENTITY IDs == CANONICAL ENTITY IDs`. Detail, member statuses and regression `521005-05_V4_31_APPROVED`: `CANONICAL_MEMBER_COMPLETENESS.md`.
 
 ## 3. V4.30 runtime-authority hardening
 
@@ -145,9 +118,7 @@ Load `references/RUNTIME_AUTHORITY_GUARD.md` before inherited core text. Repo-di
 
 `USER TASK -> AI_ENTRYPOINT -> ROUTER -> ROUTED MODULES/REFERENCES`.
 
-Inherited compatibility prose inside an active module that says the portable skill must be read in full is `LEGACY_COMPATIBILITY_TEXT`; it does not override repo-direct routing. Likewise, the current routed `CAD_OUTPUT.md` controls packaging over older wording that described automatic individual + combined output.
-
-Archived portable snapshot remains compatibility/audit only. A route gap is `ROUTING_COVERAGE_GAP`; do not silently continue from portable/history.
+Legacy compatibility wording, packaging precedence and the portable/history boundary are defined in that file. A route gap is `ROUTING_COVERAGE_GAP`; do not silently continue from portable/history.
 
 ## 4. Census before specialized rules
 
@@ -157,70 +128,25 @@ Inspect the actual source before selecting specialized modules. Build the prelim
 
 Do not mark a feature absent merely because OCR did not find its keyword. Inspect geometry, leaders, witnesses, notes, revisions, sections/details, barcode/process cues and supplied customer DATA as applicable.
 
-### V4.30 source feature-group gate
+### Source gates before the final census
 
-Load `references/SOURCE_FEATURE_GROUP_CLOSURE.md` before final preliminary Feature Census.
+Each gate's rules live in its file; load it at the stated point.
 
-- Separate broad **FEATURE_FAMILY** from source-scoped **SOURCE_FEATURE_GROUP**.
-- Same family and same size do not prove one group. Close each leader/callout group independently through quantity + X witnesses + Y witnesses + datum + host face.
-- A shared X chain does not authorize borrowing another group's Y chain.
-- Aggregate family quantity is downstream of `GROUP_COUNT_CLOSURE`; a correct total with wrong per-group allocation is FAIL.
-- Detail-view paper placement is arbitrary; dimensions inside the detail map through the detail identifier/leader to the physical target.
-- Customer/sample/reference geometry does not silently close a genuinely `CUSTOMER_CONFIRMATION_PENDING` source field.
-- Before declaring source/reference numeric conflict, pass `SAME_PHYSICAL_PARAMETER_BEFORE_REFERENCE_CONFLICT`: same group, host, physical witnesses, dimension semantics, inside/outside state, frame and units.
-- For a bent corner/bend-end junction whose relief status depends on a still-unresolved signed bend-end offset, retain `SLIT_RELIEF = UNKNOWN` until the routed bend-end gate closes it.
-
-### V4.29 source-manufacturing-note gate
-
-Load `references/SOURCE_MANUFACTURING_NOTE_CENSUS.md` as always-on source parsing before final preliminary Feature Census. Every production-affecting printed/handwritten/revision instruction must retain a scoped note->family resolution. A source instruction that proves a family routes it `YES`; a plausible manufacturing instruction with unresolved scope/quantity/host/value/location/direction keeps the relevant family at least `UNKNOWN`, never premature `NO`.
-
-`スリット`/`SLIT` may define a custom source-instructed slit: create that custom branch only when explicitly instructed, preserve any drawing-specific explicit value, and derive quantity/location/direction only from source evidence. Do not hardcode slit size or bend-center placement from a reference. Existing separately-triggered relief mechanisms remain independent.
-
-### V4.28 face-creation gate
-
-For `BEND`, `MULTI_FACE`, or `UNKNOWN` mode candidates, load `references/FACE_CREATION_BEND_EVIDENCE.md` before final FACE_GRAPH closure. A contour direction change, slope, step, recess, protrusion, R/C or silhouette break does not by itself prove a bend/new face. Run `SAME_FACE_FIRST`, require positive bend evidence for each created FACE boundary, and lock the actual local bend material domain before unfold.
-
-### V4.27 weld-cue gate
-
-A proved reversed-e mark immediately above a barcode is `REVERSED_E_ABOVE_BARCODE -> WELD_REQUIRED_CUE` for that barcode/code cluster only. It proves a welding-process expectation, not KEGAKI geometry. Use the routed KEGAKI/RIB logic and do not copy scope to adjacent codes.
-
-### V4.26 physical-curve gate
-
-Whenever DXF geometry participates as customer DATA, reference, or direct-audit evidence, decode physical curves before Feature Census. For `POLYLINE`/`LWPOLYLINE`, nonzero bulge means ARC, not the endpoint chord; closed final->first segments are included. Use `references/DXF_PHYSICAL_CURVE_DECODING.md`.
+- **V4.30 source feature-group gate:** `references/SOURCE_FEATURE_GROUP_CLOSURE.md`, before final preliminary Feature Census.
+- **V4.29 source-manufacturing-note gate:** `references/SOURCE_MANUFACTURING_NOTE_CENSUS.md`, always-on source parsing before final preliminary Feature Census.
+- **V4.28 face-creation gate:** for `BEND`, `MULTI_FACE`, or `UNKNOWN` mode candidates, `references/FACE_CREATION_BEND_EVIDENCE.md`, before final FACE_GRAPH closure.
+- **V4.27 weld-cue gate:** `REVERSED_E_ABOVE_BARCODE -> WELD_REQUIRED_CUE`, scoped to its barcode/code cluster; rules in `skills/lispcad/router/FEATURE_CENSUS.md`.
+- **V4.26 physical-curve gate:** whenever DXF geometry participates as customer DATA, reference, or direct-audit evidence, decode physical curves before Feature Census using `references/DXF_PHYSICAL_CURVE_DECODING.md`.
 
 ## 5. Bent / multi-face parts — V4.32 attachment / OD / bend-edge / relief gate
 
 Every bent or multi-face part loads `skills/lispcad/modes/BEND_UNFOLD.md`, `references/FACE_GRAPH_UNFOLD_PROTOCOL.md`, `references/FACE_CREATION_BEND_EVIDENCE.md`, `references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md`, `references/FORMED_PROFILE_OD_MEASUREMENT.md`, and `references/BEND_EDGE_RELIEF_90.md`.
 
-Before production unfold/output:
-
-1. close FACE_GRAPH topology, witnesses, host faces, order, bend sign and material domain;
-2. prove `BEND_ATTACHMENT_EDGE_LOCKED` for the exact physical edge on both adjacent faces; never choose by nearest graphical edge;
-3. when applicable, reconstruct formed/profile outside geometry, close `OD_actual` ownership and `THICKNESS_SINGLE_USE`;
-4. lock each **chiều dài cạnh uốn / bend-edge length** from the actual shared material edge, never from bbox;
-5. for a scoped 90-degree bend-end relief candidate, prove signed bend-end offset `S`;
-6. apply `BEND_END_OFFSET_90` only within its approved scope:
-   - `S > 0` -> NO SLIT from this mechanism;
-   - `S = 0` -> slit `T + 0.2` from the actual edge;
-   - `S < 0` -> slit `T + 0.2` from the actual recessed edge; the endpoint distance from the zero/outside reference is `|S| + T + 0.2`;
-   - there is no active `T/2` threshold/FLAG branch;
-7. explicit source custom slit, BOXMET, opposite-fold `R=t`, and non-90-degree relief mechanisms remain separately routed and take precedence when their own triggers are proved;
-8. do not create duplicate reliefs for one physical junction;
-9. fold-back must verify attachment-edge identity and bent-face datum ownership.
+Before production unfold/output close the `*_LOCKED` set in `BEND_UNFOLD.md` (including `BEND_ATTACHMENT_EDGE_LOCKED`), `OD_actual` ownership with `THICKNESS_SINGLE_USE`, and the bend-edge length from the actual shared edge. The `BEND_END_OFFSET_90` relief decision (signed `S`), mechanism precedence and no-duplicate-relief rule are in `BEND_EDGE_RELIEF_90.md`; fold-back identity checks are in `CROSS_FEATURE_VALIDATION.md`.
 
 ## 6. Source and mode routing
 
-Classify exactly one source relationship using `references/SOURCE_DATA_CLASSIFICATION.md`:
-- `PDF_ONLY`
-- `PDF_DATA_RAW`
-- `TRAIN_REFERENCE`
-- `DIRECT_EXISTING_DXF_AUDIT`
-
-For `PDF_DATA_RAW`, the router loads `references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md`, `references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md` and `references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md`. Customer DATA supplies physical geometry; PDF controls semantics, dimensions, revisions and manufacturing meaning under the approved rules.
-
-V4.25 requires `RAW_DATA_SNAPSHOT`, `PHYSICAL_DATA_BASELINE`, `SAME_PARAMETER_GATE`, `MANUFACTURING_CHANGE_LEDGER` and `UNTOUCHED_DATA_INVARIANCE_CHECK`. V4.26 additionally requires decoded physical LINE/ARC/CIRCLE preservation for bulged polylines.
-
-For reference/sample calibration of a new/source-only solve, freeze `SOURCE_ONLY_SNAPSHOT` before exposing or decoding the sample/reference geometry; customer DXF DATA remains source-authoritative and is decoded normally. After freeze, compare physical reference geometry without reverse-fitting the source interpretation. DIRECT_EXISTING_DXF_AUDIT may compare existing AI DXF ↔ sample as required by that audit mode, but any later claim about what the original source alone established remains bounded by the frozen/pre-existing source evidence. V4.30 additionally requires same-physical-parameter identity before a numeric source/reference conflict is declared.
+Classify exactly one source relationship (`PDF_ONLY`, `PDF_DATA_RAW`, `TRAIN_REFERENCE`, `DIRECT_EXISTING_DXF_AUDIT`) per the section "Source relationship classes and mode loads" in `references/SOURCE_DATA_CLASSIFICATION.md` (default-loaded). Mode loads: `ROUTER.yaml` `source_routes`.
 
 ## 7. Release wiring index
 
@@ -228,23 +154,7 @@ Moved to `docs/RELEASE_WIRING_INDEX.md`. It is a QA/audit index, not a load list
 
 ## 8. Production completeness
 
-Before production PASS or REVIEW_ONLY delivery, close:
-
-```text
-SOURCE MANUFACTURING NOTES
-  -> SOURCE FEATURE GROUPS
-  -> SOURCE MEMBERS
-  -> SOURCE ACTIVE FAMILIES
-  -> FINAL FEATURE CENSUS
-  -> LOADED ROUTES
-  -> DIMENSION/WITNESS GRAPH
-  -> CANONICAL MEMBERS
-  -> CANONICAL ENTITIES
-  -> SERIALIZED OUTPUT
-  -> SAVED ENTITY-ID READ-BACK
-```
-
-For bent parts also close FACE_GRAPH, `BEND_ATTACHMENT_EDGE_LOCKED`, applicable formed-profile `OD_actual` ownership, per-bend witness ledger, bend-edge material domain and any applicable 90-degree bend-end relief decision before serialization.
+Before production PASS or REVIEW_ONLY delivery, close every step of the §1 flow (notes -> groups -> members -> families -> census -> routes -> witness graph -> canonical members/entities -> serialized output -> saved entity-ID read-back) and every `ROUTER.yaml` `post_route_checks` item. For bent parts this includes FACE_GRAPH, `BEND_ATTACHMENT_EDGE_LOCKED`, `OD_actual` ownership, per-bend witness ledger, bend-edge material domain and any 90-degree bend-end relief decision (§5).
 
 A correct bbox, raw entity count, syntactically valid DXF or successful generic read-back cannot compensate for a missing source note/group/member/family, false parameter comparison, wrong attachment edge, wrong bend domain, or missing/extra relief.
 
@@ -252,21 +162,13 @@ If a source-supported family has no route, stop with `ROUTING_COVERAGE_GAP`. Do 
 
 ## 9. Portable and history policy
 
-The compatibility/audit snapshots (the former `skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md`, a byte-identical copy of V4.24, and `skills/lispcad/versions/**`) were retired from the working tree. They are pinned, sha256-verified, in `docs/history/SNAPSHOT_MANIFEST.json` at commit `173c098` and read through `tools/snapshot_manifest.py`. They are **NOT part of the normal repo-direct load path** and are not required to be version-equal to the current release.
-
-They may be read only to diagnose `ROUTING_COVERAGE_GAP`, audit historical coverage, or perform an explicitly requested portability check. After a gap is found, do not silently continue production from snapshot text.
-
-Normal production retrieval excludes:
-- the retired snapshot archive (`docs/history/SNAPSHOT_MANIFEST.json`, pinned commit)
-- `docs/history/**`
-
-Historical snapshots never override active modular rules.
+Snapshots and `docs/history/**` are outside normal production retrieval. Rules, pinned archive and read-only uses: `skills/lispcad/router/ROUTER.yaml` `history_policy` and `portable_compatibility`. After a `ROUTING_COVERAGE_GAP`, stop; do not silently continue production from snapshot text.
 
 ## 10. Regression and output
 
 Load only regressions relevant to the routed rule/family or an explicit audit. Regression geometry is evidence/tests, not a source of missing dimensions for a new drawing.
 
-Use current `VALIDATION.md` and `CAD_OUTPUT.md`. For normal new CAD jobs, build the V4.34 canonical contract (see the top supplement) and call `tools/export_canonical_dxf.py`; then read back the actual saved DXF before calling production complete. For DXF-bearing sources, source/reprojection QA compares decoded physical curves, not only vertices, bbox or raw entity count.
+Use current `VALIDATION.md` and `CAD_OUTPUT.md`. New CAD jobs follow the canonical contract in the top supplement: export through `tools/export_canonical_dxf.py`, then read back the actual saved DXF before calling production complete. Reprojection QA rules: `references/DXF_PHYSICAL_CURVE_DECODING.md` §6.
 
 ## 11. MCP boundary
 
