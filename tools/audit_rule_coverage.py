@@ -55,6 +55,7 @@ def audit(root: Path = ROOT, router: dict | None = None) -> dict:
 
     routed = set()
     required = set(router.get("default_load", []))
+    required |= {e["path"] for e in router.get("conditional_default_load", [])}
     routed.update(required)
     for group in ROUTE_GROUPS:
         mapping = router.get(group)

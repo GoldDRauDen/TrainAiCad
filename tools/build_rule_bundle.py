@@ -72,6 +72,8 @@ def approved_paths(root: Path = ROOT) -> tuple[str, list[str]]:
         add(p)
     for p in router.get("default_load", []):
         add(p)
+    for entry in router.get("conditional_default_load", []):
+        add(entry["path"])
     for group in ("stage_routes", "source_routes", "mode_routes", "feature_routes", "customer_routes"):
         for route in router[group].values():
             for p in route.get("load", []):

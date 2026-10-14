@@ -159,6 +159,23 @@ def resolve_rules(census: dict, root: Path = ROOT, router: dict | None = None) -
     current_stage = stages[1]
     for path in router.get("default_load", []):
         add_path(path)
+    for entry in router.get("conditional_default_load", []):
+        skip = entry.get("skip_when") if isinstance(entry, dict) else None
+        if not isinstance(skip, dict) or not skip:
+            raise ResolutionError("conditional_default_load entry needs skip_when")
+        proven_absent = True
+        for key, expected in skip.items():
+            if not isinstance(expected, str):
+                # YAML 1.1 reads bare NO as false; fail closed instead of never skipping.
+                raise ResolutionError(f"skip_when value for {key} must be a quoted string, got {expected!r}")
+            actual = census.get(key, "UNKNOWN")
+            if key != "source_mode":
+                actual = _state(actual, key)
+            if actual != expected:
+                proven_absent = False
+                break
+        if not proven_absent:
+            add_path(entry["path"])
     add_group("stage_routes", current_stage)
     add_group("source_routes", source_mode)
 
