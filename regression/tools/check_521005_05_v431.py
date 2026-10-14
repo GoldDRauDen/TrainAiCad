@@ -217,7 +217,9 @@ def main():
         doc = ezdxf.readfile(target)
         layer0 = [e for e in doc.modelspace() if e.dxf.layer == "0"]
         ids = [xdata_entity_id(e) for e in layer0]
-        assert ids == validation["entity_ids"]
+        # V4.35: each written piece carries its piece id; coverage is per canonical entity.
+        assert ids == manifest["entity_map"]
+        assert {i.split(":S")[0] for i in ids} == set(validation["entity_ids"])
 
         circles = [(xdata_entity_id(e), round(e.dxf.radius, 4)) for e in layer0 if e.dxftype() == "CIRCLE"]
         assert len([x for x in circles if "G862_" in x[0]]) == 16

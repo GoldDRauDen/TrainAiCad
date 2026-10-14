@@ -155,7 +155,9 @@ def test_pass_and_review_export_separation(tmp_path):
     assert types.count("LINE") == 8 and types.count("ARC") == 3 and types.count("CIRCLE") == 1
     assert len(types) == 12
     composite = ezdxf.readfile(tmp_path / result["filename"])
-    assert "LWPOLYLINE" in [e.dxftype() for e in composite.modelspace()]
+    # V4.35: the combined CUT file has no LWPOLYLINE; outlines are LINE/ARC pieces.
+    composite_types = [e.dxftype() for e in composite.modelspace() if e.dxf.layer == "0"]
+    assert "LWPOLYLINE" not in composite_types and "LINE" in composite_types
     assert any("NO CUT" in e.dxf.text for e in composite.modelspace() if e.dxftype() == "TEXT")
 
 

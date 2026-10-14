@@ -3,6 +3,11 @@ Resolve printed material via `references/MATERIAL_ALIASES.yaml` and `tools/mater
 
 # Production reference — Laser corner R, hole capacity, White Piercing
 
+## V4.35 SS t>=19 R3 scope and customer conflicts (approved 2026-10-14)
+
+- Automatic R3 applies to the outer material contour, including its concave corners. It does not apply to holes, slots or voids (unchanged from 2026-10-12).
+- When a customer's explicit sharp/pin-corner instruction conflicts with that automatic R3 on a corner in scope, set FLAG and obtain customer confirmation. The conflict is not resolved by silent override in either direction.
+
 ## Customer-approved 2026-10-12 SS t>=19 R3 scope clarification
 The workbook `一覧表2026.07.30!I41:I42` states **鉄の外周R、19t以上は全ての角に3R**. Operationally, SS t>=19 automatic R3 applies only to corners on the **OUTER material perimeter contour**, including concave/re-entrant corners belonging to that same exterior contour. It **does not** auto-fillet contours of interior holes, slots or voids. Explicit customer drawing instructions override this table for each scoped corner (sharp/pin角 or R/C). This approved restriction supersedes the wider original row-9 transcription; keep original source cell as provenance, not active scope. Laser-NC pierce paths/joints are deferred from CAD.
 

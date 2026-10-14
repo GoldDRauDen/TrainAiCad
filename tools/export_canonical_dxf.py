@@ -9,7 +9,7 @@ from pathlib import Path
 import ezdxf
 
 from canonical_contract import CONTRACT, CanonicalContractError, validate_canonical_job
-from export_dxf import entity_signature, export_job
+from export_dxf import COMPOSITE_GAP_MM, entity_signature, export_job, source_entity_id
 from export_job_artifacts import export_part_artifacts
 from holistic_engineering_guard import canonical_job_anomalies
 
@@ -36,14 +36,16 @@ def _stamp_and_verify(job: dict, manifest: dict, output_dir: Path, validation: d
     if APPID not in doc.appids:
         doc.appids.new(APPID)
     geometry = [e for e in doc.modelspace() if e.dxf.layer == "0"]
-    expected_ids = validation["entity_ids"]
+    # V4.35: one canonical entity may become several LINE/ARC pieces; the exporter
+    # reports the ordered piece ids and this check requires every piece to be stamped.
+    expected_ids = manifest["entity_map"]
     if len(geometry) != len(expected_ids):
         fail(f"CANONICAL_SERIALIZATION_COMPLETENESS_FAIL expected={len(expected_ids)} saved={len(geometry)}")
 
     before = [entity_signature(e) for e in geometry]
     owners = _owner_map(job)
     for ent, eid in zip(geometry, expected_ids):
-        member_ids = owners.get(eid, [])
+        member_ids = owners.get(source_entity_id(eid), [])
         ent.set_xdata(APPID, [
             (1000, f"ENTITY_ID={eid}"),
             (1000, "CANONICAL_MEMBER_IDS=" + ",".join(member_ids)),
@@ -72,6 +74,9 @@ def _stamp_and_verify(job: dict, manifest: dict, output_dir: Path, validation: d
         read_ids.append(eid)
     if read_ids != expected_ids or set(read_ids) != set(expected_ids):
         fail("CANONICAL_ENTITY_IDS_EQ_SAVED_DXF_ENTITY_IDS failed")
+    covered = {source_entity_id(eid) for eid in read_ids}
+    if covered != set(validation["entity_ids"]):
+        fail("CANONICAL_ENTITY_COVERAGE failed: every canonical entity must be written")
 
     manifest["canonical_contract"] = validation["contract"]
     manifest["canonical_completeness"] = {
@@ -83,7 +88,7 @@ def _stamp_and_verify(job: dict, manifest: dict, output_dir: Path, validation: d
     return manifest
 
 
-def export_canonical_job(job: dict, output_dir, gap_mm=10.0, write_manifest=False,
+def export_canonical_job(job: dict, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=False,
                          composite_only=False) -> dict:
     """Validate full member ledger, serialize single composite, stamp/read back entity IDs."""
     validation = validate_canonical_job(job)
@@ -111,7 +116,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="V4.31 canonical-member-complete single composite DXF")
     ap.add_argument("input_json", type=Path)
     ap.add_argument("output_dir", type=Path)
-    ap.add_argument("--gap-mm", type=float, default=10.0)
+    ap.add_argument("--gap-mm", type=float, default=COMPOSITE_GAP_MM)
     ap.add_argument("--write-manifest", action="store_true")
     ap.add_argument("--composite-only", action="store_true", help="Emit combined DXF and per-code JSON only")
     args = ap.parse_args()

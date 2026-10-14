@@ -14,11 +14,17 @@ default_load:
   - references/MECHANICAL_CLASSIFIER.md
   - references/HOLISTIC_ENGINEERING_CHALLENGE.md
   - references/REFERENCE_EXPOSURE_FIREWALL.md
-  - references/PART_IDENTITY_GRAPH.md
   - references/SOURCE_MANUFACTURING_NOTE_CENSUS.md
   - references/SOURCE_FEATURE_GROUP_CLOSURE.md
   - references/CAD_CUSTOMER_POLICY.md
   - skills/lispcad/router/FEATURE_CENSUS.md
+
+# Loaded at L1 after default_load unless every listed census condition is
+# PROVEN absent. A missing or UNKNOWN value loads the route
+# (unknown_policy: LOAD_ROUTE). Never rewrite UNKNOWN as NO to save context.
+conditional_default_load:
+  - path: references/PART_IDENTITY_GRAPH.md
+    skip_when: {multi_code_or_assembly: "NO"}
 
 # Stage-specific mandatory gates, not optional rules.
 # A normal E2E must execute all stages. Rule paths are deferred until needed.

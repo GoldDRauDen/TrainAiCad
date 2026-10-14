@@ -92,6 +92,7 @@ Record at minimum:
 source_mode: PDF_ONLY | PDF_DATA_RAW | TRAIN_REFERENCE | DIRECT_EXISTING_DXF_AUDIT
 part_mode: FLAT_NO_BEND | BEND | MULTI_FACE | UNKNOWN
 reference_present: YES | NO | UNKNOWN    # sample/reference present or planned; UNKNOWN loads firewall
+multi_code_or_assembly: YES | NO | UNKNOWN    # PART_IDENTITY_GRAPH route; only a proven NO skips it
 source_manufacturing_notes:
   - {note_text: "...", code_scope: "...", candidate_family: "...", resolution: ROUTED|CANCELLED|IRRELEVANT_TO_MANUFACTURING|UNRESOLVED}
 ## V4.34 material / HL / witness census (non-feature fields)

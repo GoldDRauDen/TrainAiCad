@@ -48,7 +48,7 @@ def build_index(root: Path = ROOT) -> dict:
         "router_sha256": _hash_file(root / ROUTER),
         "production": {
             "entrypoints": ["SKILL.md", "AI_BOOTSTRAP.md", "AI_ENTRYPOINT.md"],
-            "always_on": list(router.get("default_load", [])),
+            "always_on": list(router.get("default_load", [])) + [e["path"] for e in router.get("conditional_default_load", [])],
             "stages": router["stage_routes"],
             "source_routes": router["source_routes"],
             "mode_routes": router["mode_routes"],

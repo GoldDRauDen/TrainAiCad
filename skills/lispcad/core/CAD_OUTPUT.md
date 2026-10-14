@@ -1,3 +1,23 @@
+## V4.35 output, layout and label rules (approved 2026-10-14)
+
+These rules supersede the older output wording below where they conflict. Canonical input may keep `LWPOLYLINE`; every saved CUT DXF does not.
+
+1. **Output geometry.** Combined `*_ALL*.dxf` and individual `parts_dxf/<CODE>.dxf` contain only LINE, ARC and CIRCLE (and approved POINT) on Layer 0. Outlines, cutouts and slots are written as separate LINE/ARC pieces with canonical ids `<entity_id>:S0001`, `:S0002`, ... Piece endpoints must meet within 0.001 mm.
+2. **Source data.** PDF-derived geometry must match the drawing 100 %. Customer DXF data may be exploded into elements (XPLORE) before use, with geometry unchanged.
+3. **Template.** New DXFs start from `templates/CAD_OUTPUT_TEMPLATE.dxf` (environment, DASHED linetype, dimstyles, AC1021, ANSI_1252, LTSCALE 15). Only `$INSUNITS = 4` and `$MEASUREMENT = 1` are overridden: coordinates are millimetres. The template modelspace must be empty.
+4. **Dimensions.** No DIMENSION entity and no entity on layer `DIM` in any CUT output. Layer `DIM` is reserved for the checker.
+5. **Face orientation.**
+   - a. A part with no bend: the visible top face of the drawing is the outer face.
+   - b. A marked rib, emboss or checkered face (縞板 / エンボス): the opposite face is the outer face.
+   - c. 表 (omote) is the outer face; 保護面 (protective-film face) counts as 表 only when the drawing marks a protective film.
+   - d. Single-code files show the outer-face view. In the combined file, a part whose PDF is drawn from the back face (the drawing is front-facing but the part is seen from its back) gets a `dx` label (rule 7). A part drawn from the front gets none.
+6. **Combined file layout.** Parts stack top-to-bottom in job order. A cluster is its outline bounding box plus the code label 2 mm above the outline (label height 3 mm). The gap between clusters is at least **150 mm**, measured from the bottom of the upper outline to the top of the lower cluster label. Source views inside one code keep the 10 mm separation.
+7. **Labels (combined file only; AI_META, non-cut).**
+   - `dx`: height 20 mm, left of the outline with at least 10 mm clearance, vertically centred on the outline. Written only when the part carries `dx_label: true`. Meaning for the checker: the individual DXF of this code is symmetric (đối xứng) to the PDF view, so `dx` tells the reader that the file is drawn mirrored relative to the combined drawing. Individual CUT files never carry `dx`.
+   - FLAG: one horizontal line per flag, `<CODE> FLAG: <flag text>`, height 3 mm, top-right, at least 10 mm right of the outline. The first flag starts at the outline top; each further flag sits on the next line below.
+   - Individual CUT files carry no labels.
+8. **Customer conflicts.** When a customer's explicit corner instruction conflicts with an automatic rule (for example SS t>=19 R3 against a customer sharp corner), set FLAG and wait for customer confirmation. Do not silently override either way.
+
 ## V4.34 orientation and composite-only export (2026-10-13)
 `tools/export_canonical_dxf.py --composite-only` persists per-code canonical JSON and exports ONE composite, without any standalone CUT DXFs. Individual PASS CUT DXFs alone are pose-normalized: if there is no proved HL, choose bounding-box X>=Y (90-degree rotate only if Y>X); with proved HL, align the source-proved part-local grain vector parallel to X even when Y>X. HL direction missing relative to the part => REVIEW and NO individual PASS file. No scale/mirror, no user-visible TEXT/BEND/POINT in standalone CUT, and no change to source-canonical coordinate records. Record orientation transform and read back transformed LINE/ARC/CIRCLE/XDATA. Composite uses the readable source orientation (translation/layout only) and remains independent of the standalone rotation. Old V4.31 canonical jobs are accepted; NEW source jobs use V4.34 to require witness and grain proof.
 
@@ -73,7 +93,7 @@ Write real DXF with millimeter `$INSUNITS=4`, `$MEASUREMENT=1`, decimal `$LUNITS
 
 | V4.6 feature | DXF entity | Color 62 | Linetype |
 | :-- | :-- | :-- | :-- |
-| Outer/inner contour and slot | Closed LWPOLYLINE with real bulges | ByLayer (omit/256) | ByLayer |
+| Outer/inner contour and slot | LINE/ARC pieces exploded from canonical LWPOLYLINE (V4.35) | ByLayer (omit/256) | ByLayer |
 | Verified cut circle/M pilot | CIRCLE | ByLayer | ByLayer |
 | Ordinary PIERCING or capability POINT | actual POINT | ByLayer | ByLayer |
 | Explicit PDF PIERCING + THROUGH HOLE | actual POINT | Green 3 | ByLayer |
