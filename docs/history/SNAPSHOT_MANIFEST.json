@@ -125,6 +125,6 @@
       "header": ""
     }
   },
-  "source_tag": "snapshot-archive-173c098",
-  "caveat": "Reads need the pinned commit reachable. The tag keeps it reachable after branch deletion or squash merges. Shallow clones raise SnapshotUnavailable."
+  "source_tag": "snapshot-archive-173c098 (local only; remote push refused by egress policy, create it on the remote)",
+  "caveat": "Reads need the pinned commit reachable. Keep branch or tag refs to 173c098 on the remote so a squash merge cannot orphan it. Shallow clones raise SnapshotUnavailable."
 }
