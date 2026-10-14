@@ -79,6 +79,17 @@ Mandatory router files:
 
 Always-on core/source-parsing references are declared in `ROUTER.yaml`. Do not invent a different core set from memory.
 
+### Per-code workflow rules (moved from SKILL.md §2)
+
+- Process codes independently where possible; store proved work by code so a failed part does not force geometry reconstruction of already-verified parts.
+- Actually read the selected rule files; never treat a selected path as proof that its contents were loaded.
+- Reroute any code whose source feature classification changes after zoom/DATA audit.
+- If still unresolved after source exhaustion, retain proved geometry/source views with REVIEW semantics; do not invent missing dimensions or terminate unrelated codes.
+- No PASS from bbox, entity count or visually plausible contour alone.
+- Geometry JSON, not a manually repaired DXF, is the canonical model. The exporter reads canonical entities and must never infer geometry anew; do not bypass it by ad hoc `ezdxf` writing.
+- Reopen the actual emitted DXF for saved-file QA. Only an independently verified part can be called PASS.
+- A local flag cannot silently become an approved CUT.
+
 ## 2. V4.33 holistic engineering challenge / reference-exposure hard gate
 
 Load `references/HOLISTIC_ENGINEERING_CHALLENGE.md`, `references/PART_IDENTITY_GRAPH.md` and `references/REFERENCE_EXPOSURE_FIREWALL.md` from the default route.

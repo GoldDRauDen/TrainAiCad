@@ -43,8 +43,31 @@ APPROVED_GATES = (
     "POST_REFERENCE_SOURCE_REWRITE", "SAME_FACE_FIRST", "RAW_DATA_SNAPSHOT",
     "PHYSICAL_DATA_BASELINE", "THICKNESS_SINGLE_USE", "PART_IDENTITY_COLLISION",
     "DATA_PDF_DIM_DIFF", "SAVED_DXF_LAYER0_ENTITY_IDS",
-    "FOLD_BACK_SOURCE_REPROJECTION", "NEAREST_VIEW_EDGE",
+    "FOLD_BACK_SOURCE_REPROJECTION", "NEAREST_VIEW_EDGE", "FOLD_BACK_MATCH",
 )
+
+# Groups B and C of docs/GATE_REVIEW.md: status labels, blocking labels,
+# geometry/mechanism/file names. Explicitly NOT gates. Listing them here keeps
+# review_candidates limited to identifiers nobody has classified yet.
+REVIEWED_NON_GATES = (
+    "ASSEMBLY_DATUM_GRAPH", "BEND_EDGE", "BEND_END_OFFSET_90", "CANONICAL_ENTITY_IDS",
+    "CONFIRM_CONFLICT", "CONTOUR_EDGE", "CUSTOMER_CONFIRMATION_PENDING", "DATA_NO_DIM_COMPARE",
+    "DATA_REQUIRED_MISSING", "DETAILED_SOURCE_BUNDLE", "DIMENSION_HELPER_OR_CONSTRUCTION",
+    "DUPLICATE_COINCIDENT", "ENTITY_ID", "FACE_GRAPH", "FEATURE_FAMILY", "FLAGGED_NO_GEOMETRY",
+    "FREE_EDGE", "GEOMETRY_DECODE_GAP", "HANDWRITTEN_NOBI_DIFFERS_FROM_TABLE",
+    "HIDDEN_OR_PROJECTION_ONLY", "HOLE_CENTER", "INSIDE_VIEW", "IRRELEVANT_TO_MANUFACTURING",
+    "LEFT_EDGE", "LEGACY_COMPATIBILITY_TEXT", "MANUFACTURING_CANONICAL",
+    "MEASUREMENT_CONSTRUCTION_VIEW", "NEW_PDF_TO_DXF", "OUTER_EDGE", "PART_IDENTITY_GAP",
+    "PASS_CODE", "PDF_PRIORITY", "PHYSICAL_CUT_OR_FACE_EDGE", "PHYSICAL_HOLE_SLOT_OR_FEATURE",
+    "REFERENCE_ANOMALY", "REFERENCE_ASSISTED_UNDERSTANDING", "REVIEW_ONLY", "RIGHT_EDGE",
+    "ROUTING_COVERAGE_GAP", "SKILL_LISPCAD_CURRENT", "SLOT_MIDPOINT", "SOURCE_CONFLICT",
+    "SOURCE_FEATURE_GROUP", "SOURCE_MEMBER_CENSUS_GAP", "SOURCE_UNIT_CONFLICT", "SOURCE_VIEW",
+    "THICKNESS_REPRESENTATION", "THREAD_NOMINAL_REFERENCE", "THREAD_PREHOLE_SOURCE",
+    "TRUE_SOURCE_AMBIGUITY", "VIEWS_ONLY", "WELD_REQUIRED_CUE",
+    "BEND_SUPPORT", "FOLD_BACK", "PHYSICAL_DATA_BASELINE_COMPLETE",
+    "RAW_DATA_SNAPSHOT_COMPLETE",
+)
+assert not set(REVIEWED_NON_GATES) & set(APPROVED_GATES)
 
 CANDIDATE = re.compile(r"\b[A-Z][A-Z0-9]{2,}(?:_[A-Z0-9]{2,})+\b")
 
@@ -76,6 +99,7 @@ def build() -> str:
     review = {
         t: sorted(f) for t, f in candidates.items()
         if t not in mentions and len(f) >= 2 and t not in router_tokens and t not in stems
+        and t not in REVIEWED_NON_GATES
     }
     router = yaml.safe_load(router_text)
     doc = {
@@ -87,6 +111,7 @@ def build() -> str:
         "post_route_checks": list(router["post_route_checks"]),
         "gates": [{"id": g, "files": sorted(mentions[g])} for g in sorted(mentions)],
         "review_candidates": [{"id": t, "files": review[t]} for t in sorted(review)],
+        "reviewed_non_gates": sorted(REVIEWED_NON_GATES),
     }
     return yaml.safe_dump(doc, sort_keys=False, allow_unicode=True, width=120)
 
