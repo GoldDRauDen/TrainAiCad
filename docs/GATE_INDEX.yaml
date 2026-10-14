@@ -72,7 +72,6 @@ gates:
   - skills/lispcad/core/CAD_OUTPUT.md
 - id: CANONICAL_SERIALIZATION_COMPLETENESS_FAIL
   files:
-  - AI_ENTRYPOINT.md
   - references/CANONICAL_MEMBER_COMPLETENESS.md
 - id: CANONICAL_TO_SOURCE_PHYSICAL
   files:
@@ -237,7 +236,6 @@ gates:
   - skills/lispcad/core/VALIDATION.md
 - id: SOURCE_FEATURE_COMPLETENESS_FAIL
   files:
-  - AI_ENTRYPOINT.md
   - references/CANONICAL_MEMBER_COMPLETENESS.md
 - id: SOURCE_FEATURE_GROUP_CLOSURE
   files:
