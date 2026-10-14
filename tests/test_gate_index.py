@@ -26,3 +26,15 @@ def test_every_indexed_gate_is_mentioned_in_a_cited_source():
     for gate in index["gates"]:
         for rel in gate["files"]:
             assert gate["id"] in (ROOT / rel).read_text(encoding="utf-8"), (gate["id"], rel)
+
+
+def test_review_candidates_catch_names_the_suffix_rule_misses():
+    index = yaml.safe_load((ROOT / "docs/GATE_INDEX.yaml").read_text(encoding="utf-8"))
+    candidates = {c["id"]: c["files"] for c in index["review_candidates"]}
+    assert "SOURCE_ONLY_SNAPSHOT" in candidates
+    gate_ids = {g["id"] for g in index["gates"]}
+    assert not (gate_ids & set(candidates)), "a token must be either a gate or a review candidate"
+    for token, files in candidates.items():
+        assert len(files) >= 2
+        for rel in files:
+            assert token in (ROOT / rel).read_text(encoding="utf-8"), (token, rel)
