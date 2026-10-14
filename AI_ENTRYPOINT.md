@@ -168,36 +168,15 @@ Inspect the actual source before selecting specialized modules. Build the prelim
 
 Do not mark a feature absent merely because OCR did not find its keyword. Inspect geometry, leaders, witnesses, notes, revisions, sections/details, barcode/process cues and supplied customer DATA as applicable.
 
-### V4.30 source feature-group gate
+### Source gates before the final census
 
-Load `references/SOURCE_FEATURE_GROUP_CLOSURE.md` before final preliminary Feature Census.
+Each gate's rules live in its file; load it at the stated point.
 
-- Separate broad **FEATURE_FAMILY** from source-scoped **SOURCE_FEATURE_GROUP**.
-- Same family and same size do not prove one group. Close each leader/callout group independently through quantity + X witnesses + Y witnesses + datum + host face.
-- A shared X chain does not authorize borrowing another group's Y chain.
-- Aggregate family quantity is downstream of `GROUP_COUNT_CLOSURE`; a correct total with wrong per-group allocation is FAIL.
-- Detail-view paper placement is arbitrary; dimensions inside the detail map through the detail identifier/leader to the physical target.
-- Customer/sample/reference geometry does not silently close a genuinely `CUSTOMER_CONFIRMATION_PENDING` source field.
-- Before declaring source/reference numeric conflict, pass `SAME_PHYSICAL_PARAMETER_BEFORE_REFERENCE_CONFLICT`: same group, host, physical witnesses, dimension semantics, inside/outside state, frame and units.
-- For a bent corner/bend-end junction whose relief status depends on a still-unresolved signed bend-end offset, retain `SLIT_RELIEF = UNKNOWN` until the routed bend-end gate closes it.
-
-### V4.29 source-manufacturing-note gate
-
-Load `references/SOURCE_MANUFACTURING_NOTE_CENSUS.md` as always-on source parsing before final preliminary Feature Census. Every production-affecting printed/handwritten/revision instruction must retain a scoped note->family resolution. A source instruction that proves a family routes it `YES`; a plausible manufacturing instruction with unresolved scope/quantity/host/value/location/direction keeps the relevant family at least `UNKNOWN`, never premature `NO`.
-
-`スリット`/`SLIT` may define a custom source-instructed slit: create that custom branch only when explicitly instructed, preserve any drawing-specific explicit value, and derive quantity/location/direction only from source evidence. Do not hardcode slit size or bend-center placement from a reference. Existing separately-triggered relief mechanisms remain independent.
-
-### V4.28 face-creation gate
-
-For `BEND`, `MULTI_FACE`, or `UNKNOWN` mode candidates, load `references/FACE_CREATION_BEND_EVIDENCE.md` before final FACE_GRAPH closure. A contour direction change, slope, step, recess, protrusion, R/C or silhouette break does not by itself prove a bend/new face. Run `SAME_FACE_FIRST`, require positive bend evidence for each created FACE boundary, and lock the actual local bend material domain before unfold.
-
-### V4.27 weld-cue gate
-
-A proved reversed-e mark immediately above a barcode is `REVERSED_E_ABOVE_BARCODE -> WELD_REQUIRED_CUE` for that barcode/code cluster only. It proves a welding-process expectation, not KEGAKI geometry. Use the routed KEGAKI/RIB logic and do not copy scope to adjacent codes.
-
-### V4.26 physical-curve gate
-
-Whenever DXF geometry participates as customer DATA, reference, or direct-audit evidence, decode physical curves before Feature Census. For `POLYLINE`/`LWPOLYLINE`, nonzero bulge means ARC, not the endpoint chord; closed final->first segments are included. Use `references/DXF_PHYSICAL_CURVE_DECODING.md`.
+- **V4.30 source feature-group gate:** `references/SOURCE_FEATURE_GROUP_CLOSURE.md`, before final preliminary Feature Census.
+- **V4.29 source-manufacturing-note gate:** `references/SOURCE_MANUFACTURING_NOTE_CENSUS.md`, always-on source parsing before final preliminary Feature Census.
+- **V4.28 face-creation gate:** for `BEND`, `MULTI_FACE`, or `UNKNOWN` mode candidates, `references/FACE_CREATION_BEND_EVIDENCE.md`, before final FACE_GRAPH closure.
+- **V4.27 weld-cue gate:** `REVERSED_E_ABOVE_BARCODE -> WELD_REQUIRED_CUE`, scoped to its barcode/code cluster; rules in `skills/lispcad/router/FEATURE_CENSUS.md`.
+- **V4.26 physical-curve gate:** whenever DXF geometry participates as customer DATA, reference, or direct-audit evidence, decode physical curves before Feature Census using `references/DXF_PHYSICAL_CURVE_DECODING.md`.
 
 ## 5. Bent / multi-face parts — V4.32 attachment / OD / bend-edge / relief gate
 

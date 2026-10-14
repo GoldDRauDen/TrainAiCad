@@ -146,7 +146,6 @@ gates:
   - skills/lispcad/core/VALIDATION.md
 - id: GROUP_COUNT_CLOSURE
   files:
-  - AI_ENTRYPOINT.md
   - references/SOURCE_FEATURE_GROUP_CLOSURE.md
 - id: KEGAKI_SCOPE_FAIL
   files:
@@ -206,7 +205,6 @@ gates:
   - skills/lispcad/features/CHAMFER_RADIUS.md
 - id: SAME_FACE_FIRST
   files:
-  - AI_ENTRYPOINT.md
   - references/FACE_CREATION_BEND_EVIDENCE.md
 - id: SAME_PARAMETER_GATE
   files:
@@ -216,7 +214,6 @@ gates:
   - references/SOURCE_DATA_CLASSIFICATION.md
 - id: SAME_PHYSICAL_PARAMETER_BEFORE_REFERENCE_CONFLICT
   files:
-  - AI_ENTRYPOINT.md
   - references/SOURCE_FEATURE_GROUP_CLOSURE.md
 - id: SAVED_DXF_LAYER0_ENTITY_IDS
   files:
