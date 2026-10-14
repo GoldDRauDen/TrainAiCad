@@ -209,6 +209,7 @@
       "notes": [
         "Only source-marked manufacturing scope is processed unless full processing is specified.",
         "Follow proved +2 mm material additions.",
+        "SS t19 holes within 5 mm of an edge need build-up before drilling: FLAG for customer confirmation before building (approved 2026-10-14).",
         "Uncalled corner C5; masking and pierce are white piercing when so scoped.",
         "Order thickness may differ from drawing; use controlling order with provenance."
       ],
@@ -282,6 +283,7 @@
     "764": {
       "notes": [
         "Active rules: PIERCING and MARKING designate white piercing.",
+        "Each MARKING occurrence is FLAGGED for customer confirmation (approved 2026-10-14).",
         "On explicitly scoped BFC customer drawings, TAP is white piercing even if the note is missing.",
         "Counterbore pilot notes on the order may control; do not fabricate missing hole geometry."
       ],

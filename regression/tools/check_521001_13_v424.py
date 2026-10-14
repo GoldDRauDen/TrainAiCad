@@ -92,11 +92,13 @@ with tempfile.TemporaryDirectory() as td:
     assert not doc.audit().has_errors
     geom_ents = [e for e in doc.modelspace() if e.dxf.layer == "0"]
     circles = [e for e in geom_ents if e.dxftype() == "CIRCLE"]
-    polys = [e for e in geom_ents if e.dxftype() == "LWPOLYLINE"]
+    arcs = [e for e in geom_ents if e.dxftype() == "ARC"]
     assert len(circles) == 1
     assert round(circles[0].dxf.radius * 2, 6) == 5.0
     assert all(round(e.dxf.radius * 2, 6) != 6.0 for e in circles)
-    assert len(polys) == 1 and any(abs(v[2]) > 0 for v in polys[0].get_points("xyb"))
+    # V4.35: the bulged outline is written as LINE/ARC pieces, never LWPOLYLINE
+    assert not any(e.dxftype() == "LWPOLYLINE" for e in geom_ents)
+    assert len(arcs) >= 1
     assert doc.header["$INSUNITS"] == 4
 
 print("V4.24 521001-13 DATA manufacturing canonicalization / universal M* regression PASS")

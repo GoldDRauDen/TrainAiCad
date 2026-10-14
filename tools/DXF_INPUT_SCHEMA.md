@@ -55,8 +55,14 @@ The writer reopens the saved DXF and checks mm header, Layer-0 geometry fingerpr
 
 ```bash
 python -m pip install -r requirements.txt
-python tools/export_dxf.py job.json out/ --gap-mm 10
+python tools/export_dxf.py job.json out/ --gap-mm 150
 python tools/export_dxf.py job.json out/ --write-manifest
 python tools/export_dxf.py job.json out/ --mode dual  # ONLY when explicitly requested and VIEWS_ONLY absent
 python -m pytest tests/ -q
 ```
+
+## V4.35 input additions
+
+- Optional per-part boolean `dx_label` (default false): `true` when the PDF shows the back face of the part. Only the combined file draws the 20 mm `dx` label; individual CUT files never carry labels.
+- LWPOLYLINE stays a valid canonical input type. Outlines, cutouts and slots are written as LINE/ARC pieces (`<entity_id>:S0001` ...), so the saved combined file has no LWPOLYLINE.
+- Composite default gap is 150 mm (`COMPOSITE_GAP_MM`), measured from an outline bottom to the next cluster's label top. Command default is `--gap-mm 150`; anything below 150 fails.

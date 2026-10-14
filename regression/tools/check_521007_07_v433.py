@@ -103,12 +103,14 @@ def test_rule_wiring(root: Path):
     # V4.33 gates remain required; the latest release may be a later one (e.g. V4.34).
     assert router["release"] in ("V4.33", "V4.34")
     assert coverage["release"] == router["release"]
+    # PART_IDENTITY_GRAPH is conditional (skipped only when multi_code_or_assembly is proven NO).
+    conditional = {item["path"] for item in router.get("conditional_default_load", [])}
     for path in [
         "references/HOLISTIC_ENGINEERING_CHALLENGE.md",
         "references/REFERENCE_EXPOSURE_FIREWALL.md",
-        "references/PART_IDENTITY_GRAPH.md",
     ]:
         assert path in router["default_load"]
+    assert "references/PART_IDENTITY_GRAPH.md" in conditional
     for check in [
         "holistic_engineering_challenge",
         "views_only_source_view_completeness",

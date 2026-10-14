@@ -36,13 +36,15 @@ def test_two_part_dxf_and_manifest(tmp_path):
     assert len(manifest["combined"]["PASS"]["parts"]) == 2
     assert manifest["combined"]["PASS"]["parts"][0]["combined_bbox_mm"][1] >= 25
     assert manifest["combined"]["PASS"]["parts"][1]["combined_bbox_mm"][3] == 15
-    for filename, count in [("520924-19_000001.dxf", 6), ("520924-19_000002.dxf", 6), ("520924-19_ALL.dxf", 12)]:
+    # V4.35: outline LWPOLYLINE (4 segments) is written as 4 LINE pieces: 9 per part.
+    for filename, count in [("520924-19_000001.dxf", 9), ("520924-19_000002.dxf", 9), ("520924-19_ALL.dxf", 18)]:
         doc = ezdxf.readfile(tmp_path / filename)
         assert len(list(doc.modelspace())) == count
         assert doc.header["$INSUNITS"] == 4
         assert all(e.dxf.layer == "0" for e in doc.modelspace())
     assert (tmp_path / "520924-19_MANIFEST.json").is_file()
     assert json.loads((tmp_path / "520924-19_MANIFEST.json").read_text())["contract"] == "TrainAiCad-DXF-V4.7"
+    assert not any(e.dxftype() == "LWPOLYLINE" for e in ezdxf.readfile(tmp_path / "520924-19_ALL.dxf").modelspace())
 
 
 def test_preview_is_isolated_from_production(tmp_path):
@@ -104,15 +106,18 @@ def test_stadium_bulges_and_three_primitives_one_approved_style_relief(tmp_path)
     manifest = export_job({"job_id": "SYNTHETIC", "parts": [sample]}, tmp_path, mode="dual")
     doc = ezdxf.readfile(tmp_path / "SYNTHETIC_000003.dxf")
     msp = doc.modelspace()
-    assert manifest["parts"][0]["entity_count"] == 10
-    slot = [e for e in msp if e.dxftype() == "LWPOLYLINE"][1]
-    assert [round(v[2], 6) for v in slot.get_points("xyb")] == [0, -1, 0, -1]
-    bounds = bbox.extents([slot])
-    assert round(bounds.extmax.x - bounds.extmin.x, 6) == 14.5
-    assert round(bounds.extmax.y - bounds.extmin.y, 6) == 4.5
+    # V4.35: no LWPOLYLINE survives; the stadium slot is 2 straight LINE + 2 semicircle ARC pieces.
+    assert not any(e.dxftype() == "LWPOLYLINE" for e in msp)
+    slot_lines = [e for e in msp if e.dxftype() == "LINE" and e.dxf.color == 256 and round(e.dxf.start.x - e.dxf.end.x, 6) in (10.0, -10.0)]
+    slot_arcs = [e for e in msp if e.dxftype() == "ARC" and round(e.dxf.radius, 6) == 2.25]
+    assert len(slot_lines) == 2 and len(slot_arcs) == 2
+    assert round(max(e.dxf.end.x if e.dxftype() == "LINE" else e.dxf.center.x + 2.25 for e in slot_lines + slot_arcs)
+                 - min(e.dxf.start.x if e.dxftype() == "LINE" else e.dxf.center.x - 2.25 for e in slot_lines + slot_arcs), 6) == 14.5
     assert len([e for e in msp if e.dxftype() == "ARC" and e.dxf.color == 3]) == 1
     assert len([e for e in msp if e.dxftype() == "LINE" and e.dxf.color == 3]) == 2
-    assert len(list(ezdxf.readfile(tmp_path / "SYNTHETIC_ALL.dxf").modelspace())) == 10
+    # part: 9 pieces, slot: 4, relief: 3 -> 16 written entities
+    assert manifest["parts"][0]["entity_count"] == 16
+    assert len(list(ezdxf.readfile(tmp_path / "SYNTHETIC_ALL.dxf").modelspace())) == 16
 
 
 def test_default_one_combined_with_exact_code_labels(tmp_path):
@@ -124,7 +129,7 @@ def test_default_one_combined_with_exact_code_labels(tmp_path):
     doc = ezdxf.readfile(tmp_path / "ONE_ALL.dxf")
     geom = [e for e in doc.modelspace() if e.dxf.layer == "0"]
     meta = [e for e in doc.modelspace() if e.dxf.layer == "AI_META"]
-    assert len(geom) == 12
+    assert len(geom) == 18  # 2 parts x (4 outline LINE + hole + 2 POINT + 2 DASHED bend)
     assert [e.dxf.text for e in meta] == ["043791", "043792"]
     assert doc.layers.get("AI_META").dxf.plot == 0
     assert doc.header["$INSUNITS"] == 4
@@ -132,6 +137,20 @@ def test_default_one_combined_with_exact_code_labels(tmp_path):
     positions = manifest["positions"]
     assert [x["code"] for x in positions] == ["043791", "043792"]
     assert positions[0]["combined_bbox_mm"][1] - positions[1]["combined_bbox_mm"][3] >= 10
+
+
+def test_each_flag_is_one_horizontal_line_top_to_bottom(tmp_path):
+    p = part("043800")
+    p.update(status="REVIEW", flags=["first open question", "second open question", "third open question"],
+             review_reason="HL_DIRECTION_UNPROVED", grain={"is_hl": True, "direction_xy": None})
+    export_job({"job_id": "FLAGS", "parts": [p]}, tmp_path)
+    doc = ezdxf.readfile(tmp_path / "FLAGS_ALL_REVIEW_ONLY.dxf")
+    flags = sorted((e for e in doc.modelspace() if e.dxf.layer == "AI_META" and "FLAG: " in e.dxf.text),
+                   key=lambda e: -e.dxf.insert.y)
+    assert [e.dxf.text for e in flags] == [f"043800 FLAG: {x}" for x in
+                                           ["first open question", "second open question", "third open question"]]
+    assert all(e.dxf.rotation == 0 for e in flags)
+    assert all(e.dxf.insert.x > 30 for e in flags)  # right of the 30 mm outline
 
 
 def test_one_review_only_with_user_authorized_unknown_diameter_and_source_views(tmp_path):
@@ -165,7 +184,8 @@ def test_one_review_only_with_user_authorized_unknown_diameter_and_source_views(
     assert "REVIEW ONLY - NO CUT - UNRESOLVED CODES PRESENT" in meta
     geometry = [e for e in doc.modelspace() if e.dxf.layer == "0"]
     assert any(e.dxftype() == "CIRCLE" and e.dxf.get("color", 256) == 6 for e in geometry)
-    assert len([e for e in geometry if e.dxftype() == "LINE" and e.dxf.get("linetype") != "DASHED"]) == 2
+    # 4 outline LINE (a) + 4 outline LINE (b) + 2 source-view LINE (c); bends are DASHED
+    assert len([e for e in geometry if e.dxftype() == "LINE" and e.dxf.get("linetype") != "DASHED"]) == 10
 
 
 def test_source_views_need_explicit_ids_and_separation(tmp_path):

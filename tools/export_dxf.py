@@ -14,11 +14,27 @@ from pathlib import Path
 
 import ezdxf
 from ezdxf import bbox
+from ezdxf.enums import TextEntityAlignment
 
 CHECKS = ("contour_topology", "datum", "feature_count", "unfold", "containment",
           "bend_domain", "material_rules", "slot_semantics")
 TYPES = {"LWPOLYLINE", "CIRCLE", "LINE", "ARC", "POINT", "TEXT"}
 CUT_ROLES = {"outer", "cutout", "hole", "slot"}
+
+# V4.35 output rules (approved 2026-10-14). Canonical input may keep LWPOLYLINE;
+# every saved DXF writes outlines/cutouts/slots as separate LINE and ARC entities.
+TEMPLATE = Path(__file__).resolve().parent.parent / "templates" / "CAD_OUTPUT_TEMPLATE.dxf"
+COMPOSITE_GAP_MM = 150.0          # edge-to-edge between code clusters in the combined DXF
+SOURCE_VIEW_GAP_MM = 10.0         # separation between VIEWS_ONLY source views inside one code
+CODE_LABEL_OFFSET_MM = 2.0        # code label sits 2 mm above its cluster
+CODE_LABEL_HEIGHT_MM = 3.0
+LABEL_RESERVE_MM = CODE_LABEL_OFFSET_MM + CODE_LABEL_HEIGHT_MM  # space the label takes above a cluster
+DX_LABEL_HEIGHT_MM = 20.0
+DX_LABEL_CLEARANCE_MM = 10.0
+FLAG_LABEL_CLEARANCE_MM = 10.0
+FLAG_LABEL_HEIGHT_MM = 3.0
+FLAG_LINE_PITCH_MM = 4.5        # one horizontal FLAG line per flag, stacked top to bottom
+PIECE_SEPARATOR = ":S"            # canonical entity piece id: <entity_id>:S0001
 
 
 def fail(message):
@@ -148,6 +164,8 @@ def validate_job(job):
         if number(part.get("thickness_mm"), f"{code} thickness") <= 0:
             fail(f"{code}: thickness must be positive")
         state = part.get("status")
+        if "dx_label" in part and not isinstance(part["dx_label"], bool):
+            fail(f"{code}: dx_label must be true or false")
         if state not in ("PASS", "PREVIEW", "VIEWS_ONLY", "REVIEW"):
             fail(f"{code}: invalid status, expected PASS/PREVIEW/VIEWS_ONLY/REVIEW")
         checks = part.get("checks")
@@ -182,40 +200,107 @@ def validate_job(job):
     return jid
 
 
-def add_entity(msp, ent, dx=0.0, dy=0.0):
+def arc_from_bulge(start, end, bulge):
+    """Analytic bulge -> CCW ARC (center, radius, start_deg, end_deg). Negative bulge reverses orientation."""
+    x0, y0 = (float(start[0]), float(start[1]))
+    x1, y1 = (float(end[0]), float(end[1]))
+    b = float(bulge)
+    dx, dy = x1 - x0, y1 - y0
+    chord = math.hypot(dx, dy)
+    if not math.isfinite(b) or abs(b) < 1e-14 or chord <= 0:
+        fail("Degenerate or non-finite bulge/segment")
+    theta = 4 * math.atan(b)
+    if abs(theta) >= 2 * math.pi - 1e-10:
+        fail("Bulge too close to full circle; cannot represent as ARC")
+    radius = chord / (2 * abs(math.sin(theta / 2)))
+    coefficient = (1 - b * b) / (4 * b)
+    cx = (x0 + x1) / 2 - dy * coefficient
+    cy = (y0 + y1) / 2 + dx * coefficient
+    if any(not math.isfinite(v) for v in (radius, cx, cy)) or radius <= 0:
+        fail("Invalid bulge-derived circle")
+    # DXF ARC is always counter-clockwise: reverse endpoints for a CW bulge.
+    u, v = ((x0, y0), (x1, y1)) if b > 0 else ((x1, y1), (x0, y0))
+    sa = math.degrees(math.atan2(u[1] - cy, u[0] - cx)) % 360
+    ea = math.degrees(math.atan2(v[1] - cy, v[0] - cx)) % 360
+    sweep = (ea - sa) % 360
+    if not math.isclose(sweep, abs(math.degrees(theta)), abs_tol=1e-6):
+        fail("Bulge sweep mismatch; rejected instead of faceting the curve")
+    return (cx, cy), radius, sa, ea
+
+
+def emit_entity(msp, ent, dx=0.0, dy=0.0):
+    """Write one canonical entity translated by (dx, dy). Returns the created DXF entities.
+
+    V4.35: LWPOLYLINE is exploded into LINE/ARC pieces, so saved cut geometry never
+    contains LWPOLYLINE. A closed polyline yields one piece per segment, including the
+    closing segment; an open polyline yields n-1 pieces.
+    """
     attrs = {"layer": "0"}
     if ent.get("color", 256) != 256:
         attrs["color"] = ent["color"]
     if ent.get("linetype"):
         attrs["linetype"] = ent["linetype"]
+
     def move(v):
         return (v[0] + dx, v[1] + dy)
+
     t = ent["type"]
     if t == "LWPOLYLINE":
-        return msp.add_lwpolyline([(v[0] + dx, v[1] + dy, v[2]) for v in ent["vertices"]],
-                                  format="xyb", close=ent.get("closed", False), dxfattribs=attrs)
+        vertices = ent["vertices"]
+        n = len(vertices)
+        segments = n if ent.get("closed") else n - 1
+        pieces = []
+        for i in range(segments):
+            a = vertices[i]
+            b = vertices[(i + 1) % n]
+            if a[:2] == b[:2]:
+                fail("zero-length polyline segment")
+            if a[2] == 0:
+                pieces.append(msp.add_line(move(a[:2]), move(b[:2]), dxfattribs=attrs))
+            else:
+                center, radius, sa, ea = arc_from_bulge(a[:2], b[:2], a[2])
+                pieces.append(msp.add_arc(move(center), radius, sa, ea, dxfattribs=attrs))
+        return pieces
     if t == "CIRCLE":
-        return msp.add_circle(move(ent["center"]), ent["radius"], dxfattribs=attrs)
+        return [msp.add_circle(move(ent["center"]), ent["radius"], dxfattribs=attrs)]
     if t == "LINE":
-        return msp.add_line(move(ent["start"]), move(ent["end"]), dxfattribs=attrs)
+        return [msp.add_line(move(ent["start"]), move(ent["end"]), dxfattribs=attrs)]
     if t == "ARC":
-        return msp.add_arc(move(ent["center"]), ent["radius"],
-                           ent["start_angle"], ent["end_angle"], dxfattribs=attrs)
+        return [msp.add_arc(move(ent["center"]), ent["radius"],
+                            ent["start_angle"], ent["end_angle"], dxfattribs=attrs)]
     if t == "POINT":
-        return msp.add_point(move(ent["point"]), dxfattribs=attrs)
+        return [msp.add_point(move(ent["point"]), dxfattribs=attrs)]
     if t == "TEXT":
         attrs["height"] = ent.get("height", 2.5)
         attrs["insert"] = move(ent["insert"])
-        return msp.add_text(ent["text"], dxfattribs=attrs)
+        return [msp.add_text(ent["text"], dxfattribs=attrs)]
     fail(f"Unknown entity type {t}")
 
 
+def piece_ids(entity_id, count):
+    """Canonical ENTITY_ID per written DXF piece: plain id for one piece, else id:S0001..."""
+    if count == 1:
+        return [entity_id]
+    return [f"{entity_id}{PIECE_SEPARATOR}{i + 1:04d}" for i in range(count)]
+
+
+def source_entity_id(piece_id):
+    return piece_id.split(PIECE_SEPARATOR, 1)[0]
+
+
 def new_doc():
-    doc = ezdxf.new("R2010", setup=True)
+    """V4.35: start from the approved CAD output template (environment, dimstyles, DASHED).
+
+    Only the unit declaration is overridden: coordinates are millimetres. The modelspace
+    must be empty; DIM dimensions are never written into CUT output.
+    """
+    if not TEMPLATE.exists():
+        fail(f"CAD output template missing: {TEMPLATE.name}")
+    doc = ezdxf.readfile(TEMPLATE)
+    if len(doc.modelspace()) != 0:
+        fail("CAD output template modelspace must be empty")
     doc.header["$INSUNITS"] = 4
     doc.header["$MEASUREMENT"] = 1
-    doc.header["$LUNITS"] = 2
-    doc.header["$LUPREC"] = 2
     if "DASHED" not in doc.linetypes:
         doc.linetypes.new("DASHED", dxfattribs={"pattern": [4.0, 2.0, -2.0], "description": "2 mm dash, 2 mm gap"})
     return doc
@@ -267,32 +352,38 @@ def write_and_audit(doc, target, expected_count):
         fail(f"AI_META must be non-plot annotation: {target.name}")
     if loaded.header["$INSUNITS"] != 4:
         fail(f"DXF unit failure: {target.name}")
+    # V4.35: CUT output is LINE/ARC/CIRCLE/POINT only; DIM is for the checker, never cut output.
+    if any(ent.dxftype() == "LWPOLYLINE" for ent in ents if ent.dxf.layer == "0"):
+        fail(f"V4.35 output rule: LWPOLYLINE must be exploded to LINE/ARC: {target.name}")
+    if any(ent.dxftype() == "DIMENSION" or ent.dxf.layer == "DIM" for ent in loaded.modelspace()):
+        fail(f"V4.35 output rule: dimensions cannot enter CUT DXF: {target.name}")
     if [entity_signature(ent) for ent in ents] != before:
         fail(f"DXF entity/coordinate/attribute roundtrip mismatch: {target.name}")
     return extents_of(loaded)
 
 
-def export_dual_job(job, output_dir, gap_mm=10.0):
+def export_dual_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM):
     if any(p.get("status") == "VIEWS_ONLY" for p in job.get("parts", [])):
         fail("Legacy dual export does not support VIEWS_ONLY; use default single composite")
     jid = validate_job(job)
     gap_mm = number(gap_mm, "gap_mm")
-    if gap_mm < 10:
-        fail("Composite drawing requires at least 10 mm clearance between part bounding boxes")
+    if gap_mm < COMPOSITE_GAP_MM:
+        fail("Composite drawing requires at least 150 mm between part outlines (V4.35)")
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     records = []
     for part in job["parts"]:
         preview = part["status"] == "PREVIEW"
         doc = new_doc()
+        count = 0
         for ent in part["entities"]:
-            add_entity(doc.modelspace(), ent)
+            count += len(emit_entity(doc.modelspace(), ent))
         suffix = "_PREVIEW" if preview else ""
         name = f"{jid}_{part['code']}{suffix}.dxf"
-        bounds = write_and_audit(doc, out / name, len(part["entities"]))
+        bounds = write_and_audit(doc, out / name, count)
         records.append({"code": part["code"], "material": part["material"],
                         "thickness_mm": part["thickness_mm"], "status": part["status"],
-                        "filename": name, "entity_count": len(part["entities"]),
+                        "filename": name, "entity_count": count,
                         "bbox_mm": bounds, "flags": part.get("flags", []),
                         "checks": part["checks"]})
     combined = {}
@@ -310,7 +401,7 @@ def export_dual_job(job, output_dir, gap_mm=10.0):
             bottom = cursor - h
             dx, dy = -xmin, bottom - ymin
             for ent in part["entities"]:
-                add_entity(merged.modelspace(), ent, dx, dy)
+                emit_entity(merged.modelspace(), ent, dx, dy)
             positions.append({"code": rec["code"], "filename": rec["filename"],
                               "translation_mm": [round(dx, 6), round(dy, 6)],
                               "combined_bbox_mm": [0, round(bottom, 6), round(xmax - xmin, 6), round(cursor, 6)]})
@@ -327,7 +418,6 @@ def export_dual_job(job, output_dir, gap_mm=10.0):
     return manifest
 
 
-
 def source_view_boxes(part):
     """Source-view extents only; used to prove independently separated projections."""
     groups = {}
@@ -338,7 +428,7 @@ def source_view_boxes(part):
     for vid, ents in groups.items():
         doc = new_doc()
         for ent in ents:
-            add_entity(doc.modelspace(), ent)
+            emit_entity(doc.modelspace(), ent)
         boxes[vid] = extents_of(doc)
     ids = list(boxes)
     for i, first in enumerate(ids):
@@ -346,17 +436,23 @@ def source_view_boxes(part):
             a, b = boxes[first], boxes[second]
             x_gap = max(b[0] - a[2], a[0] - b[2])
             y_gap = max(b[1] - a[3], a[1] - b[3])
-            if max(x_gap, y_gap) < 10 - 1e-6:
+            if max(x_gap, y_gap) < SOURCE_VIEW_GAP_MM - 1e-6:
                 fail(f"{part['code']}: source views {first}/{second} must be separated by >=10 mm")
     return boxes
 
 
-def export_single_job(job, output_dir, gap_mm=10.0, write_manifest=False):
-    """One composite, source-order labels, all-code review downgrade on ANY FLAG."""
+def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=False):
+    """One composite (V4.35): code-labelled, top-to-bottom, 150 mm between code clusters.
+
+    Cluster = outline bounding box plus its code label above the outline. The 150 mm gap
+    is measured from the bottom of the upper outline to the top of the lower cluster label.
+    'dx' (20 mm, left, centred) marks a PDF back-face part; FLAG (top-right, reading
+    downward) marks any part with flags. Individual CUT files never carry labels.
+    """
     jid = validate_job(job)
     gap_mm = number(gap_mm, "gap_mm")
-    if gap_mm < 10:
-        fail("Combined geometric cluster gap must be >=10 mm")
+    if gap_mm < COMPOSITE_GAP_MM:
+        fail("Composite drawing requires at least 150 mm between part outlines")
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     parts = job["parts"]
@@ -364,62 +460,82 @@ def export_single_job(job, output_dir, gap_mm=10.0, write_manifest=False):
     records = []
     for p in parts:
         scratch = new_doc()
+        count = 0
         for e in p["entities"]:
-            add_entity(scratch.modelspace(), e)
+            count += len(emit_entity(scratch.modelspace(), e))
         view_boxes = source_view_boxes(p) if p["status"] == "VIEWS_ONLY" else {}
         records.append({"code": p["code"], "material": p["material"],
                         "thickness_mm": p["thickness_mm"], "status": p["status"],
-                        "bbox_mm": extents_of(scratch), "entity_count": len(p["entities"]),
+                        "bbox_mm": extents_of(scratch), "entity_count": count,
                         "flags": p.get("flags", []), "checks": p["checks"],
+                        "dx_label": bool(p.get("dx_label", False)),
                         "source_view_boxes": view_boxes})
-    total_height = sum(r["bbox_mm"][3] - r["bbox_mm"][1] for r in records) + gap_mm * (len(records) - 1)
+    stack_height = (sum(r["bbox_mm"][3] - r["bbox_mm"][1] for r in records)
+                    + (len(records) - 1) * (gap_mm + LABEL_RESERVE_MM))
     merged = new_doc()
     merged.layers.new("AI_META", dxfattribs={"color": 8, "plot": 0})
     merged.appids.new("AICAD")
     msp = merged.modelspace()
     layout = []
     expected_geometry = []
+    geometry_ids = []
     expected_labels = []
-    cursor = total_height
+    dx_expected = 0
     annotation_count = 0
+    cursor = stack_height
 
-    def label(text_value, where, color=8):
+    def label(text_value, where, color=8, height=CODE_LABEL_HEIGHT_MM, align=None, rotation=0.0):
         nonlocal annotation_count
-        obj = msp.add_text(text_value, dxfattribs={
-            "layer": "AI_META", "color": color, "height": 3.0, "insert": where})
+        attrs = {"layer": "AI_META", "color": color, "height": height, "rotation": rotation}
+        if align is None:
+            attrs["insert"] = where
+        obj = msp.add_text(text_value, dxfattribs=attrs)
+        if align is not None:
+            obj.set_placement(where, align=align)
         obj.set_xdata("AICAD", [(1000, "NON_CUT_ANNOTATION")])
         annotation_count += 1
+        return obj
 
     for p, rec in zip(parts, records):
         xmin, ymin, xmax, ymax = rec["bbox_mm"]
         h = ymax - ymin
         bottom = cursor - h
         dx, dy = -xmin, bottom - ymin
-        before_count = len(expected_geometry)
-        for e in p["entities"]:
-            obj = add_entity(msp, e, dx, dy)
-            expected_geometry.append(entity_signature(obj))
-        if len(expected_geometry) - before_count != rec["entity_count"]:
-            fail(f"{p['code']}: source-to-composite entity count changed")
+        before = len(expected_geometry)
+        for index, e in enumerate(p["entities"]):
+            objs = emit_entity(msp, e, dx, dy)
+            # Canonical jobs always carry entity_id; ad hoc composites get a stable local id.
+            entity_id = e.get("entity_id") or f"{p['code']}.E{index:04d}"
+            for obj, pid in zip(objs, piece_ids(entity_id, len(objs))):
+                expected_geometry.append(entity_signature(obj))
+                geometry_ids.append(pid)
+        if len(expected_geometry) - before != rec["entity_count"]:
+            fail(f"{p['code']}: source-to-composite piece count changed")
         status_suffix = "" if p["status"] == "PASS" else " [FLAG]"
         if p["status"] == "VIEWS_ONLY":
             status_suffix = " [VIEWS_ONLY - FLAG]"
         code_label = p["code"] + status_suffix
-        label(code_label, (0.0, cursor + 2))
+        label(code_label, (0.0, cursor + CODE_LABEL_OFFSET_MM))
         expected_labels.append(code_label)
-        if p.get("flags"):
-            label(p["code"] + " FLAG: SEE STAGE1; NO CUT", (max(xmax - xmin, 20), cursor + 2), color=6)
+        for index, flag in enumerate(p.get("flags", [])):
+            label(f"{p['code']} FLAG: {flag}",
+                  (xmax - xmin + FLAG_LABEL_CLEARANCE_MM, cursor - index * FLAG_LINE_PITCH_MM),
+                  color=6, height=FLAG_LABEL_HEIGHT_MM, align=TextEntityAlignment.TOP_LEFT)
+        if rec["dx_label"]:
+            label("dx", (-DX_LABEL_CLEARANCE_MM, bottom + h / 2), height=DX_LABEL_HEIGHT_MM,
+                  align=TextEntityAlignment.MIDDLE_RIGHT)
+            dx_expected += 1
         if p["status"] == "VIEWS_ONLY":
             for view_id, bounds in rec["source_view_boxes"].items():
-                label(p["code"] + " VIEW " + view_id, (bounds[0] + dx, bounds[3] + dy + 2))
+                label(p["code"] + " VIEW " + view_id, (bounds[0] + dx, bounds[3] + dy + CODE_LABEL_OFFSET_MM))
         placed = [0.0, bottom, xmax - xmin, cursor]
         layout.append({"code": p["code"], "status": p["status"],
                        "translation_mm": [round(dx, 6), round(dy, 6)],
                        "combined_bbox_mm": [round(v, 6) for v in placed],
                        "entity_count": rec["entity_count"]})
-        cursor = bottom - gap_mm
+        cursor = bottom - gap_mm - LABEL_RESERVE_MM
     if review:
-        label("REVIEW ONLY - NO CUT - UNRESOLVED CODES PRESENT", (0, total_height + 12), color=6)
+        label("REVIEW ONLY - NO CUT - UNRESOLVED CODES PRESENT", (0, stack_height + 12), color=6)
     filename = f"{jid}_ALL_REVIEW_ONLY.dxf" if review else f"{jid}_ALL.dxf"
     target = out / filename
     write_and_audit(merged, target, len(expected_geometry) + annotation_count)
@@ -430,15 +546,20 @@ def export_single_job(job, output_dir, gap_mm=10.0, write_manifest=False):
     labels = [e.dxf.text for e in loaded.modelspace() if e.dxf.layer == "AI_META"]
     if [x for x in labels if x in expected_labels] != expected_labels:
         fail("Missing or misordered code labels in combined DXF")
+    if labels.count("dx") != dx_expected:
+        fail("dx label count does not match PDF back-face parts")
     if review and "REVIEW ONLY - NO CUT - UNRESOLVED CODES PRESENT" not in labels:
         fail("REVIEW_ONLY output missing global NO CUT label")
     for upper, lower in zip(layout, layout[1:]):
-        if upper["combined_bbox_mm"][1] - lower["combined_bbox_mm"][3] < gap_mm - 1e-5:
-            fail("Combined source-code clusters overlap or lack required gap")
+        lower_label_top = lower["combined_bbox_mm"][3] + LABEL_RESERVE_MM
+        if upper["combined_bbox_mm"][1] - lower_label_top < gap_mm - 1e-5:
+            fail("Combined source-code clusters overlap or lack required 150 mm gap")
     manifest = {"contract": "TrainAiCad-DXF-V4.9", "job_id": jid,
                 "coordinate_units": "mm", "layout": "code-labeled top-to-bottom",
+                "rules": "V4.35 (LINE/ARC output, 150 mm gap, dx/FLAG labels, template)",
                 "status": "REVIEW_ONLY" if review else "PASS",
                 "filename": filename, "parts": records, "positions": layout,
+                "entity_map": geometry_ids,
                 "source": "independently checked canonical geometry",
                 "warning": "AI_META is non-cut; review-only files are NEVER production CAD"}
     if write_manifest:
@@ -447,7 +568,7 @@ def export_single_job(job, output_dir, gap_mm=10.0, write_manifest=False):
     return manifest
 
 
-def export_job(job, output_dir, gap_mm=10.0, mode="single", write_manifest=False):
+def export_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, mode="single", write_manifest=False):
     if mode == "dual":
         return export_dual_job(job, output_dir, gap_mm)
     if mode != "single":
@@ -456,10 +577,10 @@ def export_job(job, output_dir, gap_mm=10.0, mode="single", write_manifest=False
 
 
 def main():
-    ap = argparse.ArgumentParser(description="V4.9: ONE code-labeled top-to-bottom combined DXF by default")
+    ap = argparse.ArgumentParser(description="V4.35: ONE code-labeled top-to-bottom combined DXF by default")
     ap.add_argument("input_json", type=Path)
     ap.add_argument("output_dir", type=Path)
-    ap.add_argument("--gap-mm", type=float, default=10.0)
+    ap.add_argument("--gap-mm", type=float, default=COMPOSITE_GAP_MM)
     ap.add_argument("--mode", choices=["single", "dual"], default="single", help="dual is explicit-request legacy V4.7 export")
     ap.add_argument("--write-manifest", action="store_true", help="optional external JSON for single composite")
     args = ap.parse_args()
