@@ -18,7 +18,7 @@ def test_v420_historical_release_intact():
         assert token in skill
 
 def test_source_threshold_and_modes():
-    s=(ROOT/"references/SOURCE_DATA_CLASSIFICATION.md").read_text(encoding="utf-8")
+    s=(module_view("references/SOURCE_DATA_CLASSIFICATION.md", ROOT)).read_text(encoding="utf-8")
     for token in ["PDF_ONLY","PDF_DATA_RAW","TRAIN_REFERENCE","DIRECT_EXISTING_DXF_AUDIT"]:
         assert token in s
     assert "Delta < 0.1 mm" in s and "Delta >= 0.1 mm" in s
@@ -27,8 +27,8 @@ def test_source_threshold_and_modes():
 def test_mechanical_modules():
     for p in ["references/MECHANICAL_CLASSIFIER.md","skills/lispcad/features/KEGAKI.md","skills/lispcad/features/SLIT_RELIEF.md","skills/lispcad/features/RIB.md","skills/lispcad/features/CURVED_SLOT.md"]:
         assert module_view(p, ROOT).exists()
-    assert "D = t * sin(theta)" in (ROOT/"skills/lispcad/features/SLIT_RELIEF.md").read_text(encoding="utf-8")
-    assert "exactly ONE closed internal CUT contour" in (ROOT/"skills/lispcad/features/CURVED_SLOT.md").read_text(encoding="utf-8")
+    assert "D = t * sin(theta)" in (module_view("skills/lispcad/features/SLIT_RELIEF.md", ROOT)).read_text(encoding="utf-8")
+    assert "exactly ONE closed internal CUT contour" in (module_view("skills/lispcad/features/CURVED_SLOT.md", ROOT)).read_text(encoding="utf-8")
 
 def test_executable():
     cp=subprocess.run([sys.executable,str(RUNNER)],cwd=ROOT,text=True,capture_output=True,check=True)

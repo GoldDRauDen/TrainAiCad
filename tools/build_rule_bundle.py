@@ -17,6 +17,7 @@ import yaml
 # This tool is also imported by tests using importlib.util.spec_from_file_location.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from audit_rule_coverage import CoverageError, audit as audit_active_rule_coverage
+from compact_rules import CompactRuleError, resolve_rule_path, read_rule_text
 
 ROOT = Path(__file__).resolve().parents[1]
 ROUTER_PATH = "skills/lispcad/router/ROUTER.yaml"
@@ -27,6 +28,7 @@ BASE_FILES = (
     "skills/lispcad/router/FEATURE_CENSUS.md",
     ROUTER_PATH,
     "skills/lispcad/router/RULE_COVERAGE.yaml",
+    "tools/CANONICAL_INPUT_SCHEMA_V434.md",
     "tools/CANONICAL_INPUT_SCHEMA_V431.md",
     "tools/DXF_INPUT_SCHEMA.md",
     "references/CUSTOMER_CAD_RULES.yaml",
@@ -61,9 +63,10 @@ def approved_paths(root: Path = ROOT) -> tuple[str, list[str]]:
             p.startswith("/") or "\\" in p or ".." in Path(p).parts
         ):
             raise BundleError(f"Disallowed production path: {p!r}")
-        real = (root / p).resolve()
-        if not real.is_relative_to(root) or not real.is_file():
-            raise BundleError(f"Missing or unsafe production file: {p}")
+        try:
+            resolve_rule_path(p, root)
+        except CompactRuleError as exc:
+            raise BundleError(f"Missing or unsafe production file: {p}: {exc}") from exc
         if p not in seen:
             seen.add(p)
             paths.append(p)
@@ -88,7 +91,7 @@ def build_bundle(root: Path = ROOT) -> str:
     records = []
     blocks = []
     for p in paths:
-        data = (root / p).read_bytes()
+        data = read_rule_text(p, root).encode("utf-8")
         try:
             content = data.decode("utf-8")
         except UnicodeError as exc:
@@ -126,7 +129,7 @@ def main() -> int:
             raise BundleError("Output must be outside repository working tree")
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(content, encoding="utf-8")
-    except (BundleError, ValueError, OSError, KeyError, yaml.YAMLError) as exc:
+    except (BundleError, CompactRuleError, ValueError, OSError, KeyError, yaml.YAMLError) as exc:
         print(f"RULEPACK_BUILD_FAIL: {exc}", file=sys.stderr)
         return 2
     print(json.dumps({"output": str(destination),

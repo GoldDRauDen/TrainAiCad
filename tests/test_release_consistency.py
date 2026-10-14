@@ -1,3 +1,4 @@
+from tools.compact_rules import read_rule_text
 """Release and output-contract consistency between entrypoints, Router and CAD_OUTPUT."""
 import re
 from pathlib import Path
@@ -8,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _text(rel):
-    return (ROOT / rel).read_text(encoding="utf-8")
+    return read_rule_text(rel, ROOT)
 
 
 def test_entrypoint_release_matches_router_and_coverage():
