@@ -100,8 +100,9 @@ def test_rule_wiring(root: Path):
     firewall = (root / "references/REFERENCE_EXPOSURE_FIREWALL.md").read_text(encoding="utf-8")
     identity = (root / "references/PART_IDENTITY_GRAPH.md").read_text(encoding="utf-8")
 
-    assert router["release"] == "V4.33"
-    assert coverage["release"] == "V4.33"
+    # V4.33 gates remain required; the latest release may be a later one (e.g. V4.34).
+    assert router["release"] in ("V4.33", "V4.34")
+    assert coverage["release"] == router["release"]
     for path in [
         "references/HOLISTIC_ENGINEERING_CHALLENGE.md",
         "references/REFERENCE_EXPOSURE_FIREWALL.md",
