@@ -11,14 +11,9 @@ modules -> canonical/export contracts. Pin the repository revision per job.
 but cannot supply new customer dimensions or become universal geometry.
 `ERROR_INDEX.yaml` is passive and never automatically changes production.
 
-**Compatibility/history**: `skills/lispcad/portable/`,
-`skills/lispcad/versions/` and `docs/history/`. Excluded from the normal
-load path. Old versions remain in the tree because CI regression tests refer
-to them directly. Migrate those tests to immutable references before removing
-their checked-in fixtures; do not break existing coverage to shrink the repo.
+**Compatibility/history**: old portable/versions snapshots are retired from the working tree and read from the pinned, hash-verified archive in `docs/history/SNAPSHOT_MANIFEST.json`. They are excluded from production. Keep the pinned commit reachable and use full-history CI checkout.
 
-**Experimental runtime**: `services/trainaicad-mcp/`; separately tested,
-no default CAD production authority.
+**Experimental runtime**: MCP remains research-only; its source tree is absent in this revision, so no research workflow is dispatched. Restoring research infrastructure requires its own source and isolated checks.
 
 ## Stage-specific routing (PR #24 optimization)
 
@@ -43,7 +38,7 @@ A mandatory rule may be listed only once in its earliest valid stage. Its
 saved availability is not a waiver for the later checks: the user must
 actually perform L0, L1, L2 and L3 on each code.
 
-`tools/audit_rule_coverage.py` cross-checks **all 54 currently active
+`tools/audit_rule_coverage.py` cross-checks **all currently active
 module files**, not just the few Router-selected for a given job. In
 particular it blocks silently omitting `STEPPED_PROFILE.md`,
 `FORMING_FEATURES.md`, and any new active rule file. This is file-level
@@ -96,17 +91,7 @@ source-grounded YES/NO/UNKNOWN to narrow safely.
 
 The older PR #24 refactor did not change material formulas, bend/Nobi
 algorithms or the then-current V4.31 schema. Current production uses V4.34
-with V4.31 compatibility. Packaging remains after
-the composite canonical/member/XDATA read-back: every code is stored as an
-independently readable canonical JSON and PASS codes receive contour-only
-LINE/ARC/CIRCLE DXF derived from exactly those same entities. PREVIEW and
-VIEWS_ONLY parts receive no individual production DXF. The generated cut-only
-DXF is reopened to verify every physical primitive and derived identity.
-These structural checks do not substitute for actual PDF/engineering QA.
-
-Older versioned portable snapshots remain immutable, excluded from normal
-routing and retained because existing CI checks their historical contents.
-They are not competing current production rules.
+with V4.31 compatibility. Current packaging is defined only by `skills/lispcad/core/CAD_OUTPUT.md`: combined DXF by default, no JSON deliverables, individual PASS cuts only on explicit request. Canonical/member and saved-DXF physical/XDATA checks remain mandatory. Structural checks do not substitute for PDF/engineering QA.
 
 No vector index, embeddings, auto-learning from output or automatic rule
 promotion is required.

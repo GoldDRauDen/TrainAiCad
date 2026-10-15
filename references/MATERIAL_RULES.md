@@ -3,14 +3,18 @@ Resolve printed material via `references/MATERIAL_ALIASES.yaml` and `tools/mater
 
 # Production reference — Laser corner R, hole capacity, White Piercing
 
-## V4.35 SS t>=19 R3 scope and customer conflicts (approved 2026-10-14)
+## SS t>=19 R3 scope and explicit-corner decisions
 
-- Automatic R3 applies to the outer material contour, including its concave corners. It does not apply to holes, slots or voids (unchanged from 2026-10-12).
-- When a customer's explicit sharp/pin-corner instruction conflicts with that automatic R3 on a corner in scope, set FLAG and obtain customer confirmation. The conflict is not resolved by silent override in either direction.
+Automatic R3 applies only to corners on the **OUTER material perimeter contour**, including its concave/re-entrant corners. It never auto-rounds interior hole/slot/void contours. Preserve workbook provenance `一覧表2026.07.30!I41:I42` (鉄の外周R、19t以上は全ての角に3R); the broader original row-9 transcription is not active scope.
 
-## Customer-approved 2026-10-12 SS t>=19 R3 scope clarification
-The workbook `一覧表2026.07.30!I41:I42` states **鉄の外周R、19t以上は全ての角に3R**. Operationally, SS t>=19 automatic R3 applies only to corners on the **OUTER material perimeter contour**, including concave/re-entrant corners belonging to that same exterior contour. It **does not** auto-fillet contours of interior holes, slots or voids. Explicit customer drawing instructions override this table for each scoped corner (sharp/pin角 or R/C). This approved restriction supersedes the wider original row-9 transcription; keep original source cell as provenance, not active scope. Laser-NC pierce paths/joints are deferred from CAD.
+| Scoped corner | Decision |
+|---|---|
+| Eligible outer corner, no explicit source corner instruction | Apply automatic R3 |
+| Explicit customer sharp/pin-corner instruction conflicts with automatic R3 | FLAG and obtain customer confirmation; no silent override either way |
+| Explicit proved R/C, without the sharp/pin conflict above | Preserve the explicit family/value/scope under CHAMFER_RADIUS; do not silently convert C to R |
+| Inner hole, slot or void contour | No automatic R3 from this outer-perimeter rule |
 
+This conflict decision controls the generic explicit-instruction precedence below. NC pierce paths/joints remain deferred.
 
 ## V4.24 PDF_DATA_RAW automatic-R execution hardening
 
@@ -84,7 +88,7 @@ An explicit PDF R/C still takes priority **at that corner**, including t>6. This
 2. Find a row containing `t` in its stated Min–Max range. A first row with blank Min covers positive t up to its Max; for AL the next blank-Min row ending at 6 covers t>0.5 through 6 (the preceding row handles t≤0.5). If several rows with open Min are candidates, choose the most specific applicable row.
 3. If t falls between two explicit ranges, use the **next higher thickness row** (no interpolation). For a nonfinal row that has Min but blank Max, treat only its specified Min as explicit; for intermediate t choose the next higher row. A **last** row with a Min and no Max covers that Min and all greater thicknesses. Outside the material's defined ranges, or with no unambiguous row, ASK; do not invent a range.
 4. For a BLANK **hole-capacity** cell, inherit the last nonblank hole-capacity value above it **within the same material group only**. Do not inherit Laser R or White Piercing cells; their values are row-specific.
-5. Apply the approved L09 process split and L10 Cu/Brass thickness override first; then determine laser R only at corners belonging to the row's corner class. A PDF-specific R or C at that corner overrides the Excel R. Where Excel specifies R0.5/R2/R3 and PDF has no explicit R/C, bake it automatically into the actual contour; keep convex vs concave classification and do not blindly round internal notches. `R=t` bend-intersection relief is a separate feature class and must never be mistaken for material-table laser R.
+5. Apply the approved L09 process split and L10 Cu/Brass thickness override first; then determine laser R only at corners belonging to the row's corner class. Subject to the SS t>=19 sharp/pin-conflict FLAG decision above, a PDF-specific R or C at that corner overrides the Excel R. Where Excel specifies R0.5/R2/R3 and PDF has no explicit R/C, bake it automatically into the actual contour; keep convex vs concave classification and do not blindly round internal notches. `R=t` bend-intersection relief is a separate feature class and must never be mistaken for material-table laser R.
 6. Calculate the **effective cut diameter** from an explicit drawing Ø when present, otherwise the pilot diameter from approved thread table 7.1 for a proved tapped M feature. PIERCING arrow/note scoped to that feature family => `POINT` ByLayer regardless of capacity. PIERCING plus THROUGH HOLE => `POINT` Color 3. Ø < t/2 => `POINT` ByLayer without a capacity FLAG. Else when effective Ø is below Excel minimum => `POINT` ByLayer without a capacity FLAG; otherwise `CIRCLE` ByLayer. An ambiguous feature identity => temporary `CIRCLE` Color 6 + FLAG; geometry/position uncertainty produces a separate independent FLAG.
 7. White Piercing `〇` and `×` are **machine-capability indicators**, never instructions to turn every hole into POINT; follow the explicit PDF PIERCING for the specified feature group even if worksheet is `×`, without a capacity-only FLAG. User-approved PROCESS POINT Color 3 is restricted to explicit `PIERCING + THROUGH HOLE`; other POINTs default ByLayer on Layer 0.
 8. Document the selected Excel row and any upward-thickness selection for ambiguous/nonstandard thickness; preserve unrelated dimensional/customer-approval FLAGs.
@@ -95,7 +99,7 @@ An explicit PDF R/C still takes priority **at that corner**, including t>6. This
 - SS t9 outside corner ≤90° with no explicit PDF R/C => R2 added (e.g. `055955`). SS t≤3.2 outside ≤90° => R0.5 added.
 - SUS t15–16 => minimum cut hole Ø10, independent of the unconditional POINT rule for Ø < t/2.
 - AL t5 => minimum cut hole 0.8t = Ø4. Ø3 with no PIERCING => POINT ByLayer with no capacity FLAG, although Ø3 is not < t/2.
-- SS t19+ => laser R3 with inside/outside-corner scope as printed; ignore unexplained `※3` notation, not the R3 value.
+- SS t19+ => laser R3 only on outer-perimeter corners, including concave corners of that same perimeter, excluding interior holes/slots; ignore unexplained `※3` notation, not the R3 value.
 - L09 SUS430 t6: SS Nobi, SUS/他 Laser R0.5, SUS/他 inherited min hole t/2, 白ピアス 〇 as capacity only.
 - L10 Cu/Brass t6: R0.5 at eligible outside corner; t>6 NO automatic Laser R; at 5<t<6 use next-higher t6 row with R0.5.
 

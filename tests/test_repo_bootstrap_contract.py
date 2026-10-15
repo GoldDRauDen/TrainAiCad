@@ -15,7 +15,7 @@ def test_bootstrap_is_release_independent_and_names_repo():
     assert "FEATURE_CENSUS.md" in text
     assert "ROUTER.yaml" in text
     assert "RULE_COVERAGE.yaml" in text
-    assert re.search(r"\\bV4\\.\\d+\\b", text) is None
+    assert re.search(r"\bV4\.\d+\b", text) is None
 
 
 def test_bootstrap_defines_short_e2e_invocation_and_full_execution():
@@ -57,7 +57,7 @@ def test_agents_is_orchestration_only_and_release_independent():
     assert "AI_BOOTSTRAP.md" in text
     assert "AI_ENTRYPOINT.md" in text
     assert "orchestration only" in text
-    assert re.search(r"\\bV4\\.\\d+\\b", text) is None
+    assert re.search(r"\bV4\.\d+\b", text) is None
 
 
 def test_entrypoint_accepts_e2e_invocation_without_repeating_workflow():
@@ -73,7 +73,7 @@ def test_gpt_web_project_template_is_short_bootstrap_pointer():
     assert "AI_BOOTSTRAP.md" in text
     assert "`E2E`" in text
     assert "current repo" in text
-    assert re.search(r"\\bV4\\.\\d+\\b", text) is None
+    assert re.search(r"\bV4\.\d+\b", text) is None
 
 
 def test_current_router_still_controls_release_and_engineering_load():
@@ -88,3 +88,8 @@ def test_ci_tracks_bootstrap_files():
     assert "'AI_BOOTSTRAP.md'" in wf
     assert "'AGENTS.md'" in wf
     assert "'PROJECT_INSTRUCTIONS_GPT_WEB.md'" in wf
+
+
+def test_release_pin_detector_rejects_a_real_release():
+    assert re.search(r"\bV4\.\d+\b", "orchestration V4.34 supplement") is not None
+    assert re.search(r"\bV4\.\d+\b", "current release via AI_ENTRYPOINT.md") is None

@@ -2,7 +2,11 @@
 
 **Purpose:** Make the `≤85°` acute-bend method reproducible by another AI **from source geometry**, without reading the approved OD answers from the proof DXF.
 
-This document is the implementation companion to `ACUTE_BEND_LT85_METHOD.md`.
+## Trigger and precedence
+
+This is the approved outside-envelope construction for a **proved included angle ≤85° (85° inclusive)**, when source/shop evidence proves formed faces, thickness, free edges and applicable inside radius. It takes precedence over the generic ID→OD tangent-offset construction for that acute bend. Unresolved angle, radius, face identity or datum remains FLAG, never an invented OD.
+
+Preserve exact printed inputs. Do not measure OD to the theoretical sharp intersection, substitute the generic tangent-offset formula, round printed dimensions, extend bend lines through voids or copy a reference's answers. Source-first reconstruction precedes sample comparison; a matching sample confirms but never supplies missing dimensions. Report a conflict when proved formed geometry/radius/Nobi cannot reconcile the sample.
 
 ---
 
@@ -189,3 +193,7 @@ A regression run is invalid if it:
 - chooses inner-face/normal signs solely because they minimize residual against the answer.
 
 The approved OD values may appear only in the **final assertion/comparison block**.
+
+## Regression assets and provenance
+
+`regression/assets/acute_bend_lt85/ACUTE_BEND_LT85_SOURCE_FIXTURE.dxf` is the normalized source fixture; `ACUTE_BEND_LT85_OD_PROOF.dxf` and `ACUTE_BEND_LT85_CONSTRUCTION.svg` are proof/illustration, not construction inputs. Source hashes and normalization limits are in that directory's README. The original method evidence is HD.dxf; its Rin is not reverse-fitted from the approved answers. Detailed approved numeric assertions remain in `regression/qa/ACUTE_BEND_LT85_APPROVED.md` and the runner named above.

@@ -46,7 +46,7 @@ APPROVED_GATES = (
     "FOLD_BACK_SOURCE_REPROJECTION", "NEAREST_VIEW_EDGE", "FOLD_BACK_MATCH",
 )
 
-# Groups B and C of docs/GATE_REVIEW.md: status labels, blocking labels,
+# Historical Groups B and C (decision preserved in docs/RULE_HISTORY.md): status labels, blocking labels,
 # geometry/mechanism/file names. Explicitly NOT gates. Listing them here keeps
 # review_candidates limited to identifiers nobody has classified yet.
 REVIEWED_NON_GATES = (

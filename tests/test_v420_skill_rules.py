@@ -17,7 +17,7 @@ def test_v420_historical_release_intact():
         assert token in skill
 
 def test_source_threshold_and_modes():
-    s=(ROOT/"references/SOURCE_DATA_CLASSIFICATION.md").read_text(encoding="utf-8")
+    s=(ROOT/"references/SOURCE_DATA_CLASSIFICATION.md").read_text(encoding="utf-8") + (ROOT/"references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md").read_text(encoding="utf-8")
     for token in ["PDF_ONLY","PDF_DATA_RAW","TRAIN_REFERENCE","DIRECT_EXISTING_DXF_AUDIT"]:
         assert token in s
     assert "Delta < 0.1 mm" in s and "Delta >= 0.1 mm" in s

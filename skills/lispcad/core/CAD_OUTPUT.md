@@ -1,8 +1,8 @@
-## V4.35 output, layout and label rules (approved 2026-10-14)
+# CAD output — current template, geometry, layout and labels
 
-These rules supersede the older output wording below where they conflict. Canonical input may keep `LWPOLYLINE`; every saved CUT DXF does not.
+Canonical input may keep `LWPOLYLINE`; saved manufacturing curves are exploded into LINE/ARC pieces. The current packaging and schema contract below applies to both new and compatible jobs.
 
-1. **Output geometry.** Combined `*_ALL*.dxf` and individual `parts_dxf/<CODE>.dxf` contain only LINE, ARC and CIRCLE (and approved POINT) on Layer 0. Outlines, cutouts and slots are written as separate LINE/ARC pieces with canonical ids `<entity_id>:S0001`, `:S0002`, ... Piece endpoints must meet within 0.001 mm.
+1. **Output geometry.** Combined `*_ALL*.dxf` contains LINE, ARC, CIRCLE and approved POINT on Layer 0 (plus explicitly scoped Magenta review content under REVIEW_PREVIEW_POLICY). Individual `parts_dxf/<CODE>.dxf` contains CUT-only LINE/ARC/CIRCLE, with no POINT, BEND, KEGAKI, labels or preview. Outlines, cutouts and slots are written as separate LINE/ARC pieces with canonical ids `<entity_id>:S0001`, `:S0002`, ... Piece endpoints must meet within 0.001 mm.
 2. **Source data.** PDF-derived geometry must match the drawing 100 %. Customer DXF data may be exploded into elements (XPLORE) before use, with geometry unchanged.
 3. **Template.** New DXFs start from `templates/CAD_OUTPUT_TEMPLATE.dxf` (environment, DASHED linetype, dimstyles, AC1021, ANSI_1252, LTSCALE 15). Only `$INSUNITS = 4` and `$MEASUREMENT = 1` are overridden: coordinates are millimetres. The template modelspace must be empty.
 4. **Dimensions.** No DIMENSION entity and no entity on layer `DIM` in any CUT output. Layer `DIM` is reserved for the checker.
@@ -19,26 +19,16 @@ These rules supersede the older output wording below where they conflict. Canoni
    - Individual CUT files carry no labels.
 8. **Customer conflicts.** When a customer's explicit corner instruction conflicts with an automatic rule (for example SS t>=19 R3 against a customer sharp corner), set FLAG and wait for customer confirmation. Do not silently override either way.
 
-## V4.34 orientation and composite-only export (2026-10-13)
-`tools/export_canonical_dxf.py` exports ONE composite by default, without any standalone CUT DXFs (`--composite-only` is a legacy no-op). Individual PASS CUT DXFs alone are pose-normalized: if there is no proved HL, choose bounding-box X>=Y (90-degree rotate only if Y>X); with proved HL, align the source-proved part-local grain vector parallel to X even when Y>X. HL direction missing relative to the part => REVIEW and NO individual PASS file. No scale/mirror, no user-visible TEXT/BEND/POINT in standalone CUT, and no change to source-canonical coordinate records. Record orientation transform and read back transformed LINE/ARC/CIRCLE/XDATA. Composite uses the readable source orientation (translation/layout only) and remains independent of the standalone rotation. Old V4.31 canonical jobs are accepted; NEW source jobs use V4.34 to require witness and grain proof.
+## Individual cut orientation
+Pose normalization applies only to explicitly requested individual PASS cuts: without HL choose bbox X>=Y by a 90-degree rotation if needed; with proved part-local HL grain align it parallel to X even if Y>X. Missing physical grain evidence means REVIEW and no individual PASS file. No scale/mirror or canonical/source-witness mutation. Composite remains source-readable (translation/layout only). Record the pose and inverse-read-back LINE/ARC/CIRCLE/XDATA. New jobs require V4.34 witness/grain proof; V4.31 inputs remain compatible.
 
-# Current production packaging — combined DXF by default; individual PASS cuts only on request (no JSON output)
+## Current production packaging — combined DXF by default; individual PASS cuts only on request (no JSON output)
 
-Normal E2E uses `tools/export_canonical_dxf.py`; on successful canonical
-member and composite saved-DXF XDATA read-back, it writes **no JSON output**
-(the canonical job JSON is an input only) and by **default delivers only the one
-entire-job composite** `<JOB>_ALL.dxf` or `<JOB>_ALL_REVIEW_ONLY.dxf` with all
-codes and warnings. Individual DXFs are written **only when the user explicitly
-requests them** (`--individual-dxf`): then `parts_dxf/<slip-no>.dxf` for
-**verified PASS only**, using analytic LINE/ARC/CIRCLE CUT primitives.
-No non-cut marks, annotations, bend entities, preview or VIEWS_ONLY source
-views may enter individual CUT files. A REVIEW in one code cannot downgrade
-another's independent proved geometry, but the combined file always becomes
-REVIEW_ONLY. Existing lower-level V4.9/dual serializations are compatibility,
-not the canonical production entry point. Canonical data remain the sole
-physical geometry source, and saved-DXF read-back is mandatory.
+Normal E2E uses `tools/export_canonical_dxf.py` after canonical member validation and saved-DXF XDATA read-back. Default delivery is exactly one entire-job `<JOB>_ALL.dxf`, or `<JOB>_ALL_REVIEW_ONLY.dxf` if any code is REVIEW/FLAG/PREVIEW/VIEWS_ONLY, with all codes and warnings; no JSON output. The canonical job JSON is input only.
 
-## Delivery-slip identity and reference-only slip size (V4.35, 2026-10-14)
+Only explicit `--individual-dxf` requests add `parts_dxf/<slip-no>.dxf` for independently verified PASS codes, as CUT-only LINE/ARC/CIRCLE. A different code's REVIEW never suppresses a proved PASS cut. Exclude marks, BEND, POINT, annotations, previews and source views. Lower-level `export_dxf.py` modes are compatibility only and never override this contract. All outputs derive from the same canonical geometry and require actual saved-file read-back.
+
+## Delivery-slip identity and reference-only slip size
 
 - **Code = 作業No on the delivery slip (CAD依頼書 / 納品書), verbatim.** The part `code` in the canonical job, the composite label and the individual file name are all the slip work number `<YY>-<serial>`, e.g. the drawing barcode `*056522*` with slip entry `26-056522` is written as `26-056522` (`parts_dxf/26-056522.dxf`), never `056522`. The `YY` year prefix changes by year; always copy the slip as printed, never derive or hard-code the prefix. When the barcode and the slip disagree, the slip wins and the mismatch is reported. `export_canonical_dxf.py` rejects non-slip codes (`SLIP_WORK_NO_FORMAT`; test/synthetic jobs only may pass `--allow-nonslip-codes`). The composite name uses the slip order number (注番), e.g. `520928-06_ALL.dxf`.
 - **Slip サイズ X/Y is reference only.** The size columns on the slip are never geometry, never a datum, never a bbox/closure proof and never a reason to PASS or to override the drawing. Use them only as a plausibility cross-check of the independently solved flat; a mismatch is reported as a note, and the drawing-derived flat stays authoritative.
@@ -46,13 +36,13 @@ physical geometry source, and saved-DXF read-back is mandatory.
 
 # TrainAiCad Core — CAD Output
 
-## V4.31 executable canonical-completeness path
+## Executable canonical-completeness path
 
-Normal production/review DXF emission must use `tools/export_canonical_dxf.py` with `canonical_contract: TrainAiCad-CANONICAL-V4.31` as defined in `tools/CANONICAL_INPUT_SCHEMA_V431.md` and `references/CANONICAL_MEMBER_COMPLETENESS.md`.
+Normal production/review DXF emission must use `tools/export_canonical_dxf.py` with `canonical_contract: TrainAiCad-CANONICAL-V4.34` for NEW jobs (`tools/CANONICAL_INPUT_SCHEMA_V434.md`); previously approved V4.31 inputs remain readable under `tools/CANONICAL_INPUT_SCHEMA_V431.md`. Both require `references/CANONICAL_MEMBER_COMPLETENESS.md`.
 
 Before any DXF save, persist `source_groups`, enumerable source `members`, `canonical_members`, and globally unique canonical `entity_id` values. Hard-fail when a PROVED source member has no PROVED source-backed canonical member. FLAGGED source members remain explicitly represented as PREVIEW/SOURCE_VIEW/FLAGGED_NO_GEOMETRY; a review flag never authorizes deletion of another proved member.
 
-The normal production path must not bypass this contract by writing a hand-picked source subset directly to `ezdxf.modelspace()` / `saveas()`. The lower-level `tools/export_dxf.py` remains a packaging component only. After packaging, V4.31 stamps `TRAINAICAD` XDATA entity IDs into every saved Layer-0 entity, saves/reopens the exact file, and requires `CANONICAL_ENTITY_IDS == SAVED_DXF_LAYER0_ENTITY_IDS` before delivery.
+Do not bypass canonicalization with a hand-picked `ezdxf.modelspace()` / `saveas()` subset. `export_dxf.py` is packaging only. The wrapper stamps TRAINAICAD XDATA, saves/reopens and verifies ordered piece IDs against the manifest and full canonical coverage (§8.4). SAVED_DXF_LAYER0_ENTITY_IDS may contain several `:S0001` pieces for one canonical entity; raw counts need not match.
 
 ## 8.1 ONE independently verified canonical geometry model
 
@@ -60,7 +50,7 @@ Before generating any file, apply ALL current PDF-first rules: real outline topo
 
 Store part-local coordinates in millimeters, one record per declared drawing code, with provenance/trace records and one canonical sequence of CAD primitives. Use THIS SAME geometry for the default combined DXF, optional individual files and optional Lisp; never solve dimensions independently a second time.
 
-V4.31 canonical job fields: `canonical_contract`, `job_id`, ordered `parts`. Part fields include `code`, `material`, `thickness_mm`, `status`, independently executed `checks`, optional `flags`, mandatory `source_groups`, mandatory `canonical_members`, and ordered `entities`. Every entity has a globally unique stable `entity_id`. See `tools/CANONICAL_INPUT_SCHEMA_V431.md`.
+Canonical job fields (new V4.34 and compatible V4.31): `canonical_contract`, `job_id`, ordered `parts`. Part fields include `code`, `material`, `thickness_mm`, `status`, independently executed `checks`, optional `flags`, mandatory `source_groups`, mandatory `canonical_members`, and ordered `entities`. Every entity has a globally unique stable `entity_id`. See the new-job V4.34 schema and compatible V4.31 base schema above.
 
 Canonical entity representations:
 - `LWPOLYLINE`: `vertices:[[x,y,bulge],...]`, `closed:true` for one CCW proved outer outline and each CW interior cutout or slot. No duplicate final vertex; no fake bounding rectangle. Bake all qualified C/R into true tangent points/bulges, no faceting.
@@ -79,11 +69,11 @@ Write real DXF with millimeter `$INSUNITS=4`, `$MEASUREMENT=1`, decimal `$LUNITS
 
 | V4.6 feature | DXF entity | Color 62 | Linetype |
 | :-- | :-- | :-- | :-- |
-| Outer/inner contour and slot | LINE/ARC pieces exploded from canonical LWPOLYLINE (V4.35) | ByLayer (omit/256) | ByLayer |
+| Outer/inner contour and slot | LINE/ARC pieces exploded from canonical LWPOLYLINE | ByLayer (omit/256) | ByLayer |
 | Verified cut circle/M pilot | CIRCLE | ByLayer | ByLayer |
 | Ordinary PIERCING or capability POINT | actual POINT | ByLayer | ByLayer |
 | Explicit PDF PIERCING + THROUGH HOLE | actual POINT | Green 3 | ByLayer |
-| Kegaki/formed mark | LINE or proved LWPOLYLINE | Red 1 | ByLayer |
+| Kegaki/formed mark | LINE/ARC pieces from LINE or proved LWPOLYLINE | Red 1 | ByLayer |
 | Double bend lines on material only | LINE ×2 | ByLayer | DASHED |
 | Proven explicitly Green slit/relief | LINE or ARC per source | Green 3 | ByLayer |
 | Non-production estimate and adjacent note | appropriate entity and TEXT | Magenta 6 | ByLayer |
@@ -98,7 +88,9 @@ Use the declared page-1 code order. Every code appears exactly once beside its o
 
 Execute all routed validation checks for every production PASS part before serialization. A source view with no proveable flat retains explicit `VIEWS_ONLY` flags and does NOT inherit invented PASS results. PREVIEW keeps proved members exact and uncertainty local.
 
-V4.31 first runs source-member -> canonical-member equality. Then reopen/audit the ONE saved DXF for units mm, all manufacturing primitives Layer 0 and their approved properties, actual CCW/CW bulges and counts, source-cluster geometry equality by inverse XY translation, correct distinct descending-Y source-code labels on non-plot `AI_META`, >=10 mm layout gaps and explicit NO CUT filename/global note whenever a FLAG exists. Finally verify `TRAINAICAD` XDATA `ENTITY_ID` values on the exact saved Layer-0 entities equal the canonical entity-ID sequence/set. Check canceled families for zero surviving machining members/entities. Labels must be excluded from CAM toolpaths.
+First run source-member → canonical-member equality. Reopen/audit the exact saved composite for mm units, approved Layer-0 geometry/properties, physical contour continuity/orientation and counts, source-cluster geometry equality by inverse XY translation, descending job order with distinct non-cut AI_META labels, and the **150 mm** minimum inter-cluster gap in rule 6. A flagged job uses REVIEW_ONLY filename/global NO CUT semantics. Do not expect saved LWPOLYLINE/bulges: compare the exact exploded LINE/ARC/CIRCLE/approved POINT geometry instead.
+
+Verify every ordered derived piece ID and canonical member owner in TRAINAICAD XDATA against the serialization manifest; stripping the piece suffix must cover every canonical entity exactly as the exporter requires. One canonical outline may own several saved pieces. Canceled families have zero surviving manufacturing members/entities. Individual PASS cuts also require inverse-pose physical/provenance read-back; never use raw entity count as source quantity proof. Labels remain excluded from CAM toolpaths.
 
 The lower-level exporter performs structural serialization, schema, packaging and geometry read-back checks; it never proves PDF datum/face order, missing Nobi, material selection or source-member completeness by itself. The V4.31 wrapper adds executable member/identity closure but still depends on the routed drawing interpretation and canonicalization stages being source-correct.
 
@@ -110,4 +102,4 @@ Only if explicitly requested, generate existing approved `c:DRAW` AutoLISP and d
 
 **Stage 1:** concise per-code barcode/material/thickness/proved flat extent table, real geometry-affecting corrections (handwritten Nobi, mid-tolerance, rounded ID→OD, table selection/material R), one aggregate PASS only for actually executed checks, and EVERY FAIL/FLAG/WARN/outstanding customer confirmation. Do not bury unproven dimensions or claim that bounding extents prove topology.
 
-**Stage 2 (default):** link exactly ONE verified top-to-bottom composite DXF, `_ALL.dxf` when all parts PASS or `_ALL_REVIEW_ONLY.dxf` when any part remains FLAG/VIEWS_ONLY/PREVIEW. Only explicit request produces individual DXFs and manifest. Generate Lisp only when explicitly requested. An audit-only request skips CAD emission. When critical topology/type/datum/bend/material is unresolved, preserve independently proved geometry under the routed review policy; when the environment cannot create or verify DXF links, report that limitation instead of inventing attachments or silently outputting Lisp.
+**Stage 2 (default):** link exactly ONE verified top-to-bottom composite DXF, `_ALL.dxf` when all parts PASS or `_ALL_REVIEW_ONLY.dxf` when any part remains FLAG/VIEWS_ONLY/PREVIEW. Individual DXFs require explicit request; the optional debug/compatibility manifest requires `--write-manifest` and is never a default deliverable. Generate Lisp only when explicitly requested. An audit-only request skips CAD emission. When critical topology/type/datum/bend/material is unresolved, preserve independently proved geometry under the routed review policy; when the environment cannot create or verify DXF links, report that limitation instead of inventing attachments or silently outputting Lisp.

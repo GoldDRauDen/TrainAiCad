@@ -1,9 +1,8 @@
-## V4.34 source-witness and material/orientation supplement (2026-10-13)
-Production E2E for **new** jobs uses `TrainAiCad-CANONICAL-V4.34` plus `tools/CANONICAL_INPUT_SCHEMA_V434.md`; preexisting V4.31 fixtures remain supported. Load `references/MATERIAL_ALIASES.yaml` for material grades (SECC=ボンデ → SS), retain per-process exceptions, record PDF-grounded typed witness graphs for holes/slots, and explicit slot anchor source endpoints before PASS. All HL needs a proven part-relative grain vector; otherwise REVIEW regardless of Excel 横目. Individual CUT DXF orientation (X long unless HL→X) is downstream exporter-only; composite stays source-readable. Do not learn missing witnesses from sample DXF.
-
 # AI ENTRYPOINT — TrainAiCad repo-direct production
 
 Current production release is **V4.34**.
+
+Production E2E for **new** jobs uses `TrainAiCad-CANONICAL-V4.34` plus `tools/CANONICAL_INPUT_SCHEMA_V434.md`; preexisting V4.31 fixtures remain supported. Load `references/MATERIAL_ALIASES.yaml` for material grades (SECC=ボンデ → SS), retain per-process exceptions, record PDF-grounded typed witness graphs for holes/slots, and explicit slot anchor source endpoints before PASS. All HL needs a proven part-relative grain vector; otherwise REVIEW regardless of Excel 横目. Individual CUT DXF orientation (X long unless HL→X) is downstream exporter-only; composite stays source-readable. Do not learn missing witnesses from sample DXF.
 
 **KH851 weld-location KEGAKI completeness:** after reading numeric customer
 code and before declaring KEGAKI=NO, follow
@@ -106,7 +105,7 @@ Before unfold, `BEND_ATTACHMENT_EDGE_LOCKED` must prove the exact physical mater
 
 ## 2B. V4.31 E2E canonical completeness hard gate
 
-Load `references/CANONICAL_MEMBER_COMPLETENESS.md` before final Feature Census and use `tools/CANONICAL_INPUT_SCHEMA_V431.md` when constructing output state.
+Load `references/CANONICAL_MEMBER_COMPLETENESS.md` before final Feature Census and use `tools/CANONICAL_INPUT_SCHEMA_V434.md` for new output state (V4.31 reader compatibility remains supported).
 
 **NO_DIRECT_DXF_FROM_INTERPRETATION:** never write a hand-picked subset from source interpretation straight into `ezdxf.modelspace()`; persist source groups/members and canonical members first, then serialize through `tools/export_canonical_dxf.py`. `tools/export_dxf.py` is a lower-level packaging component, not evidence of completeness.
 

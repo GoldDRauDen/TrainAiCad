@@ -41,8 +41,8 @@ def test_v425_rule_tokens_and_52100120_regression():
     paths = [
         "references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md",
         "references/SOURCE_DATA_CLASSIFICATION.md",
-        "references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md",
-        "references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md",
+        "references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md",
+        "references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md",
         "regression/qa/521001-20_V4_25_APPROVED.md",
         "regression/tools/check_521001_20_v425.py",
         "skills/lispcad/router/RULE_COVERAGE.yaml",
