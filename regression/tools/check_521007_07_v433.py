@@ -105,11 +105,14 @@ def test_rule_wiring(root: Path):
     assert coverage["release"] == router["release"]
     # PART_IDENTITY_GRAPH is conditional (skipped only when multi_code_or_assembly is proven NO).
     conditional = {item["path"] for item in router.get("conditional_default_load", [])}
-    for path in [
-        "references/HOLISTIC_ENGINEERING_CHALLENGE.md",
-        "references/REFERENCE_EXPOSURE_FIREWALL.md",
-    ]:
-        assert path in router["default_load"]
+    # The holistic challenge is a mandatory L3 gate; reference exposure is
+    # loaded only for reference-bearing source modes, not every ordinary job.
+    assert "references/HOLISTIC_ENGINEERING_CHALLENGE.md" in router["stage_routes"]["L3_VALIDATE_EXPORT_QA"]["load"]
+    firewall_path = "references/REFERENCE_EXPOSURE_FIREWALL.md"
+    assert firewall_path not in router["default_load"]
+    for mode in ("TRAIN_REFERENCE", "DIRECT_EXISTING_DXF_AUDIT"):
+        assert firewall_path in router["source_routes"][mode]["load"]
+    assert firewall_path not in router["source_routes"]["PDF_ONLY"]["load"]
     assert "references/PART_IDENTITY_GRAPH.md" in conditional
     for check in [
         "holistic_engineering_challenge",
