@@ -2,8 +2,6 @@
 
 Before accepting `VIEWS_ONLY`, run `references/HOLISTIC_ENGINEERING_CHALLENGE.md`. A first failed interpretation is not source exhaustion. Re-open all relevant PDF views, DATA physical curves, witness chains, handwritten flat/Nobi arithmetic, part identity and candidate FACE_GRAPH relationships, then record the specific unresolved degree of freedom.
 
-If a defensible flat still cannot be proved but independently proved source/orthographic views exist, the executable fallback is **DRAW THE PROVED VIEWS**: preserve every proved source-view member as separate labeled review subgroups under the correct code, preserve physical DATA curves, keep all proved features, and FLAG only the unresolved relationship. Do not stop at a text report and do not emit a small representative subset.
-
 For multi-barcode / ①② / welded constituent drawings, build the routed `PART_IDENTITY_GRAPH` before assigning source views or DATA clusters to manufacturing codes.
 
 # LISPCAD Core — Drawing Reading & Execution Contract
@@ -14,36 +12,21 @@ Before Nobi arithmetic or global-flat coordinates, create an evidence-equivalent
 
 Do not proceed to production unfold while an ownership field is unresolved or while two materially different graphs satisfy the same source evidence.
 
-
-
-## V4.18 approved 520929-18 — detailed-source bundle authority hardening
-
-**V4.18 DETAILED_SOURCE_BUNDLE:** A Page-1/job-list row is a summary/mapping source, not an automatic override of the detailed drawing page. For the same barcode/code, when the detailed page contains a mutually consistent bundle of (a) matching code identity, (b) explicit material/thickness, (c) dimension-witnessed formed geometry, and (d) handwritten/printed Nobi or flat arithmetic that closes those dimensions, and there is no later revision/red correction/cancellation with higher authority, use that detailed bundle to resolve a contradictory summary row without asking. This is NOT a rule that “barcode page always wins”: if the detailed evidence does not close, identity is uncertain, or a higher-authority revision conflicts, FLAG/ask. In NEW_PDF_TO_DXF, a later reference DXF may verify the resolution but must not supply missing construction dimensions.
-
-Source: inherited from the approved V4.3 baseline. Current production authority is `AI_ENTRYPOINT.md` plus the Router. This file holds drawing-reading rules, the execution pipeline and Japanese terminology.
-
-
-## V4.13 approved 520315-18 additions — existing slot/shop rules NOT duplicated
-
-**Reference SOURCE_UNIT_CONFLICT:** A reference DXF $INSUNITS header is metadata, not automatic geometric truth. Before comparing sample geometry, verify actual numeric units against independently read PDF witness-line dimensions and the user's explicit unit confirmation. The approved 520315-18_ss.dxf has a misleading inch header but actual mm numbers: DO NOT multiply/divide by 25.4. If a different sample's true units remain unresolved, FLAG and ask. Newly generated DXF still uses $INSUNITS=4.
+## Mirror scope and slot witnesses
 
 **Each code is independently declared; MIRROR is source scoped:** Only construct a reflected partner when the drawing/user establishes original and target codes, axis/orientation and the exact reflection scope. Reflect the complete proven geometry including contour, distinct hole families, slots, R/C, bends and markings; then revalidate the partner. If only the original is requested, do not invent a second code. A mirror of INSIDE views within one part does not create an undeclared part code.
 
-**Already-approved rules:** Exhaust whole slot dimension strings and verify END-CENTER versus OUTSIDE-TIP witnesses before asking; do not reintroduce routine shop-spacing approval questions (existing V4.12 §5.2). See new examples 018295/018304 and case 018297 in regression/qa/520315-18_V4_13_APPROVED.md.
+**Slot witnesses:** exhaust whole slot dimension strings and verify END-CENTER versus OUTSIDE-TIP witnesses before asking; do not ask routine shop-spacing approval questions (`VALIDATION.md` §5.2).
 
-## V4.12 approved drawing-reading refinements (deduplicated against V4.11)
+## Material designation and exhaustion before asking
 
 For sheet-metal designation families, recognize case-insensitive `SUS…→SUS`, `SP…/SS…→SS`, `A…→AL`, while preserving the full printed grade, thickness and the approved SUS430 SS-Nobi/SUS-laser split. A family match does not assert that distinct source grades are chemically identical.
 
-Before asking, exhaust explicit witness lines, handwritten Nobi, width-derived slot-end radius and local-face transforms. If the flat is independently proved, draw it even if an unrelated round-hole Ø/center is still uncertain; isolate that feature as Magenta `CIRCLE Ø?` / coordinate FLAG instead of changing its unknown Ø to POINT. Reuse existing V4.11 VIEWS_ONLY only when the actual unfold is not supportable. Do not require sample DXF for a clearly marked preview or ask for routine PDF-conforming shop-spacing acceptance. See approved regression `520217-27`.
-
-## V4.11 approved preview-first override — active
-
-**DRAW → FLAG → CONFIRM:** If actual PDF evidence supports a recognizable approximation but a dimension, feature type or topology remains unproved, render the provisional portion Magenta (Layer 0, DXF 62=6), add an adjacent explicit assumption/FLAG and ask the user AFTER showing it. Keep every independently proved entity exact. If a defensible flat is not available, render independently proved orthographic/source views separately and label the code `VIEWS_ONLY`. The default combined DXF is `*_ALL_REVIEW_ONLY.dxf` with global **NO CUT** whenever any FLAG remains. Only absent identifiable source views or ambiguous part-code identity stops all drawing. This V4.11 preview rule overrides the inherited V4.3/V4.10 blanket STOP-before-any-drawing wording for **review-only** output; it never weakens Section 5 production PASS or allows silent geometry invention. See [QA regression](../../../regression/qa/520625-15_V4_11_APPROVED.md).
+Before asking, exhaust explicit witness lines, handwritten Nobi, width-derived slot-end radius and local-face transforms; then apply `references/REVIEW_PREVIEW_POLICY.md` for anything still unproved.
 
 ## V4.8 approved hole-family cancellation — active override
 
-When an entire hole callout is clearly struck out and its leader clearly identifies a complete family, omit the whole family from DXF regardless of remaining legacy drawn circles. Log canceled source quantity and prove zero output entities; active nearby groups are unchanged. If only a tolerance/finish fragment is crossed or target/revision scope is unclear, DO NOT delete holes; ask. Case 040006 on 520709-07 deletes both 2-Ø8H7 while retaining 6-M8 and 4-Ø9.
+When an entire hole callout is clearly struck out and its leader clearly identifies a complete family, omit the whole family from DXF regardless of remaining legacy drawn circles. Log canceled source quantity and prove zero output entities; active nearby groups are unchanged. If only a tolerance/finish fragment is crossed or target/revision scope is unclear, DO NOT delete holes; ask.
 
 ## 0. Repo-Direct Execution Contract — Mandatory for Every Run
 
@@ -61,16 +44,6 @@ When an entire hole callout is clearly struck out and its leader clearly identif
 4. General CAD/manufacturing knowledge only where a routed rule allows it.
 
 If a current user instruction conflicts with a safety or anti-error rule (for example, guessing an unreadable dimension from a bounding box), STOP and report the conflict instead of silently weakening the rule.
-
-### 0.3 Calibration / Regression Learning Protocol
-When the user supplies a reference DXF or corrected CAD for PDF-interpretation calibration (NOT a specifically requested direct audit of an already created AI DXF):
-1. **Interpret the PDF first** without using DXF coordinates to fill missing information.
-2. Compare the independently derived geometry against the user-approved reference.
-3. Classify each mismatch by semantic cause: datum, dimension-chain type, step/local dimension, feature type, C/R topology, tolerance/Nobi, or source conflict.
-4. Convert only the **generalizable semantic cause** into a rule or regression test.
-5. Do not encode one-off coordinates as generic rules.
-6. Store validated examples as regression tests under `regression/` when they materially prevent recurrence.
-7. Any future run must be able to apply those rules even when no DXF is supplied.
 
 ### 0.4 No Hidden Dependency on Conversation Context
 - Case IDs such as `054615` or `054621` are **regression examples** under `regression/`, not required external knowledge. The rule being tested must be understandable from the routed rule text.
@@ -104,7 +77,7 @@ When the user supplies a reference DXF or corrected CAD for PDF-interpretation c
 ➔ [Classify Dimension Strings + Lock Datums] ➔ [Map Formed Faces to Flat]
 ➔ [Tolerance Adjustment (Mid-Tol)] ➔ [Nobi & Flat Pattern Calculation]
 ➔ [Pre-Execution Verification Engine]
-➔ [Reference DXF Calibration/Audit Comparison, only if explicitly declared]
+➔ [Reference calibration/audit: `references/REFERENCE_CALIBRATION_AUDIT.md`, only if a reference exists]
 ➔ [Compact Report + Direct Individual DXFs + Combined DXF + Manifest]
 ```
 
@@ -182,36 +155,9 @@ Correct optical character recognition errors using engineering context rules:
 - `B` ↔ `8` | `O` ↔ `0` | `S` ↔ `5` | `M6` ↔ `MG` | `Ø` ↔ `O` | `0.5` ↔ `O.5`
 - Validate dimensions against material thickness $t$ and standard hole lookup tables.
 
-### 2.4 User-Declared Reference DXF Calibration / Ground-Truth Mode
-This mode is activated ONLY when the user explicitly states that a supplied DXF is a correct production CAD / **ground-truth reference** used to audit and calibrate the executing AI's interpretation of the PDF.
-
-#### 2.4.1 Purpose and Scope
-- The purpose of the reference DXF is **calibration and verification of PDF-reading skill**, not blind geometry copying.
-- The executing AI MUST first interpret the PDF/drawing using Sections 2–7, including datum tracing, dimension-string classification, feature recognition, C/R topology, and tolerance/Nobi rules.
-- The executing AI then compares that independently-derived result with the reference DXF and identifies why any mismatch occurred.
-- Learn **generalizable interpretation rules** from the comparison (datum origin, chain-vs-baseline distinction, step dimensions, convex/concave C/R mapping, feature-count logic). Do NOT learn or memorize raw coordinates as a substitute for drawing interpretation.
-- A reference DXF may be used to confirm that a particular PDF interpretation is correct. It MUST NOT be used as a hidden bounding-box ruler to invent a dimension that cannot be traced on the PDF.
-
-#### 2.4.2 Ground-Truth Comparison Rules
-- Compare: feature position, feature size, contour topology, hole/slot locations, chamfer geometry, explicitly specified radii, and part-to-code mapping.
-- When a mismatch is found, classify the root cause explicitly as one of: `DATUM ERROR`, `CHAIN/BASELINE ERROR`, `STEP DIMENSION ERROR`, `FEATURE TYPE ERROR`, `FEATURE-COUNT ERROR`, `C/R TOPOLOGY ERROR`, `REFERENCE/FORMED-DIMENSION ERROR`, `UNFOLD TRANSFORM ERROR`, `BEND-SEQUENCE ERROR`, `CONTAINMENT ERROR`, `CODE/SCHEMA SEMANTICS ERROR`, `MISSING/AMBIGUOUS PDF DIMENSION`, or `DXF-ONLY SHOP FEATURE`.
-- If the DXF and PDF differ but the mismatch can be explained by a PDF dimension string that was previously misread, correct the PDF interpretation and record the anti-regression rule in the portable skill when validated.
-- If the DXF differs from the PDF in a way that **cannot** be supported by the PDF dimensions/callouts, do NOT silently teach that difference as a general rule. Report it as a production-CAD adjustment or source conflict and ask the user when it materially changes the part.
-- A newer visible revision note / red correction on the PDF must still be reported if it conflicts with the supplied DXF; ground-truth calibration does not erase revision chronology.
-
-#### 2.4.2b V4.14 approved DIRECT AUDIT of pre-existing AI DXF against a reference
-
-If the user's objective is to evaluate **the AI's already-exported DXF** against a customer-approved reference DXF, compare **those TWO DXFs FIRST**, matching only proved drawing-code clusters and actual user/PDF-confirmed coordinate units, then normalizing layout-only translation and any independently proved orientation. Audit full physical outer/inner boundaries, each hole/slot/cutout family (type, diameter, original quantity and coordinates), true R/C, complete unfolded extent, each double-line bend-pair coordinate and its clipping to real material. ARC+LINE in the reference and exact, closed LWPOLYLINE/bulge in the AI output are geometrically equivalent; raw entity counts alone are not a failure. A source/orthographic face is only PARTIAL if the reference has a complete flat, irrespective of its locally correct holes. Report MATCH/PARTIAL/DIFF **per code**, protect MATCHed parts from later edits, and **only THEN** revisit the PDF to identify why the AI made each error. This is distinct from creating a NEW PDF-based drawing: existing PDF-FIRST rules are unchanged, and sample DXF is never a hidden replacement for an unproved PDF dimension. Approved case: `regression/qa/520217-26_V4_14_APPROVED.md`.
-
-#### 2.4.3 Approved material-table Laser R takes precedence over old DXF-only R0.5 exception
+### 2.4 Material-table Laser R takes precedence over the old DXF-only R0.5 exception
 
 The V4.3 unconditional rule to omit uncalled-out DXF-only R0.5 is superseded. Read the approved `references/MATERIAL_RULES.md` and apply automatic Laser R0.5, R2 and R3 to **eligible, uncalled-out** corners according to material/thickness and corner class. Explicit PDF R or C at a corner always overrides its material-table auto R. A shop-added R not prescribed by the PDF or approved table may be omitted only with direct user confirmation or an approved shop specification; otherwise FLAG a source conflict. This rule never authorizes inventing contour topology, flattening a relief into a fillet, or silently adjusting explicitly dimensioned PDF geometry.
-
-#### 2.4.4 Calibration / Portable Learning Discipline
-- Every reference-DXF comparison is an **anti-regression calibration case**: record the semantic reason for each corrected mismatch, not merely the corrected coordinate. Validated general rules belong in this portable skill file.
-- Future PDF-only jobs, including in unrelated chats or on another AI, must apply those semantic rules from this file without requiring a DXF.
-- Do not generalize one-off production edits from a single DXF into universal rules unless the user explicitly confirms they are standard practice.
-- Do not rely on conversational memory for this learning. If the lesson must survive across chats/AIs, encode it in this master skill or a required companion regression file.
 
 ---
 

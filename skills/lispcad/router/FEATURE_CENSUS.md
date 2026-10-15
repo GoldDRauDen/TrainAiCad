@@ -32,7 +32,7 @@ A family/state census that says YES/UNKNOWN while the corresponding group/member
 
 ## Assembly-derived coordinate candidates (cross-part)
 
-In a multi-code/assembly drawing, identify any actual feature with no local-position witness but plausible installation-view dimensions through other proved parts. Preserve the candidate feature ID, host code/face and potential mating witnesses in the source census. Pass these candidates to `DATUM_DIMENSION.md` §4.2.2b at L2 and the independent `holistic_engineering_guard.py` audit at L3. A `NO` for an unrelated assembly route is allowed when the source has no such relationship. Do not make an assembly candidate from graphical proximity alone.
+In a multi-code/assembly drawing, identify any actual feature with no local-position witness but plausible installation-view dimensions through other proved parts. Preserve the candidate feature ID, host code/face and potential mating witnesses in the source census. Pass these candidates to `references/ASSEMBLY_DATUM_CLOSURE.md` at L2 and the independent `holistic_engineering_guard.py` audit at L3. A `NO` for an unrelated assembly route is allowed when the source has no such relationship. Do not make an assembly candidate from graphical proximity alone.
 
 ## Evidence required before NO
 

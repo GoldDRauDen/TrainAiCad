@@ -21,7 +21,6 @@ BOOTSTRAP = (
     "AI_ENTRYPOINT.md",
     "skills/lispcad/router/FEATURE_CENSUS.md",
     ROUTER,
-    "skills/lispcad/router/RULE_COVERAGE.yaml",
 )
 FORBIDDEN = (
     "skills/lispcad/versions/",

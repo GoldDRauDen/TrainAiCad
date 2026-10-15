@@ -24,8 +24,6 @@ These rules supersede the older output wording below where they conflict. Canoni
 
 # Current production packaging — combined DXF by default; individual PASS cuts only on request (no JSON output)
 
-This section supersedes inherited V4.9/V4.11 composite-only defaults below,
-without changing approved geometry, material/Nobi/bend or canonical schema.
 Normal E2E uses `tools/export_canonical_dxf.py`; on successful canonical
 member and composite saved-DXF XDATA read-back, it writes **no JSON output**
 (the canonical job JSON is an input only) and by **default delivers only the one
@@ -46,14 +44,6 @@ physical geometry source, and saved-DXF read-back is mandatory.
 - **Slip サイズ X/Y is reference only.** The size columns on the slip are never geometry, never a datum, never a bbox/closure proof and never a reason to PASS or to override the drawing. Use them only as a plausibility cross-check of the independently solved flat; a mismatch is reported as a note, and the drawing-derived flat stays authoritative.
 - **No JSON deliverable.** The exporter writes no per-code JSON. With no explicit request the only deliverable is the combined DXF; PASS-only individual DXFs are produced only when the user asks for them.
 
-# V4.33 VIEWS_ONLY completeness / reference provenance output gate
-
-When a flat truly remains unresolved after source exhaustion and `HOLISTIC_ENGINEERING_CHALLENGE`, `VIEWS_ONLY` is an executable review output, not a report-only status. Preserve all independently proved source/orthographic view members as separate labeled subgroups under the correct code. For customer DATA, preserve the physical source curves unless an approved manufacturing canonicalization explicitly changes them. Missing proved source-view members is `VIEWS_ONLY_SOURCE_VIEW_COMPLETENESS` FAIL.
-
-A local unresolved feature does not erase an independently proved flat; output the proved flat and isolate the local FLAG/PREVIEW.
-
-If a sample/reference is introduced later, output/audit reporting must preserve the frozen source-only status. Sample FLAG/Magenta geometry declared pending is `CUSTOMER_CONFIRMATION_PENDING`, not approved manufacturing geometry.
-
 # TrainAiCad Core — CAD Output
 
 ## V4.31 executable canonical-completeness path
@@ -63,18 +53,6 @@ Normal production/review DXF emission must use `tools/export_canonical_dxf.py` w
 Before any DXF save, persist `source_groups`, enumerable source `members`, `canonical_members`, and globally unique canonical `entity_id` values. Hard-fail when a PROVED source member has no PROVED source-backed canonical member. FLAGGED source members remain explicitly represented as PREVIEW/SOURCE_VIEW/FLAGGED_NO_GEOMETRY; a review flag never authorizes deletion of another proved member.
 
 The normal production path must not bypass this contract by writing a hand-picked source subset directly to `ezdxf.modelspace()` / `saveas()`. The lower-level `tools/export_dxf.py` remains a packaging component only. After packaging, V4.31 stamps `TRAINAICAD` XDATA entity IDs into every saved Layer-0 entity, saves/reopens the exact file, and requires `CANONICAL_ENTITY_IDS == SAVED_DXF_LAYER0_ENTITY_IDS` before delivery.
-
-## V4.12 approved local-FLAG precedence
-
-Keep a source-proved flat even when a separate round-hole Ø or center awaits confirmation: represent only the unresolved hole dimension/position with Magenta `CIRCLE` and adjacent `Ø?`/coordinate FLAG. Never make an unknown Ø a guessed capacity POINT. Use the existing V4.11 separate labeled source views only if no defensible flat/unfold order exists. No PREVIEW can be called production PASS; the entire mixed-confidence composite stays `REVIEW ONLY — NO CUT`. Routine shop bridge/spacing/bend-proximity acceptance questions are suppressed, without weakening actual geometric containment, source tracing or material-capacity checks.
-
-## V4.11 approved non-production provisional clusters
-
-The default remains exactly ONE top-to-bottom code-labeled DXF. When a drawing supports a plausible but not fully proved shape, retain exact confirmed geometry and include the assumed portion in **Magenta Layer-0** with an adjacent Magenta explanatory FLAG; label the code `PREVIEW`. Truly estimated numeric values are integer-rounded. If the flat shape or bend sequence cannot be inferred responsibly, include independently proved source/orthographic views as **separate labeled subgroups** under that code and mark `VIEWS_ONLY`; do not silently omit it. Any estimate or unresolved view makes the entire combined file `*_ALL_REVIEW_ONLY.dxf` with **NO CUT**. Explicit user QA confirmation closes only its specific resolved question, and later changes require full Section 5 and saved-DXF validation. This V4.11 approval supersedes previous **numeric-only preview** constraints for non-production output, not production shape/type/datum requirements. See portable §4.4.1 and [520625-15 approved regression](../../../regression/qa/520625-15_V4_11_APPROVED.md).
-
-**Current V4.9 user-approved packaging:** ONE top-to-bottom composite DXF, with exact code labels outside each nonoverlapping part cluster; per-code files and manifest only by explicit request. Incomplete flats remain source-view groups under the correct code; any FLAG makes the entire combined file `REVIEW_ONLY - NO CUT`. This changes only packaging, not the V4.8-approved or earlier manufacturing rules. AutoLISP remains explicit-request only.
-
-**V4.8 upstream gate:** Write canceled source-family provenance and effective zero-count into canonical job trace, omit all deleted hole entities, and verify that the deleted group is also absent in the translated composite. No CAD serialization or DXF schema change; only user-confirmed PDF reading, counts and regression cases were approved.
 
 ## 8.1 ONE independently verified canonical geometry model
 
@@ -112,15 +90,9 @@ Write real DXF with millimeter `$INSUNITS=4`, `$MEASUREMENT=1`, decimal `$LUNITS
 
 Do NOT reintroduce superseded blanket DXF-only R0.5 omission, green-by-default Piasu or universal minimum-hole rules. Apply current routed material workbook and case-specific precedence in every export. A source-only feature/quantity unknown blocks production instead of inventing it.
 
-## 8.3 V4.9 mandatory single composite
+## 8.3 Composite content record
 
-Default **one DXF only**: `<JOB>_ALL.dxf` if every code has independent manufacturing PASS; otherwise `<JOB>_ALL_REVIEW_ONLY.dxf` including all codes and visible **NO CUT** annotation. Individual DXFs/manifest are NOT default and require explicit request. Preserve Stage 1 per-code status/report without delivering unnecessary individual CAD files.
-
-Use the declared page-1 code order strictly top-to-bottom, with >=10 mm **layout-only** clearance between part/view-group geometry bboxes, no overlaps and no geometric rescaling. Every code appears exactly once beside its own cluster as generated `TEXT` on non-plot `AI_META`, not as a Layer-0 cut path. Internally record code, status, bbox, XY translation, flags and per-code machining entity counts even when the user did not request an external manifest.
-
-For known-topology numeric-only uncertainty: preserve all proved sizes and positions, isolate an integer-rounded Magenta estimate plus adjacent Magenta FLAG note. For unknown unfold dimensions/order: output only independently proved orthographic/source views, grouped and labeled by source view under the correct code (`VIEWS_ONLY`), never a fabricated flat. If a temporary Ø is user-authorized, label it `Ø?` and treat it as review-only, not a verified hole. If there is not enough evidence even to draw a source view or assign the correct code, STOP and ask.
-
-A single unresolved `PREVIEW`/`VIEWS_ONLY`/FLAG invalidates *production use of the entire composite*, even if other part clusters are individually correct. An explicitly requested legacy dual export may be supplied for compatible jobs but never silently substituted for the V4.9 default.
+Use the declared page-1 code order. Every code appears exactly once beside its own cluster as generated `TEXT` on non-plot `AI_META` (never a Layer-0 cut path). Record per code: code, status, bbox, XY translation, flags and machining entity counts, even without an external manifest. Review/preview handling: `references/REVIEW_PREVIEW_POLICY.md`. Legacy dual export only on explicit request.
 
 ## 8.4 Executed verification, read-back and limitations
 
@@ -139,7 +111,3 @@ Only if explicitly requested, generate existing approved `c:DRAW` AutoLISP and d
 **Stage 1:** concise per-code barcode/material/thickness/proved flat extent table, real geometry-affecting corrections (handwritten Nobi, mid-tolerance, rounded ID→OD, table selection/material R), one aggregate PASS only for actually executed checks, and EVERY FAIL/FLAG/WARN/outstanding customer confirmation. Do not bury unproven dimensions or claim that bounding extents prove topology.
 
 **Stage 2 (default):** link exactly ONE verified top-to-bottom composite DXF, `_ALL.dxf` when all parts PASS or `_ALL_REVIEW_ONLY.dxf` when any part remains FLAG/VIEWS_ONLY/PREVIEW. Only explicit request produces individual DXFs and manifest. Generate Lisp only when explicitly requested. An audit-only request skips CAD emission. When critical topology/type/datum/bend/material is unresolved, preserve independently proved geometry under the routed review policy; when the environment cannot create or verify DXF links, report that limitation instead of inventing attachments or silently outputting Lisp.
-
-### V4.14 physical-geometry equivalence when auditing user DXF
-
-An audit of already generated AI CAD against a declared customer-reference CAD compares actual manufactured curves after verified unit/part-local-frame normalization; equivalent LINE+ARC versus closed LWPOLYLINE with true bulges need NOT have identical entity types or raw entity totals. However, prove exactly matching contour topology, source family membership/counts and positions, radius/chamfer geometry, the complete unfolded part and each true bend pair clipped to material. Regression-match parts remain invariant before/after repacking and any corrections elsewhere. For NEW production DXF, the current canonical Layer-0 export contract and mandatory independent PDF/validation checks remain unchanged.

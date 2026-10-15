@@ -18,7 +18,7 @@ def test_v416_preserved_and_routing_retained():
     assert "BOXMET-style four-flange box slit relief" in skill
     assert "BOXMET_SLIT_RELIEF.md" in entry
 def test_modules():
-    assert "V4.16 Face-First Dimension Ownership" in (ROOT/"skills/lispcad/core/DATUM_DIMENSION.md").read_text(encoding="utf-8")
+    assert "V4.16 Face-First Dimension Ownership" in (ROOT/"references/BEND_DATUM_MAPPING.md").read_text(encoding="utf-8")
     assert "V4.16 Explicit R/C family quantity closure" in (ROOT/"skills/lispcad/features/CHAMFER_RADIUS.md").read_text(encoding="utf-8")
     assert "V4.16 BOXMET-style four-flange box routing" in (ROOT/"skills/lispcad/modes/BEND_UNFOLD.md").read_text(encoding="utf-8")
     assert "Trigger / no-trigger gate" in (ROOT/"references/BOXMET_SLIT_RELIEF.md").read_text(encoding="utf-8")

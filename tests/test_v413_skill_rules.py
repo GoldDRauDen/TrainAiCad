@@ -77,9 +77,10 @@ def test_new_nonduplicate_rules_in_portable_and_modules():
         "## Appendix K — V4.13",
     ):
         assert key in skill
-    assert "25.4" in reading and "SOURCE_UNIT_CONFLICT" in reading
+    calibration = (ROOT/"references/REFERENCE_CALIBRATION_AUDIT.md").read_text(encoding="utf-8")
+    assert "25.4" in calibration and "SOURCE_UNIT_CONFLICT" in calibration
     assert "INSIDE_VIEW" in bend and "N_hand" in bend
-    assert "SOURCE_UNIT_CONFLICT" in validation
+    assert "SOURCE_UNIT_CONFLICT" in calibration
     assert "V4.12 shop-distance question policy" in skill
     assert "V4.12 unresolved circular-hole Ø gate" in skill
     assert "V4.12 quantity-only" in skill

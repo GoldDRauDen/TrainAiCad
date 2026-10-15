@@ -35,14 +35,20 @@ post_route_checks:
 - no_post_reference_source_rewrite
 - saved_dxf_readback
 gates:
+- id: ASSEMBLY_DATUM_CLOSURE
+  files:
+  - references/HOLISTIC_ENGINEERING_CHALLENGE.md
+  - references/PART_IDENTITY_GRAPH.md
+  - skills/lispcad/core/DATUM_DIMENSION.md
+  - skills/lispcad/router/FEATURE_CENSUS.md
 - id: BEND_ATTACHMENT_EDGE_LOCKED
   files:
   - AI_ENTRYPOINT.md
   - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
+  - references/BEND_DATUM_MAPPING.md
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
   - references/FORMED_PROFILE_OD_MEASUREMENT.md
   - skills/lispcad/core/CROSS_FEATURE_VALIDATION.md
-  - skills/lispcad/core/DATUM_DIMENSION.md
   - skills/lispcad/modes/BEND_UNFOLD.md
 - id: BEND_DOMAIN_LOCKED
   files:
@@ -250,6 +256,7 @@ gates:
 - id: SOURCE_ONLY_SNAPSHOT
   files:
   - AI_ENTRYPOINT.md
+  - references/REFERENCE_CALIBRATION_AUDIT.md
   - references/REFERENCE_EXPOSURE_FIREWALL.md
   - references/SOURCE_DATA_CLASSIFICATION.md
   - skills/lispcad/core/VALIDATION.md
@@ -297,7 +304,7 @@ gates:
   files:
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
   - references/HOLISTIC_ENGINEERING_CHALLENGE.md
-  - skills/lispcad/core/CAD_OUTPUT.md
+  - references/REVIEW_PREVIEW_POLICY.md
   - skills/lispcad/core/VALIDATION.md
 - id: WELD_SITE_KEGAKI_CLOSURE
   files:

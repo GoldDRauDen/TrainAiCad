@@ -77,18 +77,9 @@ Every Layer-0 canonical manufacturing entity must have a unique `entity_id` and 
 
 A canonical member referencing a missing entity is FAIL. A saved Layer-0 entity with no canonical entity ID is FAIL in the V4.31 normal production path.
 
-## 6. 521005-05 failure lesson
+## 6. Failure lesson
 
-The failed V4.30 runtime job demonstrated a workflow/implementation failure, not a serializer reduction failure: source groups for 057862/057864 and the M8 family on 057873 were not instantiated into a member-level canonical model before the raw `ezdxf` save. Selected read-back checks therefore passed a structurally valid but incomplete DXF.
-
-V4.31 regression must prove at minimum:
-
-- `057862`: independent `2-Ø9`, `6-M6`, `6-Ø9`, `2-Ø9` groups survive source -> canonical -> saved DXF member closure;
-- `057864`: the proved 7 hole centers survive even while the separate `8-R5` issue remains customer-pending/FLAGGED;
-- `057873`: four M8 members survive together with bend-edge lengths 248/50 and the already-approved 90-degree no-slit decision for positive bend-end offset;
-- negative fixtures that reproduce the old subset behavior are rejected before/at canonical serialization.
-
-The numeric fixture coordinates used by regression are synthetic test coordinates only. They are not construction data for future drawings.
+The hole/bend members that dropped between source, canonical and saved DXF are recorded in `regression/qa/521005-05_V4_31_APPROVED.md`; the equalities in §4 are the rule.
 
 ## 7. Root-cause vocabulary
 

@@ -31,7 +31,7 @@ When an assembly/installation view provides the only route to a child part's hol
 
 - prove each participating barcode/part code, target feature, host face and related parent/child part;
 - resolve physical assembly contact/attachment and witness identities, not proximity of views or nominal symmetry;
-- hand the proved, signed relation graph to `skills/lispcad/core/DATUM_DIMENSION.md` §4.2.2b, then apply any required face-to-flat transform;
+- hand the proved, signed relation graph to `references/ASSEMBLY_DATUM_CLOSURE.md`, then apply any required face-to-flat transform;
 - audit each derived feature from the child's own datum with the source evidence and assembly-fit closure;
 - retain unresolved physical relationships as local FLAG. Do not copy reference/sample coordinates or silently duplicate child contours under the parent code.
 
