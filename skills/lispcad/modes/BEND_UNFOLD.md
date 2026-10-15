@@ -45,13 +45,13 @@ Authoritative rule: `../core/DATUM_DIMENSION.md` §4.2.6. Interpret witness orig
 
 #### 4.2.7 Local-Face Datum → Global Flat Datum Mapping
 
-Authoritative rule: `../core/DATUM_DIMENSION.md` §4.2.7; execute that proved local-face → global-flat coordinate transformation before any unfold output.
+Authoritative rule: `../../../references/BEND_DATUM_MAPPING.md` §4.2.7; execute that proved local-face → global-flat coordinate transformation before any unfold output.
 
 **V4.32 physical edge datum identity:** if the local datum is edge-based, retain the actual edge identity through the transform, e.g. `FACE_2.BEND_EDGE` or `FACE_2.FREE_EDGE`. Rotation/reflection may change coordinate direction but may not silently swap bend/free edge identity.
 
 #### 4.2.8 Bend Sequence / Face Order Is Non-Commutative
 
-Apply `../core/DATUM_DIMENSION.md` §4.2.8 for the canonical face-order rule. Additional bend-specific hard gates follow:
+Apply `../../../references/BEND_DATUM_MAPPING.md` §4.2.8 for the canonical face-order rule. Additional bend-specific hard gates follow:
 
 - Determine the ordered face sequence from the visible formed topology, bend callouts, section/detail views, and proven witness-line connectivity before calculating bend-line coordinates.
 - Lock the physical attachment edge for every face transition under V4.32; correct face order with the wrong attached edge is still FAIL.

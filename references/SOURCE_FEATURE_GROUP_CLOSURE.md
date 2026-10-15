@@ -1,6 +1,6 @@
 # SOURCE_FEATURE_GROUP_CLOSURE — leader/callout group closure + reference parameter identity
 
-**Status:** USER APPROVED 2026-10-05 from calibration job `521005-05`.
+**Status:** USER APPROVED 2026-10-05 (evidence: `regression/qa/521005-05_V4_30_APPROVED.md`).
 
 ## Purpose
 
@@ -36,10 +36,6 @@ A dimension string may be shared by multiple groups only where the actual witnes
 
 `GROUP_COUNT_CLOSURE` is mandatory before aggregate family count closure. If the final total count is numerically correct but one source group is short and another is over-produced, the result is FAIL.
 
-### 057862 regression intent
-
-For calibration code `057862`, the source contains separate `2-Ø9` left, `6-Ø9`, and `2-Ø9` right source groups. They are the same broad HOLE/Ø9 family but have independent leader/quantity/dimension ownership. Those job-specific groups are regression evidence only; they do not establish universal coordinates.
-
 ## 2. DETAIL_VIEW_MAPPING
 
 The paper location of a Detail/Section/Auxiliary view may be arbitrary. Its placement on the sheet is not a manufacturing coordinate.
@@ -74,10 +70,6 @@ Do not compare:
 - two visually similar values whose witness endpoints differ.
 
 If parameter identity is not closed, re-trace the source/reference witnesses. Use `UNVERIFIED`/local FLAG as applicable; do not report `SOURCE_CONFLICT` merely because two numbers differ.
-
-### 057865 regression intent
-
-For calibration code `057865`, `10.5 / 8.5` are inside bend dimensions. A reference measurement of `10.0 / 8.0` taken from an outside edge is not the same physical parameter. The earlier comparison was an `AI_RULE_MISAPPLICATION`, not evidence that the source and sample disagreed.
 
 ## 5. Feature Census interaction
 

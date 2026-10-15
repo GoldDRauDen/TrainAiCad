@@ -1,3 +1,5 @@
+# LISPCAD Core — Validation
+
 ## V4.34 geometry-proof / manufacturing-attribute separation
 A complete flat with unresolved Hairline grain **direction relative to the physical part** has `status=REVIEW`, `review_reason=HL_DIRECTION_UNPROVED`, and full proved geometry, never an invented Magenta cut or falsely passing individual DXF. This remains true even when the Excel M51 note states `HL 横目` without identifying physical part axes. Keep exact proof-backed entities in the REVIEW_ONLY composite. In V4.34 every proved HOLE/SLOT source member requires typed witness graph X/Y traces; slot members additionally require `slot_anchor_records`. Source QA must verify the crop and witness physically, not merely a self-declared boolean or closed DXF. For single PASS cut output, inverse-transform every LINE/ARC/CIRCLE from the exported pose to canonical and check entity IDs, radii, endpoints, topology and family counts. Missing evidence stays local REVIEW and prevents the affected code's standalone PASS.
 
@@ -19,12 +21,6 @@ When a part remains unresolved, classify the blocker as `TRUE_SOURCE_AMBIGUITY`,
 
 For later sample/reference audit, freeze `SOURCE_ONLY_SNAPSHOT` before reference exposure and enforce `references/REFERENCE_EXPOSURE_FIREWALL.md`. A reference-only post hoc upgrade of a previously unresolved source claim is `POST_REFERENCE_SOURCE_REWRITE`, not source proof.
 
-# LISPCAD Core — Validation
-
-2026-10-12 CUSTOMER CAD OVERRIDE: correct source geometry can PASS with nonblocking WARN for machine L/Z/reach; customer-authorized DATA_NO_DIM_COMPARE waives only PDF/DATA dimension-only conflict, never missing or mismatched holes, topology, count or physical DATA audit. SS>=19 R3 is exterior-perimeter-only (outer contour may contain concave corners). A legible handwritten Nobi/table discrepancy is logged as audit, not a blocking FLAG.
-
-
-
 ## V4.24 — DATA_MANUFACTURING_CANONICALIZATION hard gates
 
 For every `PDF_DATA_RAW` production part, run these checks in addition to V4.23 bidirectional closure:
@@ -41,9 +37,6 @@ For every `PDF_DATA_RAW` part, saved-DXF validation is downstream of: complete s
 
 Do not emit `SOURCE_REPROJECTION_PASS` merely because the primitives selected by the AI map back to DATA. That claim requires census completeness and both directions of the source/canonical diff. Bbox/read-back/entity existence cannot repair an upstream missing family, extra manufacturing edge or bend-witness mismatch.
 
-When a user-approved sample contains exact coincident duplicates, normalize them for physical comparison and report `REFERENCE_ANOMALY`; never promote duplicate entity count into physical feature quantity.
-
-
 ## V4.22 SOURCE_FEATURE_COMPLETENESS — mandatory upstream QA
 
 Before any export, compare the complete active source manufacturing-family inventory against the canonical model and the final serialized DXF. Every source-active family (CUT, HOLE/SLOT, BEND, KEGAKI, PIASU/PIERCING, SLIT/RELIEF, RIB, R/C/chamfer or other forming feature) must have an explicit canonical/output status. A family that disappears without an explicit source cancellation is **FAIL**, even when the outer contour, bbox and DXF read-back are otherwise clean.
@@ -56,24 +49,13 @@ After canonical unfold but **before** production DXF serialization, replay the f
 
 Also require `CONSTRAINTS_CLOSED`: no unresolved semantic owner, face transform, bend sign/domain or materially different competing topology may remain. If ambiguity remains, route to FLAG/PREVIEW/VIEWS_ONLY under existing policy.
 
+## Preview / review status
 
-## V4.13 approved 520315-18 independent checks
-
-- Before comparing a reference DXF, reconcile $INSUNITS metadata with independently established PDF/user-confirmed actual numeric units. If contradictory and unresolved, FLAG SOURCE_UNIT_CONFLICT; do not automatically scale by 25.4. Output DXF remains mm, $INSUNITS=4.
-- Treat original and mirrored drawing CODES as separate records. A mirror requires an established original/target relation, axis and feature scope, including actual holes/slots/R/C/bends, then independent count/containment validation. When inner formed faces are shown, assemble the proved INSIDE_VIEW first, apply only the evidenced reflection and compare hole family/center only in a shared final frame.
-- If bend J, legible handwritten Nobi and a genuinely comparable table row ALL exist, draw with N_hand and record HANDWRITTEN_NOBI_DIFFERS_FROM_TABLE as a nonblocking audit note when the prescribed values disagree. Comparing a 165° note to a 90° table is an invalid conflict; no compatible row does not override handwriting.
-- EXACT printed PDF inputs never receive a comparison tolerance. Only absolute differences strictly <0.01 mm caused by internal precision/rounding in an already-correct DERIVED result can pass an arithmetic-only comparison with reference DXF. Exactly 0.01 fails this test. This does not waive feature/datum/topology/bend/manufacturing checks. V4.12 already prohibits routine shop-spacing customer approval questions; do not duplicate that rule.
-
-
-Source: approved V4.3 production baseline.
-
-## V4.11 PREVIEW vs production validation — active
-
-The user approved **DRAW → FLAG → CONFIRM**: draw a reasonable PDF-supported provisional shape in Magenta with adjacent assumptions, or separate independently proved source/orthographic views when no defensible flat is possible; ask targeted questions after drawing. Record uncertain type/topology/size/datum as `FLAGGED` and mark such parts `PREVIEW` or `VIEWS_ONLY`, never `PASS`. Any such part makes the entire default composite `*_ALL_REVIEW_ONLY.dxf` / **NO CUT**. A previous user QA PASS on a delivered file does not certify any later changed file. The original Section 5 geometry, datum, counts, containment, material and bend-domain production gates remain fully mandatory once uncertainties are resolved. The earlier 'numeric-only Magenta' restriction is historical for previews but remains superseded by this user-approved review-only rule. See [approved regression](../../../regression/qa/520625-15_V4_11_APPROVED.md).
+PREVIEW, VIEWS_ONLY and FLAGGED parts are never PASS and make the composite REVIEW_ONLY: `references/REVIEW_PREVIEW_POLICY.md`. Section 5 gates remain mandatory.
 
 ## V4.8 required cancellation and regression audit
 
-Classify each source feature-family callout as ACTIVE or unequivocally CANCELED before count closure. Require original quantity for each active family and ZERO produced entities for confirmed full-family deletions; include individual and translated composite DXF read-back. Ambiguous/partial strike-through blocks deletion and requires clarification. Apply approved regression/datum/520709-07_APPROVED.md for 039915 external-step datum, 039918/039919 diagonal/hole family and full reflection, and 040006 deletion of the complete 2-Ø8H7 family with active 6-M8 and 4-Ø9 retained. Matching overall extents alone cannot PASS these checks.
+Classify each source feature-family callout as ACTIVE or unequivocally CANCELED before count closure. Require original quantity for each active family and ZERO produced entities for confirmed full-family deletions; include individual and translated composite DXF read-back. Ambiguous/partial strike-through blocks deletion and requires clarification.  Matching overall extents alone cannot PASS these checks.
 
 ## 5. Error Detection & Manufacturing Validation Engine
 
@@ -84,7 +66,7 @@ Before exporting ANY production DXF or optional AutoLISP, run the following auto
 - **Self-Intersection Check**: Ensure no overlapping edges or intersecting outer polyline loops exist.
 - **Vertex Ordering**: Outer boundaries must follow Counter-Clockwise (CCW) orientation; internal cutouts must follow Clockwise (CW) orientation.
 - **V4.18 SOURCE_CALLOUT_CANONICAL_CHECK:** Before production PASS, compare every explicit R/C family in the canonical model back to the source tuple `family + value + quantity/scope + target corner class + leader/witness`. A source `C2` represented as `R2`, `R3`, auto-R0.5, ARC, or bulged radius is FAIL even if the saved DXF reopens perfectly. Read-back verifies serialization/model fidelity; it is not source-semantic verification.
-- **V4.18 DETAILED_SOURCE_BUNDLE conflict check:** When a job-list/summary row conflicts with the same-code detailed page, record whether the detailed page independently closes identity, explicit material/thickness, dimension-witnessed geometry, and Nobi/flat arithmetic, and verify there is no higher-authority revision/red correction/cancellation. Only a closed bundle resolves the summary conflict automatically; otherwise FLAG/ask. A reference DXF cannot be used as the missing input in NEW_PDF_TO_DXF.
+- **V4.18 DETAILED_SOURCE_BUNDLE conflict check:** record whether the same-code detailed page closes the bundle defined in `DRAWING_READING.md` §2.1 item 3; only a closed bundle resolves a summary-row conflict, otherwise FLAG/ask.
 
 - **Source-Origin/Axis Mapping Check (V4.10):** For every absolute or ordinate-based feature, confirm the actual source-view origin and positive X/Y directions from drawing evidence BEFORE any DXF coordinate assignment; record its target CAD datum and signed source→CAD equation, then verify an independent edge/overall closure when available. Negative source Y is NOT a CAD Y coordinate. Transferring `Y=-30` from a proved top-left origin on a view 138 mm high to a bottom-left CAD datum MUST give `Y=108`, not `-30` or `88`. Missing origin/axis evidence is FLAGGED and prevents production PASS; do not borrow an adjacent hole/contour datum.
 - **Datum Graph Connectivity Check**: Every critical hole/notch/step coordinate must have a connected dimension path from an identified datum per `DATUM_DIMENSION.md` §4.2.
@@ -93,13 +75,12 @@ Before exporting ANY production DXF or optional AutoLISP, run the following auto
 - **Contour Topology Check**: Verify that the ordered visible boundary (including steps/recesses/protrusions) is reproduced before numerical closure. A geometrically closed but topologically wrong rectangle/step is FAIL.
 - **Reference-Datum Check**: Parenthesized/reference dimensions must retain their actual extension-line datum; using the nominal value directly as a global coordinate without datum proof is FAIL.
 - **Chain Closure Check**: Where an overall width/height is present, verify that the proven chain closes to the overall dimension. A closure failure is a semantic FAIL even if the CAD polyline itself is perfectly closed.
-- **Reference DXF Comparison Check**: When `DRAWING_READING.md` §2.4 is active, compare feature coordinates and topology against the master DXF after PDF interpretation. First apply the approved material-table automatic Laser R rule for eligible corners; do not exclude matching DXF-only R0.5/R2 simply because PDF omitted the callout. Only explicitly approved downstream shop-only differences may be excluded.
 - **V4.22 SOURCE_FEATURE_COMPLETENESS Check — HARD FAIL**: Build the source-active family set before canonicalization, then diff it against canonical and serialized output. Missing an active family such as SLIT/RELIEF or KEGAKI is FAIL even if CUT/BEND are otherwise correct. Count semantic manufacturing features by proved topology/connectivity, while separately preserving unchanged DATA curve provenance; a feature may be one operation composed of many LINE/ARC primitives. For PDF+DATA, also prove source exhaustion before any `VIEWS_ONLY` status.
 - **Feature Count Closure Check**: For every explicit quantity callout (`n-Ø`, `n-M*`, `n-slot`, `n-R`, `n-C`, repeated notch family, etc.), the generated family count MUST equal `n`. Thread-to-pilot conversion changes diameter representation, not the required count. Missing or extra members are FAIL, not WARN.
-- **Connected primitives are not separate manufacturing features (approved `055958` regression)**: Count by proved topology, actual manufacturing operation, and endpoint connectivity, **not** by the number of same-colored DXF LINE/ARC entities. One approved `055958` `BEND_UNFOLD.md` §4.10 slit contains Green `LINE 55A` + `ARC 55B R0.5` + `LINE 55C`, which meet at their endpoints: feature count **1**, constituent entity count **3**. Common color alone does not prove that unrelated entities form one feature. The local R0.5 in this specific case is not a universal requirement of all slit reliefs. Remove only this slit method/count FLAG; independently uncertain customer sizes/datum still FLAG.
+- **Connected primitives are not separate manufacturing features:** count by proved topology, manufacturing operation and endpoint connectivity, not by same-colored LINE/ARC entities. A Green slit made of `LINE + ARC R0.5 + LINE` meeting at endpoints (`BEND_UNFOLD.md` §4.10) is feature count 1, entity count 3; the local R0.5 is not a universal slit requirement. Common color alone never proves one feature. Truly overlapping cut holes need one non-self-intersecting Boolean-union contour with separate family quantity closure.
 - **Feature Family Isolation Check**: Keep each family (`Ø5.5`, `M4→Ø3.3`, `M5→Ø4.2`, slots, cutouts, etc.) independently counted and datum-traced. Do not use one family's centerline/dimension to create or position another family without explicit evidence.
-- **Local-Face → Flat Transform Check**: Every feature dimensioned on a bent face must have a proven `DATUM_DIMENSION.md` §4.2.7 transform into global flat coordinates. Copying a local formed-face coordinate directly into the flat pattern is FAIL.
-- **Bend Sequence Check**: Verify face order independently of total-length closure. Matching overall blank length does not PASS bend order. Bend coordinates must follow the proven sequence in `DATUM_DIMENSION.md` §4.2.8 and `BEND_UNFOLD.md` §4.7.
+- **Local-Face → Flat Transform Check**: Every feature dimensioned on a bent face must have a proven `references/BEND_DATUM_MAPPING.md` §4.2.7 transform into global flat coordinates. Copying a local formed-face coordinate directly into the flat pattern is FAIL.
+- **Bend Sequence Check**: Verify face order independently of total-length closure. Matching overall blank length does not PASS bend order. Bend coordinates must follow the proven sequence in `references/BEND_DATUM_MAPPING.md` §4.2.8 and `BEND_UNFOLD.md` §4.7.
 - **Feature Containment Check**: Every closed hole/slot/internal cutout must lie fully inside the material region unless the drawing explicitly defines an open-edge notch/slot. Any closed feature wholly or partly outside the outer boundary is FAIL.
 - **Bend-Line Material-Domain Check**: Bend lines may exist only where material crosses the bend. A line passing through a void, center cutout, open gap, or outside the part is FAIL; split the bend line into valid material segments when required.
 - **Slot-Semantics Check**: Verify that every generated slot uses a classified source length and the canonical `L_TOTAL` semantics in `features/SLOTS.md`. A center-distance value passed as overall length (or vice versa) is FAIL.
@@ -132,23 +113,12 @@ Before exporting ANY production DXF or optional AutoLISP, run the following auto
 
 ---
 
-
-## V4.9/V4.10 current output precedence
-
-Default output is **ONE** top-to-bottom code-labeled composite, or `_ALL_REVIEW_ONLY.dxf` with all source-view groups/FLAGs and global NO CUT when any code is not independently production PASS. Exclude `AI_META` non-cut labels from the Layer-0 manufacturing audit. The historical V4.7 dual-export section above does NOT require default individual DXFs or manifest. The V4.10 source-origin/axis check in Section 5.1 is mandatory upstream BEFORE a production PASS or composite entity serialization.
-
-### V4.14 direct existing-output audit and overlapping-cut QA
-
-When explicitly asked to compare a PREVIOUSLY EXPORTED AI DXF with a user-approved reference, compare **AI DXF vs reference DXF FIRST**, not PDF vs sample. Normalize only independently proved source-unit interpretation, source orientation and layout translations; compare actual machining curves, typed hole/slot families and original source-callout counts, cut unions, complete unfold coordinates, all bend-pair coordinates and bend-line clipping to material. Geometric identity accepts ARC+LINE versus equivalent exact closed LWPOLYLINE/bulge; raw entity counts are not semantic feature counts. A partial source/orthographic view does not pass against a reference completed flat. Classify MATCH/PARTIAL/DIFF per code and test originally matched codes again after any rebuild. THEN inspect PDF to diagnose mismatches; independent PDF-FIRST interpretation remains the creation procedure. For truly overlapping cut holes require one non-self-intersecting Boolean-union contour and separate family quantity closure, rather than several overlapping interior cut circles. Strict `<0.01 mm` arithmetic residual is permitted ONLY for already-correct derived values per existing V4.13; every PRINTED source number remains exact. Six-code test: `regression/qa/520217-26_V4_14_APPROVED.md`.
-
-
 ## V4.17 hard anti-regression gates — approved 520929-10
 
 These gates operationalize existing interpretation rules and are production-blocking where stated:
 
-- **SLOT_WITNESS_FAIL — HARD FAIL:** slot W/R, center distance and overall length must come from the actual callout plus witness endpoints. A nearby number belonging to another chain/edge may not substitute for the slot width. The 520929-10 regression specifically fails W10/R5 where source/sample proves W9/R4.5.
+- **SLOT_WITNESS_FAIL — HARD FAIL:** slot W/R, center distance and overall length must come from the actual callout plus witness endpoints. A nearby number belonging to another chain/edge may not substitute for the slot width.
 - **MIRROR_SCOPE_FAIL — HARD FAIL:** never reflect a partner because codes are adjacent, sizes match, or shapes look paired. Reflection requires source/user proof of partner identity, axis/orientation and feature scope. Otherwise reconstruct each code independently.
-- **DATUM_WITNESS_FAIL — HARD FAIL:** a coordinate dimension from top/right/other outside edge must be transformed from that proved source datum. Do not replace an edge-to-center witness with a tangent/radius/bbox inference. Regression: H32 and top-edge-to-center 10 => bottom-origin Y22.
+- **DATUM_WITNESS_FAIL — HARD FAIL:** a coordinate dimension from top/right/other outside edge must be transformed from that proved source datum. Do not replace an edge-to-center witness with a tangent/radius/bbox inference.
 - **KEGAKI_SCOPE_FAIL — HARD FAIL:** CUT PASS never implies KEGAKI PASS. Check marking count, segment endpoints, position and property independently. Missing required KEGAKI blocks production PASS.
 - **STALE_PREVIEW_FAIL — QA ERROR:** when source/reference/user evidence resolves a KEGAKI that was previously provisional, regenerate it with normal production KEGAKI property (Red under current CAD_OUTPUT) and remove the stale Magenta uncertainty flag for that resolved feature.
-- **REFERENCE_METADATA_NONBLOCKING:** for approved-reference audits, a conflicting `$INSUNITS` header does not by itself fail physical geometry once actual numeric units are independently proved from source/user/reference scale. Do not apply 25.4 scaling from metadata alone. Production exports still follow the normal mm metadata rule.
