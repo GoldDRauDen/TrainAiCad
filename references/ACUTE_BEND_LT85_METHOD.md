@@ -1,7 +1,7 @@
 # ACUTE_BEND_LT85_METHOD — Approved production reference
 
 **Status:** USER APPROVED on 2026-09-28.  
-**Scope:** Sheet-metal bends whose included bend angle is **strictly `<85°`**, when the drawing/approved shop method requires the acute-bend outside-dimension construction demonstrated by `HD.dxf`.
+**Scope:** Sheet-metal bends whose included bend angle is **`≤85°` (85° inclusive)**, when the drawing/approved shop method requires the acute-bend outside-dimension construction demonstrated by `HD.dxf`.
 
 ## 0. Implementation requirement — derive from source, not answer
 
@@ -17,7 +17,7 @@ The approved OD numbers are **outputs/assertions only**. They must never be trea
 
 Apply this rule only when all of the following are true:
 
-1. The real bend included angle is **<85°**.
+1. The real bend included angle is **≤85° (85° inclusive)**.
 2. The formed geometry and thickness are proved.
 3. The applicable inside bend radius is proved by the approved shop method/drawing; for the approved regression below `Rin=0.6 mm`.
 4. The bend is being converted to flat length using outside dimensions and Nobi.
@@ -53,7 +53,7 @@ FAIL if the AI:
 - extends the straight faces to a theoretical sharp corner and measures to that intersection;
 - copies OD values from a reference DXF when they can be reconstructed from the PDF/shop method;
 - treats a reference DXF as the source of missing PDF dimensions;
-- substitutes the generic non-90° tangent-offset formula for this approved `<85°` geometric outside-envelope method;
+- substitutes the generic non-90° tangent-offset formula for this approved `≤85°` geometric outside-envelope method;
 - rounds printed source dimensions before construction;
 - places bend lines through voids or beyond the material region.
 

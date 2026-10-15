@@ -21,7 +21,7 @@ QA/audit index of approved release families. Not a load list.
 - **V4.18:** V4.18 520929-18 hard-gate routing; detailed-source bundle, C/R semantic lock and BOXMET signed orientation; `references/BOXMET_SLIT_RELIEF.md`; regression `regression/qa/520929-18_V4_18_APPROVED.md`; executable `regression/tools/check_520929_18_v418.py`.
 - **V4.17:** V4.17 520929-10 hard-gate routing; source witness, mirror scope, datum, KEGAKI and actual-unit guards; regression `regression/qa/520929-10_V4_17_APPROVED.md`; executable `regression/tools/check_520929_10_v417.py`.
 - **V4.16:** face-first dimension ownership, explicit R/C family quantity closure and BOXMET four-flange routing through `references/BOXMET_SLIT_RELIEF.md`; regression `regression/qa/520801-04_V4_16_APPROVED.md`.
-- **V4.15:** acute bend <85° routing through `references/ACUTE_BEND_LT85_METHOD.md` and `references/ACUTE_BEND_LT85_FROM_SOURCE.md`; regression `regression/qa/ACUTE_BEND_LT85_APPROVED.md`; executable `regression/tools/check_acute_bend_lt85.py`.
+- **V4.15:** acute bend ≤85° routing through `references/ACUTE_BEND_LT85_METHOD.md` and `references/ACUTE_BEND_LT85_FROM_SOURCE.md`; regression `regression/qa/ACUTE_BEND_LT85_APPROVED.md`; executable `regression/tools/check_acute_bend_lt85.py`.
 - **V4.14:** existing-output direct audit and overlapping-cut QA retained in active core modules; regression `regression/qa/520217-26_V4_14_APPROVED.md`.
 - **V4.13:** source-unit conflict, strict derived comparison, inside-view and local-face mapping hardening; regression `regression/qa/520315-18_V4_13_APPROVED.md`.
 - **V4.12:** material/preview/shop-distance hardening; regression `regression/qa/520217-27_V4_12_APPROVED.md`.

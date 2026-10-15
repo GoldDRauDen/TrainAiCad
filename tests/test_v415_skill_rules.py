@@ -1,4 +1,4 @@
-"""V4.15 acute-bend <85° production-skill and reproducibility regression."""
+"""V4.15 acute-bend ≤85° production-skill and reproducibility regression."""
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "tools"))
 from snapshot_manifest import Snapshot  # noqa: E402
