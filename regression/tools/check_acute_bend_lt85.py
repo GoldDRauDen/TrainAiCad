@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproduce the approved TrainAiCad <85° acute-bend OD result from source geometry."""
+"""Reproduce the approved TrainAiCad ≤85° acute-bend OD result from source geometry."""
 from pathlib import Path
 import math
 import ezdxf
@@ -54,7 +54,7 @@ def solve(fixture):
     if abs(t1-t2)>1e-6: raise RuntimeError("thickness mismatch")
     inner1=min(e1,key=lambda e:dist(midpoint(*e),c2)); inner2=min(e2,key=lambda e:dist(midpoint(*e),c1))
     f1,b1,d1=orient(inner1,c2); f2,b2,d2=orient(inner2,c1); alpha=angle(d1,d2)
-    if alpha>=85: raise RuntimeError("fixture no longer triggers <85")
+    if alpha>85: raise RuntimeError("fixture no longer triggers <=85")
     n1,n2=normal_toward(f1,b1,c2),normal_toward(f2,b2,c1)
     C=line_intersection(add(f1,mul(n1,RIN)),d1,add(f2,mul(n2,RIN)),d2)
     assert abs(ldist(C,f1,d1)-RIN)<1e-8 and abs(ldist(C,f2,d2)-RIN)<1e-8

@@ -75,9 +75,9 @@ $$\text{OD} = \text{ID} + \text{Offset}$$
 - Do not apply this special intermediate rounding rule to unrelated explicit dimensions. It is specifically the ID→OD offset normalization step.
 - V4.32: assign every ID→OD offset to the physical face contribution proved by the formed profile/attachment graph. Do not add the same offset again after an outside extent already includes it.
 
-### 4.6.2 V4.15 — Acute bend `<85°`: construct real radius, then measure outside OD
+### 4.6.2 V4.15 — Acute bend `≤85°`: construct real radius, then measure outside OD
 
-When the **proved included bend angle is strictly <85°**, this approved method takes precedence over using the generic §4.6 tangent-offset equation as the controlling OD construction for that bend.
+When the **proved included bend angle is ≤85° (85° inclusive)**, this approved method takes precedence over using the generic §4.6 tangent-offset equation as the controlling OD construction for that bend.
 
 1. Load `../../../references/ACUTE_BEND_LT85_METHOD.md` and the mandatory implementation contract `../../../references/ACUTE_BEND_LT85_FROM_SOURCE.md`.
 2. Reconstruct both formed faces and their real free edges/inside surfaces from source evidence.

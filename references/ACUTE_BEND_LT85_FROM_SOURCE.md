@@ -1,6 +1,6 @@
 # ACUTE_BEND_LT85_FROM_SOURCE — Implementation contract
 
-**Purpose:** Make the `<85°` acute-bend method reproducible by another AI **from source geometry**, without reading the approved OD answers from the proof DXF.
+**Purpose:** Make the `≤85°` acute-bend method reproducible by another AI **from source geometry**, without reading the approved OD answers from the proof DXF.
 
 This document is the implementation companion to `ACUTE_BEND_LT85_METHOD.md`.
 
@@ -11,7 +11,7 @@ This document is the implementation companion to `ACUTE_BEND_LT85_METHOD.md`.
 For one acute bend, lock these source facts first:
 
 - `t`: sheet thickness.
-- `alpha`: included bend angle, with this rule triggered only when `alpha < 85°`.
+- `alpha`: included bend angle, with this rule triggered only when `alpha <= 85°`.
 - `FACE_1`, `FACE_2`: the two formed sheet faces.
 - `FREE_EDGE_1`, `FREE_EDGE_2`: the physical free-end planes of those faces.
 - `INNER_FACE_1`, `INNER_FACE_2`: the two real inside-surface straight lines before inserting the bend radius.
@@ -171,7 +171,7 @@ The script `regression/tools/check_acute_bend_lt85.py` implements this chain. It
 
 ## 8. Mandatory audit trace for production use
 
-For every future `<85°` bend record:
+For every future `≤85°` bend record:
 
 `source_view | face_1 | face_2 | t | alpha | free_edge_1 | free_edge_2 | inner_line_1 | inner_line_2 | Rin source | center construction | Rout | OD1 | OD2 | Nobi source | flat | bend pair`
 
