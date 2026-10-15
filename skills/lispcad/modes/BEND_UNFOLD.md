@@ -1,19 +1,8 @@
 # LISPCAD Mode — Bend / Unfold
 
-## V4.32 — physical bend-edge attachment + formed-profile OD gate
+## Attachment and formed-profile OD before unfold
 
-For every `BEND`, `MULTI_FACE`, or unresolved bend candidate, load:
-
-- `../../../references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md`
-- `../../../references/FORMED_PROFILE_OD_MEASUREMENT.md` when actual outside face length must be established from formed/profile geometry.
-
-Before any production unfold, prove `BEND_ATTACHMENT_EDGE_LOCKED`: the exact physical edge of each adjacent face participating in each bend, not merely the face pair/order.
-
-`NEAREST_VIEW_EDGE`, paper proximity, view-above/view-below assumptions and visual symmetry are forbidden attachment evidence. Thickness/hidden-line evidence is optional; formed/profile/side/section topology, projection/view correspondence, witness connectivity and other explicit source cues may prove the shared edge.
-
-A formed/profile view used to reconstruct topology or measure outside length is a `MEASUREMENT_CONSTRUCTION_VIEW`, not automatic CUT geometry.
-
-Production unfold is blocked until `TOPOLOGY_LOCKED`, `BEND_ATTACHMENT_EDGE_LOCKED`, `DIMENSION_WITNESS_LOCKED`, `FEATURE_OWNERSHIP_LOCKED`, `FACE_ORDER_LOCKED`, `BEND_SIGN_LOCKED`, `BEND_DOMAIN_LOCKED` and `CONSTRAINTS_CLOSED` pass. Fold-back must reproduce the same physical attachment edges and bent-face datum identities.
+For every BEND, MULTI_FACE or unresolved bend candidate, execute `../../../references/FACE_GRAPH_UNFOLD_PROTOCOL.md` and `../../../references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md` before production unfold. They own BEND_ATTACHMENT_EDGE_LOCKED, both physical shared edges, valid source evidence and the forbidden NEAREST_VIEW_EDGE shortcut. Apply `../../../references/FORMED_PROFILE_OD_MEASUREMENT.md` when formed geometry must establish OD_actual; a MEASUREMENT_CONSTRUCTION_VIEW is not CUT.
 
 ## V4.23 — mandatory per-bend witness ledger
 
@@ -29,7 +18,7 @@ Load shared Nobi values from `../../../references/NOBI_TABLES.md`.
 
 For **every bent/multi-face part**, load `../../../references/FACE_GRAPH_UNFOLD_PROTOCOL.md` before calculating production flat coordinates. The source-first graph must lock dimension witnesses/owners, feature host faces/local datums, ordered adjacency, signed bend orientation and actual material domains. `sum(OD)-sum(Nobi)` or a matching flat bbox is not a substitute for graph closure.
 
-Production unfold is blocked until `TOPOLOGY_LOCKED`, `BEND_ATTACHMENT_EDGE_LOCKED`, `DIMENSION_WITNESS_LOCKED`, `FEATURE_OWNERSHIP_LOCKED`, `FACE_ORDER_LOCKED`, `BEND_SIGN_LOCKED`, `BEND_DOMAIN_LOCKED` and `CONSTRAINTS_CLOSED` pass. After unfold, `FOLD_BACK_MATCH` against source-proved formed constraints is mandatory before DXF serialization. If competing face graphs or attachment edges remain, use existing FLAG/VIEWS_ONLY policy rather than selecting by confidence.
+Close all G1–G7 graph/attachment/witness/ownership/order/sign/domain/constraint gates in FACE_GRAPH_UNFOLD_PROTOCOL. After unfold, FOLD_BACK_MATCH must reproduce the source and physical attachment edges before serialization; ambiguity follows the existing source-exhaustion and local FLAG/VIEWS_ONLY policy.
 
 ## V4.13 520315-18 — only nonduplicate approved additions
 
@@ -79,7 +68,7 @@ $$\text{OD} = \text{ID} + \text{Offset}$$
 
 When the **proved included bend angle is ≤85° (85° inclusive)**, this approved method takes precedence over using the generic §4.6 tangent-offset equation as the controlling OD construction for that bend.
 
-1. Load `../../../references/ACUTE_BEND_LT85_METHOD.md` and the mandatory implementation contract `../../../references/ACUTE_BEND_LT85_FROM_SOURCE.md`.
+1. Load the complete construction/implementation contract `../../../references/ACUTE_BEND_LT85_FROM_SOURCE.md`.
 2. Reconstruct both formed faces and their real free edges/inside surfaces from source evidence.
 3. Apply the proved inside bend radius `Rin`; construct `Rout = Rin + t`.
 4. Find the real bend center from the intersection of the two `Rin`-offset inside-face lines.
@@ -119,18 +108,6 @@ When the actual Thickness (`t`) or Bend Length (`L`) does **not** exactly match 
 - **Out-of-Range**: If `t` or `L` exceeds the largest tabulated value for that material, do not guess. Set `is_flagged = true` and annotate `"OUT OF TABLE RANGE - CONFIRM NOBI WITH SHOP"` in Magenta (Color 6) per Section 4.4.
 - This rule applies uniformly across all four material tables in Section 7.3.
 
-### 4.10 Corner Reliefs — two distinct mechanisms (V4.4)
+### Relief selection before unfold
 
-**Standard crossing-bend slit relief** (original V4.3 rule, only when two perpendicular bend lines cross):
-- Retract longer edge by `t`; slit inward by `t + 0.2`; diagonal slit to bend-line intersection; read any drawing-specific offset or FLAG if unknown.
-
-**Opposite-fold fixed-outside R=t relief** (approved calibration `055962`):
-- When **two outer edges fold in different directions** and both outside dimensions must remain unchanged, create an `R=t` escape relief at their intersection without shortening either outside dimension. This is a distinct topology/operation from the standard slit relief and from material-table automatic laser fillets. Determine its exact tangency and retained-material side from the real bend/edge topology; if those are unclear, do not invent them.
-- In `055962`, `t=2 mm` gives the two confirmed R2 reliefs. A separately observed R2 on an unbent corner is NOT automatically this relief.
-- **`055958` (approved Q47/Q48): EXACTLY ONE standard Section 4.10 slit relief.** Its verified standalone DXF has three Green entities on Layer `0`, joined at endpoints: `LINE 55A` → `ARC 55B R0.5` → `LINE 55C`. Count **ONE connected machining feature**, NOT three reliefs. Its approved method is the existing crossing-bend slit rule (retract the longer edge by `t`, cut inward `t+0.2`, then diagonal to the proved bend intersection). The local `ARC R0.5` is **specific to this example**, not a mandatory arc for other slits or an automatic material-table Laser R. The old **slit method/count FLAG is RESOLVED**; customer-unconfirmed sizes and any independent datum/geometry FLAG remain. Never hardcode these reference coordinates as a universal construction.
-
-#### 4.10.1 V4.16 BOXMET-style four-flange box routing
-
-If the source proves a central/base rectangle with four adjacent bent flanges and BOXMET corner topology, load `../../../references/BOXMET_SLIT_RELIEF.md`. This reference decides which pair of flaps retreats by `t`, generates the four required slits, constructs the tangent `LINE + ARC R0.5 + LINE` geometry, and defines when the rule is not applicable. Do not omit a required BOXMET slit merely because the outer contour is already closed; do not auto-apply BOXMET slit logic to ordinary L/U/Z, single-flange/free-edge, non-crossing, or unrelated relief topology.
-
----
+Before declaring `SLIT_RELIEF=NO`, inspect each proved bend junction under `../features/SLIT_RELIEF.md`. It owns generic crossing-bend and opposite-fold fixed-outside R=t construction, and routes custom, signed-offset 90-degree and BOXMET mechanisms. BEND/MULTI_FACE/UNKNOWN mode loads this feature owner even when the preliminary relief census says NO: recheck and reroute if the source proves relief. No duplicate mechanism at one junction.

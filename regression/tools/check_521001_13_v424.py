@@ -34,8 +34,8 @@ v423 = Snapshot("skills/lispcad/versions/V4.23/SKILL_LISPCAD_V4_23_PORTABLE.md")
 entry = (read("AI_ENTRYPOINT.md") + read("docs/RELEASE_WIRING_INDEX.md"))
 router = read("skills/lispcad/router/ROUTER.yaml")
 coverage = read("skills/lispcad/router/RULE_COVERAGE.yaml")
-geom = read("references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md")
-physical = read("references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md")
+geom = read("references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md")
+physical = read("references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md")
 source = read("references/SOURCE_DATA_CLASSIFICATION.md")
 material = read("references/MATERIAL_RULES.md")
 holes = read("skills/lispcad/features/HOLES_TAPS.md")
@@ -51,7 +51,7 @@ assert "V4.24 direct approval" not in v423
 assert "- **V4.24:**" in entry
 assert "V4.24:" in coverage
 assert "regression/qa/521001-13_V4_24_APPROVED.md" in coverage
-assert "references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md" in router
+assert "references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md" in router
 for token in [
     "DATA_MANUFACTURING_CANONICALIZATION", "DATA_AUTO_R_CANONICALIZATION",
     "DATA_TAP_NOMINAL_VALIDATION", "THREAD_NOMINAL_REFERENCE",

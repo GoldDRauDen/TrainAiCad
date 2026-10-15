@@ -19,7 +19,7 @@ def test_v421_historical_release_and_inheritance():
     assert "- **V4.21:**" in entry
     assert BASE.read_text(encoding="utf-8").startswith("# SKILL_LISPCAD V4.20 PORTABLE")
     for token in [
-        "PDF_DATA_RAW_GEOMETRY_PRESERVATION.md",
+        "DATA_RAW_TO_MANUFACTURING_CONTRACT.md",
         "520930-03_V4_21_APPROVED.md",
         "DATA_REQUIRED_MISSING",
         "source reprojection",
@@ -27,20 +27,20 @@ def test_v421_historical_release_and_inheritance():
         assert token in (entry + "\n" + skill)
 
 def test_v421_source_classification_hard_gate():
-    s=(ROOT/"references/SOURCE_DATA_CLASSIFICATION.md").read_text(encoding="utf-8")
+    s=((ROOT/"references/SOURCE_DATA_CLASSIFICATION.md").read_text(encoding="utf-8") + (ROOT/"references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md").read_text(encoding="utf-8")).lower()
     for token in [
-        "DATA geometry must be harvested/preserved",
+        "complete harvest/classification",
         "do not redraw",
-        "DATA_REQUIRED_MISSING",
+        "data_required_missing",
         "646",
         "not a redraw tolerance",
     ]:
         assert token in s
 
 def test_v421_reference_and_regression_present():
-    ref=(ROOT/"references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md").read_text(encoding="utf-8")
+    ref=(ROOT/"references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md").read_text(encoding="utf-8")
     qa=(ROOT/"regression/qa/520930-03_V4_21_APPROVED.md").read_text(encoding="utf-8")
-    assert "every job" in ref
-    assert "geometry authority" in ref
+    assert "every `PDF_DATA_RAW` job" in ref
+    assert "geometry/provenance authority" in ref
     assert "057088 DATA page scale 1:2" in qa
     assert "Same bbox with source-derived internal drift is still FAIL" in qa

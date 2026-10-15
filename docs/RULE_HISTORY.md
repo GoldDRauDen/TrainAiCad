@@ -182,3 +182,12 @@ A single unresolved `PREVIEW`/`VIEWS_ONLY`/FLAG invalidates *production use of t
 ### V4.14 physical-geometry equivalence when auditing user DXF
 
 An audit of already generated AI CAD against a declared customer-reference CAD compares actual manufactured curves after verified unit/part-local-frame normalization; equivalent LINE+ARC versus closed LWPOLYLINE with true bulges need NOT have identical entity types or raw entity totals. However, prove exactly matching contour topology, source family membership/counts and positions, radius/chamfer geometry, the complete unfolded part and each true bend pair clipped to material. Regression-match parts remain invariant before/after repacking and any corrections elsewhere. For NEW production DXF, the current canonical Layer-0 export contract and mandatory independent PDF/validation checks remain unchanged.
+
+
+## Completed consolidation decisions
+
+The completed SLIM_MAPPING and GATE_REVIEW records are retained at baseline commit `65bf258bed380a4389aa91fe6f91f28cf2242ff4` under `docs/SLIM_MAPPING.md` and `docs/GATE_REVIEW.md`. They are historical evidence, not pending approval or production authority.
+
+- Slimming was applied on 2026-10-14: AI_ENTRYPOINT 20,864→13,290 bytes and SKILL 8,523→5,991 bytes at that checkpoint; do not report these old reductions as a new result. Rule ownership was checked sentence by sentence before replacing prose with pointers.
+- Approved gate classification: Group A plus NEAREST_VIEW_EDGE are gates; THICKNESS_SINGLE_USE, RAW_DATA_SNAPSHOT, PHYSICAL_DATA_BASELINE and DATA_PDF_DIM_DIFF are gates. Use full FOLD_BACK_SOURCE_REPROJECTION instead of FOLD_BACK. DATA_NO_DIM_COMPARE stays a customer policy, not a gate. Groups B/C are non-gate statuses/geometry/mechanisms/files. The executable classified lists remain in tools/build_gate_index.py.
+- Identifier overlap was only a discovery filter, never proof of semantic parity.

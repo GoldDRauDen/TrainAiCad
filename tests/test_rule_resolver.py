@@ -39,7 +39,7 @@ def test_tap_dependencies_and_unknown_bend_are_not_dropped():
     output = mod.resolve_rules(x)
     paths = output["rule_paths"]
     assert "references/THREAD_PILOT_TABLE.md" in paths
-    assert "references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md" in paths
+    assert "references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md" in paths
     assert "skills/lispcad/modes/BEND_UNFOLD.md" in paths
     assert "HOLE" in output["loaded_feature_routes"]
     assert paths.count("skills/lispcad/features/HOLES_TAPS.md") == 1

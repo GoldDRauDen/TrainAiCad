@@ -20,7 +20,8 @@ def test_v416_preserved_and_routing_retained():
 def test_modules():
     assert "V4.16 Face-First Dimension Ownership" in (ROOT/"references/BEND_DATUM_MAPPING.md").read_text(encoding="utf-8")
     assert "V4.16 Explicit R/C family quantity closure" in (ROOT/"skills/lispcad/features/CHAMFER_RADIUS.md").read_text(encoding="utf-8")
-    assert "V4.16 BOXMET-style four-flange box routing" in (ROOT/"skills/lispcad/modes/BEND_UNFOLD.md").read_text(encoding="utf-8")
+    assert "BOXMET-style four-flange box routing" in (ROOT/"skills/lispcad/features/SLIT_RELIEF.md").read_text(encoding="utf-8")
+    assert "SLIT_RELIEF.md" in (ROOT/"skills/lispcad/modes/BEND_UNFOLD.md").read_text(encoding="utf-8")
     assert "Trigger / no-trigger gate" in (ROOT/"references/BOXMET_SLIT_RELIEF.md").read_text(encoding="utf-8")
 def test_executable():
     cp=subprocess.run([sys.executable,str(ROOT/"regression/tools/check_520801_04_v416.py")],cwd=ROOT,text=True,capture_output=True,check=True)

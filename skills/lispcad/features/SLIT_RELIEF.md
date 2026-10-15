@@ -44,3 +44,21 @@ The 150° value equals t/2 only because sin(150°)=0.5; do NOT generalize t/2. E
 Preserve source-proved slit direction/connectivity and applicable local fillet/tangent construction. Do not universalize a local R0.5 unless the source/existing mechanism proves it. Green LINE/ARC geometry may be slit/relief; Green is supporting evidence only. A Green POINT with proved PIASU semantics is a different family.
 
 QA: close source-note provenance when applicable, correct quantity/value/position/direction, correct mechanism/connectivity, no duplicate/coincident paths, no helper geometry in manufacturing CUT, correct BEND interaction, and saved-DXF physical read-back.
+
+
+## Generic crossing-bend and opposite-fold construction
+
+**Standard crossing-bend slit relief** (original V4.3 rule, only when two perpendicular bend lines cross):
+- Retract longer edge by `t`; slit inward by `t + 0.2`; diagonal slit to bend-line intersection; read any drawing-specific offset or FLAG if unknown.
+
+**Opposite-fold fixed-outside R=t relief** (approved calibration `055962`):
+- When **two outer edges fold in different directions** and both outside dimensions must remain unchanged, create an `R=t` escape relief at their intersection without shortening either outside dimension. This is a distinct topology/operation from the standard slit relief and from material-table automatic laser fillets. Determine its exact tangency and retained-material side from the real bend/edge topology; if those are unclear, do not invent them.
+- In `055962`, `t=2 mm` gives the two confirmed R2 reliefs. A separately observed R2 on an unbent corner is NOT automatically this relief.
+- A proved connected LINE + local ARC + LINE relief is one operation, not three. A local R0.5 is not universal Laser R or a required slit radius. Approved 055958 method/count and independent pending fields remain in `../../../regression/features/520924-19_APPROVED.md`.
+
+## BOXMET-style four-flange box routing
+
+If the source proves a central/base rectangle with four adjacent bent flanges and BOXMET corner topology, load `../../../references/BOXMET_SLIT_RELIEF.md`. This reference decides which pair of flaps retreats by `t`, generates the four required slits, constructs the tangent `LINE + ARC R0.5 + LINE` geometry, and defines when the rule is not applicable. Do not omit a required BOXMET slit merely because the outer contour is already closed; do not auto-apply BOXMET slit logic to ordinary L/U/Z, single-flange/free-edge, non-crossing, or unrelated relief topology.
+## One controlling mechanism per junction
+
+Execute `../../../references/BEND_EDGE_RELIEF_90.md` §7 precedence: revision/cancellation or explicit custom slit first; proved topology-specific BOXMET/opposite-fold next; signed-offset 90-degree gate next; generic crossing-bend only if its physical trigger still holds after domain closure. Unknown size/sign/direction remains local FLAG. Depth alone never proves direction, scope or connectivity. The bend mode loads this owner before a final NO decision; the independent SLIT_RELIEF feature route also remains available for flat/custom source slits.

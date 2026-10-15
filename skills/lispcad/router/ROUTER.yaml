@@ -47,8 +47,6 @@ stage_routes:
       - skills/lispcad/core/CROSS_FEATURE_VALIDATION.md
       - references/HOLISTIC_ENGINEERING_CHALLENGE.md
       - tools/CANONICAL_INPUT_SCHEMA_V434.md
-      - references/HOLISTIC_ENGINEERING_CHALLENGE.md
-      - references/CANONICAL_MEMBER_COMPLETENESS.md
 
 source_routes:
   PDF_ONLY:
@@ -56,8 +54,6 @@ source_routes:
   PDF_DATA_RAW:
     load:
       - references/DXF_PHYSICAL_CURVE_DECODING.md
-      - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
-      - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
       - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   TRAIN_REFERENCE:
     load:
@@ -77,6 +73,7 @@ mode_routes:
   BEND:
     load:
       - skills/lispcad/modes/BEND_UNFOLD.md
+      - skills/lispcad/features/SLIT_RELIEF.md
       - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
       - references/FACE_CREATION_BEND_EVIDENCE.md
       - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
@@ -86,6 +83,7 @@ mode_routes:
   MULTI_FACE:
     load:
       - skills/lispcad/modes/BEND_UNFOLD.md
+      - skills/lispcad/features/SLIT_RELIEF.md
       - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
       - references/FACE_CREATION_BEND_EVIDENCE.md
       - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
@@ -96,6 +94,7 @@ mode_routes:
     load:
       - skills/lispcad/modes/FLAT_NO_BEND.md
       - skills/lispcad/modes/BEND_UNFOLD.md
+      - skills/lispcad/features/SLIT_RELIEF.md
       - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
       - references/FACE_CREATION_BEND_EVIDENCE.md
       - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
@@ -162,14 +161,15 @@ feature_routes:
     depends_on: [BEND, FORMING_FEATURES]
     load:
       - skills/lispcad/modes/BEND_UNFOLD.md
+      - skills/lispcad/features/SLIT_RELIEF.md
   Z_BEND:
     depends_on: [BEND, FORMING_FEATURES]
     load:
       - skills/lispcad/modes/BEND_UNFOLD.md
+      - skills/lispcad/features/SLIT_RELIEF.md
   ACUTE_BEND_LT85:
     depends_on: [BEND]
     load:
-      - references/ACUTE_BEND_LT85_METHOD.md
       - references/ACUTE_BEND_LT85_FROM_SOURCE.md
   BOXMET:
     depends_on: [BEND, SLIT_RELIEF]

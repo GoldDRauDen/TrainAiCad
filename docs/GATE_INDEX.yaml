@@ -54,14 +54,12 @@ gates:
   files:
   - references/FACE_CREATION_BEND_EVIDENCE.md
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
 - id: BEND_EDGE_LENGTH_LOCK
   files:
   - references/BEND_EDGE_RELIEF_90.md
 - id: BEND_SIGN_LOCKED
   files:
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
 - id: BIDIRECTIONAL_SOURCE_CANONICAL_CLOSURE
   files:
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
@@ -81,9 +79,8 @@ gates:
   - references/CANONICAL_MEMBER_COMPLETENESS.md
 - id: CANONICAL_TO_SOURCE_PHYSICAL
   files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
+  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
   - skills/lispcad/core/VALIDATION.md
 - id: CANONICAL_TO_SOURCE_PHYSICAL_PASS
   files:
@@ -92,28 +89,16 @@ gates:
   files:
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
   - skills/lispcad/core/VALIDATION.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
 - id: DATA_AUTO_R_CANONICALIZATION_CHECK
   files:
   - skills/lispcad/core/VALIDATION.md
 - id: DATA_PDF_DIM_DIFF
   files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
-  - references/SOURCE_DATA_CLASSIFICATION.md
   - skills/lispcad/core/VALIDATION.md
   - skills/lispcad/features/HOLES_TAPS.md
-- id: DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA
-  files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
-  - references/SOURCE_DATA_CLASSIFICATION.md
 - id: DATA_RAW_TO_MANUFACTURING_CONTRACT
   files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
-  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
   - references/SOURCE_DATA_CLASSIFICATION.md
 - id: DATA_TAP_NOMINAL_VALIDATION_CHECK
   files:
@@ -124,7 +109,6 @@ gates:
 - id: DIMENSION_WITNESS_LOCKED
   files:
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
 - id: ENGINEERING_ANOMALY_DETECTED
   files:
   - references/HOLISTIC_ENGINEERING_CHALLENGE.md
@@ -132,11 +116,9 @@ gates:
 - id: FACE_ORDER_LOCKED
   files:
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
 - id: FEATURE_OWNERSHIP_LOCKED
   files:
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
 - id: FINAL_ENGINEERING_SANITY_REVIEW
   files:
   - AI_ENTRYPOINT.md
@@ -157,9 +139,7 @@ gates:
   - skills/lispcad/core/VALIDATION.md
 - id: MANUFACTURING_CHANGE_LEDGER
   files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
   - references/SOURCE_DATA_CLASSIFICATION.md
 - id: MIRROR_SCOPE_FAIL
   files:
@@ -177,15 +157,13 @@ gates:
   - skills/lispcad/core/VALIDATION.md
 - id: PER_BEND_WITNESS_LEDGER
   files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
+  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
   - skills/lispcad/core/VALIDATION.md
   - skills/lispcad/modes/BEND_UNFOLD.md
 - id: PHYSICAL_DATA_BASELINE
   files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
   - references/SOURCE_DATA_CLASSIFICATION.md
 - id: POST_REFERENCE_SOURCE_REWRITE
   files:
@@ -193,10 +171,8 @@ gates:
   - skills/lispcad/core/VALIDATION.md
 - id: RAW_DATA_SNAPSHOT
   files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/DXF_PHYSICAL_CURVE_DECODING.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
   - references/SOURCE_DATA_CLASSIFICATION.md
 - id: RUNTIME_AUTHORITY_GUARD
   files:
@@ -213,9 +189,7 @@ gates:
   - references/FACE_CREATION_BEND_EVIDENCE.md
 - id: SAME_PARAMETER_GATE
   files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
   - references/SOURCE_DATA_CLASSIFICATION.md
 - id: SAME_PHYSICAL_PARAMETER_BEFORE_REFERENCE_CONFLICT
   files:
@@ -262,9 +236,8 @@ gates:
   - skills/lispcad/core/VALIDATION.md
 - id: SOURCE_PHYSICAL_TO_CANONICAL
   files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
+  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
   - skills/lispcad/core/VALIDATION.md
 - id: SOURCE_PHYSICAL_TO_CANONICAL_PASS
   files:
@@ -279,7 +252,7 @@ gates:
 - id: THICKNESS_SINGLE_USE
   files:
   - AI_ENTRYPOINT.md
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
+  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
   - references/FORMED_PROFILE_OD_MEASUREMENT.md
   - skills/lispcad/core/VALIDATION.md
@@ -287,16 +260,13 @@ gates:
 - id: TOPOLOGY_LOCKED
   files:
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
-  - skills/lispcad/modes/BEND_UNFOLD.md
 - id: UNTOUCHED_DATA_INVARIANCE_CHECK
   files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
-  - references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md
   - references/SOURCE_DATA_CLASSIFICATION.md
 - id: UNTOUCHED_DATA_INVARIANCE_FAIL
   files:
-  - references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md
+  - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
 - id: UNTOUCHED_DATA_INVARIANCE_PASS
   files:
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md

@@ -22,7 +22,7 @@ def test_v423_historical_release_and_v424_inheritance():
 
 def test_v423_physical_census_bidirectional_and_bend_wiring():
     entry=((ROOT/"AI_ENTRYPOINT.md").read_text(encoding="utf-8") + (ROOT/"docs/RELEASE_WIRING_INDEX.md").read_text(encoding="utf-8"))
-    physical=(ROOT/"references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md").read_text(encoding="utf-8")
+    physical=(ROOT/"references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md").read_text(encoding="utf-8")
     graph=(ROOT/"references/FACE_GRAPH_UNFOLD_PROTOCOL.md").read_text(encoding="utf-8")
     validation=(ROOT/"skills/lispcad/core/VALIDATION.md").read_text(encoding="utf-8")
     qa=(ROOT/"regression/qa/521001-03_V4_23_APPROVED.md").read_text(encoding="utf-8")

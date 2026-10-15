@@ -18,8 +18,8 @@ def normalize_coincident(lines,ndigits=9):
 current=Snapshot("skills/lispcad/portable/SKILL_LISPCAD_CURRENT.md").read_text(encoding="utf-8")
 v423=Snapshot("skills/lispcad/versions/V4.23/SKILL_LISPCAD_V4_23_PORTABLE.md").read_text(encoding="utf-8")
 v422=Snapshot("skills/lispcad/versions/V4.22/SKILL_LISPCAD_V4_22_PORTABLE.md").read_text(encoding="utf-8")
-entry=(read("AI_ENTRYPOINT.md") + read("docs/RELEASE_WIRING_INDEX.md")); physical=read("references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md")
-geom=read("references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md"); mech=read("references/MECHANICAL_CLASSIFIER.md")
+entry=(read("AI_ENTRYPOINT.md") + read("docs/RELEASE_WIRING_INDEX.md")); physical=read("references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md")
+geom=read("references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md"); mech=read("references/MECHANICAL_CLASSIFIER.md")
 face=read("references/FACE_GRAPH_UNFOLD_PROTOCOL.md"); val=read("skills/lispcad/core/VALIDATION.md")
 bend=read("skills/lispcad/modes/BEND_UNFOLD.md"); qa=read("regression/qa/521001-03_V4_23_APPROVED.md")
 wf=read(".github/workflows/dxf-export-tests.yml")
@@ -28,7 +28,7 @@ assert "V4.23 direct approval / PUSH (2026-10-01)" in current
 assert "V4.23 direct approval" not in v422
 assert "V4.24 direct approval" not in v423
 assert "- **V4.23:**" in entry
-assert "check_521001_03_v423.py" in entry and "DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md" in entry + read("skills/lispcad/router/ROUTER.yaml")
+assert "check_521001_03_v423.py" in entry and "DATA_RAW_TO_MANUFACTURING_CONTRACT.md" in entry + read("skills/lispcad/router/ROUTER.yaml")
 assert "SOURCE_PHYSICAL_TO_CANONICAL" in physical and "CANONICAL_TO_SOURCE_PHYSICAL" in physical
 assert "THICKNESS_REPRESENTATION" in geom and "source_entity_census" in mech
 assert "PER_BEND_WITNESS_LEDGER" in face and "THICKNESS_SINGLE_USE" in face

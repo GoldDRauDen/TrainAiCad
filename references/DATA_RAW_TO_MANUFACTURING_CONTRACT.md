@@ -1,99 +1,83 @@
-# DATA_RAW_TO_MANUFACTURING_CONTRACT — V4.25
+# Customer DATA — preservation, manufacturing and bidirectional QA
 
-**Status:** USER APPROVED 2026-10-02 from 521001-20 direct audit.
-**Scope:** every `PDF_DATA_RAW` production job.
+**Scope:** every `PDF_DATA_RAW` job. Approved preservation, census and manufacturing contracts remain one source of authority; this consolidation changes no formula or threshold. See `SOURCE_DATA_CLASSIFICATION.md` for source-mode selection and the independent job-family 646 missing-DATA gate.
 
-## 1. Core sequencing — DATA first, manufacturing second
+## Authority and sequence
 
-`PDF_DATA_RAW` means:
+Customer DATA is the geometry/provenance authority; PDF controls code, material, thickness, view/face meaning, witnesses, scale, revision/handwriting, Nobi and manufacturing semantics. Never redraw existing DATA from PDF dimensions, bbox or screenshots.
 
 `RAW_DATA_SNAPSHOT -> PHYSICAL_DATA_BASELINE -> PDF semantic lock -> SAME_PARAMETER_GATE -> MANUFACTURING_CHANGE_LEDGER -> MANUFACTURING_CANONICAL -> UNTOUCHED_DATA_INVARIANCE_CHECK -> source reprojection -> DXF save/read-back`.
 
-The customer DXF DATA is the geometry source. The PDF is the semantic/manufacturing control source. Do not use PDF dimensions to recreate geometry that already exists in DATA.
+## Complete harvest, classification and physical baseline
 
-## 2. RAW_DATA_SNAPSHOT and PHYSICAL_DATA_BASELINE
+Before tolerance, Nobi, thread-pilot, R/C or other adjustment, harvest **every relevant DATA primitive/view/face**, freeze its geometry/provenance in immutable `RAW_DATA_SNAPSHOT`, and assign a semantic role:
 
-Before any tolerance, Nobi, thread-pilot, R/C or other manufacturing adjustment:
+- `PHYSICAL_CUT_OR_FACE_EDGE`
+- `PHYSICAL_HOLE_SLOT_OR_FEATURE`
+- `BEND_SUPPORT`
+- `THICKNESS_REPRESENTATION`
+- `HIDDEN_OR_PROJECTION_ONLY`
+- `DIMENSION_HELPER_OR_CONSTRUCTION`
+- `DUPLICATE_COINCIDENT`
+- another explicitly proved physical/nonphysical role.
 
-1. Harvest every relevant DATA primitive/view/face.
-2. Freeze an immutable `RAW_DATA_SNAPSHOT` containing the source geometry/provenance.
-3. Classify every harvested primitive by semantic role.
-4. Build `PHYSICAL_DATA_BASELINE` from the source-supported physical manufacturing geometry after excluding drawing-only text/dimensions, hidden/projection-only helpers, thickness-representation-only edges and proved duplicates.
+`RAW_DATA_SNAPSHOT_COMPLETE` requires complete source accounting before manufacturing. `100% DATA` does not require serializing title blocks, text/dimensions or drawing-only helpers. Exclude them only **after** classification; an exclusion must not hide unaccounted physical geometry. Paired side/section edges showing thickness may prove faces/witnesses but are not CUT without independent blank-boundary evidence.
 
-`100% DATA` means **100% source harvest/accounting before manufacturing**, not that title blocks or drawing-only entities must be serialized, and not that active manufacturing rules are disabled.
+`PHYSICAL_DATA_BASELINE_COMPLETE` requires source-supported physical CUT/face edges, holes/slots/features and bend support, retaining original coordinates/curves/host ownership before adjustment. Presence in DATA proves provenance, not manufacturing meaning.
 
-## 3. SAME_PARAMETER_GATE before canonicalization
+Prove physical scale per PDF page/view, never one scale for every supplied file. A proved 1:2 view uses x2. Retain local face/view geometry and assemble only by proved translation, rotation, reflection or uniform source-scale conversion. Nobi changes placement between preserved faces; it is not permission to reconstruct the faces. Never force scale or infer a mirror to close numbers.
 
-**2026-10-12 override:** first check the explicit numeric customer-code policy from `CUSTOMER_CAD_RULES.yaml`. `DATA_NO_DIM_COMPARE` bypasses ONLY the PDF-vs-DATA numeric discrepancy test. Full M/Ø/hole count/location/identity, source membership, topology, provenance and read-back remain mandatory; discrepancies require local REVIEW. No matching customer-code record => general gate below. Do not confuse job-family 646 with customer-code 646.
+## Same physical parameter before change
 
+First select the numeric customer-code policy from `CUSTOMER_CAD_RULES.yaml` under `CAD_CUSTOMER_POLICY.md`. No code or unlisted code uses general rules, without automatic REVIEW. `DATA_NO_DIM_COMPARE` bypasses only generic numeric PDF/DATA discrepancies; `PDF_PRIORITY` and `CONFIRM_CONFLICT` remain scoped to the conflicting physical parameter. Hole identity/count/M/Ø/location, topology, revisions, witnesses, membership, invariance and saved read-back remain mandatory. Numeric customer-code 646 is independent of job-family 646.
 
-The DATA<->PDF threshold is evaluated only between the **same physical parameter** after code/view/feature/datum/unit mapping.
+Run `SAME_PARAMETER_GATE` only after correct code/view/feature/datum/unit mapping, comparing the **same physical parameter**:
 
-For the normal customer threshold:
-- `Delta < 0.1 mm` -> same-parameter gate passes.
-- `Delta >= 0.1 mm` -> `DATA_PDF_DIM_DIFF`; exactly `0.1 mm` flags.
+- General: `Delta < 0.1 mm` passes; `Delta >= 0.1 mm` gives `DATA_PDF_DIM_DIFF`. Exactly 0.1 flags.
+- Explicit numeric KH433: `Delta < 1.0 mm` passes if topology/identity/count are unchanged; `Delta >= 1.0 mm` flags.
 
-A passed gate **does not by itself authorize changing DATA to the PDF nominal**. If no active manufacturing rule controls that parameter, retain the DATA physical geometry unchanged even when the PDF nominal differs by less than the threshold.
+A passing gate never authorizes snapping to PDF nominal. Without a controlling manufacturing rule, retain the physical DATA geometry unchanged. A failed gate blocks automatic change of that local parameter: preserve DATA, FLAG, and continue unrelated proved geometry until higher-authority source/user evidence resolves the conflict. Different physical parameters are never compared, particularly raw pilot/pre-hole versus thread nominal.
 
-A failed gate blocks automatic canonicalization of that conflicting parameter. Keep the DATA value/geometry, FLAG the local conflict, and continue unrelated proved families under the normal local-uncertainty rules.
+## Rule-scoped manufacturing canonicalization
 
-Different physical parameters must never be compared through this gate. Example: a DATA `THREAD_PREHOLE_SOURCE` diameter is not the same parameter as PDF `M<n>` nominal thread diameter. An identifiable `THREAD_NOMINAL_REFERENCE` is the comparable parameter.
-
-## 4. MANUFACTURING_CHANGE_LEDGER
-
-Any intentional physical change from `PHYSICAL_DATA_BASELINE` to production geometry requires one ledger record:
+After complete source harvest and same-parameter closure, apply only active routed rules with proved scope: mid-tolerance/limit conversion, M* pilot conversion, explicit R/C, material Laser R, Nobi/bend placement or another approved manufacturing rule. Each changed physical member needs a local `MANUFACTURING_CHANGE_LEDGER` record:
 
 `source_members, host_face, source_geometry_or_value, same_parameter_gate_status, controlling_rule, changed_scope, canonical_geometry_or_value, serialized_members`.
 
-Allowed changes are only those caused by an active routed manufacturing rule with proved scope, including as applicable:
-- mid-tolerance / limit-dimension conversion;
-- M* thread-pilot conversion;
-- explicit PDF R/C;
-- material-table automatic Laser R;
-- Nobi / bend placement between preserved faces;
-- another explicitly routed production rule.
+One changed corner/edge/diameter does not authorize refitting neighboring geometry.
 
-The ledger is local. A rule that changes one edge, corner, hole diameter or face placement does not authorize refitting, rounding or simplifying neighboring DATA geometry.
+### DATA_TAP_NOMINAL_VALIDATION
 
-## 5. UNTOUCHED_DATA_INVARIANCE_CHECK
+For **every proved M***, lock thread identity, host face, quantity/centers and DATA cluster. Classify an independently identifiable concentric nominal ring as `THREAD_NOMINAL_REFERENCE`, and raw pilot as `THREAD_PREHOLE_SOURCE`. Apply the same-parameter/customer gate to the nominal reference against source M<n>, never to the pilot against n. Do not invent an absent reference ring or choose its role by size/proximity.
 
-Every physical DATA member outside all approved `changed_scope` regions must remain physically identical after canonicalization and final serialization, modulo proved rigid/uniform source transforms and normal CAD floating-point serialization precision.
+The nominal reference is non-cut; keep raw pre-hole provenance and serialize exactly one effective pilot under `HOLES_TAPS.md` and the applicable coarse/explicit-fine thread table, unless the PDF controls another effective diameter. M6 + nominal Ø6 + raw Ø5.1 becomes one Ø5.0 pilot; source quantities/centers/face ownership stay unchanged. A nominal-reference plus pilot as two CUTs, an uncontrolled raw pilot or an unaccepted nominal delta is FAIL.
 
-Production FAIL if an untouched endpoint, center, radius, sweep, straight/curved boundary, slot/hole location or other physical curve drifts because of:
-- PDF redraw;
-- rounding/snapping;
-- analytic refit/simplification;
-- bbox reconstruction;
-- arbitrary tangent rebuilding;
-- tolerance used as a redraw allowance.
+### DATA_AUTO_R_CANONICALIZATION
 
-The `0.1 mm` DATA<->PDF threshold is **not** an allowed geometry-drift tolerance.
+A sharp DATA vertex does not suppress required material Laser R. At each otherwise uncalled eligible corner, apply `MATERIAL_RULES.md` with source R/C precedence and its specific SS t>=19 outer-perimeter/conflict scope. Retain source-corner provenance and exact local tangent replacement; do not refit adjoining curves. Record the changed entity as `MANUFACTURING_CANONICALIZED` with controlling rule and serialized members. An unlogged extra arc/hole is FAIL.
 
-## 6. Representation equivalence
+## Untouched invariance and representation equivalence
 
-Entity type identity is not required when physical geometry is unchanged. Exact LINE/ARC/CIRCLE geometry may be serialized as an equivalent LWPOLYLINE/bulge representation, and vice versa, if the represented physical curves are identical within CAD numerical precision and topology/feature semantics remain unchanged.
+`UNTOUCHED_DATA_INVARIANCE_CHECK`: every physical member outside all approved `changed_scope` regions must remain physically identical after canonicalization **and actual saved-DXF read-back**, reversing only proved source/layout transforms. Endpoints, centers, radii, sweeps, straight/curved boundaries and feature locations must match within CAD numerical/serialization precision.
 
-Therefore AutoCAD `OVERKILL` behavior or raw entity count is not a production acceptance criterion. Prefer retaining source primitives when that is simpler and less error-prone; re-encoding is acceptable only after exact physical-equivalence QA.
+Any unapproved drift is `UNTOUCHED_DATA_INVARIANCE_FAIL`. The PDF/DATA threshold is **not a redraw tolerance**. Rounding/snapping, PDF redraw, bbox reconstruction, arbitrary tangent rebuilding or analytic simplification of unchanged curves fails.
 
-## 7. 521001-20 approved examples
+LINE/ARC/CIRCLE and exact LWPOLYLINE/bulge encodings may be equivalent when physical curves and topology are identical. Prefer retaining primitives when simpler. Raw entity count and AutoCAD `OVERKILL` do not certify physical geometry.
 
-- DATA nominal `855` matching PDF nominal `855`, followed by the applicable source tolerance, may become manufacturing `854.75`; the change is a tolerance canonicalization, not PDF redraw.
-- DATA nominal `600` matching PDF nominal `600`, followed by the applicable source tolerance, may become manufacturing `599.75`.
-- PDF M5 + DATA nominal-reference `Ø5` + raw pre-hole `Ø4.134` locks M5 identity from the nominal-reference comparison; final laser pilot is `Ø4.2` under the active thread-pilot rule. The raw pre-hole is provenance, not a nominal-thread delta input.
-- DATA physical height `60.000709679` versus PDF nominal `60` is below the general threshold. If no manufacturing rule controls that height, retain `60.000709679`; do not snap it to `60.000` merely because the PDF prints 60.
+## Independent completeness and fold-back
 
-## 8. PASS boundary
+`SOURCE_PHYSICAL_TO_CANONICAL`: every active physical source family/curve has host/transform, retained/canonicalized/canceled status, quantity/value and canonical/serialized presence. No missing source geometry.
 
-For `PDF_DATA_RAW`, production PASS requires all of:
+`CANONICAL_TO_SOURCE_PHYSICAL`: every manufacturing output primitive maps to physical source evidence or an explicitly logged canonicalization. No extra manufacturing geometry. Reprojecting only the AI-selected subset cannot satisfy either-direction completeness.
 
-`RAW_DATA_SNAPSHOT_COMPLETE`
-`PHYSICAL_DATA_BASELINE_COMPLETE`
-`SAME_PARAMETER_GATE_CLOSED`
-`MANUFACTURING_CHANGE_LEDGER_COMPLETE`
-`UNTOUCHED_DATA_INVARIANCE_PASS`
-`SOURCE_PHYSICAL_TO_CANONICAL_PASS`
-`CANONICAL_TO_SOURCE_PHYSICAL_PASS`
-`SOURCE_REPROJECTION_PASS`
-`SAVED_DXF_READBACK_PASS`.
+Close each family as `family, value/size, quantity, host_face, source members, canonical members, serialized members, cancellation/canonicalization status`. Count semantic operations separately from raw entities. Audit CUT, HOLE/SLOT, BEND, KEGAKI and RIB independently.
 
-A valid DXF, matching bbox, successful OVERKILL, or reference/sample resemblance cannot compensate for a missing source member, unlogged manufacturing change or untouched-DATA drift.
+Each bend retains `PER_BEND_WITNESS_LEDGER`: bend ID, ordered faces, witnesses, ID/OD semantics, thickness terms/owners, Nobi, fold sign, material domain, pair coordinates and fold-back status. `THICKNESS_SINGLE_USE` means each thickness contribution has one owned use; a ±t residual diagnoses ownership and is never an automatic shift. Execute FACE_GRAPH, attachment/domain closure and fold-back under the routed bend rules.
+
+For reference/direct audit only, normalize exact coincident/reversed duplicates for physical count comparisons; report `REFERENCE_ANOMALY` without changing the sample. A duplicated reference entity is not an extra manufacturing feature.
+
+## PASS boundary
+
+Require `RAW_DATA_SNAPSHOT_COMPLETE`, `PHYSICAL_DATA_BASELINE_COMPLETE`, `SAME_PARAMETER_GATE_CLOSED`, `MANUFACTURING_CHANGE_LEDGER_COMPLETE`, `UNTOUCHED_DATA_INVARIANCE_PASS`, `SOURCE_PHYSICAL_TO_CANONICAL_PASS`, `CANONICAL_TO_SOURCE_PHYSICAL_PASS`, `SOURCE_REPROJECTION_PASS` and `SAVED_DXF_READBACK_PASS`, with family/face/bend closure when applicable. Bbox, valid DXF, OVERKILL or sample resemblance cannot repair missing source members, unlogged changes or drift.
+
+Approved numeric examples/assertions remain in `regression/qa/521001-20_V4_25_APPROVED.md`; census/bidirectional evidence in `regression/qa/521001-03_V4_23_APPROVED.md`; tap/auto-R evidence in `regression/qa/521001-13_V4_24_APPROVED.md`. They are not dimensions for a new job.

@@ -20,8 +20,8 @@ def test_v424_current_release_and_immutable_v423():
 
 def test_v424_rule_wiring():
     paths = [
-        "references/PDF_DATA_RAW_GEOMETRY_PRESERVATION.md",
-        "references/DATA_PHYSICAL_CENSUS_AND_BIDIRECTIONAL_QA.md",
+        "references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md",
+        "references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md",
         "references/SOURCE_DATA_CLASSIFICATION.md",
         "references/MATERIAL_RULES.md",
         "skills/lispcad/features/HOLES_TAPS.md",
