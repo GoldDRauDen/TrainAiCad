@@ -20,10 +20,10 @@ When such an invocation accompanies PDF/image/customer DXF DATA, do not stop aft
 1. Access the current `GoldDRauDen/TrainAiCad` repository through the available GitHub connector/plugin or a local checkout.
 2. Establish repository freshness using the execution environment available to the agent. Never claim current-repo authority without actually reading the repository.
 3. Read `AI_ENTRYPOINT.md` in full.
-4. Read the mandatory router files named by the current entrypoint:
+4. Read the production router files named by the current entrypoint:
    - `skills/lispcad/router/FEATURE_CENSUS.md`
    - `skills/lispcad/router/ROUTER.yaml`
-   - `skills/lispcad/router/RULE_COVERAGE.yaml`
+   `RULE_COVERAGE.yaml` is a QA/audit index; it is not loaded for ordinary CAD jobs.
 5. Load the current router-declared always-on modules/references, inspect the actual source, route every `YES`/`UNKNOWN` family, and follow the current repo-direct E2E flow to its executable limit.
 6. If a complete feature census is available and Python with PyYAML can run, `tools/resolve_rules.py` may calculate the deterministic, de-duplicated Router file set. This helper does not replace source inspection, mandatory routing, or any engineering gate; if unavailable, follow the Router directly.
 7. Use current repository tools/contracts for canonicalization, DXF serialization, save/reopen/read-back and applicable source reprojection/fold-back.

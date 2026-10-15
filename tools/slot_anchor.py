@@ -51,3 +51,43 @@ def validate_slot_anchor(record):
     except (KeyError, TypeError, ValueError) as exc:
         raise SlotAnchorError("SLOT_ANCHOR_RECORD_INCOMPLETE") from exc
     return expected
+
+
+def stadium_geometry(vertices, closed=True):
+    """Return exact stadium-slot dimensions from its bulges and arc centers."""
+    try:
+        from ezdxf.math import Vec2, bulge_to_arc
+        if not closed or len(vertices) != 4:
+            raise SlotAnchorError("SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE")
+        pts = [(float(v[0]), float(v[1]), float(v[2]) if len(v) > 2 else 0.0)
+               for v in vertices]
+        if not all(math.isfinite(c) for v in pts for c in v):
+            raise SlotAnchorError("SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE")
+        arcs = []
+        lines = 0
+        for i, (x, y, bulge) in enumerate(pts):
+            nx, ny, _ = pts[(i + 1) % 4]
+            if abs(bulge) <= 1e-10:
+                lines += 1
+                continue
+            center, _, _, radius = bulge_to_arc(Vec2(x, y), Vec2(nx, ny), bulge)
+            arcs.append((float(center.x), float(center.y), float(radius), bulge))
+        if len(arcs) != 2 or lines != 2 or arcs[0][3] * arcs[1][3] >= 0:
+            raise SlotAnchorError("SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE")
+        if abs(arcs[0][2] - arcs[1][2]) > 1e-7:
+            raise SlotAnchorError("SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE")
+        dx, dy = arcs[1][0] - arcs[0][0], arcs[1][1] - arcs[0][1]
+        distance = math.hypot(dx, dy)
+        if distance <= 1e-10:
+            raise SlotAnchorError("SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE")
+        return {
+            "width_mm": 2 * arcs[0][2],
+            "center_distance_mm": distance,
+            "overall_length_mm": 2 * arcs[0][2] + distance,
+            "midpoint": ((arcs[0][0] + arcs[1][0]) / 2, (arcs[0][1] + arcs[1][1]) / 2),
+            "axis_unit": (dx / distance, dy / distance),
+        }
+    except SlotAnchorError:
+        raise
+    except (TypeError, ValueError, IndexError, ZeroDivisionError) as exc:
+        raise SlotAnchorError("SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE") from exc

@@ -1,4 +1,8 @@
-# PR #24 acceptance — staged deterministic TrainAiCad rule brain
+# PR #24 historical acceptance — staged deterministic TrainAiCad rule brain
+
+This records the 2026-10-12 snapshot, not current V4.34 metrics or inventory.
+Use `tools/benchmark_rule_routes.py` and `tools/audit_rule_coverage.py` for
+current measurements.
 
 ## Baseline, scope and rollback
 
@@ -21,7 +25,8 @@ not a formal proof of every sentence's semantic consistency.
 
 Added explicit routing for the previously excluded STEPPED_NOTCHED,
 L_PROFILE, U_PROFILE, MULTI_FACE_PROFILE and FORMING_FEATURES families.
-The **whole current active inventory has 44 modules**, all reachable.
+That acceptance snapshot had 44 active modules. The current V4.34 inventory
+has 54, all reachable.
 Feature Census now requires classifying these; a missing family fails
 closed, while UNKNOWN loads its production rule.
 

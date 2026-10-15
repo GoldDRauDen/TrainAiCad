@@ -29,14 +29,22 @@ All proved source HOLE/SLOT members must be declared in `witness_required_featur
   ],
   "targets":[
     {"feature_id":"M_HOLE_1","datum_node":"O","feature_node":"HC",
-     "axis":"X","coordinate_mm":10,"entity_id":"E_HOLE_1"}
+     "axis":"X","coordinate_mm":10,"datum_coordinate_mm":0,
+     "datum_entity_id":"E_OUTER","entity_id":"E_HOLE_1"}
   ]
 }
 ```
-The example illustrates only X; real V4.34 PASS demands Y too, with its own proven axis path. Coordinates are signed RELATIVE to the target's physical datum node (zero there). For CIRCLE targets, `entity_id` is required to compare the graph's coordinate directly to canonical geometry; do not replace physical witness inspection with a boolean assertion. Readers must supply actual PDF crop/view identity for independent QA.
+The example illustrates only X; real V4.34 PASS demands Y too, with its own proven axis path. `coordinate_mm` is signed RELATIVE to the physical datum node; `datum_coordinate_mm` is that datum's coordinate in the canonical part-local frame, and `datum_entity_id` identifies its canonical physical geometry. The validator adds these values before comparing against the feature's canonical `CIRCLE.center` or `POINT.point`. The feature entity must belong to the source member named by `feature_id`; a valid dimension chain linked to a different member is rejected. Readers must supply actual PDF crop/view identity for independent QA.
 
 ## Slot anchor witness
-Each proved SLOT member requires a `slot_anchor_records` entry with `slot_id`, `entity_id`, `source_pdf_page`, `evidence_ref`, `witness_verified`, `anchor_point` (actual dimension target), `anchor_type` (SLOT_MIDPOINT/ARC_CENTER_1/ARC_CENTER_2/OUTER_TIP_1/OUTER_TIP_2), `axis_unit` (signed part-local vector), `width_mm`, `center_distance_mm`, `overall_length_mm`, `canonical_midpoint`. Slot-axis unit vector and center offset are evaluated in code and compared against the four tangent vertices of the canonical stadium slot. Unknown anchor type => local FLAG/REVIEW, not a guessed center.
+Each proved SLOT member requires a `slot_anchor_records` entry with `slot_id`, `entity_id`, `source_pdf_page`, `evidence_ref`, `witness_verified`, `anchor_point` (actual dimension target), `anchor_type` (SLOT_MIDPOINT/ARC_CENTER_1/ARC_CENTER_2/OUTER_TIP_1/OUTER_TIP_2), `axis_unit` (signed part-local vector), `width_mm`, `center_distance_mm`, `overall_length_mm`, `canonical_midpoint`. Code verifies the two semicircle bulges and compares their actual radii/centers and midpoint against the record; matching only a vertex-average midpoint is insufficient. Unknown anchor type => local FLAG/REVIEW, not a guessed center.
+
+Every green `POINT` with role `through_piercing` needs a `piercing_authorizations` record linking `member_id`, `entity_id`, `source_pdf_page`, `evidence_ref`, and the source text in `stamp_text`. That same scoped stamp must contain English `PIERCING` and `THROUGH HOLE`; Japanese 通シ/貫通 or a thread-through callout does not qualify.
+
+Every PASS part also checks each closed `CIRCLE` hole and closed slot/cutout against the proved outer material contour. The full boundary must fit inside the material region; a contained center alone is not enough.
+
+## Bent-part source closure
+If a PASS part has proved `BEND` source members, include `face_graph.faces` and `face_graph.bends`. Each face records `face_id`, `source_view`, `local_origin`, `local_axis_u`, `local_axis_v`, `contour_edge_ids`, `source_dimensions`, and `normal_orientation`. Each bend records `bend_id`, its `source_member_ids`, `face_A`/`face_B`, both physical shared-edge IDs, `edge_orientation`, `attachment_source_evidence`, `signed_angle_deg`, and `material_domain`. Every bend maps to exactly one `per_bend_witness_ledger` entry with matching `bend_id`/`source_group_id`, both `od_actual_mm` and `bend_pair_mm` values, `nobi_mm`, and `flat_mm`; the L3 guard independently checks arithmetic closure. A PASS with a missing or partial face graph or ledger is rejected.
 
 ## Export
 Single PASS cut: rotate+translate the serialized cut copy only, preserving ARC radii/bulges converted to separate ARC, cut roles and XDATA provenance. Without HL orient bbox X>=Y; with **proved** HL align its physical grain to X. Composite remains in canonical source-readable orientation and may be requested alone with `--composite-only`. Never mix downstream orientation into source witness arithmetic. All downstream semantic and saved-file gates remain in force.

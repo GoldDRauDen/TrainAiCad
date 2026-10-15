@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import math
 from collections import defaultdict
 
 from weld_kegaki_guard import WeldKegakiError, validate_weld_kegaki
@@ -59,6 +60,7 @@ def validate_part(part: dict, customer_code: str | None = None) -> dict:
     source_group = {}
     group_member_ids = defaultdict(list)
     unknown_quantity_groups = set()
+    flagged_source_members = set()
     for group in groups:
         gid = ident(group.get("group_id"), f"{code} group_id")
         if gid in source_group:
@@ -84,6 +86,8 @@ def validate_part(part: dict, customer_code: str | None = None) -> dict:
             if mstatus not in SOURCE_STATUSES:
                 fail(f"{code}/{gid}/{mid}: invalid source member status")
             source_member[mid] = {"group_id": gid, "status": mstatus, "family": family}
+            if mstatus == "FLAGGED" or status == "FLAGGED":
+                flagged_source_members.add(mid)
             group_member_ids[gid].append(mid)
 
     canonical = part.get("canonical_members")
@@ -172,6 +176,14 @@ def validate_part(part: dict, customer_code: str | None = None) -> dict:
     except WeldKegakiError as exc:
         fail(str(exc))
 
+    # PASS is a production claim: every active source member and group count
+    # must be closed, regardless of caller-supplied checks/status summaries.
+    if part.get("status") == "PASS":
+        if flagged_source_members:
+            fail(f"{code}: PASS_WITH_FLAGGED_SOURCE_MEMBERS:{sorted(flagged_source_members)}")
+        if unknown_quantity_groups:
+            fail(f"{code}: PASS_WITH_UNKNOWN_SOURCE_QUANTITY:{sorted(unknown_quantity_groups)}")
+
     return {
         "code": code,
         "weld_kegaki_closure": weld_closure,
@@ -221,6 +233,13 @@ def validate_canonical_job(job: dict) -> dict:
             elif part["status"] == "PASS" and has_hl:
                 if not grain.get("evidence_ref") or grain.get("direction_xy") is None:
                     fail(f"{code}: HL_DIRECTION_UNPROVED")
+                vector = grain.get("direction_xy")
+                try:
+                    x, y = (float(v) for v in vector)
+                except (TypeError, ValueError):
+                    fail(f"{code}: HL_DIRECTION_INVALID")
+                if not all(math.isfinite(v) for v in (x, y)) or math.hypot(x, y) <= 1e-10:
+                    fail(f"{code}: HL_DIRECTION_INVALID")
             proven = {
                 member["member_id"] for group in part["source_groups"]
                 if group["family"].upper() in {"HOLE", "SLOT"} and group["status"] == "PROVED"
@@ -244,6 +263,28 @@ def validate_canonical_job(job: dict) -> dict:
                 for target in trace_targets if target.get("feature_id") in hole_members
             ):
                 fail(f"{code}: WITNESS_CANONICAL_ENTITY_LINK_MISSING")
+            canonical_by_source = {
+                m.get("source_member_id"): set(m.get("entity_ids", []))
+                for m in part["canonical_members"] if m.get("origin") == "SOURCE"
+            }
+            entity_id_set = {e["entity_id"] for e in part["entities"]}
+            for target in trace_targets:
+                feature = target.get("feature_id")
+                if feature not in proven:
+                    continue
+                eid = target.get("entity_id")
+                if not eid or eid not in canonical_by_source.get(feature, set()):
+                    fail(f"{code}: WITNESS_CANONICAL_ENTITY_LINK_MISSING")
+                datum_id = target.get("datum_entity_id")
+                offset = target.get("datum_coordinate_mm")
+                if (datum_id not in entity_id_set or isinstance(offset, bool) or
+                        not isinstance(offset, (int, float)) or not math.isfinite(float(offset))):
+                    fail(f"{code}: WITNESS_DATUM_ENTITY_LINK_MISSING")
+            for feature in proven:
+                feature_targets = [t for t in trace_targets if t.get("feature_id") == feature]
+                axes = [t.get("axis") for t in feature_targets]
+                if len(feature_targets) != 2 or set(axes) != {"X", "Y"}:
+                    fail(f"{code}: WITNESS_REQUIRED_AXIS_MISSING:{feature}")
             slots = {
                 member["member_id"] for group in part["source_groups"]
                 if group["family"].upper() == "SLOT" and group["status"] == "PROVED"
@@ -252,6 +293,123 @@ def validate_canonical_job(job: dict) -> dict:
             }
             if slots and not slots <= {rec.get("slot_id") for rec in part.get("slot_anchor_records", [])}:
                 fail(f"{code}: SLOT_ANCHOR_RECORD_MISSING")
+
+            # A green POINT is a manufacturing piercing instruction, not a
+            # display choice. It needs the scoped English stamp required by
+            # HOLES_TAPS.md, linked to its source member and physical entity.
+            groups_by_id = {g["group_id"]: g for g in part["source_groups"]}
+            member_families = {
+                member["source_member_id"]: groups_by_id[member["group_id"]]["family"].upper()
+                for member in part["canonical_members"]
+                if member.get("origin") == "SOURCE"
+            }
+            piercing_points = {
+                e["entity_id"] for e in part["entities"]
+                if e.get("type") == "POINT" and e.get("role") == "through_piercing"
+            }
+            authorizations = part.get("piercing_authorizations", [])
+            authorized = set()
+            for record in authorizations:
+                text = str(record.get("stamp_text", "")).upper()
+                mid, eid = record.get("member_id"), record.get("entity_id")
+                if (not record.get("source_pdf_page") or not record.get("evidence_ref") or
+                        "PIERCING" not in text or "THROUGH HOLE" not in text or
+                        member_families.get(mid) not in {"HOLE", "PIASU"} or
+                        eid not in piercing_points or eid not in next(
+                            (set(m.get("entity_ids", [])) for m in part["canonical_members"]
+                             if m.get("origin") == "SOURCE" and m.get("source_member_id") == mid), set()
+                        )):
+                    fail(f"{code}: THROUGH_PIERCING_SOURCE_SCOPE_UNPROVED:{eid or '?'}")
+                authorized.add(eid)
+            if piercing_points - authorized:
+                fail(f"{code}: THROUGH_PIERCING_SOURCE_SCOPE_UNPROVED:{sorted(piercing_points - authorized)}")
+
+            bend_sources = {
+                member["member_id"]: group["group_id"]
+                for group in part["source_groups"]
+                if group["family"].upper() == "BEND" and group["status"] == "PROVED"
+                for member in group.get("members", [])
+                if member.get("status", "PROVED") == "PROVED"
+            }
+            if part["status"] == "PASS" and bend_sources:
+                graph = part.get("face_graph")
+                faces = graph.get("faces") if isinstance(graph, dict) else None
+                bends = graph.get("bends") if isinstance(graph, dict) else None
+                if not isinstance(faces, list) or len(faces) < 2 or not isinstance(bends, list) or not bends:
+                    fail(f"{code}: PASS_WITHOUT_CLOSED_FACE_GRAPH")
+                face_fields = ("source_view", "local_origin", "local_axis_u", "local_axis_v",
+                               "contour_edge_ids", "source_dimensions", "normal_orientation")
+                if any(not isinstance(f, dict) for f in faces):
+                    fail(f"{code}: FACE_GRAPH_FACE_RECORD_INCOMPLETE")
+                face_ids = set()
+                for face in faces:
+                    fid = ident(face.get("face_id"), f"{code} face_id")
+                    axes = []
+                    for key in ("local_axis_u", "local_axis_v"):
+                        axis = face.get(key)
+                        if not isinstance(axis, (list, tuple)) or len(axis) not in {2, 3}:
+                            fail(f"{code}: FACE_GRAPH_FACE_RECORD_INCOMPLETE:{fid}")
+                        try:
+                            vector = [float(v) for v in axis]
+                        except (TypeError, ValueError):
+                            fail(f"{code}: FACE_GRAPH_FACE_RECORD_INCOMPLETE:{fid}")
+                        if not all(math.isfinite(v) for v in vector) or math.sqrt(sum(v*v for v in vector)) <= 1e-10:
+                            fail(f"{code}: FACE_GRAPH_FACE_RECORD_INCOMPLETE:{fid}")
+                        axes.append(vector)
+                    origin = face.get("local_origin")
+                    if (fid in face_ids or any(not face.get(k) for k in face_fields) or
+                            not isinstance(origin, (list, tuple)) or len(origin) not in {2, 3} or
+                            any(not isinstance(face.get(k), list) or not face.get(k)
+                                for k in ("contour_edge_ids", "source_dimensions"))):
+                        fail(f"{code}: FACE_GRAPH_FACE_RECORD_INCOMPLETE:{fid}")
+                    try:
+                        origin_values = [float(v) for v in origin]
+                    except (TypeError, ValueError):
+                        fail(f"{code}: FACE_GRAPH_FACE_RECORD_INCOMPLETE:{fid}")
+                    if not all(math.isfinite(v) for v in origin_values):
+                        fail(f"{code}: FACE_GRAPH_FACE_RECORD_INCOMPLETE:{fid}")
+                    face_ids.add(fid)
+                covered = set()
+                bend_ids = set()
+                for bend in bends:
+                    if not isinstance(bend, dict):
+                        fail(f"{code}: FACE_GRAPH_BEND_RECORD_INVALID")
+                    bid = bend.get("bend_id")
+                    members = bend.get("source_member_ids")
+                    required_fields = ("face_A_shared_edge", "face_B_shared_edge", "edge_orientation",
+                                       "attachment_source_evidence", "signed_angle_deg", "material_domain")
+                    angle = bend.get("signed_angle_deg")
+                    domain = bend.get("material_domain")
+                    if (not isinstance(bid, str) or not bid or bid in bend_ids or
+                            not isinstance(members, list) or len(members) != 1 or
+                            not isinstance(members[0], str) or
+                            bend.get("face_A") not in face_ids or bend.get("face_B") not in face_ids or
+                            any(not bend.get(k) for k in required_fields if k != "signed_angle_deg") or
+                            isinstance(angle, bool) or not isinstance(angle, (int, float)) or
+                            not math.isfinite(float(angle)) or float(angle) == 0 or
+                            not isinstance(domain, dict) or not isinstance(domain.get("entity_ids"), list) or
+                            not domain["entity_ids"] or not domain.get("evidence_ref")):
+                        fail(f"{code}: FACE_GRAPH_BEND_RECORD_INCOMPLETE:{bid or '?'}")
+                    bend_ids.add(bid)
+                    if any(mid not in bend_sources or mid in covered for mid in members):
+                        fail(f"{code}: FACE_GRAPH_SOURCE_BEND_COVERAGE_MISMATCH:{bid}")
+                    covered.update(members)
+                    ledger_data = part.get("per_bend_witness_ledger", [])
+                    if not isinstance(ledger_data, list):
+                        ledger_data = []
+                    ledger = [x for x in ledger_data if isinstance(x, dict) and
+                              x.get("bend_id") == bid and
+                              x.get("source_group_id") == bend_sources[members[0]]]
+                    if len(members) != 1 or len(ledger) != 1:
+                        fail(f"{code}: BEND_WITNESS_LEDGER_MISSING:{bid}")
+                    item = ledger[0]
+                    if (not isinstance(item.get("od_actual_mm"), list) or len(item["od_actual_mm"]) != 2 or
+                            not isinstance(item.get("bend_pair_mm"), list) or len(item["bend_pair_mm"]) != 2 or
+                            any(item.get(k) is None for k in ("nobi_mm", "flat_mm")) or
+                            not item.get("source_pdf_page") or not item.get("evidence_ref")):
+                        fail(f"{code}: BEND_WITNESS_LEDGER_INCOMPLETE:{bid}")
+                if covered != set(bend_sources):
+                    fail(f"{code}: FACE_GRAPH_SOURCE_BEND_COVERAGE_MISMATCH")
 
     all_ids = []
     for rec in records:

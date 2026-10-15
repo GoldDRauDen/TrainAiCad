@@ -29,17 +29,21 @@ inspection, `tools/resolve_rules.py` returns `stage_plans` with deduplicated
 file paths and exact byte totals:
 
 - L0_BOOTSTRAP: release/authority/Router contract.
-- L1_SOURCE_CENSUS: source reading, curve decode, note completeness, holistic
-  challenge, revision/reference firewall and canonical completeness.
+- L1_SOURCE_CENSUS: source reading, note/member completeness and feature census.
+  Decode curves only for DXF sources; load the reference firewall only when
+  a reference is present/unknown.
 - L2_GEOMETRY: dimensional datums, selected geometry/face/Nobi/feature rules.
-- L3_VALIDATE_EXPORT_QA: cross-feature validation, source-member gates,
-  canonical DXF and read-back.
+- L3_VALIDATE_EXPORT_QA: holistic challenge, cross-feature validation,
+  V4.34 canonical schema, export and saved-DXF read-back.
+
+`RULE_COVERAGE.yaml` is QA metadata, not job context. `MATERIAL_ALIASES.yaml`
+is part of the current default material/source contract.
 
 A mandatory rule may be listed only once in its earliest valid stage. Its
 saved availability is not a waiver for the later checks: the user must
 actually perform L0, L1, L2 and L3 on each code.
 
-`tools/audit_rule_coverage.py` cross-checks **all 44 currently active
+`tools/audit_rule_coverage.py` cross-checks **all 54 currently active
 module files**, not just the few Router-selected for a given job. In
 particular it blocks silently omitting `STEPPED_PROFILE.md`,
 `FORMING_FEATURES.md`, and any new active rule file. This is file-level
@@ -90,8 +94,9 @@ source-grounded YES/NO/UNKNOWN to narrow safely.
 
 ## Scope of this refactor
 
-This refactor does not change material formulas, bend/Nobi algorithms or
-the TrainAiCad-CANONICAL-V4.31 input schema. It extends packaging only after
+The older PR #24 refactor did not change material formulas, bend/Nobi
+algorithms or the then-current V4.31 schema. Current production uses V4.34
+with V4.31 compatibility. Packaging remains after
 the composite canonical/member/XDATA read-back: every code is stored as an
 independently readable canonical JSON and PASS codes receive contour-only
 LINE/ARC/CIRCLE DXF derived from exactly those same entities. PREVIEW and

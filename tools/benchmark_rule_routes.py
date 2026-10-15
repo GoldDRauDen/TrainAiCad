@@ -30,8 +30,11 @@ def _scenario(router: dict, name: str) -> dict:
     src, mode, reference, selected = scenarios[name]
     for x in selected:
         features[x]["state"] = "YES"
-    return {"source_mode": src, "part_mode": mode,
-            "reference_present": reference, "features": features}
+    result = {"source_mode": src, "part_mode": mode,
+              "reference_present": reference, "features": features}
+    if name != "unknown_complex":
+        result["multi_code_or_assembly"] = "NO"
+    return result
 
 
 def benchmark(root: Path = ROOT) -> dict:

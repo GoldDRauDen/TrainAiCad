@@ -1,9 +1,11 @@
 """Repository bootstrap contract: short E2E prompts must resolve current repo authority."""
 from pathlib import Path
 import re
+import sys
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
 
 
 def test_bootstrap_is_release_independent_and_names_repo():
@@ -31,6 +33,16 @@ def test_bootstrap_has_no_memory_or_history_fallback():
     assert "skills/lispcad/versions/**" in text
     assert "docs/history/**" in text
     assert "Do not fabricate that the repo was read" in text
+
+
+def test_portable_bundle_includes_current_v434_schema_and_material_aliases():
+    from build_rule_bundle import approved_paths
+
+    release, paths = approved_paths(ROOT)
+    assert release == "V4.34"
+    assert "tools/CANONICAL_INPUT_SCHEMA_V434.md" in paths
+    assert "references/MATERIAL_ALIASES.yaml" in paths
+    assert "tools/CANONICAL_INPUT_SCHEMA_V431.md" not in paths
 
 
 def test_repo_changes_still_require_explicit_approval():
