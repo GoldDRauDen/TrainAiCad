@@ -15,6 +15,7 @@ on:
       - 'regression/**'
       - 'tools/**'
       - 'tests/**'
+      - 'templates/**'
       - 'requirements.txt'
       - '.github/workflows/dxf-export-tests.yml'
   pull_request:
@@ -32,6 +33,7 @@ on:
       - 'regression/**'
       - 'tools/**'
       - 'tests/**'
+      - 'templates/**'
       - 'requirements.txt'
       - '.github/workflows/dxf-export-tests.yml'
 jobs:

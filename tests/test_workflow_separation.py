@@ -14,13 +14,14 @@ def test_cad_workflow_excludes_mcp():
     assert "mcp" not in data.get("jobs", {})
     assert set(data.get("jobs", {})) == {"serializer"}
 
-def test_mcp_research_workflow_isolated():
-    text=MCP_WF.read_text(encoding="utf-8")
-    data=yaml.safe_load(text)
-    assert "services/trainaicad-mcp/**" in text
-    assert "MCP Inspector e2e" in text
-    assert "mcp-research" in data.get("jobs", {})
-    assert "serializer" not in data.get("jobs", {})
+def test_no_research_workflow_without_its_source_tree():
+    source = ROOT / "services/trainaicad-mcp"
+    if not source.is_dir():
+        assert not MCP_WF.exists(), "Do not dispatch a workflow whose working directory is absent"
+    else:
+        data = yaml.safe_load(MCP_WF.read_text(encoding="utf-8"))
+        assert set(data["jobs"]) == {"mcp-research"}
+        assert "serializer" not in data["jobs"]
 
 def test_entrypoint_declares_repo_direct_default():
     entry=((ROOT/"AI_ENTRYPOINT.md").read_text(encoding="utf-8") + (ROOT/"docs/RELEASE_WIRING_INDEX.md").read_text(encoding="utf-8"))
