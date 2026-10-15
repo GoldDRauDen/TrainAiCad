@@ -1,13 +1,9 @@
 ## V4.34 typed witness node closure (2026-10-13)
-For every **proved HOLE/SLOT member** in V4.34, declare `witness_required_feature_ids` and a `feature_witness_graph` for both X and Y. Every used dimension edge records a physical `from_node`/`to_node`, endpoint types (`OUTER_EDGE`, `HOLE_CENTER`, `SLOT_MIDPOINT`, `ARC_CENTER`, `TANGENT_POINT`, ...), signed axis/value, dimension kind, source page and a verifiable PDF crop/witness ref. `tools/dimension_witness.py` independently solves signed paths, rejects disconnected graphs/contradictory cycles, and cross-checks declared canonical CIRCLE coordinates. A claim `endpoint_verified=true` is not source proof by itself: source QA must inspect the crop and confirm the physical endpoints. 521013-21/059759 negative regression: taking 265 from the external RIGHT_EDGE rather than the RIGHT_HOLE_CENTER adds 10 mm to the group; sample/reference geometry cannot supply a missing witness. Old V4.31 jobs retain compatibility while V4.34 imposes the stronger evidence record.
+For every **proved HOLE/SLOT member** in V4.34, declare `witness_required_feature_ids` and a `feature_witness_graph` for both X and Y. Every used dimension edge records a physical `from_node`/`to_node`, endpoint types (`OUTER_EDGE`, `HOLE_CENTER`, `SLOT_MIDPOINT`, `ARC_CENTER`, `TANGENT_POINT`, ...), signed axis/value, dimension kind, source page and a verifiable PDF crop/witness ref. `tools/dimension_witness.py` independently solves signed paths, rejects disconnected graphs/contradictory cycles, and cross-checks declared canonical CIRCLE coordinates. A claim `endpoint_verified=true` is not source proof by itself: source QA must inspect the crop and confirm the physical endpoints. Sample/reference geometry cannot supply a missing witness. Old V4.31 jobs retain compatibility while V4.34 imposes the stronger evidence record.
 
 # LISPCAD Core — Datum & Dimension Semantics
 
-Source: approved V4.3 production baseline, with independently approved V4.10 source-origin/axis mapping. These rules apply across all topology and mode modules.
-
-## V4.8 approved datum/feature-family regression
-
-Regression 520709-07: for 039915, OD 30 minus local step 5 gives the external step at **25**, NOT 27.36 (Nobi-adjusted bend datum) minus 5 = 22.36; the bend zone still retains Nobi 2.64. For 039918 and PDF-mirrored 039919, printed diagonal 50 (not 100) is measured to the theoretical sharp point before R10; independently identify 2-M4 and 3-Ø5 hole families by source leaders. The correct original 039918 flattened local centers (173.2,110) and (224.2,54) are respectively M4→Ø3.3 and Ø5. These examples reinforce existing dimension-endpoint and family-isolation rules; they do not create new general coordinates.
+These rules apply across all topology and mode modules. Bend/multi-face transforms (face-first ownership, local-face to flat, physical edge identity, face order): `references/BEND_DATUM_MAPPING.md`. Cross-part assembly datum closure: `references/ASSEMBLY_DATUM_CLOSURE.md`.
 
 ## 4. Dimension Authority, Tolerance Rules & Nobi Logic
 
@@ -43,30 +39,6 @@ Before using any dimension numerically, classify it as one of the following:
 - If two dimensions visually touch but their witness lines terminate on different geometry, classify them separately.
 - Use the overall size only as a closure test: if `sum(chain segments) != overall`, mark the chain `FLAGGED` and re-read the extension lines; do not force-fit the numbers.
 
-#### 4.2.2a V4.16 Face-First Dimension Ownership
-
-Before unfolding any multi-face part, reconstruct each visible formed face as its own contour/feature model. Tag every used dimension by actual witness endpoints and assign it to one semantic graph: face contour, hole/slot center-or-size, bend/face transition, or another proved local feature.
-
-- A hole/slot-center dimension never becomes a contour or bend-axis dimension merely because it is parallel, nearby, or numerically convenient.
-- Finish each face's contour and feature graph from that face's own witnesses before joining adjacent faces and deducting Nobi.
-- Projection alignment may identify the owning face but does not transfer dimension ownership across faces.
-- Approved 044812/044813 regression: `25` is the center distance of two `9.5×R1.75` long holes on the `28×41` face; use `28 + 21 - 3.68 = 45.32` for the proved two-face flat contribution, not `25-3.68` as a contour/bend coordinate.
-
-#### 4.2.2b Cross-part Assembly Datum Closure (approved 2026-10-13)
-
-When a hole, slot, locating mark or other manufacturing feature has NO directly proved local coordinate but the PDF provides an assembly/installation view and related part dimensions, **try a source-backed ASSEMBLY_DATUM_GRAPH before numeric FLAG or VIEWS_ONLY**. Do not claim the dimension is missing merely because the child part's own flat lacks a coordinate.
-
-1. Establish the PART_IDENTITY_GRAPH first: physical part code, host face, the related mating/support parts and actual view IDs. A shared assembly view is not a separate manufactured part.
-2. Choose one physically proved assembly reference frame and independently prove both signed X and Y directions. For each used dimension record its *actual* witness endpoints, type (baseline/chain/local/ordinate/contact/assembly offset), sign, host-part identity and printed/approved evidence. Only join dimension paths through the **same physical node**, not paper proximity, shared numbers, nominal symmetry or sample/reference DXF.
-3. Represent each relation as `target_axis - source_axis = signed_offset_mm`, with a source witness for the corresponding edge. A contact offset of zero requires positive evidence of the mating contact; mere proximity or a presumed flush fit is not a constraint. Across oriented/bent faces, prove the transform and physical attachment edge before adding its signed offset.
-4. Solve the connected graph to express `feature - target_part_datum` as a signed sum; independently check every available alternate dimension path/cycle and the assembly fit. A contradicted or disconnected graph is **not** a 50%-confidence coordinate: retain the local FLAG and ask about the *missing physical relationship*.
-5. Transform the assembly result to the feature's own physical face frame, then to the final flat through the routed face/bend rules. Run fold-back and hole count/diameter/host QA in the same frame. A mathematically correct assembly offset does not alone prove an unfolded feature location.
-6. Retain feature ID, source dimension witnesses, source node and target node, `frame_id`, axis, signed formula, result, applicable face transform and any unresolved degrees of freedom. A later customer/sample DXF can challenge a solution but must not become its missing witness.
-
-`tools/assembly_datum_solver.py` provides a deterministic, source-proof-gated graph solver for the arithmetic and cycle consistency. The L3 holistic guard independently recomputes any **declared** `assembly_indirect_candidates` from corresponding `assembly_datum_traces`, and fails incorrect/unattempted proof for production. **Source census must declare the candidates**; the tool cannot discover them by itself.
-
-This procedure is conditional: do not create a fictitious assembly for standalone flat parts or override a genuinely explicit source feature dimension. The fixture `regression/datum/521013-04_059636_assembly_graph.json` tests this class of error only; its offsets are not general rules.
-
 #### 4.2.3 Required Datum Trace Record
 For every hole row, notch, step, or repeated feature pattern, retain a trace record containing: `axis`, `datum entity`, `dimension type`, `equation`, and `result`. This trace must be auditable in Stage 1 for any feature that was previously ambiguous or that disagrees with a reference DXF.
 
@@ -76,7 +48,6 @@ Every dimension endpoint/witness line must be tagged by the **actual geometry it
 - Two parallel dimensions drawn beside each other may terminate on different targets even when they share the same axis or appear visually aligned. Never reuse the endpoint of a neighboring dimension without proving the witness line lands on the same node.
 - A hole-center dimension and a contour-edge dimension are different graph edges even if their values are printed in the same local area.
 - Example pattern: if one horizontal dimension is from a step to the **outer edge** and an adjacent dimension is between two **hole centers**, do not subtract both from the same right-side X coordinate.
-- Example pattern: if vertical dimensions `389` and `404` terminate respectively at a hole center and a step ledge, they define two different Y nodes; they are not interchangeable.
 - Record the endpoint identity in the datum trace whenever a crowded drawing contains multiple nearby extension lines.
 
 #### 4.2.4.1 V4.32 Radius/notch depth endpoint semantics
@@ -106,38 +77,9 @@ A parenthesized/reference dimension is **not automatically a coordinate from the
 - Do NOT use a formed-view reference overall as the unfolded blank length merely because its numeric value is close to the expected flat length. Derive flat length from the proven ordered flange/body chain, ID→OD conversion where required, and Nobi deductions. Use the formed-view reference only for the geometry/view it actually dimensions.
 - If a formed-view reference value conflicts with a fully proven unfold equation, classify the issue as `REFERENCE/FORMED-DIMENSION ERROR` or source conflict; do not force the flat equation to equal the reference value.
 
-#### 4.2.7 Local-Face Datum → Global Flat Datum Mapping
-Features dimensioned on a bent flange/face MUST be transformed from the **local face coordinate system** into the **global unfolded blank coordinate system** before verified global-flat coordinates are emitted.
-
-1. Assign each formed face an ordered identity along the unfold path: `FACE_1 -> BEND_1 -> FACE_2 -> ...`.
-2. Establish the flat start/end coordinates of that face from the sequential OD/Nobi equations in Section 4.7.
-3. Preserve the dimension direction. If local coordinate `u` is measured from the face start datum, use `U_flat = FACE_START_flat + u`. If it is measured from the opposite/free edge, use `U_flat = FACE_END_flat - u`.
-4. A feature coordinate printed on a formed face MUST NOT be copied directly as a global flat coordinate unless the face datum is proven to coincide with the global flat datum.
-5. Record `face_id`, `local datum`, `local equation`, and `global flat equation` in the datum trace for holes/slots/notches that cross a bend mapping.
-
-This rule applies independently on both axes. Projection alignment may identify which face a feature belongs to, but may not replace the required unfold transform.
-
-#### 4.2.7.1 V4.32 Physical edge identity survives the transform
-
-For any edge-based datum on a bent face, record the physical edge identity before unfold, for example `FACE_2.BEND_EDGE`, `FACE_2.FREE_EDGE`, `FACE_2.LEFT_EDGE`, or `FACE_2.RIGHT_EDGE`.
-
-- The identity comes from the source-supported face graph and `BEND_ATTACHMENT_EDGE_LOCKED`, not from page direction or nearest-view proximity.
-- Rotation/reflection/local-axis reversal may change the coordinate equation but must not silently swap `BEND_EDGE` with `FREE_EDGE`.
-- Every feature positioned from such an edge must retain `face_id | physical datum edge id | local equation | attachment transform | global flat equation`.
-- If the same local numeric coordinate can be obtained from two different edge identities, numeric equality does not close the ambiguity. The physical owner must still be proved.
-- Fold-back must reproduce both the feature offset and the owning physical edge identity.
-
 #### 4.2.7.2 V4.14 approved symmetry/explicit-edge-dimension precedence
 
-If actual PDF geometry PROVES a symmetry axis and there is NO controlling outer-edge dimension for a repeated feature family, use that axis to construct the symmetric centers/positions and retain a datum trace. When the same feature family has an explicit physical outside-edge dimension, **DRAW ACCORDING TO THE PRINTED EDGE DIMENSION** even if a centerline is also shown. A printed axis that coexists with source-proved actual asymmetry or mutually inconsistent witnesses is a specific FLAG/question after fully tracing all source evidence; do not silently force visual symmetry. For features on bent faces, source-frame lock and the independent per-face local→global-flat transform remain mandatory. User-approved 010420 Q03 documents this priority.
-
-#### 4.2.8 Bend Sequence / Face Order Is Non-Commutative
-The total flat length equation may be numerically unchanged when two flange lengths are swapped, but **bend positions, feature transforms, and material topology are not**. Therefore:
-
-- Determine the ordered face sequence from the visible formed topology, bend callouts, section/detail views, and proven witness-line connectivity before calculating bend-line coordinates.
-- Do not validate bend order merely because `sum(OD) - sum(Nobi)` matches the overall blank length.
-- Double bend lines MUST be positioned from the ordered sequence in Section 4.7 and MUST exist only over material regions that actually cross that bend. For U-shaped, legged, stepped, or cut-away parts, split/trim bend lines around voids; never draw a bend line continuously through empty space.
-- If two face orders remain equally plausible after explicit trace exhaustion, STOP and ask the user. Magenta is not permission to choose an arbitrary bend order.
+If actual PDF geometry PROVES a symmetry axis and there is NO controlling outer-edge dimension for a repeated feature family, use that axis to construct the symmetric centers/positions and retain a datum trace. When the same feature family has an explicit physical outside-edge dimension, **DRAW ACCORDING TO THE PRINTED EDGE DIMENSION** even if a centerline is also shown. A printed axis that coexists with source-proved actual asymmetry or mutually inconsistent witnesses is a specific FLAG/question after fully tracing all source evidence; do not silently force visual symmetry. For features on bent faces, source-frame lock and the independent per-face local→global-flat transform remain mandatory.
 
 #### 4.2.9 Mandatory Source-Origin and Axis-Direction Lock (V4.10 — approved)
 

@@ -49,7 +49,7 @@ An anomaly is not proof that a particular alternative answer is correct. It is a
 
 ## 3A. Assembly-derived feature-position challenge
 
-For assemblies, a hole, slot or KEGAKI whose local drawing lacks a direct coordinate is not automatically source-ambiguous. If related source assembly views and other parts' positions can provide a physical dimension path, record an `assembly_indirect_candidate` and attempt the §4.2.2b ASSEMBLY_DATUM_GRAPH before leaving that member FLAGGED/VIEWS_ONLY.
+For assemblies, a hole, slot or KEGAKI whose local drawing lacks a direct coordinate is not automatically source-ambiguous. If related source assembly views and other parts' positions can provide a physical dimension path, record an `assembly_indirect_candidate` and attempt the `references/ASSEMBLY_DATUM_CLOSURE.md` ASSEMBLY_DATUM_GRAPH before leaving that member FLAGGED/VIEWS_ONLY.
 
 Retain the candidate in `assembly_indirect_candidates` and a `assembly_datum_traces` entry including source-backed constraint graph, witness nodes, source frame, computed offset or specific failed constraint and status. The L3 source/canonical guard must recompute a declared proved offset and reject fabricated `PASS`, inconsistent cycles, unsupported attachment or a derived coordinate left FLAGGED. If no source-proved path exists, preserve the feature FLAG and ask for the missing mate/witness datum.
 

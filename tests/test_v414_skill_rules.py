@@ -67,11 +67,11 @@ def test_all_new_semantic_rules_are_in_portable_and_modular_files():
     radius = (ROOT/"skills/lispcad/features/CHAMFER_RADIUS.md").read_text(encoding="utf-8")
     holes = (ROOT/"skills/lispcad/features/HOLES_TAPS.md").read_text(encoding="utf-8")
     validation = (ROOT/"skills/lispcad/core/VALIDATION.md").read_text(encoding="utf-8")
-    assert "TWO DXFs FIRST" in reading
+    assert "TWO DXFs FIRST" in (ROOT/"references/REFERENCE_CALIBRATION_AUDIT.md").read_text(encoding="utf-8")
     assert "outer-edge dimension" in datum
     assert "semicircular notch/groove" in radius
     assert "Boolean union" in holes
-    assert "PREVIOUSLY EXPORTED AI DXF" in validation
+    assert "PREVIOUSLY EXPORTED AI DXF" in (ROOT/"references/REFERENCE_CALIBRATION_AUDIT.md").read_text(encoding="utf-8")
     qa = QA.read_text(encoding="utf-8")
     for code in ("010419", "010420", "010421", "010428", "010429", "010447"):
         assert code in qa

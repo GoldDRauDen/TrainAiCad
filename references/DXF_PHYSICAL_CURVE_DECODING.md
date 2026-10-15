@@ -7,7 +7,7 @@
 
 A DXF `POLYLINE` or `LWPOLYLINE` vertex list is not, by itself, the physical curve topology. A segment whose start vertex has nonzero **bulge** is an ARC, not the straight chord between its endpoint vertices.
 
-Approved 521001-19 diagnosis: customer DATA for 057688/113 and 057689/114 contains quarter-circle bulged segments corresponding to the PDF `2-R3` and `2-R1`. Reading endpoint coordinates while ignoring bulge incorrectly converts those source radii into apparent 45-degree chamfers.
+Evidence: `regression/qa/521001-19_V4_26_APPROVED.md`.
 
 ## 2. Mandatory decode before geometry/feature classification
 

@@ -14,6 +14,7 @@ default_load:
   - references/MECHANICAL_CLASSIFIER.md
   - references/HOLISTIC_ENGINEERING_CHALLENGE.md
   - references/REFERENCE_EXPOSURE_FIREWALL.md
+  - references/REVIEW_PREVIEW_POLICY.md
   - references/SOURCE_MANUFACTURING_NOTE_CENSUS.md
   - references/SOURCE_FEATURE_GROUP_CLOSURE.md
   - references/CAD_CUSTOMER_POLICY.md
@@ -25,6 +26,10 @@ default_load:
 conditional_default_load:
   - path: references/PART_IDENTITY_GRAPH.md
     skip_when: {multi_code_or_assembly: "NO"}
+  - path: references/ASSEMBLY_DATUM_CLOSURE.md
+    skip_when: {multi_code_or_assembly: "NO"}
+  - path: references/REFERENCE_CALIBRATION_AUDIT.md
+    skip_when: {reference_present: "NO"}
 
 # Stage-specific mandatory gates, not optional rules.
 # A normal E2E must execute all stages. Rule paths are deferred until needed.
@@ -58,10 +63,12 @@ source_routes:
     load:
       - references/DXF_PHYSICAL_CURVE_DECODING.md
       - references/REFERENCE_EXPOSURE_FIREWALL.md
+      - references/REFERENCE_CALIBRATION_AUDIT.md
   DIRECT_EXISTING_DXF_AUDIT:
     load:
       - references/DXF_PHYSICAL_CURVE_DECODING.md
       - references/REFERENCE_EXPOSURE_FIREWALL.md
+      - references/REFERENCE_CALIBRATION_AUDIT.md
 
 mode_routes:
   FLAT_NO_BEND:
@@ -75,6 +82,7 @@ mode_routes:
       - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
       - references/FORMED_PROFILE_OD_MEASUREMENT.md
       - references/BEND_EDGE_RELIEF_90.md
+      - references/BEND_DATUM_MAPPING.md
   MULTI_FACE:
     load:
       - skills/lispcad/modes/BEND_UNFOLD.md
@@ -83,6 +91,7 @@ mode_routes:
       - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
       - references/FORMED_PROFILE_OD_MEASUREMENT.md
       - references/BEND_EDGE_RELIEF_90.md
+      - references/BEND_DATUM_MAPPING.md
   UNKNOWN:
     load:
       - skills/lispcad/modes/FLAT_NO_BEND.md
@@ -92,6 +101,7 @@ mode_routes:
       - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
       - references/FORMED_PROFILE_OD_MEASUREMENT.md
       - references/BEND_EDGE_RELIEF_90.md
+      - references/BEND_DATUM_MAPPING.md
 
 feature_routes:
   HOLE:

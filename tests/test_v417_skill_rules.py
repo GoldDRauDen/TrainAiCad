@@ -23,7 +23,7 @@ def test_release_and_routing():
 
 def test_hard_gates_present():
     skill=CURRENT.read_text(encoding="utf-8")
-    valid=VALID.read_text(encoding="utf-8")
+    valid=VALID.read_text(encoding="utf-8")+(ROOT/"references/REFERENCE_CALIBRATION_AUDIT.md").read_text(encoding="utf-8")
     qa=QA.read_text(encoding="utf-8")
     assert "V4.17 HARD MIRROR GATE" in skill
     for gate in ["SLOT_WITNESS_FAIL","MIRROR_SCOPE_FAIL","DATUM_WITNESS_FAIL","KEGAKI_SCOPE_FAIL","STALE_PREVIEW_FAIL","REFERENCE_METADATA_NONBLOCKING"]:

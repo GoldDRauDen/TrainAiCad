@@ -67,10 +67,4 @@ For source-instructed custom slit, validate at minimum:
 - serialized physical geometry;
 - saved-DXF read-back.
 
-## 5. 521005-13 regression intent
-
-For `058155` and `058156`, the source carries `スリット 8`; the approved sample confirms two edge-open slit features for each code. The job-specific value `8` and approved local coordinates belong only to that regression.
-
-The generalized lesson is only:
-
-**Do not lose an explicitly instructed manufacturing slit during source-note census/routing. Do not invent its size or position when the source does not specify them.**
+Evidence for the custom-slit rule: `regression/qa/521005-13_V4_29_APPROVED.md`.

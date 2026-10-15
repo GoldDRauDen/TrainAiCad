@@ -67,6 +67,7 @@ For calibration or repo maintenance:
 - separate FACT -> ROOT_CAUSE -> PROPOSED_LESSON -> REGRESSION_CASE;
 - do not promote one drawing into a universal rule;
 - modify/push production repository files only after the user explicitly approves the change (for example `DUYỆT` or `PUSH`);
+- a new lesson edits the one owning rule in place (never a new versioned supplement) and must stay within `tests/test_rule_load_budget.py`; see `docs/RULE_LESSON_INTAKE.md`;
 - run the current required tests/regressions/read-back before merge.
 
 ## 7. Tool capability boundary
