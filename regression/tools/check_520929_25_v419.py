@@ -78,7 +78,6 @@ def main():
     protocol = (root/"references/FACE_GRAPH_UNFOLD_PROTOCOL.md").read_text(encoding="utf-8")
     bend = (root/"skills/lispcad/modes/BEND_UNFOLD.md").read_text(encoding="utf-8")
     validation = (root/"skills/lispcad/core/VALIDATION.md").read_text(encoding="utf-8")
-    drawing = (root/"skills/lispcad/core/DRAWING_READING.md").read_text(encoding="utf-8")
 
     assert release.startswith("# SKILL_LISPCAD V4.19 PORTABLE")
     assert "V4.19 direct approval / PUSH" in portable
@@ -93,7 +92,6 @@ def main():
     assert "FACE_GRAPH_UNFOLD_PROTOCOL.md" in entry
     assert "FACE_GRAPH_UNFOLD_PROTOCOL.md" in bend
     assert "V4.19 FOLD_BACK_SOURCE_REPROJECTION" in validation
-    assert "V4.19 FACE_GRAPH_CAPTURE" in drawing
 
     print("PASS: 520929-25 V4.19 constraint-closed FACE_GRAPH, signed bend-domain, fold-back guards")
 

@@ -74,7 +74,8 @@ SOURCE
 Mandatory router files:
 - `skills/lispcad/router/FEATURE_CENSUS.md`
 - `skills/lispcad/router/ROUTER.yaml`
-- `skills/lispcad/router/RULE_COVERAGE.yaml`
+
+`skills/lispcad/router/RULE_COVERAGE.yaml` is used by repository QA and bundle audits, not ordinary job retrieval.
 
 Always-on core/source-parsing references are declared in `ROUTER.yaml`. Do not invent a different core set from memory.
 
@@ -91,7 +92,7 @@ Always-on core/source-parsing references are declared in `ROUTER.yaml`. Do not i
 
 ## 2. V4.33 holistic engineering challenge / reference-exposure hard gate
 
-Load `references/HOLISTIC_ENGINEERING_CHALLENGE.md`, `references/PART_IDENTITY_GRAPH.md` and `references/REFERENCE_EXPOSURE_FIREWALL.md` from the default route.
+Load `references/HOLISTIC_ENGINEERING_CHALLENGE.md` at L3 after the first source-only solve and before canonicalization. Load `PART_IDENTITY_GRAPH` only when multi-code/assembly is not proven absent; load `REFERENCE_EXPOSURE_FIREWALL` only when a sample/reference is present or unknown.
 
 - After the first source-only solve and before canonicalization, run `HOLISTIC_ENGINEERING_CHALLENGE`; on an anomaly, re-open the source and re-solve. `VIEWS_ONLY` is only a complete executable fallback after source exhaustion, never a text-only stop.
 - Before final canonical serialization, run `FINAL_ENGINEERING_SANITY_REVIEW`.

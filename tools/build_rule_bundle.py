@@ -27,9 +27,10 @@ BASE_FILES = (
     "skills/lispcad/router/FEATURE_CENSUS.md",
     ROUTER_PATH,
     "skills/lispcad/router/RULE_COVERAGE.yaml",
-    "tools/CANONICAL_INPUT_SCHEMA_V431.md",
+    "tools/CANONICAL_INPUT_SCHEMA_V434.md",
     "tools/DXF_INPUT_SCHEMA.md",
     "references/CUSTOMER_CAD_RULES.yaml",
+    "references/MATERIAL_ALIASES.yaml",
 )
 EXCLUDED = ("skills/lispcad/portable/", "skills/lispcad/versions/",
             "docs/history/", "regression/", "services/trainaicad-mcp/")

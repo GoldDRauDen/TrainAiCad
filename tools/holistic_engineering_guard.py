@@ -180,6 +180,40 @@ def _numeric(value: Any) -> float | None:
     return v if isfinite(v) else None
 
 
+def _datum_coordinate_proved(entity: Dict[str, Any], axis: str, coordinate: float) -> bool:
+    """Confirm a datum coordinate lies on its linked physical entity."""
+    index = 0 if axis == "X" else 1
+    typ = entity.get("type")
+    def matches(value):
+        number = _numeric(value)
+        return number is not None and abs(number-coordinate) <= 1e-7
+    if typ == "LINE":
+        a, b = entity.get("start"), entity.get("end")
+        return (isinstance(a, (list, tuple)) and isinstance(b, (list, tuple)) and
+                len(a) >= 2 and len(b) >= 2 and
+                matches(a[index]) and matches(b[index]))
+    if typ == "POINT":
+        point = entity.get("point")
+        return isinstance(point, (list, tuple)) and len(point) >= 2 and matches(point[index])
+    if typ == "CIRCLE":
+        center = entity.get("center")
+        return isinstance(center, (list, tuple)) and len(center) >= 2 and matches(center[index])
+    if typ == "LWPOLYLINE":
+        vertices = entity.get("vertices", [])
+        if len(vertices) < 2:
+            return False
+        edges = list(zip(vertices, vertices[1:]))
+        if entity.get("closed") is True:
+            edges.append((vertices[-1], vertices[0]))
+        return any(
+            len(a) >= 2 and len(b) >= 2 and
+            matches(a[index]) and matches(b[index]) and
+            (len(a) < 3 or _numeric(a[2]) is not None and abs(_numeric(a[2])) <= 1e-10)
+            for a, b in edges
+        )
+    return False
+
+
 def canonical_job_anomalies(job: Dict[str, Any]) -> List[str]:
     """Validate source-note ownership, mark/bend family identity and OD chains.
 
@@ -193,21 +227,43 @@ def canonical_job_anomalies(job: Dict[str, Any]) -> List[str]:
     out: List[str] = []
     for part in parts:
         code = str(part.get("code", "?"))
+        if job.get("canonical_contract") == "TrainAiCad-CANONICAL-V4.34" and part.get("status") == "PASS":
+            from geometry_containment import part_containment_errors
+            out.extend(f"{code}:{error}" for error in part_containment_errors(part))
         from dimension_witness import WitnessError, validate_part_witnesses
-        from slot_anchor import SlotAnchorError, validate_slot_anchor
+        from slot_anchor import SlotAnchorError, stadium_geometry, validate_slot_anchor
         try:
             validate_part_witnesses(part)
         except WitnessError as exc:
             out.append(f"{code}:{exc}")
+        source_member_to_entity_ids = {}
+        for member in part.get("canonical_members", []):
+            if member.get("origin") == "SOURCE":
+                source_member_to_entity_ids[member.get("source_member_id")] = set(member.get("entity_ids", []))
         for target in part.get("feature_witness_graph", {}).get("targets", []):
             entity_id = target.get("entity_id")
             if entity_id:
                 found = next((e for e in part.get("entities", []) if e.get("entity_id") == entity_id), None)
                 axis = target.get("axis")
-                if not found or found.get("type") != "CIRCLE" or axis not in {"X", "Y"}:
+                if not found or found.get("type") not in {"CIRCLE", "POINT"} or axis not in {"X", "Y"}:
                     out.append(f"{code}:WITNESS_ENTITY_UNPROVED:{entity_id}")
-                elif abs(float(found["center"][0 if axis == "X" else 1]) - float(target["coordinate_mm"])) > 1e-7:
-                    out.append(f"{code}:WITNESS_CANONICAL_COORDINATE_MISMATCH:{entity_id}")
+                elif entity_id not in source_member_to_entity_ids.get(target.get("feature_id"), set()):
+                    out.append(f"{code}:WITNESS_ENTITY_FEATURE_LINK_MISMATCH:{entity_id}")
+                else:
+                    point = found.get("center") if found.get("type") == "CIRCLE" else found.get("point")
+                    if not isinstance(point, (list, tuple)) or len(point) < 2:
+                        out.append(f"{code}:WITNESS_ENTITY_UNPROVED:{entity_id}")
+                    else:
+                        absolute = float(target["coordinate_mm"]) + float(target.get("datum_coordinate_mm", 0.0))
+                        if abs(float(point[0 if axis == "X" else 1]) - absolute) > 1e-7:
+                            out.append(f"{code}:WITNESS_CANONICAL_COORDINATE_MISMATCH:{entity_id}")
+                datum_id = target.get("datum_entity_id")
+                if datum_id:
+                    datum = next((e for e in part.get("entities", []) if e.get("entity_id") == datum_id), None)
+                    datum_coordinate = _numeric(target.get("datum_coordinate_mm"))
+                    if (datum is None or axis not in {"X", "Y"} or datum_coordinate is None or
+                            not _datum_coordinate_proved(datum, axis, datum_coordinate)):
+                        out.append(f"{code}:WITNESS_DATUM_ENTITY_UNPROVED:{datum_id}")
         for record in part.get("slot_anchor_records", []):
             slot_id = record.get("slot_id", "?")
             try:
@@ -218,13 +274,24 @@ def canonical_job_anomalies(job: Dict[str, Any]) -> List[str]:
             entity_id = record.get("entity_id")
             slot_entity = next((e for e in part.get("entities", []) if e.get("entity_id") == entity_id), None)
             if (not slot_entity or slot_entity.get("role") != "slot" or
-                    slot_entity.get("type") != "LWPOLYLINE" or len(slot_entity.get("vertices", [])) != 4):
+                    slot_entity.get("type") != "LWPOLYLINE"):
                 out.append(f"{code}:SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE:{slot_id}")
             else:
-                vertices = slot_entity["vertices"]
-                mid = (sum(v[0] for v in vertices) / 4, sum(v[1] for v in vertices) / 4)
+                try:
+                    actual = stadium_geometry(slot_entity.get("vertices", []), slot_entity.get("closed") is True)
+                except SlotAnchorError:
+                    out.append(f"{code}:SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE:{slot_id}")
+                    continue
+                mid = actual["midpoint"]
                 if abs(mid[0] - expected[0]) > 1e-7 or abs(mid[1] - expected[1]) > 1e-7:
                     out.append(f"{code}:SLOT_CANONICAL_MIDPOINT_MISMATCH:{slot_id}")
+                for key in ("width_mm", "center_distance_mm", "overall_length_mm"):
+                    if abs(actual[key] - float(record[key])) > 1e-7:
+                        out.append(f"{code}:SLOT_CANONICAL_DIMENSION_MISMATCH:{slot_id}:{key}")
+                axis = record.get("axis_unit", [])
+                if len(axis) != 2 or abs(abs(actual["axis_unit"][0]*float(axis[0]) +
+                                             actual["axis_unit"][1]*float(axis[1])) - 1.0) > 1e-7:
+                    out.append(f"{code}:SLOT_CANONICAL_AXIS_MISMATCH:{slot_id}")
         groups = part.get("source_groups", [])
         entity_by_id = {
             e.get("entity_id"): e for e in part.get("entities", [])

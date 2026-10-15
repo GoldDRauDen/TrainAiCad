@@ -9,15 +9,13 @@ default_load:
   - references/RUNTIME_AUTHORITY_GUARD.md
   - skills/lispcad/core/DRAWING_READING.md
   - references/SOURCE_DATA_CLASSIFICATION.md
-  - references/DXF_PHYSICAL_CURVE_DECODING.md
   - references/CANONICAL_MEMBER_COMPLETENESS.md
   - references/MECHANICAL_CLASSIFIER.md
-  - references/HOLISTIC_ENGINEERING_CHALLENGE.md
-  - references/REFERENCE_EXPOSURE_FIREWALL.md
   - references/REVIEW_PREVIEW_POLICY.md
   - references/SOURCE_MANUFACTURING_NOTE_CENSUS.md
   - references/SOURCE_FEATURE_GROUP_CLOSURE.md
   - references/CAD_CUSTOMER_POLICY.md
+  - references/MATERIAL_ALIASES.yaml
   - skills/lispcad/router/FEATURE_CENSUS.md
 
 # Loaded at L1 after default_load unless every listed census condition is
@@ -47,6 +45,8 @@ stage_routes:
       - skills/lispcad/core/VALIDATION.md
       - skills/lispcad/core/CAD_OUTPUT.md
       - skills/lispcad/core/CROSS_FEATURE_VALIDATION.md
+      - references/HOLISTIC_ENGINEERING_CHALLENGE.md
+      - tools/CANONICAL_INPUT_SCHEMA_V434.md
       - references/HOLISTIC_ENGINEERING_CHALLENGE.md
       - references/CANONICAL_MEMBER_COMPLETENESS.md
 

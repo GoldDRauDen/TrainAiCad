@@ -41,9 +41,10 @@ def resolve_material(printed: str, process: str = "LASER_R") -> dict:
     if process not in _PROCESSES:
         raise MaterialResolveError("UNKNOWN_PROCESS")
     value = _norm(printed)
+    short_430 = bool(re.match(r"^430(?=$|[-_/.(,=]|HL|ヘアライン|2B|#)", value))
     # A complete SUS grade takes precedence over short numerical aliases;
     # SUS430 retains the already-approved process split.
-    if value.startswith("SUS430"):
+    if value.startswith("SUS430") or short_430:
         group, cell = "SUS", "C35"
     elif value.startswith("SUS"):
         group, cell = "SUS", "C28"
@@ -72,7 +73,7 @@ def resolve_material(printed: str, process: str = "LASER_R") -> dict:
         if process == "NOBI":
             raise MaterialResolveError(f"MATERIAL_PROCESS_UNRESOLVED:{printed}:{process}")
         applied = "SUS_OTHER"
-    elif group == "SUS" and value.startswith("SUS430") and process == "NOBI":
+    elif group == "SUS" and (value.startswith("SUS430") or short_430) and process == "NOBI":
         applied = "SS_SUS430_BRASS"
     else:
         applied = group
