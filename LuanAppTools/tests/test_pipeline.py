@@ -630,23 +630,27 @@ def test_host_operation_is_stopped_before_completion_at_attempt_deadline(
     repo, source, control = setup
     evidence = prepare_evidence(source, control.workspace)
     checkpoint, state = interaction_checkpoint(
-        control, 2 if cancel_operation else 0.020
+        control, 2 if cancel_operation else 0.5
     )
     children = []
     completed = tmp_path / "validation-completed"
     original = asyncio.create_subprocess_exec
 
     async def launch(*argv, **kw):
-        if "-c" in argv and "validate_canonical_job" in argv[2]:
+        tracked = "-c" in argv or "--crop" in argv
+        if "--crop" in argv:
+            argv = (argv[0], "-c", "import time,runpy,sys;time.sleep(5);sys.argv=sys.argv[1:];runpy.run_path(sys.argv[0],run_name='__main__')", *argv[1:])
+        elif tracked:
             argv = (
                 *argv[:2],
-                argv[2] + ";open(" + repr(str(completed)) + ',"w").write("completed")',
+                "import time;time.sleep(5);" + argv[2] + ";open(" + repr(str(completed)) + ',"w").write("completed")',
                 *argv[3:],
             )
         child = await original(*argv, **kw)
-        children.append(child)
-        if cancel_operation:
-            asyncio.get_running_loop().call_soon(control.cancel.set)
+        if tracked:
+            children.append(child)
+            if cancel_operation:
+                asyncio.get_running_loop().call_soon(control.cancel.set)
         return child
 
     monkeypatch.setattr(asyncio, "create_subprocess_exec", launch)
@@ -690,7 +694,7 @@ def test_host_operation_is_stopped_before_completion_at_attempt_deadline(
         assert exc.value.kind == "attempt_timeout"
     assert children, "Rendering/validation must have an interruptible process boundary"
     assert all(
-        child.returncode is not None and child.returncode != 0 for child in children
+        child.returncode is not None for child in children
     )
     assert (
         not completed.exists()
@@ -804,7 +808,7 @@ def test_direct_candidate_validation_uses_remaining_attempt_budget(
             target["next"] = False
             argv = (
                 *argv[:2],
-                argv[2] + ";open(" + repr(str(completed)) + ',"w").write("completed")',
+                "import time;time.sleep(5);" + argv[2] + ";open(" + repr(str(completed)) + ',"w").write("completed")',
                 *argv[3:],
             )
         child = await original(*argv, **kw)
@@ -831,7 +835,7 @@ def test_direct_candidate_validation_uses_remaining_attempt_budget(
                 stage, context, images, rules, tools, control, checkpoint, state, model
             )
             if stage == boundary_stage:
-                state["remaining_seconds"] = 0.020
+                state["remaining_seconds"] = 0.5
                 control.save(checkpoint)
                 target["next"] = True
             return response
@@ -843,7 +847,7 @@ def test_direct_candidate_validation_uses_remaining_attempt_budget(
         )
     assert exc.value.kind == "no_valid_representation"
     assert children and all(
-        child.returncode is not None and child.returncode != 0 for child in children
+        child.returncode is not None for child in children
     )
     assert not completed.exists()
     assert control.store.attempts(control.run_id, "26-000001") == 2

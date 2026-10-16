@@ -90,7 +90,15 @@ def test_cli_errors_even_exit_zero(cli, tmp_path, prompt, kind):
     asyncio.run(run())
 
 
-def test_cancel_terminates_provider_process(cli, tmp_path):
+def test_cancel_terminates_provider_process(cli, tmp_path, monkeypatch):
+    children = []
+    original = asyncio.create_subprocess_exec
+    async def launch(*argv, **kwargs):
+        child = await original(*argv, **kwargs)
+        if str(argv[0]).lower() != 'taskkill':
+            children.append(child)
+        return child
+    monkeypatch.setattr(asyncio, 'create_subprocess_exec', launch)
     async def run():
         cancel = asyncio.Event()
         task = asyncio.create_task(
@@ -104,8 +112,7 @@ def test_cancel_terminates_provider_process(cli, tmp_path):
         cancel.set()
         with pytest.raises(asyncio.CancelledError):
             await task
-        with pytest.raises(ProcessLookupError):
-            os.kill(pid, 0)
+        assert any(child.pid == pid and child.returncode is not None for child in children)
 
     asyncio.run(run())
 

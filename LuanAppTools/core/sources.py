@@ -26,7 +26,7 @@ def contained_path(root: Path, relative: str | Path) -> Path:
         cursor = cursor.parent
     root = root.resolve(strict=True)
     relative = Path(relative)
-    if relative.is_absolute() or not relative.parts or '..' in relative.parts or '\\' in str(relative) or ':' in str(relative):
+    if relative.is_absolute() or not relative.parts or '..' in relative.parts or '\\' in relative.as_posix() or ':' in str(relative):
         raise ValueError('Unsafe relative path')
     candidate = root.joinpath(relative)
     cursor = root

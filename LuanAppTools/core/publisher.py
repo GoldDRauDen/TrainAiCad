@@ -136,7 +136,7 @@ class Publisher:
         temporary = Path(temporary_name)
         try:
             shutil.copy2(source, temporary)
-            with temporary.open('rb') as stream:
+            with temporary.open('r+b') as stream:
                 os.fsync(stream.fileno())
             if file_hash(temporary) != expected_hash:
                 raise ValueError('Staged output changed during copy')

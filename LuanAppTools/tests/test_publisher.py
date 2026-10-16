@@ -237,3 +237,20 @@ def test_customer_archive_appearing_during_staging_is_preserved(store, run, tmp_
     monkeypatch.setattr(shutil, 'copy2', original_copy)
     appeared[0].unlink()
     assert publisher.retry(newer['id'], lease2)['status'] == 'published'
+
+
+def test_copy_flush_uses_writable_file_descriptor(tmp_path, monkeypatch):
+    from LuanAppTools.core.sources import file_hash
+    source=write_dxf(tmp_path/'source.dxf')
+    original=os.fsync
+    flushed=[]
+    def flush(fd):
+        # Windows FlushFileBuffers requires write access. Zero-byte write checks
+        # descriptor mode without altering the staged DXF on either platform.
+        os.write(fd,b'')
+        flushed.append(fd)
+        original(fd)
+    monkeypatch.setattr(os,'fsync',flush)
+    target=tmp_path/'output.dxf'
+    Publisher._copy_verified(source,target,file_hash(source))
+    assert flushed and file_hash(source)==file_hash(target)
