@@ -31,6 +31,14 @@ def lead_val(material: str, T: float) -> float:
     return 3.0 if (str(material).upper() in SS_FAMILY and T <= 3.2) else 6.0
 
 
+def slit_dir_from_bend(bend_dir, inward_hint):
+    """Slit ray S = unit PERPENDICULAR to the bend line, pointing inward (toward the bend/web side).
+    bend_dir: bend-line direction; inward_hint: any vector pointing inward (sign picker)."""
+    n = math.hypot(*bend_dir)
+    s = (-bend_dir[1] / n, bend_dir[0] / n)
+    return s if (s[0] * inward_hint[0] + s[1] * inward_hint[1]) > 0 else (-s[0], -s[1])
+
+
 def lead_end_by_offset(B, n_side, n_web, lead: float):
     """Lead end P = intersection of the flange-side line and the web edge, each offset by `lead`
     (perpendicular distance) toward the void. n_* are unit outward (void-side) normals of those
@@ -38,7 +46,7 @@ def lead_end_by_offset(B, n_side, n_web, lead: float):
     i.e. the BOXMET (+-lead, +-lead) sign table; any other corner angle uses the same offsets."""
     c = n_side[0] * n_web[0] + n_side[1] * n_web[1]
     if c <= -1.0 + 1e-9:
-        raise ValueError("edges are parallel: offset lines never intersect; flag for review")
+        raise ValueError("edges are parallel: they form no corner B, so there is no slit case; flag for review")
     k = lead / (1.0 + c)
     return (B[0] + k * (n_side[0] + n_web[0]), B[1] + k * (n_side[1] + n_web[1]))
 

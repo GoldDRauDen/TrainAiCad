@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from slit_geometry import connected_slit, lead_end_by_offset, lead_val, slit_depth_from_actual_edge, slit_depth_from_reference
+from slit_geometry import connected_slit, lead_end_by_offset, slit_dir_from_bend, lead_val, slit_depth_from_actual_edge, slit_depth_from_reference
 
 
 def test_signed_offset_matrix():
@@ -58,3 +58,11 @@ def test_lead_end_by_offset_non_90_corner():
     assert math.isclose(d[0] * n_web[0] + d[1] * n_web[1], lead, abs_tol=1e-9)
     g = connected_slit(B, (0, 1), d, 2.7)          # same LINE+ARC+LINE, general angle
     assert math.dist(g["line2"][1], p) < 1e-9
+
+
+def test_slit_dir_perpendicular_to_bend_pointing_inward():
+    assert slit_dir_from_bend((1, 0), (0, 5)) == (0.0, 1.0) or slit_dir_from_bend((1, 0), (0, 5)) == (-0.0, 1.0)
+    sx, sy = slit_dir_from_bend((1, 0), (0, -5))
+    assert abs(sx) < 1e-12 and sy == -1.0
+    sx, sy = slit_dir_from_bend((math.cos(0.3), math.sin(0.3)), (-math.sin(0.3), math.cos(0.3)))
+    assert math.isclose(sx * math.cos(0.3) + sy * math.sin(0.3), 0, abs_tol=1e-12) and sy > 0
