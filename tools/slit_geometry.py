@@ -31,6 +31,18 @@ def lead_val(material: str, T: float) -> float:
     return 3.0 if (str(material).upper() in SS_FAMILY and T <= 3.2) else 6.0
 
 
+def lead_end_by_offset(B, n_side, n_web, lead: float):
+    """Lead end P = intersection of the flange-side line and the web edge, each offset by `lead`
+    (perpendicular distance) toward the void. n_* are unit outward (void-side) normals of those
+    two edges that meet at B. For a 90-degree corner this equals B + lead*(n_side + n_web),
+    i.e. the BOXMET (+-lead, +-lead) sign table; any other corner angle uses the same offsets."""
+    c = n_side[0] * n_web[0] + n_side[1] * n_web[1]
+    if c <= -1.0 + 1e-9:
+        raise ValueError("edges are parallel: offset lines never intersect; flag for review")
+    k = lead / (1.0 + c)
+    return (B[0] + k * (n_side[0] + n_web[0]), B[1] + k * (n_side[1] + n_web[1]))
+
+
 def connected_slit(B, S, D, slit_len: float, R: float = 0.5) -> dict:
     """Return LINE(E1->T1), ARC(centre,R,start,end deg CCW), LINE(T2->E2) for one slit.
 

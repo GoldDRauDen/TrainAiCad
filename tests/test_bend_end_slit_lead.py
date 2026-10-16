@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from slit_geometry import connected_slit, lead_val, slit_depth_from_actual_edge, slit_depth_from_reference
+from slit_geometry import connected_slit, lead_end_by_offset, lead_val, slit_depth_from_actual_edge, slit_depth_from_reference
 
 
 def test_signed_offset_matrix():
@@ -40,3 +40,21 @@ def test_connected_slit_is_tangent_135_degrees():
     assert abs((t2[0]-c[0])*(-1) + (t2[1]-c[1])*(-1)) < 1e-9
     sweep = (g["arc"]["end_angle"] - g["arc"]["start_angle"]) % 360
     assert math.isclose(sweep, 45.0, abs_tol=1e-9)
+
+
+def test_lead_end_by_offset_matches_box_sign_table_at_90deg():
+    # 060730 near edge left: flange side x=45 (void to -X), web edge y=11.12 (void to -Y)
+    p = lead_end_by_offset((45, 11.12), (-1, 0), (0, -1), 6.0)
+    assert math.dist(p, (39, 5.12)) < 1e-9
+
+
+def test_lead_end_by_offset_non_90_corner():
+    # web edge tilted 30deg: both offset lines must be exactly `lead` away from their edge
+    n_side, n_web = (-1.0, 0.0), (math.sin(math.radians(30)), -math.cos(math.radians(30)))
+    B, lead = (45.0, 11.12), 6.0
+    p = lead_end_by_offset(B, n_side, n_web, lead)
+    d = (p[0] - B[0], p[1] - B[1])
+    assert math.isclose(d[0] * n_side[0] + d[1] * n_side[1], lead, abs_tol=1e-9)
+    assert math.isclose(d[0] * n_web[0] + d[1] * n_web[1], lead, abs_tol=1e-9)
+    g = connected_slit(B, (0, 1), d, 2.7)          # same LINE+ARC+LINE, general angle
+    assert math.dist(g["line2"][1], p) < 1e-9
