@@ -22,9 +22,13 @@ def slit_depth_from_reference(S: float, T: float):
     return abs(S) + T + 0.2
 
 
+SS_FAMILY = {"SS", "SPCC", "SPHC", "SECC", "SGCC", "SGHC"}
+
+
 def lead_val(material: str, T: float) -> float:
-    """BOXMET LeadVal: 3.0 only when the tool material is exactly 'SS' and T<6, else 6.0."""
-    return 3.0 if (material == "SS" and T < 6.0) else 6.0
+    """Bend-end slit LeadVal (user-confirmed 2026-10-16): 3.0 only for the SS group with T<=3.2,
+    otherwise 6.0 (aluminium, stainless, SS thicker than 3.2, unknown material)."""
+    return 3.0 if (str(material).upper() in SS_FAMILY and T <= 3.2) else 6.0
 
 
 def connected_slit(B, S, D, slit_len: float, R: float = 0.5) -> dict:
