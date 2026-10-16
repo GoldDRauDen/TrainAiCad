@@ -24,6 +24,7 @@ export function App() {
     [jobs, setJobs] = useState<RecordData[]>([]),
     [health, setHealth] = useState<RecordData>({}),
     [settings, setSettings] = useState<RecordData | null>(null),
+    [connections, setConnections] = useState<RecordData>({}),
     [providers, setProviders] = useState<RecordData>({}),
     [selected, setSelected] = useState<string[]>([]),
     [search, setSearch] = useState(""),
@@ -63,6 +64,14 @@ export function App() {
     setHealth(h);
     setJobs(j.jobs);
   }
+  async function verifyConnection(provider: string) {
+    try {
+      return await api("/api/connections/test", "POST", { provider });
+    } finally {
+      setProviders(await api("/api/providers"));
+      setConnections(await api("/api/connections"));
+    }
+  }
   async function loadDetail(id: string) {
     const sequence = ++detailSequence.current;
     const d = await api(`/api/jobs/${id}`);
@@ -79,13 +88,15 @@ export function App() {
     void (async () => {
       try {
         await refresh();
-        const [s, p] = await Promise.all([
+        const [s, p, c] = await Promise.all([
           api("/api/settings"),
           api("/api/providers"),
+          api("/api/connections"),
         ]);
         if (alive) {
           setSettings(s);
           setProviders(p);
+          setConnections(c);
         }
       } catch (e) {
         if (alive) setError(String((e as Error).message));
@@ -112,15 +123,18 @@ export function App() {
       detailSequence.current++;
     };
   }, [detailId]);
-  async function action(fn: () => Promise<unknown>, message = "Đã cập nhật") {
+  async function action(
+    fn: () => Promise<unknown>,
+    message: string | ((result: unknown) => string) = "Đã cập nhật",
+  ) {
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      await fn();
+      const result = await fn();
       await refresh();
       if (detailId) await loadDetail(detailId);
-      setNotice(message);
+      setNotice(typeof message === "function" ? message(result) : message);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -166,16 +180,16 @@ export function App() {
         </button>
         <div className="sidebar-bottom">
           <span className="dot" />
-          Ứng dụng local<small>Claude chính · 9Router khi chọn</small>
+          Ứng dụng local<small>Mỗi job · một agent xuyên suốt</small>
           <p>Kết quả để kiểm tra thủ công.</p>
         </div>
       </aside>
       <main>
         <header>
           <div>
-            <div className="eyebrow">XƯỞNG BẢN VẼ / ĐIỀU PHỐI AI</div>
+            <div className="eyebrow">WORKSPACE / CAD AUTOMATION</div>
             <h1>{tab === "jobs" ? "Bảng công việc" : "Cài đặt vận hành"}</h1>
-            <p>Từ thư mục bản vẽ đến DXF có bằng chứng kiểm tra.</p>
+            <p>Chọn bản vẽ. Chạy một agent. Nhận DXF đã kiểm tra bằng công cụ local.</p>
           </div>
           <span className="connection">
             <span className="dot" />
@@ -197,6 +211,10 @@ export function App() {
         )}
         {tab === "jobs" ? (
           <>
+            <div className="workflow-banner">
+              <div><span className="eyebrow">QUY TRÌNH ĐƠN GIẢN</span><h2>Một job. Một agent.</h2><p>Cùng hội thoại từ đọc bản vẽ đến hoàn tất. Xem job không gọi AI.</p></div>
+              <ol aria-label="Quy trình xử lý"><li><b>01</b> Đọc nguồn</li><li><b>02</b> Dựng hình</li><li><b>03</b> Kiểm tra & xuất</li></ol>
+            </div>
             <div className="stats">
               {[
                 ["Tổng công việc", jobs.length],
@@ -246,7 +264,7 @@ export function App() {
                 <div>
                   <h2>Danh sách công việc</h2>
                   <span className="muted">
-                    Chọn thư mục job để bắt đầu theo dõi nguồn.
+                    Chọn job cần xử lý, sau đó bấm Chạy đã chọn.
                   </span>
                 </div>
                 <button
@@ -276,16 +294,6 @@ export function App() {
                       {v}
                     </option>
                   ))}
-                </select>
-                <select
-                  aria-label="Độ khó cho lần chạy"
-                  value={difficulty}
-                  onChange={(e) => setDifficulty(e.target.value)}
-                >
-                  <option value="auto">Tự phân loại độ khó</option>
-                  <option value="easy">Dễ</option>
-                  <option value="medium">Trung bình</option>
-                  <option value="hard">Khó</option>
                 </select>
                 <select
                   aria-label="Xuất DXF riêng"
@@ -367,7 +375,7 @@ export function App() {
                             {label(j.status)}
                           </span>
                           <small>
-                            {j.provider === "9router" ? "9Router" : "Claude"}
+                            {j.provider === "openai" ? "GPT" : j.provider === "custom" ? "Custom" : j.provider === "9router" ? "9Router" : "Claude"}
                             {j.run?.error && " · Có thông báo"}
                           </small>
                         </td>
@@ -430,7 +438,27 @@ export function App() {
           <SettingsForm
             value={settings}
             providers={providers}
+            connections={connections}
             busy={busy}
+            saveConnection={(connection) =>
+              action(async () => {
+                setConnections(await api("/api/connections", "PUT", connection));
+                await verifyConnection(connection.active_provider);
+              }, "Đã lưu và kết nối thành công")
+            }
+            testConnection={(provider) =>
+              action(async () => {
+                await verifyConnection(provider);
+              }, "Kết nối hoạt động")
+            }
+            loginClaude={() =>
+              action(async () => {
+                const result = await api("/api/connections/claude/login", "POST");
+                setProviders(await api("/api/providers"));
+                setConnections(await api("/api/connections"));
+                return result;
+              }, (result) => (result as RecordData).message)
+            }
             save={(s) =>
               action(
                 async () => setSettings(await api("/api/settings", "PUT", s)),
@@ -463,7 +491,16 @@ export function App() {
             {detail && (
               <>
                 <span className="badge blue">{label(detail.status)}</span>
+                <p className="muted">{detail.run?.config?.single_agent ? "Một agent · cùng hội thoại · kiểm tra local" : detail.run ? "Lượt chạy cũ" : "Sẵn sàng chạy với một agent"}</p>
                 <p className="path">{detail.folder}</p>
+                {detail.workspace_path && <p className="path">Workspace: {detail.workspace_path}</p>}
+                {detail.snapshot_path && <p className="path">Bản nguồn cố định: {detail.snapshot_path}</p>}
+                {detail.source_profile && (
+                  <p className="muted">
+                    Nguồn local: {detail.source_profile.pages} trang PDF, {detail.source_profile.pages_without_text} trang gần như không có chữ trích xuất.
+                    {detail.source_profile.pages >= 5 && " Job nhiều trang: bước đọc nguồn có thể dùng nhiều quota."}
+                  </p>
+                )}
                 {detail.run?.error && (
                   <p className="alert">{detail.run.error}</p>
                 )}
@@ -487,12 +524,12 @@ export function App() {
                       Tạm dừng
                     </button>
                   )}
-                  {[
+                  {([
                     "paused",
                     "waiting_output",
                     "waiting_usage",
                     "waiting_fallback",
-                  ].includes(detail.status) && (
+                  ].includes(detail.status) || (detail.status === "error" && detail.run?.config?.single_agent)) && (
                     <button
                       disabled={busy}
                       onClick={() =>
@@ -522,7 +559,7 @@ export function App() {
                       Hủy
                     </button>
                   )}
-                  {["completed", "error", "cancelled"].includes(
+                  {["completed", "error", "cancelled", "reconciliation_required"].includes(
                     detail.status,
                   ) && (
                     <button
@@ -555,11 +592,11 @@ export function App() {
                               "POST",
                               {},
                             ),
-                          "Đã yêu cầu kiểm tra và tiếp tục bằng 9Router",
+                          "Đã yêu cầu kiểm tra và tiếp tục bằng kết nối AI đã chọn",
                         )
                       }
                     >
-                      Tiếp tục bằng 9Router
+                      Tiếp tục bằng kết nối đã chọn
                     </button>
                   )}
                 </div>
@@ -576,8 +613,9 @@ export function App() {
                   >
                     Mở Output tổng / nguồn
                   </button>
-                  {detail.run?.config?.individual && (
+                  {detail.individual_output_available && (
                     <button
+                      disabled={busy}
                       onClick={() =>
                         action(() =>
                           api(`/api/jobs/${detail.id}/open-folder`, "POST", {
@@ -590,6 +628,9 @@ export function App() {
                     </button>
                   )}
                 </div>
+                {detail.run?.config?.individual && !detail.individual_output_available && (
+                  <p className="muted">Output riêng chưa được tạo cho lượt chạy hiện tại.</p>
+                )}
                 {detail.status === "completed" && (
                   <label className="review">
                     <input
@@ -653,6 +694,31 @@ export function App() {
                     <p>Chưa có dữ liệu usage</p>
                   )}
                 </div>
+                {Object.keys(detail.usage || {}).length > 0 && (
+                  <p className="muted">
+                    Input thực đã ghi (gồm cache): {number(
+                      (detail.usage.input_tokens || 0) +
+                      (detail.usage.cache_creation_input_tokens || 0) +
+                      (detail.usage.cache_read_input_tokens || 0),
+                    )} token · Output: {number(detail.usage.output_tokens || 0)} token.
+                    Đây không phải phần trăm quota tài khoản.
+                  </p>
+                )}
+                {Number(detail.unmeasured_job_requests || 0) > 0 && (
+                  <p className="alert">
+                    {detail.unmeasured_job_requests} lần gọi provider của job này không có usage cuối cùng (bị ngắt hoặc lỗi). Chi phí thực tế của các lần này chưa xác định.
+                  </p>
+                )}
+                {Object.entries(detail.usage_by_stage || {}).map(([stage, metrics]) => (
+                  <p className="muted" key={stage}>
+                    {stage}: {Object.entries(metrics as RecordData).map(([key, value]) => `${key} ${number(value)}`).join(" · ")}
+                  </p>
+                ))}
+                {Object.entries(detail.request_stats || {}).map(([stage, stats]) => (
+                  <p className="muted" key={stage + "-requests"}>
+                    {stage}: {(stats as RecordData).calls} lượt, {number((stats as RecordData).prompt_characters)} ký tự prompt, {(stats as RecordData).image_count} ảnh.
+                  </p>
+                ))}
                 <p className="muted">
                   Phần dùng chung:{" "}
                   {Object.keys(detail.shared_overhead_usage || {}).length
@@ -830,17 +896,53 @@ function Preview({ job }: { job: RecordData }) {
 function SettingsForm({
   value,
   providers,
+  connections,
   busy,
+  saveConnection,
+  testConnection,
+  loginClaude,
   save,
 }: {
   value: RecordData;
   providers: RecordData;
+  connections: RecordData;
   busy: boolean;
+  saveConnection: (v: RecordData) => unknown;
+  testConnection: (provider: string) => unknown;
+  loginClaude: () => unknown;
   save: (v: RecordData) => unknown;
 }) {
   const [form, setForm] = useState(value),
     [roots, setRoots] = useState((value.roots || []).join("\n"));
+  const [connection, setConnection] = useState<RecordData>({
+    active_provider: connections.active_provider || "claude",
+    openai_model: connections.openai?.model || "",
+    gateway_url: connections.custom?.endpoint || value.gateway_url || "http://localhost:20128/v1",
+    gateway_model: connections.custom?.model || value.gateway_model || "",
+    gateway_effort: value.gateway_effort || "high",
+    custom_auth_mode: connections.custom?.auth_mode || value.custom_auth_mode || "none",
+    custom_auth_header: connections.custom?.auth_header || value.custom_auth_header || "Authorization",
+    custom_send_effort: value.custom_send_effort || false,
+  });
+  const [openaiKey, setOpenaiKey] = useState("");
+  const [customAuthValue, setCustomAuthValue] = useState("");
+  const [clearOpenaiKey, setClearOpenaiKey] = useState(false);
+  const [clearCustomAuth, setClearCustomAuth] = useState(false);
+  useEffect(() => {
+    setConnection((current) => ({
+      ...current,
+      active_provider: connections.active_provider || current.active_provider,
+      openai_model: connections.openai?.model ?? current.openai_model,
+      gateway_url: connections.custom?.endpoint ?? current.gateway_url,
+      gateway_model: connections.custom?.model ?? current.gateway_model,
+      custom_auth_mode: connections.custom?.auth_mode ?? current.custom_auth_mode,
+      custom_auth_header: connections.custom?.auth_header ?? current.custom_auth_header,
+    }));
+  }, [connections]);
   const put = (key: string, v: unknown) => setForm({ ...form, [key]: v });
+  const putConnection = (key: string, v: unknown) =>
+    setConnection({ ...connection, [key]: v });
+  const activeConnection = connections[connection.active_provider] || {};
   const fields: [string, string, number, number?][] = [
     ["max_active_jobs", "Số job đồng thời", 1, 3],
     ["max_ai_calls", "Số lượt AI đồng thời", 1, 3],
@@ -857,8 +959,19 @@ function SettingsForm({
       className="settings"
       onSubmit={(e) => {
         e.preventDefault();
+        const {
+          active_provider: _activeProvider,
+          openai_model: _openaiModel,
+          gateway_url: _gatewayUrl,
+          gateway_model: _gatewayModel,
+          gateway_effort: _gatewayEffort,
+          custom_auth_mode: _customAuthMode,
+          custom_auth_header: _customAuthHeader,
+          custom_send_effort: _customSendEffort,
+          ...generalSettings
+        } = form;
         save({
-          ...form,
+          ...generalSettings,
           roots: roots
             .split("\n")
             .map((r: string) => r.trim())
@@ -886,6 +999,18 @@ function SettingsForm({
           Mỗi dòng một thư mục gốc. Dùng UNC hoặc ổ đĩa tài khoản Windows hiện
           tại đọc được.
         </small>
+        <label>
+          Thư mục workspace chung
+          <input
+            value={form.workspace_root || ""}
+            placeholder="Đường dẫn tuyệt đối, ví dụ D:\\AI-Workspace"
+            onChange={(e) => put("workspace_root", e.target.value)}
+          />
+        </label>
+        <small>
+          Mỗi lượt chạy mới lưu dữ liệu xử lý trong work/&lt;run-id&gt; và bản nguồn
+          cố định trong cache/. Lượt chạy đang có giữ nguyên vị trí cũ.
+        </small>
         <label className="review">
           <input
             type="checkbox"
@@ -903,24 +1028,7 @@ function SettingsForm({
             }
           />
         </label>
-        <label>
-          Độ khó mặc định
-          <select
-            value={form.default_difficulty || "auto"}
-            onChange={(e) => put("default_difficulty", e.target.value)}
-          >
-            {[
-              ["auto", "Tự phân loại"],
-              ["easy", "Dễ"],
-              ["medium", "Trung bình"],
-              ["hard", "Khó"],
-            ].map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </label>
+
       </section>
       <section className="panel form-section">
         <h2>Điều phối & ngân sách</h2>
@@ -941,99 +1049,182 @@ function SettingsForm({
           ))}
         </div>
         <p className="muted">
-          Tối đa hai lượt giải mỗi mã. Mọi mã đều phải qua QA.
+          Tối đa hai lượt giải mỗi mã trong cùng hội thoại. Không có lượt QA bằng AI riêng.
         </p>
       </section>
       <section className="panel form-section">
-        <h2>Claude & tự nâng model</h2>
-        <p>Trạng thái: {providers.claude?.status || "Chưa có dữ liệu"}</p>
-        {providers.claude?.message && <p>{providers.claude.message}</p>}
-        <div className="form-grid">
-          {Object.entries(form.models || {}).map(([tier, entry]) => {
-            const v = entry as RecordData;
-            return (
-              <fieldset key={tier}>
-                <legend>{tier === "qa" ? "QA độc lập" : tier}</legend>
-                <label>
-                  Model
-                  <select
-                    disabled={tier === "qa"}
-                    value={v.model}
-                    onChange={(e) =>
-                      put("models", {
-                        ...form.models,
-                        [tier]: { ...v, model: e.target.value },
-                      })
-                    }
-                  >
-                    {["haiku-5.5", "sonnet-5.5", "opus-5.5"].map((m) => (
-                      <option key={m}>{m}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Effort
-                  <select
-                    disabled={tier === "qa"}
-                    value={v.effort}
-                    onChange={(e) =>
-                      put("models", {
-                        ...form.models,
-                        [tier]: { ...v, effort: e.target.value },
-                      })
-                    }
-                  >
-                    {["medium", "high", "xhigh", "max"].map((m) => (
-                      <option key={m}>{m}</option>
-                    ))}
-                  </select>
-                </label>
-              </fieldset>
-            );
-          })}
-        </div>
-        <p>
-          Opus được tự chọn cho ngoại lệ khó theo chính sách. Đăng nhập Claude
-          bằng CLI chính thức trên máy chạy app.
-        </p>
-      </section>
-      <section className="panel form-section">
-        <h2>9Router dự phòng</h2>
-        <p>
-          Chỉ kiểm tra và sử dụng khi anh bấm “Tiếp tục bằng 9Router” tại job
-          đang chờ.
-        </p>
+        <h2>Kết nối AI</h2>
+        <p>Chọn tài khoản hoặc endpoint dùng cho các job mới. Khóa API được mã hóa riêng trên máy này.</p>
         <label>
-          Endpoint
-          <input
-            type="url"
-            required
-            value={form.gateway_url || ""}
-            onChange={(e) => put("gateway_url", e.target.value)}
-          />
-        </label>
-        <label>
-          Model dự phòng
-          <input
-            value={form.gateway_model || ""}
-            onChange={(e) => put("gateway_model", e.target.value)}
-          />
-        </label>
-        <label>
-          Effort
+          Nhà cung cấp
           <select
-            value={form.gateway_effort || "high"}
-            onChange={(e) => put("gateway_effort", e.target.value)}
+            value={connection.active_provider}
+            onChange={(e) => putConnection("active_provider", e.target.value)}
           >
-            {["medium", "high", "xhigh", "max"].map((m) => (
-              <option key={m}>{m}</option>
-            ))}
+            <option value="claude">Claude · tài khoản Claude Code</option>
+            <option value="openai">GPT · OpenAI API key</option>
+            <option value="custom">Custom endpoint · OpenAI compatible</option>
           </select>
         </label>
+        {connection.active_provider === "claude" && (
+          <div className="form-section">
+            <p>Phiên Claude: {providers.claude?.status === "ready" ? "Đã đăng nhập" : providers.claude?.status || "Chưa kiểm tra"}</p>
+            {providers.claude?.message && <p className="muted">{providers.claude.message}</p>}
+            <p>Yêu cầu thử: {connections.claude?.status === "ready" ? `Thành công với ${connections.claude.model}` : connections.claude?.status === "not_tested" ? "Chưa thử" : connections.claude?.status || "Chưa thử"}</p>
+            {connections.claude?.message && <p className="muted">{connections.claude.message}</p>}
+            <p className="muted">Dùng tài khoản Claude Code đã đăng nhập trên Windows này.</p>
+            <div className="actions">
+              {providers.claude?.status !== "ready" && (
+                <button type="button" disabled={busy} onClick={loginClaude}>Đăng nhập Claude</button>
+              )}
+              <button type="button" disabled={busy} onClick={() => testConnection("claude")}>Kiểm tra kết nối</button>
+            </div>
+          </div>
+        )}
+        {connection.active_provider === "openai" && (
+          <>
+            <p className="muted">
+              Dùng OpenAI API. Gói ChatGPT và API có thanh toán riêng. {" "}
+              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">Tạo API key</a>
+            </p>
+            <label>
+              Model
+              <input
+                value={connection.openai_model}
+                placeholder="Model ID trong OpenAI API"
+                onChange={(e) => putConnection("openai_model", e.target.value)}
+              />
+            </label>
+            <label>
+              OpenAI API key
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={openaiKey}
+                placeholder={connections.openai?.credential_configured ? "Đã lưu · để trống để giữ key hiện tại" : "Dán API key"}
+                onChange={(e) => { setOpenaiKey(e.target.value); setClearOpenaiKey(false); }}
+              />
+            </label>
+            {connections.openai?.credential_configured && (
+              <button type="button" disabled={busy} onClick={() => { setOpenaiKey(""); setClearOpenaiKey(true); }}>
+                Xóa key đã lưu
+              </button>
+            )}
+          </>
+        )}
+        {connection.active_provider === "custom" && (
+          <>
+            <label>
+              Base URL
+              <input
+                type="text"
+                value={connection.gateway_url}
+                placeholder="http://localhost:20128/v1"
+                onChange={(e) => putConnection("gateway_url", e.target.value)}
+              />
+            </label>
+            <label>
+              Model ID
+              <input
+                value={connection.gateway_model}
+                placeholder="provider/model-id"
+                onChange={(e) => putConnection("gateway_model", e.target.value)}
+              />
+            </label>
+            <label>
+              Xác thực
+              <select
+                value={connection.custom_auth_mode}
+                onChange={(e) => putConnection("custom_auth_mode", e.target.value)}
+              >
+                <option value="none">Không xác thực</option>
+                <option value="bearer">Bearer API key</option>
+                <option value="header">Header tùy chỉnh</option>
+              </select>
+            </label>
+            {connection.custom_auth_mode === "header" && (
+              <label>
+                Tên auth header
+                <input
+                  value={connection.custom_auth_header}
+                  placeholder="Authorization"
+                  onChange={(e) => putConnection("custom_auth_header", e.target.value)}
+                />
+              </label>
+            )}
+            {connection.custom_auth_mode !== "none" && (
+              <label>
+                {connection.custom_auth_mode === "bearer" ? "API key" : "Giá trị auth header"}
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={customAuthValue}
+                  placeholder={connections.custom?.credential_configured ? "Đã lưu · để trống để giữ giá trị hiện tại" : "Dán key hoặc giá trị header"}
+                  onChange={(e) => { setCustomAuthValue(e.target.value); setClearCustomAuth(false); }}
+                />
+              </label>
+            )}
+            {connections.custom?.credential_configured && (
+              <button type="button" disabled={busy} onClick={() => { setCustomAuthValue(""); setClearCustomAuth(true); }}>
+                Xóa thông tin xác thực đã lưu
+              </button>
+            )}
+            <label className="review">
+              <input
+                type="checkbox"
+                checked={connection.custom_send_effort}
+                onChange={(e) => putConnection("custom_send_effort", e.target.checked)}
+              />
+              Gửi tham số reasoning effort cho endpoint
+            </label>
+            <p className="muted">Base URL kết thúc ở /v1; app tự gọi /chat/completions. Kiểm tra kết nối gửi một yêu cầu ngắn đến model.</p>
+          </>
+        )}
+        <div className="actions">
+          <button
+            type="button"
+            className="primary"
+            disabled={busy}
+            onClick={() => saveConnection({
+              ...connection,
+              openai_api_key: openaiKey || undefined,
+              custom_auth_value: customAuthValue || undefined,
+              clear_openai_key: clearOpenaiKey,
+              clear_custom_auth: clearCustomAuth,
+            })}
+          >
+            Lưu & kiểm tra kết nối
+          </button>
+          {connection.active_provider !== "claude" && (
+            <button type="button" disabled={busy} onClick={() => testConnection(connection.active_provider)}>
+              Kiểm tra cấu hình đã lưu
+            </button>
+          )}
+        </div>
         <p className="muted">
-          Gateway: {providers.gateway?.status || "Chưa chọn"} · GPT: chưa khả
-          dụng trong bản này.
+          Đang chọn: {connections.active_provider === "openai" ? "GPT" : connections.active_provider === "custom" ? "Custom endpoint" : "Claude"}
         </p>
+        {activeConnection.status && <p>Trạng thái kết nối: {activeConnection.status}</p>}
+      </section>
+      <section className="panel form-section">
+        <h2>Một agent cho mỗi job</h2>
+        <p>Giữ cùng model và hội thoại từ đọc nguồn đến xuất DXF. Agent tự rà soát, công cụ local kiểm tra hình học và file xuất.</p>
+        <div className="form-grid">
+          <label>Model Claude
+            <select value={form.agent_model || "sonnet-5.5"} onChange={(e) => put("agent_model", e.target.value)}>
+              {["haiku-5.5", "sonnet-5.5", "opus-5.5"].map(m => <option key={m}>{m}</option>)}
+            </select>
+          </label>
+          <label>Mức suy luận Claude
+            <select value={form.agent_effort || "medium"} onChange={(e) => put("agent_effort", e.target.value)}>
+              <option value="medium">Vừa · tiết kiệm</option>
+              <option value="high">Cao</option>
+              <option value="xhigh">Rất cao</option>
+              <option value="max">Tối đa</option>
+            </select>
+          </label>
+        </div>
+        <p>GPT và Custom dùng model đã chọn trong Kết nối AI. Không tự chuyển model giữa job.</p>
       </section>
       <button className="primary" disabled={busy}>
         Lưu cài đặt

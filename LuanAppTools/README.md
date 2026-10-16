@@ -22,9 +22,17 @@ Tùy chỉnh cổng và thư mục trạng thái local:
 
 Trong **Cài đặt**, mỗi dòng nhập một root như `\\server\banve\2026`. Bấm **Lưu cài đặt**, **Công việc → Quét thư mục**, chọn job rồi **Chạy đã chọn**. Mỗi job là thư mục có trọn bộ PDF và DATA DXF; không chọn thư mục chứa file tham chiếu trộn với nguồn.
 
+**Thư mục workspace chung** mặc định là thư mục dữ liệu app (`%LOCALAPPDATA%\LuanAppTools`). Bản nguồn cố định ở `cache\<job-id>\<source-hash>` và dữ liệu xử lý từng lượt ở `work\<run-id>`. Có thể nhập đường dẫn gốc khác trong Cài đặt; thay đổi chỉ áp dụng cho lượt chạy mới. Đường dẫn cụ thể của mỗi lượt được hiển thị trong chi tiết job.
+
 DXF tổng nằm tại thư mục job: `<JOB>_ALL.dxf` nếu toàn PASS, hoặc `<JOB>_ALL_REVIEW_ONLY.dxf` khi còn REVIEW theo hợp đồng repo. Bật DXF riêng để xuất **mã PASS** vào `parts_dxf` hoặc đích đã cấu hình. Nút mở thư mục thực hiện trên máy Windows chạy app. Chi tiết có nguồn PDF, preview DXF kéo/zoom, tải file, hồ sơ từng mã, hoạt động, usage và lịch sử. Xác nhận “đã kiểm tra” gắn đúng phiên bản kết quả, tách biệt PASS kỹ thuật.
 
-Model được tự điều phối và nâng cấp theo độ khó; mỗi mã tối đa hai lượt giải trong một lần chạy. Không tự bật 9Router: khi Claude không dùng được, cấu hình endpoint/model rồi chọn **Tiếp tục bằng 9Router** tại job. App kiểm tra ảnh/tool/schema trước khi cho tiếp tục; phần QA cũng đi qua gateway đã chọn khi fallback. GPT chưa bật.
+Trong **Cài đặt → Kết nối AI**, chọn provider dùng cho job mới:
+
+- **Claude**: bấm **Đăng nhập Claude**, hoàn tất cửa sổ Claude Code rồi bấm **Kiểm tra kết nối**.
+- **GPT**: nhập model và OpenAI API key. API key dùng thanh toán API riêng, không dùng gói ChatGPT.
+- **Custom endpoint**: nhập base URL OpenAI-compatible, model ID, rồi chọn không xác thực, Bearer API key hoặc header tùy chỉnh.
+
+Bấm **Lưu & kiểm tra kết nối**. Khóa API được mã hóa bằng Windows DPAPI theo tài khoản Windows hiện tại; app không trả khóa về giao diện và không lưu khóa vào settings, run hay repo. Provider đã chọn được dùng cho job mới; có thể đổi lựa chọn bất cứ lúc nào. Model Claude theo độ khó vẫn giữ cấu hình riêng; GPT/custom dùng model đã nhập. Mỗi mã tối đa hai lượt giải trong một lần chạy.
 
 ## Khôi phục và xử lý lỗi
 

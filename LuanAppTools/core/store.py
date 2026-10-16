@@ -154,6 +154,14 @@ class Store:
     def resume_run(self, run_id: str) -> dict:
         """Unpause and queue in one writer transaction visible to the scheduler."""
         with self.transaction() as db:
+            prior = db.execute('SELECT * FROM runs WHERE id=?', (run_id,)).fetchone()
+            if prior and prior['status'] == 'error':
+                checkpoint = json.loads(prior['checkpoint'])
+                if not json.loads(prior['config']).get('single_agent') or not checkpoint.get('agent') or checkpoint.get('pending') or prior['lease']:
+                    raise ValueError('This error cannot resume its conversation; start a new run')
+                # The current-generation and lease checks below still apply. A
+                # rejected transaction rolls this change back; budgets are kept.
+                db.execute("UPDATE runs SET status='paused' WHERE id=?", (run_id,))
             row = self._assert_current(db, run_id)
             if row['lease']:
                 raise ValueError('Wait for worker acknowledgement or process reconciliation')
@@ -162,7 +170,7 @@ class Store:
             if row['status'] not in {'queued','paused','waiting_usage','waiting_fallback','waiting_output','reconciliation_required'}:
                 raise ValueError('Use explicit start with force=true for a new run')
             db.execute('UPDATE jobs SET paused=0 WHERE id=?', (row['job_id'],))
-            db.execute("UPDATE runs SET status='queued',updated=? WHERE id=?", (time.time(),run_id))
+            db.execute("UPDATE runs SET status='queued',error=NULL,updated=? WHERE id=?", (time.time(),run_id))
             return self._run(db.execute('SELECT * FROM runs WHERE id=?',(run_id,)).fetchone())
 
     def get_run(self, run_id: str) -> dict:
@@ -353,6 +361,32 @@ class Store:
                 for key, value in json.loads(row['metrics']).items():
                     result[key] = result.get(key, 0) + value
         return result
+
+    def reusable_inventories(self, job_id: str, source_hash: str, repo_commit: str,
+                             version: str, *, exclude_run: str) -> list[dict]:
+        """Find inventories explicitly validated by the current cache contract.
+
+        A raw provider response is never reusable. The caller must still validate
+        this candidate against the freshly prepared source evidence.
+        """
+        with self._connect() as db:
+            rows = db.execute(
+                'SELECT id,checkpoint FROM runs WHERE job_id=? AND source_hash=? '
+                'AND repo_commit=? AND id<>? ORDER BY generation DESC',
+                (job_id, source_hash, repo_commit, exclude_run),
+            ).fetchall()
+        candidates=[]
+        for row in rows:
+            try:
+                checkpoint = json.loads(row['checkpoint'])
+            except (TypeError, ValueError):
+                continue
+            if (checkpoint.get('inventory_version') == version
+                    and not checkpoint.get('inventory_rejected')
+                    and isinstance(checkpoint.get('inventory'), dict)):
+                candidates.append({'run_id': row['id'], 'inventory': checkpoint['inventory'],
+                                   'inventory_review': checkpoint.get('inventory_review')})
+        return sorted(candidates,key=lambda item:item['inventory_review'] is not None,reverse=True)
 
     def record_review(self, run_id: str, reviewer: str, note: str = '', *, reviewed: bool = True) -> int:
         with self.transaction() as db:

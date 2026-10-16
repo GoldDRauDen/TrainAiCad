@@ -13,9 +13,10 @@ import uuid
 
 from LuanAppTools.ai.claude import ClaudeRunner, stop_owned_process
 from LuanAppTools.ai.gateway import GatewayRunner
-from LuanAppTools.ai.protocol import ProviderError
-from LuanAppTools.cad.pipeline import CadPipeline, PipelineError, Paused, RunControl, reconcile_request
+from LuanAppTools.ai.protocol import AIRequest, ProviderError, validate_schema
+from LuanAppTools.cad.pipeline import CadPipeline, PipelineError, Paused, RunControl, STAGE_SCHEMAS, interaction_schema, reconcile_request
 from LuanAppTools.cad.repository import PinnedRepository
+from LuanAppTools.core.credentials import CredentialStore
 from LuanAppTools.core.settings import Settings
 from LuanAppTools.core.sources import discover_jobs, snapshot_job, contained_path, file_hash
 from LuanAppTools.core.store import Store
@@ -30,6 +31,7 @@ class ApplicationService:
         self.data_dir = Path(data_dir).resolve()
         self.repo_root = Path(repo_root).resolve()
         self.settings = Settings.load(self.data_dir, validate_roots=False)
+        self.credentials = CredentialStore(self.data_dir)
         self.store = Store(self.data_dir / 'state.sqlite',busy_timeout=25)
         self.mutations = AsyncMutations()
         self.publisher = OwnedPublisher(self.store,self.data_dir/'history',self.repo_root,command=publication_command,mutation=self.mutations.run)
@@ -50,8 +52,11 @@ class ApplicationService:
         self._probes = {}
         self._retry_at = {}
         self._provider = {'status':'unchecked', 'message':'Checked when requested or before work starts'}
+        self._connection_status = {}
+        self._claude_login_process = None
         self.gateway_reports = {}
         self._blocked_jobs = set()
+        self._source_profiles = {}
         self.last_error = None
 
     async def open(self, *, start_scheduler=True):
@@ -215,17 +220,200 @@ class ApplicationService:
                 contained_path(Path(approved), destination.relative_to(approved))
             else:
                 contained_path(destination, 'destination-scope-check')
+        connection = self._connection_config(self.settings.active_provider)
         return {'difficulty':difficulty, 'individual':individual, 'parts_destination':str(destination) if destination else None,
+                'single_agent':True, 'agent_model':{'model':self.settings.agent_model,'effort':self.settings.agent_effort},
                 'models':self.settings.public_dict()['models'], 'attempt_timeout':self.settings.attempt_timeout,
-                'gateway_authorized':False, 'gateway_url':self.settings.gateway_url,
-                'gateway_model':self.settings.gateway_model, 'gateway_effort':self.settings.gateway_effort}
+                'workspace_root':self.settings.workspace_root,
+                'provider':connection['provider'], 'gateway_authorized':connection['provider'] != 'claude',
+                'gateway_url':connection['endpoint'], 'gateway_model':connection['model'],
+                'gateway_effort':connection['effort'], 'provider_auth_mode':connection['auth_mode'],
+                'provider_auth_header':connection['auth_header'], 'provider_send_effort':connection['send_effort']}
 
-    async def _snapshot(self, job):
+    def _connection_config(self, provider):
+        if provider == 'claude':
+            return {'provider':'claude','endpoint':'','model':'','effort':'high','auth_mode':'none',
+                    'auth_header':'Authorization','send_effort':False}
+        if provider == 'openai':
+            model = self.settings.openai_model.strip()
+            if not model:
+                raise ValueError('Nhập model GPT trong phần Kết nối AI')
+            if not self.credentials.is_set('openai'):
+                raise ValueError('Hãy nhập và lưu OpenAI API key trước khi chạy')
+            return {'provider':'openai','endpoint':'https://api.openai.com/v1','model':model,
+                    'effort':self.settings.gateway_effort if self.settings.gateway_effort in {'medium','high'} else 'high',
+                    'auth_mode':'bearer','auth_header':'Authorization','send_effort':True}
+        if provider == 'custom':
+            model = self.settings.gateway_model.strip()
+            if not model:
+                raise ValueError('Nhập model cho custom endpoint')
+            mode = self.settings.custom_auth_mode
+            if mode in {'bearer','header'} and not self.credentials.is_set('custom'):
+                raise ValueError('Hãy nhập thông tin xác thực cho endpoint hoặc chọn Không xác thực')
+            return {'provider':'custom','endpoint':self.settings.gateway_url,'model':model,
+                    'effort':self.settings.gateway_effort,'auth_mode':mode,
+                    'auth_header':self.settings.custom_auth_header,
+                    'send_effort':self.settings.custom_send_effort}
+        raise ValueError('Chọn Claude, GPT hoặc Custom endpoint')
+
+    def _make_gateway(self, endpoint, *, headers=None, send_effort=True):
+        # Keep injected test/fake factories compatible with the original one-argument contract.
+        if self.gateway_factory is GatewayRunner:
+            return self.gateway_factory(endpoint, headers=headers, send_effort=send_effort)
+        return self.gateway_factory(endpoint)
+
+    def _gateway_for_config(self, config):
+        provider = config.get('provider', 'custom')
+        mode = config.get('provider_auth_mode', 'none')
+        headers = {}
+        if provider == 'openai':
+            key = self._credential('openai')
+            if not key:
+                raise ProviderError('auth_unavailable', 'OpenAI API key is not configured')
+            headers['Authorization'] = 'Bearer ' + key
+        elif mode in {'bearer','header'}:
+            key = self._credential('custom')
+            if not key:
+                raise ProviderError('auth_unavailable', 'Custom endpoint credentials are not configured')
+            if mode == 'bearer':
+                headers['Authorization'] = 'Bearer ' + key
+            else:
+                headers[config.get('provider_auth_header', 'Authorization')] = key
+        return self._make_gateway(config['gateway_url'],headers=headers,
+                                  send_effort=config.get('provider_send_effort',provider == 'openai'))
+
+    def _credential(self, name):
+        try:
+            return self.credentials.get(name)
+        except RuntimeError as exc:
+            raise ProviderError(
+                'auth_unavailable', 'Saved credentials cannot be unlocked; enter the key again'
+            ) from exc
+
+    def connection_status(self):
+        openai_configured=self.credentials.is_set('openai')
+        custom_credential=self.credentials.is_set('custom')
+        custom_configured=bool(self.settings.gateway_model.strip()) and (
+            self.settings.custom_auth_mode == 'none' or custom_credential
+        )
+        return {
+            'active_provider':self.settings.active_provider,
+            'claude':{'auth_status':self._provider.get('status','unchecked'),
+                      'auth_method':self._provider.get('auth_method'),
+                      'model':self.settings.models['medium']['model'],
+                      'status':'not_tested',**self._connection_status.get('claude',{})},
+            'openai':{'model':self.settings.openai_model,'endpoint':'https://api.openai.com/v1',
+                      'credential_configured':openai_configured,
+                      'status':'saved' if openai_configured and self.settings.openai_model else 'not_configured',
+                      **self._connection_status.get('openai',{})},
+            'custom':{'endpoint':self.settings.gateway_url,'model':self.settings.gateway_model,
+                      'auth_mode':self.settings.custom_auth_mode,'auth_header':self.settings.custom_auth_header,
+                      'credential_configured':custom_credential,
+                      'status':'saved' if custom_configured else 'not_configured',
+                      **self._connection_status.get('custom',{})},
+        }
+
+    def update_connection(self, changes):
+        allowed = {'active_provider','openai_model','gateway_url','gateway_model','gateway_effort',
+                   'custom_auth_mode','custom_auth_header','custom_send_effort',
+                   'openai_api_key','custom_auth_value','clear_openai_key','clear_custom_auth'}
+        if not isinstance(changes,dict) or set(changes)-allowed:
+            raise ValueError('Invalid connection settings')
+        openai_key=changes.pop('openai_api_key',None)
+        custom_value=changes.pop('custom_auth_value',None)
+        clear_openai=changes.pop('clear_openai_key',False)
+        clear_custom=changes.pop('clear_custom_auth',False)
+        if type(clear_openai) is not bool or type(clear_custom) is not bool:
+            raise ValueError('Invalid credential action')
+        if openai_key is not None and not isinstance(openai_key,str):
+            raise ValueError('Invalid OpenAI API key')
+        if custom_value is not None and not isinstance(custom_value,str):
+            raise ValueError('Invalid custom credential')
+        # Validate non-secret settings before changing the protected credential files.
+        candidate=Settings(self.data_dir,**{**self.settings.public_dict(),**changes})
+        if openai_key:
+            self.credentials.set('openai',openai_key)
+        elif clear_openai:
+            self.credentials.delete('openai')
+        if custom_value:
+            self.credentials.set('custom',custom_value)
+        elif clear_custom:
+            self.credentials.delete('custom')
+        candidate.save(); self.settings=candidate
+        self._connection_status.clear()
+        return self.connection_status()
+
+    async def test_connection(self, provider=None):
+        provider=provider or self.settings.active_provider
+        if provider == 'claude':
+            try:
+                auth=await self.runner.preflight()
+                self._provider={'status':'ready',**auth}
+                model=self.settings.models['medium']
+                workspace=self.data_dir/'probes'
+                workspace.mkdir(parents=True,exist_ok=True)
+                request=AIRequest(
+                    model=model['model'],effort=model['effort'],
+                    prompt='Connection check. Return an object with empty pages, views, notes, data_entities, and codes arrays.',
+                    schema=interaction_schema('intake'),timeout=45,
+                )
+                result=await self.runner.complete(
+                    request,workspace=workspace,cancel=asyncio.Event(),emit=self._probe_event
+                )
+                validate_schema(result.data, STAGE_SCHEMAS['intake'])
+            except ProviderError as exc:
+                if exc.kind in {'auth_unavailable','unavailable'}:
+                    self._provider={'status':exc.kind,'message':str(exc)}
+                self._connection_status['claude']={'status':exc.kind,'message':str(exc)}
+                raise
+            self._connection_status['claude']={'status':'ready','model':result.actual_model}
+            return {'provider':'claude','status':'ready','model':result.actual_model,
+                    'auth_method':auth['auth_method']}
+        if provider not in {'openai','custom'}:
+            raise ValueError('Chọn Claude, GPT hoặc Custom endpoint')
+        connection=self._connection_config(provider)
+        config={'provider':connection['provider'],'gateway_url':connection['endpoint'],
+                'provider_auth_mode':connection['auth_mode'],'provider_auth_header':connection['auth_header'],
+                'provider_send_effort':connection['send_effort']}
+        runner=self._gateway_for_config(config)
+        try:
+            result=await runner.test_connection(connection['model'])
+        except ProviderError as exc:
+            self._connection_status[provider]={'status':exc.kind,'message':str(exc)}
+            raise
+        self._connection_status[provider]={'status':'ready','model':result['model']}
+        return {'provider':provider,'status':'ready','model':result['model']}
+
+    async def start_claude_login(self):
+        try:
+            auth=await self.runner.preflight()
+        except ProviderError as exc:
+            if exc.kind != 'auth_unavailable':
+                raise
+        else:
+            self._provider={'status':'ready',**auth}
+            return {'started':False,'already_connected':True,
+                    'message':'Claude đã đăng nhập trên máy này.'}
+        if self._claude_login_process and self._claude_login_process.poll() is None:
+            return {'started':False,'in_progress':True,
+                    'message':'Cửa sổ đăng nhập Claude đang mở.'}
+        process=self.runner.login()
+        self._claude_login_process=process
+        return {'started':True,'pid':process.pid,
+                'message':'Đã mở cửa sổ đăng nhập Claude. Hoàn tất đăng nhập rồi bấm Kiểm tra kết nối.'}
+
+    def _workspace_root(self, run=None):
+        if run is None:
+            return Path(self.settings.workspace_root)
+        return Path(run['config'].get('workspace_root') or self.data_dir)
+
+    async def _snapshot(self, job, workspace_root=None):
         candidates = await asyncio.to_thread(discover_jobs, [job['folder']], owned_paths=self._owned(job['id']))
         source = next((s for s in candidates if s.id == job['id']), None)
         if not source:
             raise ValueError('Job has no readable PDF source')
-        return await asyncio.to_thread(snapshot_job, source, self.data_dir/'cache', stable_seconds=self.settings.stable_seconds)
+        root=Path(workspace_root or self.settings.workspace_root)
+        return await asyncio.to_thread(snapshot_job, source, root/'cache', stable_seconds=self.settings.stable_seconds)
 
     def _commit(self):
         return subprocess.run(['git','rev-parse','HEAD'], cwd=self.repo_root, check=True, capture_output=True, text=True).stdout.strip()
@@ -235,7 +423,7 @@ class ApplicationService:
         async with lock:
             job = self._allowed_job(job_id)
             config = self._config(options)
-            snapshot = await self._snapshot(job)
+            snapshot = await self._snapshot(job,config['workspace_root'])
             old = job['current_run']
             if old: await self.publisher.stop(old)
             await self.mutations.run(self.store.set_tracked,job_id, True)
@@ -264,9 +452,11 @@ class ApplicationService:
                         return hashlib.sha256(json.dumps(manifest,sort_keys=True,separators=(',',':')).encode()).hexdigest()
                     if current and await asyncio.to_thread(digest) == current['source_hash']:
                         continue
-                    snapshot = await self._snapshot(job)
+                    workspace_root=self.settings.workspace_root
+                    snapshot = await self._snapshot(job,workspace_root)
                     if current: await self.publisher.stop(current['id'])
-                    run = await self.mutations.run(self.store.create_run,job['id'],snapshot.source_hash,self._commit(),snapshot_dir=snapshot.directory,config=({**current['config'],'gateway_authorized':False} if current else self._config({})))
+                    config=({**current['config'],'gateway_authorized':False,'workspace_root':workspace_root} if current else self._config({}))
+                    run = await self.mutations.run(self.store.create_run,job['id'],snapshot.source_hash,self._commit(),snapshot_dir=snapshot.directory,config=config)
                     if current and run['id'] != current['id']:
                         if current['id'] in self.controls:
                             self.controls[current['id']].cancel.set()
@@ -339,13 +529,24 @@ class ApplicationService:
         if run['status'] not in {'paused','queued','waiting_usage','waiting_fallback','reconciliation_required'}:
             raise ValueError('Gateway selection requires a resumable run')
         config = dict(run['config'])
-        model = model or self.settings.gateway_model
-        effort = effort or self.settings.gateway_effort
+        provider=self.settings.active_provider
+        if provider == 'claude':
+            if self.settings.gateway_model and (self.settings.custom_auth_mode == 'none' or self.credentials.is_set('custom')):
+                provider='custom'
+            elif self.settings.openai_model and self.credentials.is_set('openai'):
+                provider='openai'
+            else:
+                raise ValueError('Chọn và lưu một kết nối GPT hoặc Custom endpoint trong phần Kết nối AI')
+        connection=self._connection_config(provider)
+        model = model or connection['model']
+        effort = effort or connection['effort']
         if not isinstance(model,str) or not model.strip() or len(model)>200 or any(ord(c)<32 for c in model) or effort not in {'medium','high','xhigh','max'}:
             raise ValueError('Select a valid gateway model and effort')
         await self.mutations.run(self.store.set_run_status,run['id'],'waiting_fallback')
-        endpoint = self.settings.gateway_url
-        gateway = self.gateway_factory(endpoint)
+        endpoint = connection['endpoint']
+        provider_config={'provider':provider,'gateway_url':endpoint,'provider_auth_mode':connection['auth_mode'],
+                         'provider_auth_header':connection['auth_header'],'provider_send_effort':connection['send_effort']}
+        gateway = self._gateway_for_config(provider_config)
         async with self.model_slot(model,cancel=cancel):
             report = await gateway.probe(model=model,effort=effort,workspace=self.data_dir/'probes',cancel=cancel,emit=self._probe_event,authorized=True)
         if cancel.is_set() or self._closing:
@@ -353,7 +554,9 @@ class ApplicationService:
         self.gateway_reports[(endpoint,model,effort)] = asdict(report) | {'ready':report.ready}
         if not report.ready:
             raise ProviderError('gateway_incompatible','Gateway capabilities were not verified for this endpoint/model')
-        config.update(gateway_authorized=True,gateway_url=endpoint,gateway_model=model,gateway_effort=effort)
+        config.update(provider=provider,gateway_authorized=True,gateway_url=endpoint,gateway_model=model,
+                      gateway_effort=effort,provider_auth_mode=connection['auth_mode'],
+                      provider_auth_header=connection['auth_header'],provider_send_effort=connection['send_effort'])
         # Recheck current/terminal/lease/pause atomically after the awaited probe.
         lease = await self.mutations.run(self.store.claim_gateway,run['id'],config,self.owner)
         control = self._control(self.store.get_run(run['id']),lease)
@@ -364,7 +567,7 @@ class ApplicationService:
             await self.mutations.run(self._finish_gateway,run['id'],lease,failed=True)
             raise
         await self.mutations.run(self._finish_gateway,run['id'],lease)
-        await self.mutations.run(self.store.append_event,run['id'],'gateway_selected',{'endpoint':endpoint,'model':model,'effort':effort,'capabilities':asdict(report)})
+        await self.mutations.run(self.store.append_event,run['id'],'gateway_selected',{'provider':provider,'endpoint':endpoint,'model':model,'effort':effort,'capabilities':asdict(report)})
         return self.store.get_run(run['id'])
 
     def _finish_gateway(self,run_id,lease,*,failed=False):
@@ -392,7 +595,7 @@ class ApplicationService:
 
     def _control(self,run,lease):
         config = run['config']
-        control = RunControl(self.store,run['id'],lease,run['source_hash'],self.data_dir/'work'/run['id'],slot=self.model_slot,
+        control = RunControl(self.store,run['id'],lease,run['source_hash'],self._workspace_root(run)/'work'/run['id'],slot=self.model_slot,
                           gateway_authorized=config.get('gateway_authorized',False),gateway_model=config.get('gateway_model'),gateway_effort=config.get('gateway_effort'),mutation=self.mutations.run)
         control.slot = lambda model: self.model_slot(model,cancel=control.cancel)
         return control
@@ -424,7 +627,8 @@ class ApplicationService:
 
     async def _work(self,run,control):
         started = time.monotonic()
-        await self.mutations.run(self.store.append_event,run['id'],'worker_started',{'provider':'9router' if control.gateway_authorized else 'claude'})
+        provider=run['config'].get('provider','9router' if control.gateway_authorized else 'claude')
+        await self.mutations.run(self.store.append_event,run['id'],'worker_started',{'provider':provider})
         try:
             if run['publication']:
                 await control.boundary()
@@ -443,8 +647,8 @@ class ApplicationService:
                 async with self._repo_locks.setdefault(run['repo_commit'],asyncio.Lock()):
                     repo = await asyncio.to_thread(PinnedRepository.pin,self.repo_root,self.data_dir/'engines'/run['repo_commit'],run['repo_commit'])
                 config = run['config']
-                gateway = self.gateway_factory(config['gateway_url']) if control.gateway_authorized else None
-                pipeline = self.pipeline_factory(repo,self.runner,gateway=gateway,models=config.get('models'),attempt_timeout=config.get('attempt_timeout',1200),difficulty=config.get('difficulty','auto'))
+                gateway = self._gateway_for_config(config) if control.gateway_authorized else None
+                pipeline = self.pipeline_factory(repo,self.runner,gateway=gateway,models=config.get('models'),attempt_timeout=config.get('attempt_timeout',1200),difficulty=config.get('difficulty','auto'),single_agent=config.get('single_agent',False),agent_model=config.get('agent_model'))
                 result = await pipeline.run(run['snapshot_dir'],control,job_name=self.store.get_job(run['job_id'])['name'],individual=config.get('individual',False))
                 await control.boundary()
                 await self.publisher.run(run,control,files=result.staged_files,
@@ -499,12 +703,14 @@ class ApplicationService:
                 self.last_error = str(exc)
             await asyncio.sleep(.1)
 
-    def _metrics(self,current):
+    def _metrics(self,current,*,detailed=False):
         durations={'active_seconds':0.0,'paused_seconds':0.0,'waiting_seconds':0.0}
-        if not current: return durations,{},{}
+        if not current: return durations,{},{},{},{},0
         with self.store._connect() as db:
             events=db.execute("SELECT kind,payload,created FROM events WHERE run_id=? AND kind IN ('worker_started','worker_stopped','worker_state','recovered') ORDER BY id",(current['id'],)).fetchall()
             overhead_rows=db.execute("SELECT u.metrics FROM usage u JOIN events e ON e.run_id=u.run_id AND e.event_key=u.event_key WHERE u.run_id=? AND e.kind='usage' AND json_extract(e.payload,'$.code') IS NULL",(current['id'],)).fetchall()
+            request_rows=(db.execute("SELECT kind,payload FROM events WHERE run_id=? AND kind IN ('request_prepared','provider_process_started') ORDER BY id",(current['id'],)).fetchall() if detailed else [])
+            usage_rows=(db.execute("SELECT e.payload,u.metrics FROM usage u JOIN events e ON e.run_id=u.run_id AND e.event_key=u.event_key WHERE u.run_id=? AND e.kind='usage'",(current['id'],)).fetchall() if detailed else [])
         state='queued'; since=current['created']
         end=min(time.time(),current['updated']) if current['status'] in {'completed','cancelled','error','superseded'} else time.time()
         def accrue(until):
@@ -523,18 +729,52 @@ class ApplicationService:
         overhead={}
         for row in overhead_rows:
             for key,value in json.loads(row['metrics']).items(): overhead[key]=overhead.get(key,0)+value
-        return durations,self.store.usage(current['id']),overhead
+        by_stage={}; requests={}; started=set(); measured=set()
+        for row in request_rows:
+            payload=json.loads(row['payload']); stage=payload.get('stage','unknown')
+            if row['kind']=='request_prepared':
+                entry=requests.setdefault(stage,{'calls':0,'prompt_characters':0,'image_count':0,'image_bytes':0})
+                entry['calls']+=1
+                for key in ('prompt_characters','image_count','image_bytes'):
+                    entry[key]+=payload.get(key,0)
+            elif row['kind']=='provider_process_started':
+                started.add(payload.get('request_id'))
+        for row in usage_rows:
+            payload=json.loads(row['payload']); stage=payload.get('stage','unknown')
+            measured.add(payload.get('request_id'))
+            entry=by_stage.setdefault(stage,{})
+            for key,value in json.loads(row['metrics']).items():
+                entry[key]=entry.get(key,0)+value
+        unknown=len(started-measured)
+        return durations,self.store.usage(current['id']),overhead,by_stage,requests,unknown
+
+    def _source_profile(self, folder: Path, source_hash: str | None):
+        """Local, cached source size signal; opening a job never calls a model."""
+        files=sorted(path for path in folder.rglob('*') if path.is_file() and path.suffix.lower()=='.pdf')
+        signature=(str(folder),source_hash,tuple((str(p),p.stat().st_size,p.stat().st_mtime_ns) for p in files))
+        if signature in self._source_profiles:
+            return self._source_profiles[signature]
+        import fitz
+        profile={'pdf_files':len(files),'pages':0,'pages_without_text':0,'source_bytes':sum(p.stat().st_size for p in files)}
+        for path in files:
+            with fitz.open(path) as doc:
+                profile['pages']+=len(doc)
+                profile['pages_without_text']+=sum(len(page.get_text().strip())<50 for page in doc)
+        self._source_profiles={signature:profile}
+        return profile
 
     def job(self,job_id,*,summary=False):
         job=self.store.get_job(job_id)
         summaries=self.store.run_summaries(job_id=job_id,run_id=job['current_run'] if summary else None,limit=1 if summary else 100)
         current=next((r for r in summaries if r['id']==job['current_run']),None)
         counts=self.store.part_counts(current['id']) if current else {}
-        durations,usage,overhead=self._metrics(current)
+        durations,usage,overhead,usage_by_stage,request_stats,unmeasured_requests=self._metrics(current,detailed=not summary)
         # The dashboard table never opens source/output files or reads checkpoints.
         result={**job,'status':current['status'] if current else 'discovered','run':current,
-                'technical_counts':counts,'usage':usage,'durations':durations,
-                'provider':'9router' if current and current['config'].get('gateway_authorized') else 'claude',
+                'technical_counts':counts,'usage':usage,'usage_by_stage':usage_by_stage,
+                'request_stats':request_stats,'unmeasured_requests':unmeasured_requests,
+                'durations':durations,
+                'provider':(current['config'].get('provider') or ('9router' if current['config'].get('gateway_authorized') else 'claude')) if current else 'claude',
                 'blocked_reason':'Previous process identity cannot be verified' if job_id in self._blocked_jobs else None,
                 'shared_overhead_usage':overhead}
         if summary:
@@ -543,15 +783,42 @@ class ApplicationService:
             result['reviewed']=bool(row and row['reviewed'] and current['status']=='completed')
             result['review_verification']='recorded_revision_only'
             return result
+        full_run=self.store.get_run(current['id']) if current else None
         parts=self.store.parts(current['id']) if current else []
         reviews=self.store.reviews(current['id']) if current else []
         files=self.files(job_id)
         outputs=[f for f in files if f['kind']=='output' and f['current']]
+        individual_dir=(Path(current['config'].get('parts_destination') or job['folder']/'parts_dxf')
+                        if current and current['config'].get('individual') else None)
+        individual_ready=bool(current and current['status']=='completed' and individual_dir
+                              and individual_dir.is_dir() and any(
+                                  Path(f['path']).is_relative_to(individual_dir)
+                                  for f in outputs
+                              ))
         revision=[{'path':f['path'],'sha256':f['sha256']} for f in outputs]
         matching=[r for r in reviews if current and r['source_hash']==current['source_hash'] and sorted(r['outputs'],key=lambda x:x['path'])==sorted(revision,key=lambda x:x['path'])]
         result.update(runs=summaries,parts=parts,reviews=reviews,files=files,
+                      workspace_path=str(self._workspace_root(current)/'work'/current['id']) if current else None,
+                      snapshot_path=str(full_run['snapshot_dir']) if full_run and full_run['snapshot_dir'] else None,
+                      individual_output_path=str(individual_dir) if individual_dir else None,
+                      individual_output_available=individual_ready,
                       reviewed=bool(current and current['status']=='completed' and outputs and matching and matching[-1]['reviewed']),
                       review_verification='current_files_verified')
+        with self.store._connect() as db:
+            row=db.execute(
+                "SELECT COUNT(*) AS n FROM events started JOIN runs r ON r.id=started.run_id "
+                "WHERE r.job_id=? AND started.kind='provider_process_started' "
+                "AND NOT EXISTS (SELECT 1 FROM events measured WHERE measured.run_id=started.run_id "
+                "AND measured.kind='usage' AND json_extract(measured.payload,'$.request_id')="
+                "json_extract(started.payload,'$.request_id'))",
+                (job_id,),
+            ).fetchone()
+        result['unmeasured_job_requests']=row['n']
+        source_folder=full_run['snapshot_dir'] if full_run and full_run['snapshot_dir'] else job['folder']
+        try:
+            result['source_profile']=self._source_profile(Path(source_folder),current['source_hash'] if current else None)
+        except (OSError,ValueError):
+            result['source_profile']=None
         return result
 
     def jobs(self):
@@ -586,7 +853,7 @@ class ApplicationService:
         if current and current['snapshot_dir']:
             for entry in json.loads((current['snapshot_dir']/'manifest.json').read_text()):
                 add('source',contained_path(current['snapshot_dir'],entry['path']),current['id'],entry['sha256'])
-            workspace = self.data_dir/'work'/current['id']
+            workspace = self._workspace_root(current)/'work'/current['id']
             if workspace.exists():
                 for image in (workspace/'pages').glob('*.png'):
                     add('page',image,current['id'])
@@ -621,7 +888,12 @@ class ApplicationService:
             roots = [self.data_dir/'history'/job_id/run['id']] if record['status']=='archived' else [job['folder']]
             if record['status']!='archived' and config.get('parts_destination'): roots.append(Path(config['parts_destination']))
         else:
-            roots = [self.store.get_job(job_id)['folder'],self.data_dir/'cache',self.data_dir/'work']
+            owner = self.store.get_run(record['run_id']) if record['run_id'] else None
+            roots = [self.store.get_job(job_id)['folder']]
+            if owner:
+                if owner['snapshot_dir']:
+                    roots.append(Path(owner['snapshot_dir']))
+                roots.append(self._workspace_root(owner)/'work'/owner['id'])
         for root in roots:
             if path.is_relative_to(root) and path != root:
                 return contained_path(root,path.relative_to(root)),record
@@ -643,8 +915,11 @@ class ApplicationService:
         elif target=='individual':
             run=self._current(job_id)
             path=Path(run['config'].get('parts_destination') or job['folder']/'parts_dxf')
-            if not run['config'].get('individual') or not path.is_dir():
-                raise ValueError('Individual output folder unavailable')
+            current_outputs=[f for f in self.files(job_id) if f['kind']=='output' and f['current']]
+            if (not run['config'].get('individual') or run['status']!='completed'
+                    or not path.is_dir() or not any(Path(f['path']).is_relative_to(path)
+                                                     for f in current_outputs)):
+                raise ValueError('Output riêng chưa được tạo cho lượt chạy hiện tại')
             contained_path(path,'folder-scope-check')
         else: raise ValueError('Unknown folder target')
         await asyncio.to_thread(self.folder_opener,path)

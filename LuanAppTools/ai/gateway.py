@@ -1,4 +1,4 @@
-"""Explicitly authorized OpenAI-compatible 9Router adapter. No automatic fallback."""
+"""Explicitly authorized OpenAI-compatible endpoint adapter. No automatic fallback."""
 
 import base64
 import json
@@ -46,7 +46,13 @@ class GatewayCapabilityReport:
 
 
 class GatewayRunner:
-    def __init__(self, endpoint="http://localhost:20128/v1"):
+    def __init__(
+        self,
+        endpoint="http://localhost:20128/v1",
+        *,
+        headers=None,
+        send_effort=True,
+    ):
         parsed = urlsplit(endpoint)
         if (
             parsed.scheme not in ("http", "https")
@@ -58,12 +64,39 @@ class GatewayRunner:
         ):
             raise ValueError("Gateway requires a credential-free HTTP endpoint")
         self.endpoint = endpoint.rstrip("/")
+        self.headers = dict(headers or {})
+        self.send_effort = bool(send_effort)
+
+    def _error_detail(self, response):
+        """Return a short upstream message without echoing configured secrets."""
+        try:
+            body = response.json()
+        except ValueError:
+            return ""
+        error = body.get("error") if isinstance(body, dict) else None
+        if isinstance(error, dict):
+            message = error.get("message")
+        elif isinstance(error, str):
+            message = error
+        else:
+            message = body.get("message") if isinstance(body, dict) else None
+        if not isinstance(message, str):
+            return ""
+        message = " ".join(message.split())
+        for value in self.headers.values():
+            if isinstance(value, str) and value:
+                message = message.replace(value, "[redacted]")
+                if value.lower().startswith("bearer "):
+                    token = value[7:].strip()
+                    if token:
+                        message = message.replace(token, "[redacted]")
+        return message[:400]
 
     def _body(self, request, workspace):
         if not request.gateway_authorized:
             raise ProviderError(
                 "authorization_required",
-                "Explicit run authorization is required for 9Router",
+                "Explicit run authorization is required for this AI endpoint",
             )
         content = [{"type": "text", "text": request.prompt}]
         for path in request.paths:
@@ -84,13 +117,24 @@ class GatewayRunner:
             )
         body = {
             "model": request.model,
-            "reasoning_effort": request.effort,
             "messages": [{"role": "user", "content": content}],
+            "stream": False,
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {"name": "cad_response", "schema": request.schema},
             },
         }
+        if request.history:
+            from dataclasses import replace
+            messages = []
+            for turn in request.history:
+                prior = replace(request, prompt=turn["prompt"], images=tuple(Path(p) for p in turn["images"]),
+                                paths=(), history=())
+                messages.extend(self._body(prior, workspace)["messages"])
+                messages.append({"role": "assistant", "content": json.dumps(turn["answer"], ensure_ascii=False, separators=(",", ":"))})
+            body["messages"] = messages + body["messages"]
+        if self.send_effort:
+            body["reasoning_effort"] = request.effort
         if request.tools:
             body["tools"] = [{"type": "function", "function": t} for t in request.tools]
 
@@ -108,12 +152,14 @@ class GatewayRunner:
                 timeout=request.timeout, follow_redirects=False, trust_env=False
             ) as client:
                 response = await client.post(
-                    self.endpoint + "/chat/completions", json=body
+                    self.endpoint + "/chat/completions",
+                    json=body,
+                    headers=self.headers,
                 )
         except httpx.ConnectError as exc:
             raise ProviderError(
                 "connection_refused",
-                "Cannot connect to 9Router; verify it is running",
+                "Cannot connect to the configured AI endpoint",
             ) from exc
         except httpx.RequestError as exc:
             raise ProviderError(
@@ -122,15 +168,22 @@ class GatewayRunner:
                 accepted=True,
             ) from exc
         if response.status_code == 429:
-            raise ProviderError("rate_limit", "9Router usage/rate limit")
-        if response.status_code in (401, 403):
+            raise ProviderError("rate_limit", "AI provider rate or usage limit")
+        if response.status_code == 401:
             raise ProviderError(
-                "auth_unavailable", "Check 9Router account configuration"
+                "auth_unavailable", "Check the API key or authentication header"
+            )
+        if response.status_code == 403:
+            detail = self._error_detail(response)
+            raise ProviderError(
+                "access_denied",
+                "The provider denied access to this model or account"
+                + (f": {detail}" if detail else ""),
             )
         if response.status_code != 200:
             raise ProviderError(
                 "provider_error",
-                f"9Router HTTP {response.status_code}",
+                f"AI endpoint HTTP {response.status_code}",
                 accepted=True,
             )
         completed = False
@@ -186,11 +239,11 @@ class GatewayRunner:
         except (KeyError, IndexError, AttributeError, ValueError, TypeError) as exc:
             raise ProviderError(
                 "malformed_output",
-                "Malformed 9Router response",
+                "Malformed AI endpoint response",
                 accepted=True,
                 outcome="completed_invalid" if completed else "unknown",
             ) from exc
-        if not calls:
+        if not calls and not request.session_id:
             validate_schema(data, request.schema)
         effort = obj.get("reasoning_effort")
         if effort and effort != request.effort:
@@ -212,6 +265,74 @@ class GatewayRunner:
                 }
             )
         return AIResult(data, usage, session, model, obj.get("reasoning_effort"), calls)
+
+    async def test_connection(self, model: str, *, timeout: float = 25) -> dict:
+        """Make one small, non-streaming request to verify URL, auth and model."""
+        if not isinstance(model, str) or not model.strip() or len(model) > 200:
+            raise ProviderError("model_unavailable", "Enter a model name first")
+        try:
+            async with httpx.AsyncClient(
+                timeout=timeout, follow_redirects=False, trust_env=False
+            ) as client:
+                response = await client.post(
+                    self.endpoint + "/chat/completions",
+                    headers=self.headers,
+                    json={
+                        "model": model.strip(),
+                        "messages": [
+                            {"role": "user", "content": "Reply with only OK."}
+                        ],
+                        "max_completion_tokens": 8,
+                        "stream": False,
+                    },
+                )
+        except httpx.ConnectError as exc:
+            raise ProviderError(
+                "connection_refused", "Cannot connect to the configured AI endpoint"
+            ) from exc
+        except httpx.TimeoutException as exc:
+            raise ProviderError(
+                "timeout", "AI connection check timed out", accepted=True
+            ) from exc
+        except httpx.RequestError as exc:
+            raise ProviderError(
+                "connection_unknown", "AI endpoint request failed", accepted=True
+            ) from exc
+        if response.status_code == 401:
+            raise ProviderError(
+                "auth_unavailable", "Authentication failed; check the API key or auth header"
+            )
+        if response.status_code == 403:
+            detail = self._error_detail(response)
+            raise ProviderError(
+                "access_denied",
+                "The provider denied access to this model or account"
+                + (f": {detail}" if detail else ""),
+            )
+        if response.status_code == 404:
+            detail = self._error_detail(response)
+            raise ProviderError(
+                "model_unavailable",
+                "Endpoint or model was not found; check the base URL and model ID"
+                + (f": {detail}" if detail else ""),
+            )
+        if response.status_code == 429:
+            raise ProviderError("rate_limit", "Provider rate or usage limit reached")
+        if response.status_code != 200:
+            raise ProviderError(
+                "provider_error", f"AI endpoint returned HTTP {response.status_code}"
+            )
+        try:
+            result = response.json()
+            text = result["choices"][0]["message"].get("content")
+            actual_model = result.get("model")
+            if not isinstance(text, str) or not text.strip():
+                raise ValueError()
+        except (ValueError, KeyError, IndexError, TypeError) as exc:
+            raise ProviderError(
+                "malformed_output", "AI endpoint returned an unsupported response"
+            ) from exc
+        return {"model": actual_model if isinstance(actual_model, str) else model}
 
     async def probe(
         self,

@@ -26,6 +26,16 @@ prompt=payload['message']['content'][0]['text']
 open('pid','w').write(str(os.getpid()))
 if prompt == 'hang': time.sleep(30)
 if prompt == 'malformed': print('not json'); sys.exit()
+if prompt == 'model_not_found':
+    print(json.dumps({'type':'assistant','message':{'model':'<synthetic>'},'error':'model_not_found'}),flush=True)
+    print(json.dumps({'type':'result','is_error':True,'result':'selected model not found'}),flush=True)
+    sys.exit(1)
+if prompt == 'schema_error':
+    print(json.dumps({'type':'assistant','message':{'model':'<synthetic>'},'error':'unknown'}),flush=True)
+    print(json.dumps({'type':'result','is_error':True,'result':'API Error: 400 tools.2.custom.input_schema.type: Field required'}),flush=True)
+    sys.exit(1)
+if prompt == 'synthetic':
+    print(json.dumps({'type':'assistant','message':{'model':'<synthetic>'}}),flush=True)
 print(json.dumps({'type':'system','subtype':'init','session_id':'s1','model':'wrong' if prompt=='mismatch' else 'claude-sonnet-5-5','effort':'high'}),flush=True)
 print(json.dumps({'type':'assistant','message':{'id':'m1','model':'claude-sonnet-5-5','usage':{'input_tokens':10,'output_tokens':2}}}),flush=True)
 print(json.dumps({'type':'result','subtype':'success','is_error':prompt=='rate','result':'rate_limit' if prompt=='rate' else '{"answer":42}', 'structured_output':{'answer':42},'session_id':'s1','usage':{'input_tokens':10,'output_tokens':5}}),flush=True)
@@ -127,6 +137,61 @@ def test_primary_environment_and_safe_flags(cli, tmp_path, monkeypatch):
     for flag in ("--restricted", "--safe-mode", "--strict-mcp-config"):
         assert flag in argv
     assert argv[argv.index("--tools") + 1] == "Read"
+
+
+@pytest.mark.parametrize(
+    "logical,cli_model",
+    [
+        ("haiku-5.5", "claude-haiku-5-5"),
+        ("sonnet-5.5", "claude-sonnet-5-5"),
+        ("opus-5.5", "claude-opus-5-5"),
+    ],
+)
+def test_claude_model_labels_use_cli_ids(cli, tmp_path, logical, cli_model):
+    req = AIRequest(model=logical, effort="high", prompt="ok")
+    argv = cli.argv(req, tmp_path)
+    assert argv[argv.index("--model") + 1] == cli_model
+
+
+def test_claude_synthetic_marker_is_not_a_model(cli, tmp_path):
+    result = asyncio.run(
+        cli.complete(
+            request("synthetic"),
+            workspace=tmp_path,
+            cancel=asyncio.Event(),
+            emit=emit,
+        )
+    )
+    assert result.actual_model == "claude-sonnet-5-5"
+
+
+def test_claude_model_not_found_is_reported_before_synthetic_marker(cli, tmp_path):
+    with pytest.raises(ProviderError) as exc:
+        asyncio.run(
+            cli.complete(
+                request("model_not_found"),
+                workspace=tmp_path,
+                cancel=asyncio.Event(),
+                emit=emit,
+            )
+        )
+    assert exc.value.kind == "model_unavailable"
+    assert exc.value.outcome == "rejected"
+
+
+def test_claude_schema_error_keeps_api_detail(cli, tmp_path):
+    with pytest.raises(ProviderError) as exc:
+        asyncio.run(
+            cli.complete(
+                request("schema_error"),
+                workspace=tmp_path,
+                cancel=asyncio.Event(),
+                emit=emit,
+            )
+        )
+    assert exc.value.kind == "invalid_schema"
+    assert exc.value.outcome == "rejected"
+    assert "input_schema.type" in str(exc.value)
 
 
 def test_gateway_real_http_conversion_and_manual_authorization(tmp_path):

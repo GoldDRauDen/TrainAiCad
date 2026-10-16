@@ -22,6 +22,12 @@ from .protocol import (
     validate_schema,
 )
 
+_CLI_MODEL_IDS = {
+    "haiku-5.5": "claude-haiku-5-5",
+    "sonnet-5.5": "claude-sonnet-5-5",
+    "opus-5.5": "claude-opus-5-5",
+}
+
 
 class ClaudeRunner:
     def __init__(self, command=None):
@@ -102,6 +108,24 @@ class ClaudeRunner:
             )
         return {"version": match.group(0), "auth_method": auth["authMethod"]}
 
+    def login(self):
+        """Open the official interactive Claude sign-in flow in its own console."""
+        if os.name != "nt":
+            raise ProviderError(
+                "unavailable", "Interactive Claude sign-in is supported on Windows"
+            )
+        try:
+            return subprocess.Popen(
+                [*self.executable(), "auth", "login"],
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+                close_fds=True,
+                env=self.environment(),
+            )
+        except OSError as exc:
+            raise ProviderError(
+                "unavailable", "Could not open the official Claude sign-in window"
+            ) from exc
+
     def argv(self, request, workspace):
         return [
             *self.executable(),
@@ -123,12 +147,13 @@ class ClaudeRunner:
             "--mcp-config",
             '{"mcpServers":{}}',
             "--model",
-            request.model,
+            _CLI_MODEL_IDS.get(request.model, request.model),
             "--effort",
             request.effort,
             "--json-schema",
             json.dumps(request.schema),
-            "--no-session-persistence",
+            *(["--resume" if request.resume_session else "--session-id", request.session_id]
+              if request.session_id else ["--no-session-persistence"]),
         ]
 
     async def complete(self, request, *, workspace, cancel, emit):
@@ -179,9 +204,10 @@ class ClaudeRunner:
         effort = None
         usage = {}
         result = None
+        reported_error = None
 
         async def consume():
-            nonlocal session, actual, effort, result
+            nonlocal session, actual, effort, result, reported_error
             process.stdin.write(payload.encode())
             await process.stdin.drain()
             process.stdin.close()
@@ -210,12 +236,19 @@ class ClaudeRunner:
                         )
                     session = event.get("session_id", session)
                     model = event.get("model") or event.get("message", {}).get("model")
+                    # Claude Code can emit synthetic bookkeeping messages that do
+                    # not identify a model. Ignore that marker and keep reading;
+                    # a concrete model still has to be reported before success.
+                    if isinstance(model, str):
+                        model = model.strip()
+                        if model.lower() == "<synthetic>":
+                            model = None
                     if model:
                         actual = model
                         if not same_model(request.model, model):
                             raise ProviderError(
                                 "model_mismatch",
-                                "Claude substituted a different model",
+                                f"Claude reported model {model!r} for requested model {request.model!r}",
                                 accepted=True,
                                 outcome=(
                                     "completed_invalid"
@@ -242,37 +275,56 @@ class ClaudeRunner:
                         or event.get("type") == "error"
                         or event.get("error")
                     ):
-                        body = json.dumps(event).lower()
-                        kind = (
-                            "rate_limit"
-                            if any(
-                                x in body
-                                for x in ("rate_limit", "rate limit", "usage limit")
-                            )
-                            else (
-                                "auth_unavailable"
-                                if any(
-                                    x in body
-                                    for x in (
-                                        "not logged",
-                                        "authentication",
-                                        "auth_error",
-                                    )
-                                )
-                                else "provider_error"
-                            )
+                        if event.get("type") != "result":
+                            reported_error = event.get("error") or event.get("type")
+                            continue
+                        body = json.dumps(
+                            {"event": event, "reported_error": reported_error}
+                        ).lower()
+                        if any(
+                            x in body
+                            for x in ("model_not_found", "model not found", "selected model")
+                        ):
+                            kind = "model_unavailable"
+                        elif "input_schema" in body and "api error: 400" in body:
+                            kind = "invalid_schema"
+                        elif any(
+                            x in body for x in ("rate_limit", "rate limit", "usage limit")
+                        ):
+                            kind = "rate_limit"
+                        elif any(
+                            x in body for x in ("not logged", "authentication", "auth_error")
+                        ):
+                            kind = "auth_unavailable"
+                        else:
+                            kind = "provider_error"
+                        rejected = kind in (
+                            "rate_limit",
+                            "auth_unavailable",
+                            "model_unavailable",
+                            "invalid_schema",
                         )
+                        if kind == "model_unavailable":
+                            message = (
+                                f"Claude Code cannot use model {request.model!r}; "
+                                "choose an available model."
+                            )
+                        elif kind == "auth_unavailable":
+                            message = "Claude request failed; inspect official CLI account status."
+                        elif kind == "invalid_schema":
+                            message = "Claude rejected the app output schema"
+                        else:
+                            message = f"Claude {kind}"
+                        detail = event.get("result")
+                        if isinstance(detail, str) and detail.startswith("API Error: "):
+                            message += ": " + detail.splitlines()[0][:300]
                         raise ProviderError(
                             kind,
-                            (
-                                "Claude request failed; inspect official CLI account status."
-                                if kind == "auth_unavailable"
-                                else f"Claude {kind}"
-                            ),
-                            accepted=kind not in ("rate_limit", "auth_unavailable"),
+                            message,
+                            accepted=not rejected,
                             outcome=(
                                 "rejected"
-                                if kind in ("rate_limit", "auth_unavailable")
+                                if rejected
                                 else (
                                     "completed_invalid"
                                     if event.get("type") == "result"
@@ -302,7 +354,9 @@ class ClaudeRunner:
                                 "event_key": f"{session}:final:"
                                 + json.dumps(usage, sort_keys=True),
                                 "metrics": dict(usage),
-                                "cumulative": True,
+                                # CLI result usage belongs to this invocation, even
+                                # when --resume keeps the conversation/session ID.
+                                "cumulative": not bool(request.session_id),
                             }
                         )
                     await emit(
@@ -340,7 +394,12 @@ class ClaudeRunner:
                     accepted=True,
                     outcome="completed_invalid",
                 ) from exc
-            validate_schema(data, request.schema)
+            # Job conversations validate in the host loop, where a completed
+            # malformed turn can be corrected without starting a new session.
+            if not request.session_id:
+                validate_schema(data, request.schema)
+            elif session != request.session_id:
+                raise ProviderError("session_mismatch", "Claude changed the job conversation", accepted=True, outcome="completed_invalid")
             if actual is None:
                 raise ProviderError(
                     "model_unverified",

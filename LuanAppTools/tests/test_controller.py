@@ -83,6 +83,105 @@ def test_offline_saved_root_does_not_block_setup(tmp_path):
     assert reopened.store.list_jobs()==[]
 
 
+def test_workspace_root_applies_to_new_runs_and_stays_pinned(tmp_path):
+    async def scenario():
+        source_root = sources(tmp_path)
+        first_root = tmp_path/'workspace-one'
+        second_root = tmp_path/'workspace-two'
+        service = ApplicationService(tmp_path/'app', ROOT)
+        service.update_settings({'roots':[str(source_root)],
+                                 'workspace_root':str(first_root),
+                                 'stable_seconds':.001})
+        await service.scan()
+        job = service.store.list_jobs()[0]
+        run = await service.start(job['id'])
+        assert Path(run['snapshot_dir']).is_relative_to(first_root/'cache')
+        assert run['config']['workspace_root'] == str(first_root.resolve())
+        assert first_root.is_dir()
+        service.update_settings({'workspace_root':str(second_root)})
+        lease = service.store.claim_run(run['id'], 'test')
+        assert service._control(run, lease).workspace == first_root/'work'/run['id']
+        source = next(f for f in service.files(job['id']) if f['kind']=='source')
+        assert service.file_path(job['id'], source['id'])[0].is_file()
+        with pytest.raises(ValueError, match='separate from source'):
+            service.update_settings({'workspace_root':str(source_root/'nested')})
+
+    asyncio.run(scenario())
+
+
+def test_individual_output_folder_requires_current_published_file(tmp_path):
+    async def scenario():
+        source_root = sources(tmp_path)
+        opened = []
+        service = ApplicationService(tmp_path/'app', ROOT, folder_opener=opened.append)
+        service.update_settings({'roots':[str(source_root)],
+                                 'individual_output':True,'stable_seconds':.001})
+        await service.scan()
+        job = service.store.list_jobs()[0]
+        await service.start(job['id'])
+        (job['folder']/'parts_dxf').mkdir()
+        assert not service.job(job['id'])['individual_output_available']
+        with pytest.raises(ValueError, match='chưa được tạo'):
+            await service.open_folder(job['id'], target='individual')
+        assert not opened
+
+    asyncio.run(scenario())
+
+
+def test_claude_login_is_idempotent_and_connection_test_calls_model(tmp_path):
+    from LuanAppTools.ai.protocol import AIResult, ProviderError
+
+    class LoginProcess:
+        pid = 123
+
+        def poll(self):
+            return None
+
+    class Runner:
+        authenticated = True
+        fail_request = False
+        logins = 0
+        requests = 0
+
+        async def preflight(self):
+            if not self.authenticated:
+                raise ProviderError('auth_unavailable', 'Sign in to Claude')
+            return {'version':'2.1.301','auth_method':'claude.ai'}
+
+        async def complete(self, request, *, workspace, cancel, emit):
+            self.requests += 1
+            assert request.model == 'sonnet-5.5'
+            assert request.schema['type'] == 'object'
+            assert 'pages' in request.schema['properties']
+            if self.fail_request:
+                raise ProviderError('provider_error', 'Synthetic request failure')
+            return AIResult({k:[] for k in ('pages','views','notes','data_entities','codes')},
+                            {}, 'test', 'claude-sonnet-5-5', 'high')
+
+        def login(self):
+            self.logins += 1
+            return LoginProcess()
+
+    async def scenario():
+        runner = Runner()
+        service = ApplicationService(tmp_path/'app', ROOT, runner=runner)
+        assert (await service.start_claude_login())['already_connected']
+        assert runner.logins == 0
+        assert (await service.test_connection('claude'))['status'] == 'ready'
+        assert runner.requests == 1
+        runner.fail_request = True
+        with pytest.raises(ProviderError):
+            await service.test_connection('claude')
+        await service.providers()
+        assert service.connection_status()['claude']['status'] == 'provider_error'
+        runner.authenticated = False
+        assert (await service.start_claude_login())['started']
+        assert (await service.start_claude_login())['in_progress']
+        assert runner.logins == 1
+
+    asyncio.run(scenario())
+
+
 def test_real_provider_seam_pause_ack_resume_and_current_output(tmp_path):
     from LuanAppTools.tests.test_pipeline import ScriptedRunner, synthetic_part
     class Runner(ScriptedRunner):
@@ -231,9 +330,9 @@ def test_gateway_explicit_actual_model_scoped_probe(tmp_path):
         await service.tick(); await until(lambda:not service.active)
         assert service.store.get_run(run['id'])['status']=='completed'
         assert not primary.requests
-        assert len(gateways[-1].requests)==3
+        assert len(gateways[-1].requests)==2  # one agent: intake + solve, no separate QA
         assert all(r.model=='free-actual-model' and r.gateway_authorized for r in gateways[-1].requests)
-        assert service.job(job['id'])['provider']=='9router'
+        assert service.job(job['id'])['provider']=='custom'
         assert (await service.providers())['gateway']['status']=='verified'
         service.update_settings({'gateway_model':'other-model'})
         assert (await service.providers())['gateway']['status']=='not_selected'
@@ -464,7 +563,7 @@ def test_metrics_preserve_pause_interval_after_completion(tmp_path, monkeypatch,
             db.execute('UPDATE events SET created=? WHERE id=?', (created, event))
     run.update(created=0, status='completed')
     monkeypatch.setattr('LuanAppTools.service.controller.time.time', lambda: 100)
-    durations, _, _ = service._metrics(run)
+    durations, *_ = service._metrics(run)
     assert durations['paused_seconds'] == 30
     assert durations['active_seconds'] == 20
 

@@ -20,6 +20,10 @@ class AIRequest:
     timeout: float = 1200
     gateway_authorized: bool = False
     tools: tuple[dict, ...] = ()
+    # A job owns one conversation. Only successful, durable turns enter history.
+    session_id: str | None = None
+    resume_session: bool = False
+    history: tuple[dict, ...] = ()
 
 
 @dataclass
@@ -61,7 +65,11 @@ def same_model(requested, actual):
     def normalize(value):
         return value.lower().removeprefix("claude-").replace(".", "-").replace("_", "-")
 
-    return normalize(requested) == normalize(actual)
+    wanted, reported = normalize(requested), normalize(actual)
+    # Providers often expand a stable alias (for example sonnet-5.5) to a
+    # dated model ID. Accept that canonical suffix while still rejecting a
+    # different family or version.
+    return reported == wanted or reported.startswith(wanted + "-")
 
 
 def local_path(path: Path, workspace: Path) -> Path:

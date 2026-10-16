@@ -210,6 +210,10 @@ class ScriptedRunner:
                 },
                 "engineering_challenge": "completed",
             }
+        if request.session_id and stage == "intake":
+            for code in data["codes"]:
+                for key in ("difficulty", "difficulty_evidence", "independent"):
+                    code.pop(key, None)
         return AIResult(data, {}, "fixture-session", request.model, request.effort)
 
 
@@ -239,6 +243,13 @@ def test_real_pipeline_mixed_status_and_saved_entity_ids(setup):
     assert ids and any("E_26-000001" in s for s in ids)
     assert [p.status for p in result.parts] == ["PASS", "REVIEW"]
     assert c.store.attempts(c.run_id, "26-000001") == 1
+    assert all(
+        r.schema.get("type") == "object" and "anyOf" not in r.schema
+        for r in runner.requests
+    )
+    intake_request = next(r for r in runner.requests if '"stage": "intake"' in r.prompt)
+    census_schema = intake_request.schema['properties']['codes']['items']['properties']['census']
+    assert 'source_mode' in census_schema['required']
     assert all(
         r.model == "sonnet-5.5" and r.effort == "high"
         for r in runner.requests
@@ -643,7 +654,7 @@ def test_host_operation_is_stopped_before_completion_at_attempt_deadline(
         elif tracked:
             argv = (
                 *argv[:2],
-                "import time;time.sleep(5);" + argv[2] + ";open(" + repr(str(completed)) + ',"w").write("completed")',
+                "import time;time.sleep(5);" + argv[2] + "\nopen(" + repr(str(completed)) + ',"w").write("completed")',
                 *argv[3:],
             )
         child = await original(*argv, **kw)
@@ -811,7 +822,7 @@ def test_direct_candidate_validation_uses_remaining_attempt_budget(
             target["next"] = False
             argv = (
                 *argv[:2],
-                "import time;time.sleep(5);" + argv[2] + ";open(" + repr(str(completed)) + ',"w").write("completed")',
+                "import time;time.sleep(5);" + argv[2] + "\nopen(" + repr(str(completed)) + ',"w").write("completed")',
                 *argv[3:],
             )
         child = await original(*argv, **kw)

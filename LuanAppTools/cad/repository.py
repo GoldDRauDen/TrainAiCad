@@ -211,7 +211,23 @@ class PinnedRepository:
         workspace.mkdir(parents=True, exist_ok=True)
         path = workspace / "validate.json"
         path.write_text(json.dumps(job), encoding="utf-8")
-        code = "import json,sys;from canonical_contract import validate_canonical_job;from holistic_engineering_guard import canonical_job_anomalies;j=json.load(open(sys.argv[1],encoding='utf-8'));v=validate_canonical_job(j);a=canonical_job_anomalies(j);assert not a, a;print(json.dumps(v))"
+        code = """import json,sys
+from canonical_contract import validate_canonical_job
+from export_dxf import validate_job
+from holistic_engineering_guard import canonical_job_anomalies
+j=json.load(open(sys.argv[1],encoding='utf-8'))
+errors=[]
+v={}
+for name,check in [('canonical',validate_canonical_job),('export',validate_job),('geometry',canonical_job_anomalies)]:
+    try:
+        result=check(j)
+        if name=='canonical': v=result
+        if name=='geometry' and result: errors.extend(result)
+    except Exception as exc:
+        errors.append(name+': '+str(exc))
+if errors: raise ValueError(' | '.join(errors))
+print(json.dumps(v))
+"""
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise ProviderError("timeout", "Host validation elapsed budget exhausted")

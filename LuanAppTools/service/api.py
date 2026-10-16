@@ -34,6 +34,23 @@ class GatewayBody(Body):
     model: str | None = None
     effort: Literal['medium','high','xhigh','max'] | None = None
 
+class ConnectionBody(Body):
+    active_provider: Literal['claude','openai','custom'] | None = None
+    openai_model: str | None = Field(default=None,max_length=200)
+    gateway_url: str | None = Field(default=None,max_length=500)
+    gateway_model: str | None = Field(default=None,max_length=200)
+    gateway_effort: Literal['medium','high','xhigh','max'] | None = None
+    custom_auth_mode: Literal['none','bearer','header'] | None = None
+    custom_auth_header: str | None = Field(default=None,max_length=100)
+    custom_send_effort: bool | None = None
+    openai_api_key: str | None = Field(default=None,max_length=4096)
+    custom_auth_value: str | None = Field(default=None,max_length=4096)
+    clear_openai_key: bool | None = None
+    clear_custom_auth: bool | None = None
+
+class ConnectionTestBody(Body):
+    provider: Literal['claude','openai','custom'] | None = None
+
 class ReviewBody(Body):
     run_id: str
     reviewed: bool = True
@@ -44,6 +61,8 @@ class FolderBody(Body):
     target: Literal['source','individual'] = 'source'
 
 class SettingsBody(Body):
+    agent_model: Literal['haiku-5.5','sonnet-5.5','opus-5.5'] | None = None
+    agent_effort: Literal['medium','high','xhigh','max'] | None = None
     roots: list[str] | None = None
     max_active_jobs: int | None = None
     max_ai_calls: int | None = None
@@ -54,9 +73,15 @@ class SettingsBody(Body):
     gateway_url: str | None = None
     gateway_model: str | None = None
     gateway_effort: Literal['medium','high','xhigh','max'] | None = None
+    active_provider: Literal['claude','openai','custom'] | None = None
+    openai_model: str | None = None
+    custom_auth_mode: Literal['none','bearer','header'] | None = None
+    custom_auth_header: str | None = None
+    custom_send_effort: bool | None = None
     default_difficulty: Literal['auto','easy','medium','hard'] | None = None
     individual_output: bool | None = None
     individual_destination: str | None = None
+    workspace_root: str | None = None
     retry_seconds: float | None = None
     shutdown_seconds: float | None = None
     output_timeout: float | None = None
@@ -197,7 +222,7 @@ def create_app(data_dir: Path, repo_root: Path, start_scheduler: bool = True, *,
         run=service.store.get_run(run_id)
         if run['job_id']!=job_id: raise KeyError('Run is outside job')
         rows=service.store.events_since(run_id,after)
-        allowed={'stage','code','request_id','session_id','type','model','effort','metrics','cumulative','status','message','elapsed_seconds','attempts','provider','endpoint','previous_run','paused','recovered','returncode','requested_at'}
+        allowed={'stage','code','request_id','session_id','type','model','effort','metrics','cumulative','status','message','elapsed_seconds','attempts','provider','endpoint','previous_run','paused','recovered','returncode','requested_at','prompt_characters','prompt_bytes','image_count','image_bytes','from_run'}
         rows=[{**row,'payload':{k:(v[:4096] if isinstance(v,str) else v) for k,v in row['payload'].items() if k in allowed}} for row in rows]
         return {'events':rows,'next_after':rows[-1]['id'] if rows else after,'run_id':run_id}
 
@@ -242,6 +267,22 @@ def create_app(data_dir: Path, repo_root: Path, start_scheduler: bool = True, *,
     @app.get('/api/providers')
     async def providers():
         return await service.providers()
+
+    @app.get('/api/connections')
+    def connections():
+        return service.connection_status()
+
+    @app.put('/api/connections')
+    async def put_connections(body:ConnectionBody):
+        return service.update_connection(body.model_dump(exclude_unset=True))
+
+    @app.post('/api/connections/test')
+    async def test_connection(body:ConnectionTestBody):
+        return await service.test_connection(body.provider)
+
+    @app.post('/api/connections/claude/login')
+    async def claude_login(body:Body):
+        return await service.start_claude_login()
 
     @app.post('/api/jobs/{job_id}/open-folder')
     async def open_folder(job_id:str,body:FolderBody):

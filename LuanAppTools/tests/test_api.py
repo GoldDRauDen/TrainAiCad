@@ -6,6 +6,40 @@ with warnings.catch_warnings():
 from LuanAppTools.service.api import create_app
 ROOT = Path(__file__).resolve().parents[2]
 
+
+def test_connection_partial_update_preserves_saved_endpoint(tmp_path):
+    from LuanAppTools.service.controller import ApplicationService
+
+    service = ApplicationService(tmp_path/'app', ROOT)
+    service.update_connection({
+        'active_provider':'custom',
+        'gateway_url':'http://localhost:20128/v1',
+        'gateway_model':'saved-model',
+        'custom_auth_mode':'none',
+    })
+    with TestClient(create_app(tmp_path/'app', ROOT, False, service=service),
+                    base_url='http://127.0.0.1') as client:
+        headers = {'X-Luan-Token':client.get('/api/health').json()['mutation_token']}
+        response = client.put('/api/connections', json={'active_provider':'claude'},
+                              headers=headers)
+        assert response.status_code == 200
+        assert response.json()['active_provider'] == 'claude'
+        assert response.json()['custom']['model'] == 'saved-model'
+
+
+def test_workspace_root_can_be_selected_through_settings_api(tmp_path):
+    app_dir = tmp_path/'app'
+    selected = tmp_path/'shared-workspace'
+    with TestClient(create_app(app_dir, ROOT, start_scheduler=False),
+                    base_url='http://127.0.0.1') as client:
+        headers = {'X-Luan-Token':client.get('/api/health').json()['mutation_token']}
+        assert client.get('/api/settings').json()['workspace_root'] == str(app_dir.resolve())
+        response = client.put('/api/settings', json={'workspace_root':str(selected)},
+                              headers=headers)
+        assert response.status_code == 200
+        assert response.json()['workspace_root'] == str(selected.resolve())
+        assert selected.is_dir()
+
 def test_empty_installation_and_request_boundaries(tmp_path):
     with TestClient(create_app(tmp_path/'app', ROOT, start_scheduler=False), base_url='http://127.0.0.1') as client:
         response = client.get('/api/health')
