@@ -443,3 +443,56 @@ def test_worker_failure_release_cannot_overwrite_later_cancel(tmp_path):
         assert service.store.get_run(run['id'])['status']=='cancelled'
         await service.close()
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize('legacy', [False, True])
+def test_metrics_preserve_pause_interval_after_completion(tmp_path, monkeypatch, legacy):
+    service = ApplicationService(tmp_path/'app', ROOT)
+    (tmp_path/'source').mkdir()
+    job = service.store.register_job(tmp_path/'source')
+    run = service.store.create_run(job['id'], 'source-one', 'commit-one')
+    sequence = [
+        ('worker_started', {}, 10),
+        ('worker_state', {'status': 'paused'}, 20),
+        ('worker_stopped', {'status': 'paused'}, 21),
+        ('worker_started', {}, 50),
+        ('worker_stopped', {'status': 'completed'}, 60),
+    ]
+    for kind, payload, created in sequence:
+        event = service.store.append_event(run['id'], kind, {} if legacy and kind=='worker_stopped' else payload)
+        with service.store.transaction() as db:
+            db.execute('UPDATE events SET created=? WHERE id=?', (created, event))
+    run.update(created=0, status='completed')
+    monkeypatch.setattr('LuanAppTools.service.controller.time.time', lambda: 100)
+    durations, _, _ = service._metrics(run)
+    assert durations['paused_seconds'] == 30
+    assert durations['active_seconds'] == 20
+
+
+def test_recovery_tolerates_owner_release_between_read_and_transaction(tmp_path, monkeypatch):
+    service = ApplicationService(tmp_path/'app', ROOT)
+    folder = tmp_path/'source'; folder.mkdir()
+    job = service.store.register_job(folder)
+    run = service.store.create_run(job['id'], 'source', 'commit')
+    service.store.claim_run(run['id'], 'previous-owner')
+    original = service.store.release_run
+    def interleave(run_id, lease, **kwargs):
+        original(run_id, lease, status='paused')
+        return original(run_id, lease, **kwargs)
+    monkeypatch.setattr(service.store, 'release_run', interleave)
+    asyncio.run(service.recover())
+    assert service.store.get_run(run['id'])['status'] == 'paused'
+    assert not any(e['kind'] == 'recovered' for e in service.store.events_since(run['id']))
+
+
+def test_metrics_stop_idle_pause_at_cancellation(tmp_path, monkeypatch):
+    service = ApplicationService(tmp_path/'app', ROOT)
+    folder = tmp_path/'source'; folder.mkdir()
+    job = service.store.register_job(folder)
+    run = service.store.create_run(job['id'], 'source', 'commit')
+    event = service.store.append_event(run['id'], 'worker_stopped', {'status':'paused'})
+    with service.store.transaction() as db:
+        db.execute('UPDATE events SET created=20 WHERE id=?', (event,))
+    run.update(created=0, status='cancelled', updated=30)
+    monkeypatch.setattr('LuanAppTools.service.controller.time.time', lambda: 100)
+    assert service._metrics(run)[0]['paused_seconds'] == 10

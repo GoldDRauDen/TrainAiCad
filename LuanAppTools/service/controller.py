@@ -146,8 +146,9 @@ class ApplicationService:
             status = 'reconciliation_required' if run['checkpoint'].get('pending') else ('paused' if self.store.get_job(run['job_id'])['paused'] else 'queued')
             if run['publication']:
                 status = 'paused' if self.store.get_job(run['job_id'])['paused'] else 'waiting_output'
-            await self.mutations.run(self.store.release_run,run['id'], run['lease'], status=status)
-            await self.mutations.run(self.store.append_event,run['id'],'recovered',{'status':status})
+            released = await self.mutations.run(self.store.release_run,run['id'], run['lease'], status=status,if_current=True)
+            if released:
+                await self.mutations.run(self.store.append_event,run['id'],'recovered',{'status':status})
 
     def update_settings(self, changes: dict):
         if not isinstance(changes, dict):
@@ -471,7 +472,7 @@ class ApplicationService:
                 else:
                     await self.mutations.run(self.store.set_run_status,run['id'],'error',error=str(exc))
         finally:
-            await self.mutations.run(self.store.append_event,run['id'],'worker_stopped',{'elapsed_seconds':time.monotonic()-started})
+            await self.mutations.run(self.store.append_event,run['id'],'worker_stopped',{'elapsed_seconds':time.monotonic()-started,'status':self.store.get_run(run['id'])['status']})
             self.controls.pop(run['id'],None); self.active.pop(run['id'],None)
 
     async def _release_if_current(self,run,control,status,error=None):
@@ -505,12 +506,18 @@ class ApplicationService:
             events=db.execute("SELECT kind,payload,created FROM events WHERE run_id=? AND kind IN ('worker_started','worker_stopped','worker_state','recovered') ORDER BY id",(current['id'],)).fetchall()
             overhead_rows=db.execute("SELECT u.metrics FROM usage u JOIN events e ON e.run_id=u.run_id AND e.event_key=u.event_key WHERE u.run_id=? AND e.kind='usage' AND json_extract(e.payload,'$.code') IS NULL",(current['id'],)).fetchall()
         state='queued'; since=current['created']
+        end=min(time.time(),current['updated']) if current['status'] in {'completed','cancelled','error','superseded'} else time.time()
         def accrue(until):
+            until=min(until,end)
             key='active_seconds' if state in {'running','pause_requested'} else ('paused_seconds' if state=='paused' else 'waiting_seconds' if state in {'waiting_usage','waiting_fallback','waiting_output','reconciliation_required'} else None)
             if key: durations[key]+=max(0,until-since)
-        for row in events:
+        for index,row in enumerate(events):
             payload=json.loads(row['payload'])
-            new='running' if row['kind']=='worker_started' else payload.get('status') if row['kind'] in {'worker_state','recovered'} else current['status']
+            # Legacy stops lacked status. Keep the preceding state until the next
+            # worker starts; only the final stop may use the run's current state.
+            new='running' if row['kind']=='worker_started' else payload.get('status')
+            if row['kind']=='worker_stopped' and not new and index==len(events)-1:
+                new=current['status']
             if new: accrue(row['created']); since=row['created']; state=new
         accrue(time.time())
         overhead={}

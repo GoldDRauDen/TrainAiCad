@@ -28,9 +28,9 @@ Các con số trên không phải bằng chứng độ chính xác hình học t
 
 ## Những điểm còn cần hoàn thiện/đánh giá
 
-- Timeline giao diện đang lấy tối đa 1.000 sự kiện đầu, chưa ghép cursor để theo dõi phiên dài hơn.
-- Chuẩn bị PDF/DXF và một số hash/đọc file chi tiết còn đồng bộ trên event loop; file lớn hoặc SMB chậm có thể làm UI điều khiển phản hồi chậm. Chưa cam kết độ trễ điều khiển trên mạng LAN thật.
-- Tổng thời gian tạm dừng có thể thiếu khoảng dừng lịch sử sau khi đã tiếp tục/hoàn tất; cần kiểm thử timeline riêng.
+- Timeline đã ghép cursor qua mốc 1.000 sự kiện và khóa cùng run với chi tiết; hiện vẫn tải lại lịch sử mỗi lần refresh, cần benchmark với phiên rất dài.
+- API đọc job/file/hash đã chuyển sang worker thread; có test health vẫn phản hồi trong khi đọc file bị chặn. Chuẩn bị PDF/DXF trong pipeline còn đồng bộ; chưa cam kết độ trễ điều khiển trên mạng LAN thật.
+- Đã sửa thời gian pause lịch sử, hỗ trợ event cũ và chặn tăng sau hủy/kết thúc; có regression theo mốc thời gian cố định.
 - Có cảnh báo tương thích fitz/Starlette ở một số lệnh kiểm tra, không làm bộ kiểm thử thất bại.
 - Cần chạy Windows launcher, UNC/SMB bị ngắt/khóa, tài khoản Claude chính và 9Router thật, giới hạn quyền CLI và benchmark trên nguồn đã xác nhận trước nghiệm thu.
 
@@ -40,3 +40,12 @@ Các con số trên không phải bằng chứng độ chính xác hình học t
 - Khi người dùng chọn 9Router, QA độc lập cũng dùng gateway đã xác minh; Claude chính vẫn dùng QA riêng theo cấu hình bắt buộc. Chất lượng model gateway cần nghiệm thu riêng.
 - Ghi LAN dùng tiến trình do app sở hữu để có thể dừng/reap client; không hứa rollback SMB phía server hay transaction nhiều file.
 - Không sửa quy tắc kỹ thuật, không merge main tự động.
+
+## Tiếp nối kiểm tra 16/10/2026
+
+- Đã xác minh commit nền `9513891` có workflow CAD và LuanAppTools thành công trên GitHub. PR hiện có: #45.
+- Sửa timeline nhiều trang, khóa run ngay từ trang đầu và bỏ kết quả refresh đã cũ.
+- Sửa phục hồi khi owner nhả lease giữa lần đọc trạng thái và giao dịch release; giao dịch kiểm tra quyền và chỉ ghi recovered khi thực sự thu hồi được. Test interleaving RED→GREEN.
+- Rà soát độc lập phát hiện bộ đếm pause tiếp tục tăng sau hủy; đã sửa và có test RED→GREEN.
+- Kiểm tra mới: bộ tổng Python **394 passed** (50.72s); bổ sung sau đó một biến thể event legacy đã chạy nhóm metrics **3 passed**. Frontend **5 passed**, typecheck/build thành công.
+- Không có xác nhận mới trên tài khoản AI thật, máy Windows người dùng hoặc UNC/SMB thật. Chưa merge main.

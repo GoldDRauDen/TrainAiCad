@@ -131,3 +131,33 @@ def test_cli_starts_real_loopback_http_without_ai(tmp_path):
     finally:
         process.terminate()
         process.communicate(timeout=10)
+
+
+def test_slow_file_listing_keeps_health_responsive(tmp_path, monkeypatch):
+    import asyncio
+    import threading
+    import httpx
+    from LuanAppTools.service.controller import ApplicationService
+    service = ApplicationService(tmp_path/'app', ROOT)
+    entered = threading.Event()
+    release = threading.Event()
+    def slow_files(job_id):
+        entered.set()
+        release.wait(2)
+        return []
+    monkeypatch.setattr(service, 'files', slow_files)
+    app = create_app(tmp_path/'app', ROOT, start_scheduler=False, service=service)
+    async def scenario():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://127.0.0.1') as client:
+            request = asyncio.create_task(client.get('/api/jobs/job1/files'))
+            try:
+                assert await asyncio.to_thread(entered.wait, 3)
+                # If file I/O blocks the event loop, its timeout has already
+                # elapsed and the listing is done before health can run.
+                response = await client.get('/api/health')
+                assert response.status_code == 200
+                assert not request.done()
+            finally:
+                release.set()
+                await request
+    asyncio.run(scenario())

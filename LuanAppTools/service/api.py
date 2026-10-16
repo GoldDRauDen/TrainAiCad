@@ -157,11 +157,11 @@ def create_app(data_dir: Path, repo_root: Path, start_scheduler: bool = True, *,
         return jsonable_encoder(await service.scan())
 
     @app.get('/api/jobs')
-    async def jobs():
+    def jobs():
         return jsonable_encoder({'jobs':service.jobs()})
 
     @app.get('/api/jobs/{job_id}')
-    async def job(job_id:str):
+    def job(job_id:str):
         return jsonable_encoder(service.job(job_id))
 
     @app.post('/api/jobs/{job_id}/start')
@@ -202,17 +202,17 @@ def create_app(data_dir: Path, repo_root: Path, start_scheduler: bool = True, *,
         return {'events':rows,'next_after':rows[-1]['id'] if rows else after,'run_id':run_id}
 
     @app.get('/api/jobs/{job_id}/files')
-    async def files(job_id:str):
+    def files(job_id:str):
         return {'files':service.files(job_id)}
 
     @app.get('/api/jobs/{job_id}/files/{file_id}')
-    async def file(job_id:str,file_id:str):
+    def file(job_id:str,file_id:str):
         path,record=service.file_path(job_id,file_id)
         return FileResponse(path,filename=record['name'])
 
     @app.get('/api/jobs/{job_id}/files/{file_id}/pages/{page}')
     async def page_image(job_id:str,file_id:str,page:int):
-        path,record=service.file_path(job_id,file_id)
+        path,record=await asyncio.to_thread(service.file_path,job_id,file_id)
         if record['kind']!='source' or path.suffix.lower()!='.pdf' or page<1:
             raise KeyError('Not an original PDF page')
         destination=service.data_dir/'previews'/job_id/(file_id+f'-page-{page}.png')
@@ -226,14 +226,14 @@ def create_app(data_dir: Path, repo_root: Path, start_scheduler: bool = True, *,
         return FileResponse(destination,media_type='image/png')
 
     @app.get('/api/jobs/{job_id}/preview')
-    async def previews(job_id:str):
+    def previews(job_id:str):
         return {'previews':[{'file_id':f['id'],'name':f['name'],'current':f['current'],
                              'url':f'/api/jobs/{job_id}/preview/{f["id"]}'} for f in service.files(job_id)
                             if f['download_url'] and f['name'].lower().endswith('.dxf')]}
 
     @app.get('/api/jobs/{job_id}/preview/{file_id}')
     async def preview(job_id:str,file_id:str):
-        path,record=service.file_path(job_id,file_id)
+        path,record=await asyncio.to_thread(service.file_path,job_id,file_id)
         if path.suffix.lower()!='.dxf': raise KeyError('Not a DXF')
         destination=service.data_dir/'previews'/job_id/(file_id+'.svg')
         await asyncio.to_thread(render_dxf,path,destination)

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { loadEvents } from "./events";
 type RecordData = Record<string, any>;
 const statuses: Record<string, string> = {
   discovered: "Mới phát hiện",
@@ -64,13 +65,13 @@ export function App() {
   }
   async function loadDetail(id: string) {
     const sequence = ++detailSequence.current;
-    const [d, e] = await Promise.all([
-      api(`/api/jobs/${id}`),
-      api(`/api/jobs/${id}/events`),
-    ]);
+    const d = await api(`/api/jobs/${id}`);
+    const e = d.run?.id
+      ? await loadEvents(api, id, () => sequence === detailSequence.current, d.run.id)
+      : [];
     if (sequence === detailSequence.current) {
       setDetail(d);
-      setEvents(e.events || []);
+      setEvents(e);
     }
   }
   useEffect(() => {
