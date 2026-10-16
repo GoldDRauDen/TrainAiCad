@@ -14,3 +14,5 @@ LuanAppTools/*.sqlite3-shm
 LuanAppTools/*.sqlite3-wal
 LuanAppTools/.env
 LuanAppTools/screenshots/
+LuanAppTools/frontend/coverage/
+LuanAppTools/frontend/test-results/

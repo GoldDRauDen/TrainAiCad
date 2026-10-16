@@ -373,6 +373,8 @@ def test_unknown_solver_gateway_transition_uses_remaining_attempt(setup):
         asyncio.run(CadPipeline(repo, runner).run(source, c, job_name="SYNTHETIC"))
     assert c.store.attempts(c.run_id, "26-000001") == 1
     c.gateway_authorized = True
+    c.gateway_model = "synthetic-free-model"
+    c.gateway_effort = "high"
     c.cancel = asyncio.Event()
     reconcile_request(c, disposition="abandon_for_gateway")
     fallback = ScriptedRunner({"26-000001": synthetic_part()})

@@ -350,7 +350,7 @@ def test_gateway_capability_probe_requires_evidence_and_tool_roundtrip(
             await runner.probe(
                 model="sonnet-5.5",
                 effort="high",
-                workspace=tmp_path,
+                workspace=tmp_path / "fresh-probes",
                 cancel=asyncio.Event(),
                 emit=emit,
             )
@@ -359,7 +359,7 @@ def test_gateway_capability_probe_requires_evidence_and_tool_roundtrip(
         report = await runner.probe(
             model="sonnet-5.5",
             effort="high",
-            workspace=tmp_path,
+            workspace=tmp_path / "fresh-probes",
             cancel=asyncio.Event(),
             emit=emit,
             authorized=True,
@@ -402,7 +402,7 @@ def test_gateway_precancelled_probe_sends_nothing(tmp_path):
             runner.probe(
                 model="sonnet-5.5",
                 effort="high",
-                workspace=tmp_path,
+                workspace=tmp_path / "fresh-probes",
                 cancel=cancel,
                 emit=emit,
                 authorized=True,

@@ -9,14 +9,22 @@ import uuid
 from .sources import folder_identity
 
 
-_STATUSES = {'queued', 'running', 'pause_requested', 'paused', 'waiting_usage', 'waiting_fallback', 'publication_pending', 'completed', 'cancelled', 'error', 'superseded'}
+_STATUSES = {'queued', 'running', 'pause_requested', 'paused', 'waiting_usage', 'waiting_fallback', 'publication_pending', 'waiting_output', 'reconciliation_required', 'completed', 'cancelled', 'error', 'superseded'}
 _TERMINAL = {'cancelled', 'error', 'superseded', 'completed'}
 
 
 class Store:
-    def __init__(self, db_path: Path):
+    def __init__(self, db_path: Path, *, busy_timeout: int = 30000):
+        self.busy_timeout = busy_timeout
         self.db_path = Path(db_path).resolve()
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        # Reopening an up-to-date WAL database must not acquire a write lock:
+        # an orphan publisher may hold one while blocked in an OS file call.
+        if self.db_path.is_file():
+            with self._connect() as db:
+                required = {'jobs':{'paused'}, 'runs':{'config'}, 'reviews':{'reviewed'}}
+                if all(columns <= {r['name'] for r in db.execute(f'PRAGMA table_info({table})')} for table,columns in required.items()):
+                    return
         with self._connect() as db:
             db.executescript('''
                 PRAGMA journal_mode=WAL;
@@ -57,11 +65,16 @@ class Store:
                     status TEXT NOT NULL, archive_path TEXT, PRIMARY KEY(path,run_id));
             ''')
 
+        with self.transaction() as db:
+            for table, column, declaration in [('jobs','paused','INTEGER NOT NULL DEFAULT 0'), ('runs','config',"TEXT NOT NULL DEFAULT '{}'"), ('reviews','reviewed','INTEGER NOT NULL DEFAULT 1')]:
+                if column not in {row['name'] for row in db.execute(f'PRAGMA table_info({table})')}:
+                    db.execute(f'ALTER TABLE {table} ADD COLUMN {column} {declaration}')
+
     def _connect(self):
-        db = sqlite3.connect(self.db_path, timeout=30, isolation_level=None)
+        db = sqlite3.connect(self.db_path, timeout=self.busy_timeout / 1000, isolation_level=None)
         db.row_factory = sqlite3.Row
         db.execute('PRAGMA foreign_keys=ON')
-        db.execute('PRAGMA busy_timeout=30000')
+        db.execute(f'PRAGMA busy_timeout={self.busy_timeout}')
         return db
 
     @contextmanager
@@ -82,7 +95,7 @@ class Store:
         if row is None:
             raise KeyError('Run not found')
         result = dict(row)
-        for field in ('checkpoint', 'publication'):
+        for field in ('checkpoint', 'publication', 'config'):
             result[field] = json.loads(result[field])
         if result['snapshot_dir']:
             result['snapshot_dir'] = Path(result['snapshot_dir'])
@@ -95,6 +108,7 @@ class Store:
         result = dict(row)
         result['folder'] = Path(result['folder'])
         result['tracked'] = bool(result['tracked'])
+        result['paused'] = bool(result['paused'])
         return result
 
     def register_job(self, folder: Path, *, tracked: bool = False) -> dict:
@@ -119,7 +133,7 @@ class Store:
             if not db.execute('UPDATE jobs SET tracked=? WHERE id=?', (int(tracked), job_id)).rowcount:
                 raise KeyError(job_id)
 
-    def create_run(self, job_id: str, source_hash: str, repo_commit: str, *, snapshot_dir: Path | None = None, force: bool = False) -> dict:
+    def create_run(self, job_id: str, source_hash: str, repo_commit: str, *, snapshot_dir: Path | None = None, force: bool = False, config: dict | None = None) -> dict:
         if not source_hash or not repo_commit:
             raise ValueError('Source hash and repository commit are required')
         with self.transaction() as db:
@@ -133,17 +147,72 @@ class Store:
             generation = job['generation'] + 1
             now = time.time()
             db.execute('INSERT INTO runs(id,job_id,generation,source_hash,repo_commit,snapshot_dir,status,created,updated) VALUES(?,?,?,?,?,?,?,?,?)', (identity, job_id, generation, source_hash, repo_commit, str(Path(snapshot_dir).resolve()) if snapshot_dir else None, 'queued', now, now))
+            db.execute('UPDATE runs SET config=?,status=? WHERE id=?', (json.dumps(config or {}), 'paused' if job['paused'] else 'queued', identity))
             db.execute('UPDATE jobs SET generation=?,current_run=? WHERE id=?', (generation, identity, job_id))
             return self._run(db.execute('SELECT * FROM runs WHERE id=?', (identity,)).fetchone())
+
+    def resume_run(self, run_id: str) -> dict:
+        """Unpause and queue in one writer transaction visible to the scheduler."""
+        with self.transaction() as db:
+            row = self._assert_current(db, run_id)
+            if row['lease']:
+                raise ValueError('Wait for worker acknowledgement or process reconciliation')
+            if json.loads(row['checkpoint']).get('pending'):
+                raise ValueError('Interrupted request requires explicit gateway reconciliation')
+            if row['status'] not in {'queued','paused','waiting_usage','waiting_fallback','waiting_output','reconciliation_required'}:
+                raise ValueError('Use explicit start with force=true for a new run')
+            db.execute('UPDATE jobs SET paused=0 WHERE id=?', (row['job_id'],))
+            db.execute("UPDATE runs SET status='queued',updated=? WHERE id=?", (time.time(),run_id))
+            return self._run(db.execute('SELECT * FROM runs WHERE id=?',(run_id,)).fetchone())
 
     def get_run(self, run_id: str) -> dict:
         with self._connect() as db:
             return self._run(db.execute('SELECT * FROM runs WHERE id=?', (run_id,)).fetchone())
 
+    @staticmethod
+    def public_run(run: dict) -> dict:
+        keys=('id','job_id','generation','source_hash','repo_commit','status','error','created','updated','config')
+        return {key:run[key] for key in keys}
+
+    def run_summaries(self, *, job_id: str | None = None, run_id: str | None = None, limit: int = 100) -> list[dict]:
+        with self._connect() as db:
+            rows=db.execute('SELECT id,job_id,generation,source_hash,repo_commit,status,error,created,updated,config FROM runs WHERE (? IS NULL OR job_id=?) AND (? IS NULL OR id=?) ORDER BY created DESC LIMIT ?', (job_id,job_id,run_id,run_id,limit)).fetchall()
+        result=[]
+        for row in rows:
+            item=dict(row); item['config']=json.loads(item['config']); result.append(item)
+        return result
+
+    def part_counts(self, run_id: str) -> dict:
+        with self._connect() as db:
+            return {row['status']:row['n'] for row in db.execute('SELECT status,COUNT(*) AS n FROM parts WHERE run_id=? GROUP BY status',(run_id,))}
+
     def list_runs(self, *, statuses=None, job_id: str | None = None) -> list[dict]:
         with self._connect() as db:
             rows = [self._run(row) for row in db.execute('SELECT * FROM runs ORDER BY created')]
         return [row for row in rows if (statuses is None or row['status'] in statuses) and (job_id is None or row['job_id'] == job_id)]
+
+    def set_paused(self, job_id: str, paused: bool) -> None:
+        with self.transaction() as db:
+            if not db.execute('UPDATE jobs SET paused=? WHERE id=?', (int(paused), job_id)).rowcount:
+                raise KeyError(job_id)
+
+    def set_run_config(self, run_id: str, config: dict) -> None:
+        """Only explicit gateway authorization may amend an already pinned config."""
+        with self.transaction() as db:
+            self._assert_current(db, run_id)
+            db.execute('UPDATE runs SET config=?,updated=? WHERE id=?', (json.dumps(config), time.time(), run_id))
+
+    def claim_gateway(self, run_id: str, config: dict, owner: str) -> str:
+        """Atomically authorize the still-current idle run without clearing pause."""
+        with self.transaction() as db:
+            row=self._assert_current(db,run_id)
+            if row['lease'] or row['status'] not in {'paused','queued','waiting_usage','waiting_fallback','reconciliation_required'}:
+                raise ValueError('Gateway probe no longer owns a resumable run')
+            paused=db.execute('SELECT paused FROM jobs WHERE id=?',(row['job_id'],)).fetchone()['paused']
+            lease=uuid.uuid4().hex
+            db.execute('UPDATE runs SET config=?,lease=?,owner=?,status=?,updated=? WHERE id=?',
+                       (json.dumps(config),lease,owner,'pause_requested' if paused else 'running',time.time(),run_id))
+            return lease
 
     def claim_run(self, run_id: str, owner: str) -> str | None:
         if not owner:
@@ -155,7 +224,7 @@ class Store:
 
     def release_run(self, run_id: str, lease: str, *, status: str = 'queued') -> None:
         """After reconciling/stopping the prior worker, release its lease without resetting budgets."""
-        if status not in {'queued', 'paused', 'waiting_usage', 'waiting_fallback'}:
+        if status not in {'queued', 'paused', 'waiting_usage', 'waiting_fallback', 'waiting_output', 'reconciliation_required'}:
             raise ValueError('Invalid released run status')
         with self.transaction() as db:
             row = self._assert_current(db, run_id)
@@ -170,11 +239,17 @@ class Store:
             raise KeyError(run_id)
         if row['current_run'] != run_id or row['status'] in _TERMINAL:
             raise ValueError('Run is obsolete or terminal')
-        if lease is not None and (not lease or row['lease'] != lease or row['status'] not in {'running', 'publication_pending'}):
+        if lease is not None and (not lease or row['lease'] != lease or row['status'] not in {'running', 'pause_requested', 'publication_pending'}):
             raise ValueError('Invalid publication lease')
         if source_hash is not None and row['source_hash'] != source_hash:
             raise ValueError('Source hash does not match lease')
         return row
+
+    def may_publish(self, run_id: str) -> bool:
+        """Admission hint only; publication_guard remains the atomic authority."""
+        with self._connect() as db:
+            row=db.execute('SELECT r.status,r.lease,j.current_run,j.paused FROM runs r JOIN jobs j ON j.id=r.job_id WHERE r.id=?',(run_id,)).fetchone()
+        return bool(row and row['current_run']==run_id and row['lease'] and not row['paused'] and row['status'] in {'running','publication_pending'})
 
     def assert_lease(self, run_id: str, lease: str, source_hash: str) -> dict:
         with self._connect() as db:
@@ -184,7 +259,9 @@ class Store:
     def publication_guard(self, run_id: str, lease: str, source_hash: str):
         """Serialize publication with generation changes, including across processes."""
         with self.transaction() as db:
-            self._assert_current(db, run_id, lease, source_hash)
+            row = self._assert_current(db, run_id, lease, source_hash)
+            if db.execute('SELECT paused FROM jobs WHERE id=?', (row['job_id'],)).fetchone()['paused']:
+                raise ValueError('Publication blocked by pause intent')
             yield db
 
     def set_run_status(self, run_id: str, status: str, *, error: str | None = None) -> dict:
@@ -269,11 +346,11 @@ class Store:
                     result[key] = result.get(key, 0) + value
         return result
 
-    def record_review(self, run_id: str, reviewer: str, note: str = '') -> int:
+    def record_review(self, run_id: str, reviewer: str, note: str = '', *, reviewed: bool = True) -> int:
         with self.transaction() as db:
             run = self._run(db.execute('SELECT * FROM runs WHERE id=?', (run_id,)).fetchone())
             outputs = [dict(row) for row in db.execute('SELECT path,sha256 FROM outputs WHERE run_id=? AND status=? ORDER BY path', (run_id, 'current'))]
-            cursor = db.execute('INSERT INTO reviews(run_id,source_hash,outputs,reviewer,note,created) VALUES(?,?,?,?,?,?)', (run_id, run['source_hash'], json.dumps(outputs), reviewer, note, time.time()))
+            cursor = db.execute('INSERT INTO reviews(run_id,source_hash,outputs,reviewer,note,created,reviewed) VALUES(?,?,?,?,?,?,?)', (run_id, run['source_hash'], json.dumps(outputs), reviewer, note, time.time(), int(reviewed)))
             return cursor.lastrowid
 
     def reviews(self, run_id: str) -> list[dict]:
@@ -281,6 +358,7 @@ class Store:
             result = [dict(row) for row in db.execute('SELECT * FROM reviews WHERE run_id=? ORDER BY id', (run_id,))]
         for row in result:
             row['outputs'] = json.loads(row['outputs'])
+            row['reviewed'] = bool(row['reviewed'])
         return result
 
     def outputs(self, run_id: str | None = None, *, job_id: str | None = None, current_only: bool = True) -> list[dict]:

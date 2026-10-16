@@ -67,6 +67,9 @@ class RunControl:
     slot: Slot = _single_slot
     event: Emit = _no_emit
     gateway_authorized: bool = False
+    gateway_model: str | None = None
+    gateway_effort: str | None = None
+    mutation: Callable | None = None
 
     def check(self):
         if self.cancel.is_set():
@@ -82,6 +85,14 @@ class RunControl:
         self.check()
         self.store.save_checkpoint(self.run_id, checkpoint)
 
+    async def mutate(self, operation, *args, **kwargs):
+        if self.mutation is None:
+            return operation(*args, **kwargs)
+        return await self.mutation(operation, *args, **kwargs)
+
+    async def save_async(self, checkpoint):
+        return await self.mutate(self.save, checkpoint)
+
     async def emit(self, event):
         # Exit acknowledgements describe an already stopped owned process. They
         # must survive cancellation/generation revocation for restart recovery;
@@ -89,14 +100,14 @@ class RunControl:
         if event["kind"] != "provider_process_exited":
             self.check()
         if event["kind"] == "usage":
-            self.store.record_usage(
+            await self.mutate(self.store.record_usage,
                 self.run_id,
                 event["session_id"],
                 event["event_key"],
                 event["metrics"],
                 cumulative=event.get("cumulative", False),
             )
-        self.store.append_event(
+        await self.mutate(self.store.append_event,
             self.run_id, event["kind"], event, event_key=event.get("event_key")
         )
         await self.event(event)
@@ -270,7 +281,11 @@ class CadPipeline:
         gateway: Runner | None = None,
         attempt_timeout: float = 1200,
         models: dict | None = None,
+        difficulty: str = 'auto',
     ):
+        if difficulty not in {'auto', 'easy', 'medium', 'hard'}:
+            raise ValueError('Unsupported difficulty')
+        self.difficulty = difficulty
         self.repo = repository
         self.runner = runner
         self.gateway = gateway
@@ -283,7 +298,7 @@ class CadPipeline:
                 "Independent source QA requires Sonnet high (sonnet-5.5/high)"
             )
 
-    def _begin_budget(self, control, checkpoint, state):
+    async def _begin_budget(self, control, checkpoint, state):
         """Reconcile an unacknowledged active deadline before any attempt work."""
         started = time.time()
         budget = state.get("remaining_seconds", self.attempt_timeout)
@@ -294,27 +309,27 @@ class CadPipeline:
         state["remaining_seconds"] = max(0, budget)
         if budget <= 0:
             state["deadline"] = None
-            control.save(checkpoint)
+            await control.save_async(checkpoint)
             raise PipelineError("attempt_timeout", "Attempt elapsed budget exhausted")
         deadline = started + budget
         state["deadline"] = deadline
-        control.save(checkpoint)
+        await control.save_async(checkpoint)
         return deadline
 
     @staticmethod
-    def _end_budget(control, checkpoint, state, deadline):
+    async def _end_budget(control, checkpoint, state, deadline):
         state["remaining_seconds"] = max(0, deadline - time.time())
         state["deadline"] = None
         # Abrupt death skips this acknowledgement; cancellation/revocation can
         # make saves invalid, so the previously active durable deadline remains.
         if not control.cancel.is_set():
-            control.save(checkpoint)
+            await control.save_async(checkpoint)
 
     async def _validate_attempt(self, job, workspace, control, checkpoint, state):
         # Finish validating the buffered candidate before acknowledging pause at
         # the existing qa_ready boundary. Cancellation still stops immediately.
         control.check()
-        deadline = self._begin_budget(control, checkpoint, state)
+        deadline = await self._begin_budget(control, checkpoint, state)
         try:
             remaining = max(0, deadline - time.time())
             return await cancellable(
@@ -330,13 +345,17 @@ class CadPipeline:
                 ) from exc
             raise
         finally:
-            self._end_budget(control, checkpoint, state, deadline)
+            await self._end_budget(control, checkpoint, state, deadline)
 
     async def _interact(
         self, stage, context, images, rules, tools, control, checkpoint, state, model
     ):
         """Each pending request is durable before provider entry; never blindly replay."""
-        deadline = self._begin_budget(control, checkpoint, state)
+        if control.gateway_authorized:
+            if not control.gateway_model or not control.gateway_effort:
+                raise ProviderError("unavailable", "Exact verified gateway model/effort required")
+            model = {"model": control.gateway_model, "effort": control.gateway_effort}
+        deadline = await self._begin_budget(control, checkpoint, state)
         interaction_key = fingerprint(
             {"stage": stage, "context": context, "model": model}
         )
@@ -449,7 +468,7 @@ class CadPipeline:
                             "interaction_key": interaction_key,
                         }
                         state["remaining_seconds"] = remaining
-                        control.save(checkpoint)
+                        await control.save_async(checkpoint)
                         try:
                             runner = (
                                 self.gateway
@@ -476,7 +495,7 @@ class CadPipeline:
                             checkpoint["pending"]["outcome"] = exc.outcome
                             if exc.outcome != "unknown":
                                 checkpoint["pending"] = None
-                            control.save(checkpoint)
+                            await control.save_async(checkpoint)
                             if exc.outcome == "completed_invalid":
                                 # This solve is finished and consumed its
                                 # attempt. Normal per-code retry must enter a
@@ -492,7 +511,7 @@ class CadPipeline:
                             "result": asdict(result),
                         }
                         checkpoint["pending"] = None
-                        control.save(checkpoint)
+                        await control.save_async(checkpoint)
                 calls = result.tool_calls or result.data.get("tool_requests")
                 if not calls:
                     try:
@@ -550,10 +569,10 @@ class CadPipeline:
                     images=[str(p) for p in extra_images],
                 )
                 checkpoint["response"] = None
-                control.save(checkpoint)
+                await control.save_async(checkpoint)
             raise PipelineError("no_progress", "Host tool round limit exhausted")
         finally:
-            self._end_budget(control, checkpoint, state, deadline)
+            await self._end_budget(control, checkpoint, state, deadline)
 
     def _job(self, name, parts):
         return {
@@ -638,7 +657,7 @@ class CadPipeline:
                 "source_changed", "Source snapshot changed since checkpoint"
             )
         cp["source_digest"] = source_digest
-        control.save(cp)
+        await control.save_async(cp)
         evidence = prepare_evidence(source_directory, control.workspace)
         copied = [
             {
@@ -675,7 +694,7 @@ class CadPipeline:
             )
             cp["inventory"] = validate_inventory(data, evidence, source_mode)
             cp["response"] = None
-            control.save(cp)
+            await control.save_async(cp)
         inventory = validate_inventory(cp["inventory"], evidence, source_mode)
         results = []
         for code in inventory["codes"]:
@@ -717,7 +736,7 @@ class CadPipeline:
                     if state["phase"] == "solve_ready":
                         if control.store.attempts(control.run_id, name) >= 2:
                             state["phase"] = "failed"
-                            control.save(cp)
+                            await control.save_async(cp)
                             break
                         state["attempt"] = (
                             control.store.attempts(control.run_id, name) + 1
@@ -730,10 +749,10 @@ class CadPipeline:
                         state["phase"] = "solving"
                         state.pop("interaction", None)
                         control.check()
-                        control.store.begin_attempt(control.run_id, name, checkpoint=cp)
+                        await control.mutate(control.store.begin_attempt, control.run_id, name, checkpoint=cp)
                     if state["phase"] == "solving":
                         model = route_model(
-                            code, state["attempt"], state["issues"], self.models
+                            ({**code, "difficulty": self.difficulty, "difficulty_evidence": "User selected operational routing"} if self.difficulty != "auto" else code), state["attempt"], state["issues"], self.models
                         )
                         rules = (
                             bootstrap
@@ -785,7 +804,7 @@ class CadPipeline:
                             state["reroutes"] = state.get("reroutes", 0) + 1
                             cp["response"] = None
                             state.pop("interaction", None)
-                            control.save(cp)
+                            await control.save_async(cp)
                             continue
                         if answer.get("part", {}).get("code") != name or set(
                             answer.get("evidence_refs", [])
@@ -815,7 +834,7 @@ class CadPipeline:
                         state["phase"] = "qa_ready"
                         cp["response"] = None
                         state.pop("interaction", None)
-                        control.save(cp)
+                        await control.save_async(cp)
                     await control.boundary()
                     if state["phase"] == "qa_ready":
                         candidate = state["candidate"]
@@ -856,7 +875,7 @@ class CadPipeline:
                         state["phase"] = "done"
                         cp["response"] = None
                         state.pop("interaction", None)
-                        control.save(cp)
+                        await control.save_async(cp)
                 except (CadError, PipelineError) as exc:
                     if isinstance(exc, Paused):
                         raise
@@ -864,7 +883,7 @@ class CadPipeline:
                     state.pop("interaction", None)
                     state["issues"].append(str(exc))
                     state["phase"] = "solve_ready" if state["attempt"] < 2 else "failed"
-                    control.save(cp)
+                    await control.save_async(cp)
                     if isinstance(exc, PipelineError) and exc.kind == "no_progress":
                         # A broken interaction loop is operational, not evidence
                         # that every following code needs the same failed solve.
@@ -879,7 +898,7 @@ class CadPipeline:
                 state.get("qa"),
                 tuple(state["issues"]),
             )
-            control.store.save_part(
+            await control.mutate(control.store.save_part,
                 control.run_id,
                 name,
                 status,
@@ -915,7 +934,7 @@ class CadPipeline:
             "canonical_path": str(control.workspace / "aggregate/canonical.json"),
             "metadata": metadata,
         }
-        control.save(cp)
+        await control.save_async(cp)
         return PipelineResult(
             files,
             tuple(results),

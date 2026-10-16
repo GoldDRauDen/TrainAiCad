@@ -240,6 +240,9 @@ class GatewayRunner:
 
         report = GatewayCapabilityReport(self.endpoint, model, effort, time.time())
         deadline = time.monotonic() + timeout
+        workspace = Path(workspace)
+        workspace.mkdir(parents=True, exist_ok=True)
+        workspace = workspace.resolve(strict=True)
         probe_image = None
         current = "structured_response"
 

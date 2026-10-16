@@ -12,6 +12,10 @@ The agent must actually have access to this repo and the required source/CAD too
 
 For ChatGPT Web Projects, use the concise pointer template in `PROJECT_INSTRUCTIONS_GPT_WEB.md`; do not copy the engineering rules into Project Instructions.
 
+## Optional Windows application
+
+[LuanAppTools](LuanAppTools/README.md) provides a local Vietnamese dashboard for LAN jobs, Claude orchestration, DXF review and output history. Start with `LuanAppTools/start.cmd`. Every result still requires human inspection; the standalone CAD workflow remains available.
+
 ## Connect to another AI
 
 Attach this repository (or a checkout that the AI can actually read), then say:
