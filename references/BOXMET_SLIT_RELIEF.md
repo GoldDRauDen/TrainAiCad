@@ -66,7 +66,7 @@ These signs are part of the BOXMET construction, not an optional visual mirror. 
 - Layer `0`
 - slit color ACI `3` Green
 
-Do not silently remap a different material string into the tool's exact `SS` branch. TrainAiCad material-family rules remain separate unless an approved conversion explicitly controls this tool input.
+Do not silently remap a different material string into the tool's exact `SS` branch (the same `LeadVal` also drives the `BEND_END_OFFSET_90` slit, `BEND_EDGE_RELIEF_90.md`; aluminium therefore uses 6.0). TrainAiCad material-family rules remain separate unless an approved conversion explicitly controls this tool input.
 
 ## 4. One slit = one connected three-primitive feature
 

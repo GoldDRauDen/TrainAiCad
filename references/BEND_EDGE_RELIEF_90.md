@@ -50,6 +50,8 @@ At each relevant bend end, establish a local frame from source-proved physical e
 
 The sign and magnitude must come from actual source geometry/witnesses. Do not infer `S` from visual similarity, sample coordinates, symmetry, bbox, or Nobi arithmetic.
 
+**Reference edges (explicit):** measure `S` at one bend end along the bend direction, between (a) the **bend-zone start line** (the outer virtual-sharp line of that bend, where the bend edge begins) and (b) the **neighbouring web/main-face edge** that continues past the bend end. `S>0` = that neighbour edge is **set back** from the sharp line, leaving a step (bậc) — e.g. 060722: steps +5.1 upper and +1.6 lower; `S=0` = flush; `S<0` = the neighbour edge is recessed inward past the sharp line toward the bend. Read the step from DATA/PDF witnesses; never assume flush.
+
 `S` is a local edge/topology parameter. It is not Nobi and it is not a bend allowance.
 
 ## 4. BEND_END_OFFSET_90 relief decision
@@ -86,7 +88,15 @@ If the relevant 90-degree junction is proved but `S` cannot be closed after sour
 
 ## 5. Direction and connectivity
 
-The formulas above determine required depth only after the local junction and relief direction are proved. Preserve source topology for:
+The formulas above determine required depth only after the local junction and relief direction are proved. ### Slit shape (one connected feature, with lead)
+
+Every slit created by Case B/C is ONE Green connected `LINE + ARC R0.5 + LINE` (BOXMET construction, `BOXMET_SLIT_RELIEF.md` §3-§4), not a bare LINE:
+- base point `B` = the corner where the actual web edge meets the flange/bend-end side line; short ray `S` runs from `B` along that side line **into the web** for `D_actual = T + 0.2`;
+- lead (vòi dẫn) = 45° ray from `B` of `LeadVal` on each axis (`LeadVal = 3.0` only if the tool material is exactly `SS` and `T < 6`, otherwise `6.0`), leaving to the **void side, away from the flange** (BOXMET Case A sign pattern, local frame +X right/+Y up, flange between the two junctions): near edge `S=(0,+1)`: left junction `D=(-LeadVal,-LeadVal)`, right junction `D=(+LeadVal,-LeadVal)`; far edge `S=(0,-1)`: left `D=(-LeadVal,+LeadVal)`, right `D=(+LeadVal,+LeadVal)`; rotate the same pattern for a whole-part transform proved elsewhere;
+- tangent arc `R=0.5` between the rays (`tangentDist=R/tan(θ/2)`, θ=135°). The lead is CAD geometry, not NC lead-in (`CAD_CUSTOMER_POLICY.md` still defers NC paths);
+- the BEND pair only touches `B`; trim BEND only on real interior intersection. Executable: `tools/slit_geometry.py`.
+
+Preserve source topology for:
 - which edge receives the slit;
 - inward direction;
 - endpoint/connectivity;
