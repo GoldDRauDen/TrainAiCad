@@ -210,3 +210,45 @@ def test_manifest_only_when_requested(tmp_path):
                           tmp_path, write_manifest=True)
     assert sorted(p.name for p in tmp_path.iterdir()) == ["EX_ALL.dxf", "EX_MANIFEST.json"]
     assert json.loads((tmp_path / "EX_MANIFEST.json").read_text())["filename"] == manifest["filename"]
+
+
+def _marks(p, xs, top, last="LJ"):
+    for i, x in enumerate(xs):
+        p["entities"].append({"type": "POINT", "role": "mark", "point": [x, top]})
+        p["entities"].append({"type": "TEXT", "role": "mark", "insert": [x, top], "height": 10,
+                              "text": last if i == len(xs) - 1 else "J"})
+
+
+def test_jlj_marks_required_for_narrow_long_blank_only(tmp_path):
+    # L=1012, Oy=99.5 -> 1 J + 1 LJ at x=30 and L-30, on the top edge.
+    long_part = part("000001", (1012, 99.5))
+    with pytest.raises(Exception, match="J/LJ_MARKS_MISSING_OR_WRONG"):
+        export_job({"job_id": "J", "parts": [long_part]}, tmp_path, mode="single")
+    _marks(long_part, [30, 982], 99.5)
+    export_job({"job_id": "J", "parts": [long_part]}, tmp_path, mode="single")
+    doc = ezdxf.readfile(next(tmp_path.glob("J_ALL*.dxf")))
+    assert sorted(e.dxf.text for e in doc.modelspace() if e.dxftype() == "TEXT"
+                  and e.dxf.text in ("J", "LJ")) == ["J", "LJ"]
+    # 2 J + LJ above 1500; wrong spacing fails.
+    p2 = part("000002", (1600, 80))
+    _marks(p2, [30, 800, 1570], 80)
+    export_job({"job_id": "J2", "parts": [p2]}, tmp_path, mode="single")
+    p3 = part("000003", (1600, 80))
+    _marks(p3, [30, 700, 1570], 80)
+    with pytest.raises(Exception, match="J/LJ_MARKS_MISSING_OR_WRONG"):
+        export_job({"job_id": "J3", "parts": [p3]}, tmp_path, mode="single")
+
+
+def test_jlj_marks_forbidden_below_threshold_and_undefined_above_2500(tmp_path):
+    short = part("000001", (990, 99.5))  # Ox<1000: no marks
+    export_job({"job_id": "J4", "parts": [short]}, tmp_path, mode="single")
+    _marks(short, [30, 960], 99.5)
+    with pytest.raises(Exception, match="only for blank"):
+        export_job({"job_id": "J4", "parts": [short]}, tmp_path, mode="single")
+    wide = part("000002", (1200, 120))  # Oy>100: no marks
+    _marks(wide, [30, 1170], 120)
+    with pytest.raises(Exception, match="only for blank"):
+        export_job({"job_id": "J5", "parts": [wide]}, tmp_path, mode="single")
+    huge = part("000003", (2600, 50))
+    with pytest.raises(Exception, match="undefined"):
+        export_job({"job_id": "J6", "parts": [huge]}, tmp_path, mode="single")

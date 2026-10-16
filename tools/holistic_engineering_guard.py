@@ -245,12 +245,17 @@ def canonical_job_anomalies(job: Dict[str, Any]) -> List[str]:
             if entity_id:
                 found = next((e for e in part.get("entities", []) if e.get("entity_id") == entity_id), None)
                 axis = target.get("axis")
-                if not found or found.get("type") not in {"CIRCLE", "POINT"} or axis not in {"X", "Y"}:
+                slot_rec = next((r for r in part.get("slot_anchor_records", [])
+                                 if r.get("entity_id") == entity_id), None)
+                is_slot = bool(found and found.get("type") == "LWPOLYLINE" and
+                               found.get("role") == "slot" and slot_rec)
+                if not found or (found.get("type") not in {"CIRCLE", "POINT"} and not is_slot) or axis not in {"X", "Y"}:
                     out.append(f"{code}:WITNESS_ENTITY_UNPROVED:{entity_id}")
                 elif entity_id not in source_member_to_entity_ids.get(target.get("feature_id"), set()):
                     out.append(f"{code}:WITNESS_ENTITY_FEATURE_LINK_MISMATCH:{entity_id}")
                 else:
-                    point = found.get("center") if found.get("type") == "CIRCLE" else found.get("point")
+                    point = (slot_rec.get("canonical_midpoint") if is_slot else
+                             found.get("center") if found.get("type") == "CIRCLE" else found.get("point"))
                     if not isinstance(point, (list, tuple)) or len(point) < 2:
                         out.append(f"{code}:WITNESS_ENTITY_UNPROVED:{entity_id}")
                     else:

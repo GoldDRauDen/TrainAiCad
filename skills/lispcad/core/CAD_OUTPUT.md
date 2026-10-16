@@ -57,7 +57,7 @@ Canonical entity representations:
 - `CIRCLE`: `center:[x,y]`, positive `radius` for a verified cut hole or thread-pilot hole after applicable manufacturing decisions.
 - `POINT`: `point:[x,y]`, actual point entity, never a tiny circle. Ordinary POINT is ByLayer; only explicitly scoped PDF PIERCING+THROUGH HOLE yields a Green POINT.
 - `LINE` (start/end) and `ARC` (center/radius/start_angle/end_angle, degrees) for proven manufacturing line/relief; double bend lines DASHED and clipped to real material. The approved `055958` one Green slit comprises two LINEs + one ARC R0.5 connected end-to-end; 3 entities = 1 operation, never a universal R0.5 slit formula.
-- `TEXT` is allowed only for an adjacent Magenta review warning in the routed preview policy; code/status labels are generated on non-plot `AI_META` rather than being cut geometry.
+- `TEXT` only for an adjacent Magenta review warning (preview policy) or J/LJ (`role:mark`, ByLayer POINT+TEXT h10 on top edge; composite only, gate-enforced): blank Oy≤100 and Ox≥1000, L≤1500 1J+LJ, ≤2000 2J+LJ, ≤2500 3J+LJ, x=30…L−30 evenly, LJ last; labels use non-plot `AI_META`.
 
 One manufacturing member may own multiple primitives, and multiple semantic members may share one physical contour entity when required by topology. Feature quantity is therefore closed by the source/canonical member ledgers, never by raw DXF entity count alone.
 

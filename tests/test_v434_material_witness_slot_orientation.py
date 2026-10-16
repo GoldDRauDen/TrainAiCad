@@ -224,7 +224,7 @@ def test_v434_green_piercing_requires_scoped_english_stamp():
 def test_slot_guard_compares_stadium_dimensions_not_only_midpoint():
     part = model()
     # Same midpoint and width, but the physical slot has a shorter center gap.
-    slot_vertices = [[-3.3,1.75,0],[-3.3,5.75,-1],[3.3,5.75,0],[3.3,1.75,1]]
+    slot_vertices = [[-3.3,1.75,0],[-3.3,5.75,-1],[3.3,5.75,0],[3.3,1.75,-1]]
     part["entities"].append({"entity_id":"E_SLOT","type":"LWPOLYLINE","role":"slot",
         "closed":True,"vertices":slot_vertices})
     part["source_groups"].append(source_group("A", family="SLOT", member="M_SLOT"))
@@ -319,3 +319,54 @@ def test_composite_only_preserves_json_and_no_parts(tmp_path):
     assert not (tmp_path/"geometry_json").exists()
     assert not list((tmp_path/"parts_dxf").glob("*.dxf"))
     assert result["artifacts"]["parts"][0]["cut_readback"] == "COMPOSITE_ONLY"
+
+
+def test_stadium_geometry_accepts_cw_and_ccw_rejects_s_shape():
+    cw = [[-3.3,1.75,0],[-3.3,5.75,-1],[3.3,5.75,0],[3.3,1.75,-1]]
+    ccw = [[3.3,1.75,0],[3.3,5.75,1],[-3.3,5.75,0],[-3.3,1.75,1]]
+    for verts in (cw, ccw):
+        geo = stadium_geometry(verts)
+        assert geo["center_distance_mm"] == pytest.approx(4)
+        assert geo["overall_length_mm"] == pytest.approx(10.6)
+    with pytest.raises(SlotAnchorError):  # opposite bulges = S shape, not a slot
+        stadium_geometry([[-3.3,1.75,0],[-3.3,5.75,-1],[3.3,5.75,0],[3.3,1.75,1]])
+    with pytest.raises(SlotAnchorError):  # non-semicircular ends
+        stadium_geometry([[-3.3,1.75,0],[-3.3,5.75,-0.5],[3.3,5.75,0],[3.3,1.75,-0.5]])
+
+
+def test_slot_witness_target_may_use_slot_polyline_via_anchor_record():
+    part = model()
+    verts = [[2.7,6.75,0],[2.7,10.75,-1],[9.3,10.75,0],[9.3,6.75,-1]]
+    part["entities"] += [
+        {"entity_id":"E_SLOT","type":"LWPOLYLINE","role":"slot","closed":True,"vertices":verts}]
+    part["source_groups"].append(source_group("A", family="SLOT", member="M_SLOT"))
+    part["canonical_members"].append({"canonical_member_id":"CM_SLOT","origin":"SOURCE",
+        "source_member_id":"M_SLOT","group_id":"G_M_SLOT","status":"PROVED","entity_ids":["E_SLOT"]})
+    part["slot_anchor_records"] = [{"slot_id":"M_SLOT","entity_id":"E_SLOT",
+        "source_pdf_page":2,"evidence_ref":"PDF:slot-dim","witness_verified":True,
+        "anchor_point":[6,8.75],"anchor_type":"SLOT_MIDPOINT","axis_unit":[0,1],
+        "width_mm":6.6,"center_distance_mm":4,"overall_length_mm":10.6,
+        "canonical_midpoint":[6,8.75]}]
+    part["feature_witness_graph"] = {"nodes":{"D":"OUTER_EDGE","S":"SLOT_MIDPOINT"},
+        "edges":[{"from_node":"D","to_node":"S","axis":a,"kind":"LOCAL","value_mm":v,
+                  "proof":{"pdf_page":2,"evidence_ref":"p2","endpoint_verified":True,
+                           "from_type":"OUTER_EDGE","to_type":"SLOT_MIDPOINT"}}
+                 for a, v in (("X",6),("Y",8.75))],
+        "targets":[{"feature_id":"M_SLOT","datum_node":"D","feature_node":"S","axis":a,
+                    "coordinate_mm":v,"entity_id":"E_SLOT","datum_entity_id":"E_A_OUTER",
+                    "datum_coordinate_mm":0} for a, v in (("X",6),("Y",8.75))]}
+    part["witness_required_feature_ids"] = ["M_SLOT"]
+    errors = canonical_job_anomalies(job(part, "TrainAiCad-CANONICAL-V4.34"))
+    assert not [e for e in errors if "SLOT" in e or "WITNESS" in e], errors
+    part["feature_witness_graph"]["targets"][1]["coordinate_mm"] = 12
+    part["feature_witness_graph"]["edges"][1]["value_mm"] = 12
+    errors = canonical_job_anomalies(job(part, "TrainAiCad-CANONICAL-V4.34"))
+    assert any("WITNESS_CANONICAL_COORDINATE_MISMATCH" in e for e in errors)
+
+
+def test_jlj_mark_entities_need_no_canonical_owner():
+    part = model()
+    part["entities"] += [{"entity_id":"E_J","type":"POINT","role":"mark","point":[3,40]},
+                         {"entity_id":"E_J_T","type":"TEXT","role":"mark","insert":[3,40],
+                          "height":10,"text":"J"}]
+    validate_canonical_job(job(part, "TrainAiCad-CANONICAL-V4.34"))

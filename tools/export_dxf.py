@@ -96,7 +96,12 @@ def validate_entity(entity, part_code, preview):
         fail(f"{part_code}: bend must be double DASHED LINEs")
     if role == "estimated" and col != 6:
         fail(f"{part_code}: estimated geometry must be Magenta")
-    if t == "TEXT" and (not preview or col != 6 or role != "estimated_note"):
+    if role == "mark" and (col != 256 or t not in ("POINT", "TEXT")):
+        fail(f"{part_code}: J/LJ mark must be ByLayer POINT or TEXT")
+    if t == "TEXT" and role == "mark":
+        if entity.get("text") not in ("J", "LJ") or entity.get("height") != 10:
+            fail(f"{part_code}: mark TEXT must be J or LJ, height 10")
+    elif t == "TEXT" and (not preview or col != 6 or role != "estimated_note"):
         fail(f"{part_code}: source TEXT only for adjacent Magenta preview notes; code labels are generated in AI_META")
     if t == "LWPOLYLINE":
         vertices = entity.get("vertices")
@@ -148,6 +153,30 @@ def validate_entity(entity, part_code, preview):
         fail(f"{part_code}: Magenta FLAG geometry cannot enter production DXF")
 
 
+def jlj_marks_check(part):
+    """Laser_SheetMetal J/LJ: blank Oy<=100 and Ox>=1000 -> POINT+TEXT on the top edge, x=30..L-30 evenly."""
+    code = part.get("code", "?")
+    outer = [e for e in part["entities"] if e.get("role") == "outer"]
+    marks = [e for e in part["entities"] if e.get("role") == "mark"]
+    xs = [v[0] for e in outer for v in e["vertices"]]
+    ys = [v[1] for e in outer for v in e["vertices"]]
+    length, width = max(xs) - min(xs), max(ys) - min(ys)
+    if not (width <= 100 + 1e-6 and length >= 1000 - 1e-6):
+        if marks:
+            fail(f"{code}: J/LJ marks only for blank Oy<=100 and Ox>=1000")
+        return
+    if length > 2500:
+        fail(f"{code}: J/LJ count undefined for L>2500; flag instead of guessing")
+    n = 2 + (length > 1500) + (length > 2000)  # J count + 1 LJ
+    x0, top = min(xs), max(ys)
+    want = [(x0 + 30 + i * (length - 60) / (n - 1), top, "LJ" if i == n - 1 else "J") for i in range(n)]
+    pts = sorted((round(e["point"][0], 6), round(e["point"][1], 6)) for e in marks if e["type"] == "POINT")
+    txt = sorted((round(e["insert"][0], 6), round(e["insert"][1], 6), e["text"]) for e in marks if e["type"] == "TEXT")
+    if pts != [(round(x, 6), round(y, 6)) for x, y, _ in want] or \
+            txt != [(round(x, 6), round(y, 6), t) for x, y, t in want]:
+        fail(f"{code}: J/LJ_MARKS_MISSING_OR_WRONG expected {[(round(x, 3), t) for x, _, t in want]}")
+
+
 def validate_job(job):
     jid = safe_name(job.get("job_id"))
     parts = job.get("parts")
@@ -193,6 +222,8 @@ def validate_job(job):
                 safe_name(ent.get("view_id"))
         if state != "VIEWS_ONLY" and sum(ent.get("role") == "outer" for ent in ents) != 1:
             fail(f"{code}: exactly one proved closed outside contour required")
+        if state != "VIEWS_ONLY":
+            jlj_marks_check(part)
         if state == "VIEWS_ONLY" and not any(ent["type"] != "TEXT" for ent in ents):
             fail(f"{code}: no proved source-view geometry")
         if state == "PREVIEW" and not (any(e.get("color") == 6 for e in ents) and any(e.get("type") == "TEXT" for e in ents)):
