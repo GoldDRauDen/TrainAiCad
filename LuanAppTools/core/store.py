@@ -222,15 +222,23 @@ class Store:
             changed = db.execute("UPDATE runs SET lease=?,owner=?,status='running',updated=? WHERE id=? AND status='queued' AND lease IS NULL AND id=(SELECT current_run FROM jobs WHERE jobs.id=runs.job_id)", (lease, owner, time.time(), run_id)).rowcount
             return lease if changed else None
 
-    def release_run(self, run_id: str, lease: str, *, status: str = 'queued') -> None:
+    def release_run(self, run_id: str, lease: str, *, status: str = 'queued', error: str | None = None, if_current: bool = False) -> bool:
         """After reconciling/stopping the prior worker, release its lease without resetting budgets."""
         if status not in {'queued', 'paused', 'waiting_usage', 'waiting_fallback', 'waiting_output', 'reconciliation_required'}:
             raise ValueError('Invalid released run status')
         with self.transaction() as db:
-            row = self._assert_current(db, run_id)
+            try:
+                row = self._assert_current(db, run_id)
+            except ValueError:
+                if if_current:
+                    return False
+                raise
             if not lease or row['lease'] != lease:
+                if if_current:
+                    return False
                 raise ValueError('Invalid worker lease')
-            db.execute('UPDATE runs SET status=?,lease=NULL,owner=NULL,updated=? WHERE id=?', (status, time.time(), run_id))
+            db.execute('UPDATE runs SET status=?,error=COALESCE(?,error),lease=NULL,owner=NULL,updated=? WHERE id=?', (status, error, time.time(), run_id))
+            return True
 
     @staticmethod
     def _assert_current(db, run_id, lease=None, source_hash=None):

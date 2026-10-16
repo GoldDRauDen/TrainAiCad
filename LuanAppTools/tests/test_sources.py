@@ -94,7 +94,8 @@ def test_snapshot_hash_detects_same_size_content_change(tmp_path):
     job = discover_jobs([tmp_path / 'root'])[0]
     first = snapshot_job(job, tmp_path / 'cache', stable_seconds=0)
     before = data.read_bytes()
-    after = before.replace(b'\n10.0\n', b'\n11.0\n')
+    newline = b'\r\n' if b'\r\n' in before else b'\n'
+    after = before.replace(newline+b'10.0'+newline, newline+b'11.0'+newline)
     assert len(before) == len(after)
     assert before != after
     data.write_bytes(after)

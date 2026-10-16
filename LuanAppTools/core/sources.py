@@ -125,7 +125,9 @@ def validate_source(path: Path) -> None:
     if path.suffix.casefold() == '.pdf':
         import fitz
         try:
-            with fitz.open(path) as document:
+            # Read with a Python-owned handle first: a native parser failure can
+            # otherwise retain the malformed file handle on Windows.
+            with fitz.open(stream=path.read_bytes(), filetype='pdf') as document:
                 if document.needs_pass or document.page_count < 1:
                     raise ValueError('PDF is encrypted or empty')
                 for page in document:

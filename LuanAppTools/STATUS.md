@@ -13,7 +13,7 @@
 
 ## Bằng chứng trong phiên tiếp nối
 
-- `python -m pytest tests LuanAppTools/tests -q`: **389 passed** sau bổ sung kiểm thử Windows (xem CI của PR để biết kết quả từng nền tảng).
+- `python -m pytest tests LuanAppTools/tests -q`: **390 passed** sau bổ sung kiểm thử Windows (xem CI của PR để biết kết quả từng nền tảng).
 - `npm test`: **2 passed**; `npm run build`: typecheck và build thành công.
 - HTTP E2E dùng SQLite, snapshot, canonical/export/read-back và Publisher thật; AI được thay bằng fixture nguồn tổng hợp. Đã kiểm tra mixed PASS/REVIEW, tổng REVIEW_ONLY, chỉ xuất riêng PASS, xác nhận kiểm tra, chạy lại, tải bản lưu lịch sử và chống quét output thành nguồn.
 - 14 script regression trong workflow CAD hiện có: exit 0.
@@ -21,6 +21,7 @@
 - Review độc lập: không phát hiện Critical; ba Important đã có kiểm thử RED→GREEN: tạo thư mục probe gateway lần đầu, unpause/queue nguyên tử, tải DXF lưu lịch sử có hash và phạm vi đường dẫn đúng.
 - Browser smoke với backend HTTP thật và provider fixture: quét/chọn/chạy, nhận mixed DXF, ghi nhận kiểm tra, giải mã preview SVG, lưu cài đặt; desktop 1440px và mobile 390px không có lỗi JavaScript hay tràn ngang.
 - Lượt CI Windows đầu tìm lỗi phân cách đường dẫn và flush descriptor chỉ đọc. Đã sửa đường dẫn native bằng biểu diễn POSIX trước kiểm tra, dùng descriptor có quyền ghi khi fsync; kiểm thử timeout/cancel dùng tác vụ chậm chủ động và phân biệt worker với taskkill.
+- CI bổ sung tìm hai khác biệt Windows: native PDF parser giữ file hỏng mở và fixture DXF có CRLF. Đọc PDF bằng buffer đã đóng file và dùng đúng newline trong fixture. Giao dịch release worker ghi kèm lỗi, không thể ghi đè lệnh hủy đến sau; kiểm thử interleaving RED→GREEN.
 - Hai lỗi phát hiện khi khôi phục bản sửa dang dở cũng được kiểm thử lại: ý định pause trước khi dừng publisher, đọc lại lease sau đối soát tiến trình đang kết thúc.
 
 Các con số trên không phải bằng chứng độ chính xác hình học từ AI thật trên bản vẽ khách hàng.

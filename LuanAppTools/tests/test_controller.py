@@ -328,10 +328,11 @@ def test_contended_parent_writes_keep_loop_and_publisher_deadlines_responsive(tm
              f"def delay(*args):\n Path({str(marker)!r}).write_text('held')\n time.sleep(3)\n return original(*args)\n"
              "Publisher._copy_verified=staticmethod(delay)\nworker()\n")
     async def scenario():
-        release=asyncio.Event(); provider_progress=asyncio.Event()
+        release=asyncio.Event(); provider_progress=asyncio.Event(); provider_entered=asyncio.Event()
         class Runner(ScriptedRunner):
             async def preflight(self): return {}
             async def complete(self,request,*,emit,**kwargs):
+                provider_entered.set()
                 await release.wait()
                 await emit({'kind':'usage','session_id':'contention-fixture','event_key':'measured-once','metrics':{'input_tokens':1}})
                 provider_progress.set()
@@ -345,6 +346,7 @@ def test_contended_parent_writes_keep_loop_and_publisher_deadlines_responsive(tm
         for i in (0,2):
             service.store.save_checkpoint(runs[i]['id'],{'export':{'files':{f'job{i}_ALL.dxf':str(stage)}}})
         await service.tick(); await until(marker.exists)
+        await asyncio.wait_for(provider_entered.wait(),6)
         scan=asyncio.create_task(service.scan())
         pause=asyncio.create_task(service.pause(jobs[1]['id']))
         release.set(); before=time.monotonic()
@@ -417,5 +419,27 @@ def test_resume_never_exposes_queued_with_durable_pause(tmp_path):
         service.mutations.run=observe
         resumed=await service.resume(job['id'])
         assert resumed['status']=='queued' and not service.store.get_job(job['id'])['paused']
+        await service.close()
+    asyncio.run(scenario())
+
+
+def test_worker_failure_release_cannot_overwrite_later_cancel(tmp_path):
+    from types import SimpleNamespace
+    async def scenario():
+        service=ApplicationService(tmp_path/'app',ROOT)
+        root=sources(tmp_path)
+        service.update_settings({'roots':[str(root)],'stable_seconds':.001})
+        await service.scan(); job=service.store.list_jobs()[0]
+        run=await service.start(job['id'])
+        lease=service.store.claim_run(run['id'],'test')
+        original=service.mutations.run
+        async def interleave(operation,*args,**kwargs):
+            result=await original(operation,*args,**kwargs)
+            if operation==service.store.release_run:
+                await original(service.store.set_run_status,run['id'],'cancelled')
+            return result
+        service.mutations.run=interleave
+        await service._release_if_current(run,SimpleNamespace(lease=lease),'waiting_output','copy stopped')
+        assert service.store.get_run(run['id'])['status']=='cancelled'
         await service.close()
     asyncio.run(scenario())

@@ -478,9 +478,9 @@ class ApplicationService:
         current = self.store.get_run(run['id'])
         if current['status'] in {'superseded','cancelled','completed','error'}:
             return
-        await self.mutations.run(self.store.release_run,run['id'],control.lease,status=status)
-        if error:
-            await self.mutations.run(self.store.set_run_status,run['id'],status,error=error)
+        released = await self.mutations.run(self.store.release_run,run['id'],control.lease,status=status,error=error,if_current=True)
+        if not released:
+            return
         await self.mutations.run(self.store.append_event,run['id'],'worker_state',{'status':status,'message':error})
         if status in {'waiting_usage','waiting_output'}:
             self._retry_at[run['id']] = time.time()+self.settings.retry_seconds
