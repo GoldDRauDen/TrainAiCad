@@ -703,7 +703,7 @@ def test_host_operation_is_stopped_before_completion_at_attempt_deadline(
 
 
 def test_abrupt_worker_death_does_not_renew_active_interaction_deadline(
-    setup, tmp_path
+    setup, tmp_path, monkeypatch
 ):
     import json
     import subprocess
@@ -711,7 +711,7 @@ def test_abrupt_worker_death_does_not_renew_active_interaction_deadline(
     import time
 
     repo, _, control = setup
-    checkpoint, _ = interaction_checkpoint(control, 0.15)
+    checkpoint, _ = interaction_checkpoint(control, 5)
     config = {
         "db": str(control.store.db_path),
         "run_id": control.run_id,
@@ -750,7 +750,10 @@ asyncio.run(CadPipeline(None,Runner())._interact('solve',{'code':{'code':'26-000
     assert checkpoint["pending"] is None and checkpoint["response"]
     state = checkpoint["parts"]["26-000001"]
     assert state["deadline"] is not None
-    time.sleep(max(0, state["deadline"] - time.time()) + 0.03)
+    # Advance the parent wall clock beyond the real persisted deadline after
+    # an actual os._exit crash. Do not race Windows startup against 150 ms.
+    expired_at = state["deadline"] + 1
+    monkeypatch.setattr("LuanAppTools.cad.pipeline.time.time", lambda: expired_at)
 
     class NeverWork:
         provider_calls = 0
