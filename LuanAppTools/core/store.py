@@ -195,7 +195,7 @@ class Store:
             db.execute('UPDATE runs SET status=?,error=?,updated=?,lease=CASE WHEN ? THEN NULL ELSE lease END WHERE id=?', (status, error, time.time(), int(status in _TERMINAL), run_id))
             return self._run(db.execute('SELECT * FROM runs WHERE id=?', (run_id,)).fetchone())
 
-    def begin_attempt(self, run_id: str, code: str) -> int:
+    def begin_attempt(self, run_id: str, code: str, *, checkpoint: dict | None = None) -> int:
         if not code:
             raise ValueError('Part code is required')
         with self.transaction() as db:
@@ -205,6 +205,8 @@ class Store:
             if count >= 2:
                 raise ValueError('Two solver attempts already consumed')
             db.execute('INSERT INTO attempts VALUES(?,?,?) ON CONFLICT(run_id,code) DO UPDATE SET count=excluded.count', (run_id, code, count + 1))
+            if checkpoint is not None:
+                db.execute('UPDATE runs SET checkpoint=?,updated=? WHERE id=?', (json.dumps(checkpoint), time.time(), run_id))
             return count + 1
 
     def attempts(self, run_id: str, code: str) -> int:

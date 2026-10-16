@@ -92,3 +92,14 @@ def test_reconciled_worker_release_reclaims_without_resetting_budget(store, run)
     assert reclaimed is not None
     assert reclaimed != lease
     assert store.attempts(run['id'], '26-056522') == 1
+
+
+def test_attempt_and_checkpoint_commit_or_rollback_together(store, run):
+    checkpoint = {'parts': {'26-000001': {'phase': 'solving', 'attempt': 1}}}
+    assert store.begin_attempt(run['id'], '26-000001', checkpoint=checkpoint) == 1
+    reopened = Store(store.db_path)
+    assert reopened.get_run(run['id'])['checkpoint'] == checkpoint
+    with pytest.raises(TypeError):
+        reopened.begin_attempt(run['id'], '26-000001', checkpoint={'not_json': object()})
+    assert Store(store.db_path).attempts(run['id'], '26-000001') == 1
+    assert Store(store.db_path).get_run(run['id'])['checkpoint'] == checkpoint
