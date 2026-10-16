@@ -42,6 +42,9 @@ Do not substitute:
 - an inside dimension as if it were already outside;
 - a theoretical sharp intersection when the physical outside envelope is the controlled endpoint;
 - a reference/sample coordinate for a source-missing OD.
+- a dimension from another feature row (e.g. a hole-row `30`) as a step height or OD term.
+
+A section dimension whose extension lines touch the inner vs outer face decides which face carries `+t`; read the touched face per extension line, and keep two plates joined by a U tab as separate faces.
 
 For non-90-degree bends, retain existing routed ID->OD and acute-bend rules. This module controls **ownership and measurement meaning**: offsets/thickness terms must land on the correct face contribution and must not be consumed twice.
 

@@ -165,7 +165,7 @@ def validate_part(part: dict, customer_code: str | None = None) -> dict:
     # Every manufacturing Layer-0 input entity must belong to a canonical member.
     # Adjacent preview note TEXT is annotation, not a manufacturing operation.
     for eid, ent in entity_by_id.items():
-        annotation = ent.get("type") == "TEXT" and ent.get("role") == "estimated_note"
+        annotation = (ent.get("type") == "TEXT" and ent.get("role") == "estimated_note") or ent.get("role") == "mark"
         if not annotation and eid not in entity_owners:
             fail(f"{code}: orphan canonical manufacturing entity {eid}")
 

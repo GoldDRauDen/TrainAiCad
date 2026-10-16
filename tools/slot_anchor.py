@@ -72,7 +72,9 @@ def stadium_geometry(vertices, closed=True):
                 continue
             center, _, _, radius = bulge_to_arc(Vec2(x, y), Vec2(nx, ny), bulge)
             arcs.append((float(center.x), float(center.y), float(radius), bulge))
-        if len(arcs) != 2 or lines != 2 or arcs[0][3] * arcs[1][3] >= 0:
+        # A convex stadium has two same-direction semicircles (CW: -1/-1, CCW: +1/+1).
+        if (len(arcs) != 2 or lines != 2 or arcs[0][3] * arcs[1][3] <= 0 or
+                any(abs(abs(a[3]) - 1.0) > 1e-7 for a in arcs)):
             raise SlotAnchorError("SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE")
         if abs(arcs[0][2] - arcs[1][2]) > 1e-7:
             raise SlotAnchorError("SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE")
