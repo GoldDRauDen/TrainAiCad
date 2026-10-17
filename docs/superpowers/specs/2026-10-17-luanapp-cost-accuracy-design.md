@@ -57,10 +57,10 @@ Ngoài phạm vi: sửa nội dung rule repo; QA độc lập; nạp rule theo g
 ### WP3 — lỗi lặp
 - Chữ ký lỗi = thông báo chuẩn hóa (bỏ mã). Lần 2 liên tiếp: nhắc cụ thể. Lần 3: `PipelineError("validation_stalled")` chỉ kết thúc lượt của mã (không nằm trong nhóm lỗi làm dừng cả job).
 
-### WP4 — cổng VIEWS_ONLY
-- Với `status == "VIEWS_ONLY"`, `part.unresolved_record` phải có: `unresolved_object`, `candidates` (≥1, mỗi cái có `id`, `description`, `result`), `evidence_used` (không rỗng), `evidence_not_yet_used` (mỗi mục có `classification` thuộc drawing_only/helper/duplicate/canceled), `true_remaining_dof`, `blocker_class` thuộc từ vựng của repo.
-- Nếu ghi chú của mã khớp mẫu phép tính phẳng (`a+b-c=d`), id ghi chú đó phải nằm trong `evidence_used`.
-- Chạy trong tool `validate` (để AI thấy sớm) và trước `_validate_attempt`.
+### WP4 — VIEWS_ONLY qua chính cổng của repo
+- Phát hiện khi đọc `tools/holistic_engineering_guard.py`: đường sản xuất chỉ kiểm bản ghi vét nguồn khi phần tự khai `source_exhausted`/`holistic_challenge_run`; `part_anomalies` (đòi các cờ đó) chỉ dùng trong regression. Vì vậy app **dùng đúng khóa của repo** thay vì tự chế định dạng.
+- `validate` của app chạy thêm `job_anomalies` của repo. Với `VIEWS_ONLY`, phần phải khai `source_exhausted`, `holistic_challenge_run`, `face_graph_candidates[{candidate_id, constraint_result, evidence_used}]`, `unresolved_objects`, `proved_source_view_member_ids == views_only_canonical_member_ids`.
+- Host đặt `high_source_evidence` khi ghi chú của mã có phép tính phẳng (`a+b-c=d`) và `flat_attempted` cho phần PASS/PREVIEW/REVIEW; `VIEWS_ONLY` phải dẫn id các ghi chú đó trong `evidence_used` (repo: `HOLISTIC` §3, `CROSS_FEATURE_VALIDATION`).
 
 ### WP5 — system prompt dùng chung
 - `AIRequest.shared_context`; `ClaudeRunner` ghi file đặt tên theo hash trong workspace và thêm `--append-system-prompt-file`; CLI cũ hơn 2.1.301 thì gộp vào prompt. Pipeline đặt vào đó: lời dẫn, `TOOL_DESCRIPTION`, rule của route, và ghi chú hợp đồng đầu ra. Tin nhắn người dùng chỉ còn nhiệm vụ + `CONTEXT_JSON`. Rule mới do đổi route giữa chừng vẫn đi theo tin nhắn người dùng (cơ chế `fresh_rules` có sẵn).

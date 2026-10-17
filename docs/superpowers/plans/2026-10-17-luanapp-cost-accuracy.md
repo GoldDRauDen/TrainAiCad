@@ -82,15 +82,20 @@
 - [ ] **Step 1: tests.** `test_third_identical_validation_error_ends_the_attempt_not_the_job` (code A repeats one error; assert attempt consumed, code B still attempted, kind not re-raised); `test_second_identical_error_adds_instruction` (second tool result contains `repeated`).
 - [ ] **Step 2-4: fail, implement (count normalized error signatures in `state["interaction"]`), pass.** **Step 5: commit** `feat(luanapp): stop guessing after identical validation errors`.
 
-### Task 6: VIEWS_ONLY record gate
+### Task 6: VIEWS_ONLY through the repository's own guard
 
-**Files:** Modify `LuanAppTools/cad/contract.py`, `LuanAppTools/ai/tools.py`, `LuanAppTools/cad/pipeline.py`; Test `LuanAppTools/tests/test_views_only_gate.py`.
+Finding while reading `tools/holistic_engineering_guard.py`: the production path only checks the VIEWS_ONLY
+exhaustion record when the part volunteers `source_exhausted`/`holistic_challenge_run`, and `part_anomalies`
+(which demands them) is used only by regression scripts. So the app reuses the repository's own keys instead of
+inventing a record.
+
+**Files:** Modify `LuanAppTools/cad/contract.py`, `LuanAppTools/cad/repository.py` (validate script also runs `job_anomalies`), `LuanAppTools/ai/tools.py` (`HostTools(..., notes=())`), `LuanAppTools/cad/pipeline.py`; Test `LuanAppTools/tests/test_views_only_gate.py`.
 
 **Interfaces:**
-- Produces: `FLAT_ARITHMETIC` regex, `flat_arithmetic_note_ids(notes: list[dict]) -> list[str]`, `check_views_only_record(part: dict, notes: list[dict]) -> None` raising `ContractError(ValueError)`; `HostTools` gets `notes` (the code's inventory notes).
+- Produces: `FLAT_ARITHMETIC` regex; `flat_arithmetic_notes(notes) -> list[dict]`; `prepare_part(part, notes) -> dict` (sets `high_source_evidence`, and `flat_attempted` for PASS/PREVIEW/REVIEW, only when the code has flat-arithmetic notes); `check_flat_attempt(part, notes) -> None` raising `ContractError(ValueError)`; `HOST_VIEWS_ONLY_NOTE: str`.
 
-- [ ] **Step 1: tests.** `test_views_only_without_record_is_rejected`; `test_record_must_cite_flat_arithmetic_note` (note text `Handwritten 80+60-9.78=130.22`, id `n_calc`; record lacking it fails, record with it passes); `test_blocker_class_vocabulary`; `test_non_views_only_part_is_not_checked`.
-- [ ] **Step 2-4: fail, implement, pass.** **Step 5: commit** `feat(luanapp): require an unresolved record before VIEWS_ONLY`.
+- [ ] **Step 1: tests.** `test_flat_arithmetic_notes` (`Handwritten 80+60-9.78=130.22` matches, `2-M8; A+B+C` does not); `test_prepare_part_sets_host_owned_flags`; `test_views_only_must_cite_flat_arithmetic_notes`; `test_views_only_passes_only_with_the_full_exhaustion_record` (real `repo.validate`: missing flags -> `VIEWS_ONLY_BEFORE_SOURCE_EXHAUSTION` and `..._BEFORE_HOLISTIC_CHALLENGE`; with both booleans -> `VIEWS_ONLY_SOURCE_EXHAUSTION_UNPROVED`; with candidates and unresolved_objects -> valid); `test_pipeline_rejects_views_only_that_ignores_flat_arithmetic`; `test_solve_prompt_explains_views_only_requirements` (prompt contains `face_graph_candidates` and `separate_source_views`); `test_host_note_keys_exist_in_the_guard_source`.
+- [ ] **Step 2-4: fail, implement, pass.** **Step 5: commit** `feat(luanapp): make VIEWS_ONLY earn its exhaustion record`.
 
 ### Task 7: Shared system context
 
