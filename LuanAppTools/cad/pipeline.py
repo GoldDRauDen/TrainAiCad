@@ -29,6 +29,7 @@ from LuanAppTools.ai.routing import route_model
 from LuanAppTools.ai.tools import HostTools, TOOL_DESCRIPTION
 from LuanAppTools.core.settings import DEFAULT_MODELS
 from LuanAppTools.core.store import Store
+from .contract import solve_part_schema
 from .evidence import prepare_evidence, check_data_provenance, compact_entity
 from .repository import PinnedRepository, CadError
 
@@ -645,31 +646,7 @@ class CadPipeline:
                         "minItems": len(context["code"]["page_ids"]), "maxItems": len(context["code"]["page_ids"]),
                         "uniqueItems": True, "description": "Exact original page IDs only; no explanation or rule paths.",
                     }
-                    schema["properties"]["part"] = {
-                        "type": "object", "properties": {
-                            "code": {"type": "string", "enum": [context["code"]["code"]]},
-                            "material": {"type": "string"}, "thickness_mm": {"type": "number", "exclusiveMinimum": 0},
-                            "status": {"type": "string"}, "flags": {"type": "array", "items": {"type": "string"}},
-                            "checks": {"type": "object", "properties": {key: {"type": "string"} for key in check_names}, "required": list(check_names)},
-                            "entities": {"type": "array", "items": {"type": "object", "properties": {
-                                "entity_id": {"type": "string"}, "type": {"type": "string"},
-                                "role": {"type": "string"}, "closed": {"type": "boolean"},
-                                "vertices": {"type": "array", "items": {"type": "array", "items": {"type": "number"}}},
-                            }, "required": ["entity_id", "type", "role"]}},
-                            "source_groups": {"type": "array", "items": {"type": "object", "properties": {
-                                "group_id": {"type": "string"}, "family": {"type": "string"}, "status": {"type": "string"},
-                                "source_quantity": {"type": ["integer", "null"]},
-                                "members": {"type": "array", "items": {"type": "object", "properties": {"member_id": {"type": "string"}}, "required": ["member_id"]}},
-                            }, "required": ["group_id", "family", "status", "members", "source_quantity"]}},
-                            "canonical_members": {"type": "array", "items": {"type": "object", "properties": {
-                                "canonical_member_id": {"type": "string"}, "origin": {"type": "string"}, "status": {"type": "string"},
-                                "entity_ids": {"type": "array", "items": {"type": "string"}},
-                                "group_id": {"type": "string", "description": "Required for SOURCE; must match source group."},
-                                "source_member_id": {"type": "string", "description": "Required for SOURCE."},
-                                "source_member_ids": {"type": "array", "items": {"type": "string"}, "description": "Required for DERIVED_RULE with controlling_rule."},
-                            }, "required": ["canonical_member_id", "origin", "status", "entity_ids"]}},
-                        }, "required": ["code", "material", "thickness_mm", "status", "checks", "flags", "entities", "source_groups", "canonical_members"],
-                    }
+                    schema["properties"]["part"] = solve_part_schema(check_names, context["code"]["code"])
                 sent_rules, sent_images = [], []
                 # Intake and each code own a conversation: a long shared history would be
                 # re-read (or, after the cache expires, rebuilt) on every later call.

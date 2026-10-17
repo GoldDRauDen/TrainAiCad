@@ -186,6 +186,10 @@ class PinnedRepository:
     def stage_text(self, route, stage):
         return self.text(route["stage_plans"][stage]["rule_paths"])
 
+    def contract_notes(self):
+        from .contract import contract_notes
+        return contract_notes(self.read("tools/DXF_INPUT_SCHEMA.md"))
+
     async def resolve(self, census, workspace, cancel):
         self.verify()
         workspace.mkdir(parents=True, exist_ok=True)
