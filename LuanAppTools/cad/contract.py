@@ -125,12 +125,17 @@ PART_PROPERTIES = {
 }
 
 
-def solve_part_schema(check_names, code):
-    """JSON schema for the `part` of a solve answer; `check_names` come from the exporter."""
+def solve_part_schema(check_names, code=None):
+    """JSON schema for the `part` of a solve answer; `check_names` come from the exporter.
+
+    Leave `code` out for the real runs: the output schema is a tool definition that sits before the
+    shared rules in the provider's cache prefix, so any per-code detail in it stops codes from reusing
+    each other's cache. The host checks the code itself.
+    """
     return {
         "type": "object",
         "properties": {
-            "code": {"type": "string", "enum": [code]},
+            "code": {"type": "string", "enum": [code]} if code else {"type": "string"},
             "material": {"type": "string"},
             "thickness_mm": {"type": "number", "exclusiveMinimum": 0},
             "status": {"type": "string", "enum": STATUSES},
@@ -227,3 +232,20 @@ def check_flat_attempt(part, notes):
             f"FLAT_ARITHMETIC_NOT_TESTED: {listed} - test the formed topology this flat arithmetic closes and cite "
             "its note id in face_graph_candidates[].evidence_used before choosing VIEWS_ONLY "
             "(HOLISTIC_ENGINEERING_CHALLENGE section 3)")
+
+
+HOST_CANONICAL_NOTE = (
+    "Every PROVED HOLE or SLOT source member needs witness_required_feature_ids and a feature_witness_graph (V4.34 "
+    "canonical contract), even in a VIEWS_ONLY part. A hole you cannot witness must have its source member FLAGGED "
+    "instead of PROVED, with canonical status SOURCE_VIEW (or PREVIEW / FLAGGED_NO_GEOMETRY)."
+)
+
+HOST_WELD_NOTE = (
+    "This code has weld sites (customer 851). Record every weld mark you cannot prove yet like this before "
+    "validating: a source_groups entry {group_id, family: KEGAKI, status: FLAGGED, source_quantity: 1, members: "
+    "[{member_id, status: FLAGGED}]}, a canonical_members entry {canonical_member_id, origin: SOURCE, "
+    "source_member_id, group_id, status: FLAGGED_NO_GEOMETRY, entity_ids: []}, and that member_id in the site's "
+    "mark_member_ids inside weld_site_census; the part then needs non-empty flags and cannot be PASS. A mark you can "
+    "prove is a RED (color 1, role kegaki) LINE entity owned by a PROVED member, on a PROVED weld site whose "
+    "mark_status is PROVED and has datum_evidence."
+)

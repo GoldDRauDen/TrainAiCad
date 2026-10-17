@@ -30,7 +30,8 @@ from LuanAppTools.ai.tools import HostTools, TOOL_DESCRIPTION
 from LuanAppTools.core.settings import DEFAULT_MODELS
 from LuanAppTools.core.store import Store
 from .contract import (
-    HOST_VIEWS_ONLY_NOTE, WELD_SCHEMA, ContractError, check_flat_attempt, prepare_part, solve_part_schema)
+    HOST_CANONICAL_NOTE, HOST_VIEWS_ONLY_NOTE, HOST_WELD_NOTE, WELD_SCHEMA, ContractError, check_flat_attempt,
+    prepare_part, solve_part_schema)
 from .gates import GateIndex, describe_failure, summarize_error
 from .evidence import prepare_evidence, check_data_provenance, compact_entity
 from .repository import PinnedRepository, CadError
@@ -144,6 +145,10 @@ MAX_CONSECUTIVE_FAILED_CODES = 2
 # The same host validation error this many times in a row ends the attempt (not the job):
 # further rounds only re-read the whole conversation to guess the same answer again.
 MAX_IDENTICAL_VALIDATION_ERRORS = 3
+
+# Assemblies and multi-face parts are where the model gave up at the base effort (approved design: harder
+# codes get a stronger setting). One level up, decided once per code and stored with it.
+HARD_EFFORT = {"medium": "high", "high": "xhigh", "xhigh": "max", "max": "max"}
 
 STAGE_SCHEMAS = {
     "intake": {
@@ -616,6 +621,14 @@ class CadPipeline:
                 "Independent source QA requires Sonnet high (sonnet-5.5/high)"
             )
 
+    def _agent_model_for(self, census):
+        model = dict(self.agent_model)
+        hard = census.get("part_mode") in ("MULTI_FACE", "UNKNOWN") or bool(
+            (census.get("weld_site_census") or {}).get("sites"))
+        if hard:
+            model["effort"] = HARD_EFFORT.get(model["effort"], model["effort"])
+        return model
+
     def gate_index(self):
         if self._gates is None:
             self._gates = GateIndex.from_repo(self.repo)
@@ -674,7 +687,7 @@ class CadPipeline:
         self, stage, context, images, rules, tools, control, checkpoint, state, model
     ):
         """Each pending request is durable before provider entry; never blindly replay."""
-        if self.single_agent:
+        if self.single_agent and stage != "solve":  # a code's own effort is decided once, in run()
             model = dict(self.agent_model)
         if control.gateway_authorized:
             if not control.gateway_model or not control.gateway_effort:
@@ -725,12 +738,12 @@ class CadPipeline:
                     tree = ast.parse(self.repo.read("tools/export_dxf.py"))
                     check_names = next(ast.literal_eval(node.value) for node in tree.body
                         if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "CHECKS" for t in node.targets))
+                    # No per-code detail here: the schema is part of the cache prefix before the shared rules.
                     schema["properties"]["evidence_refs"] = {
-                        "type": "array", "items": {"type": "string", "enum": context["code"]["page_ids"]},
-                        "minItems": len(context["code"]["page_ids"]), "maxItems": len(context["code"]["page_ids"]),
-                        "uniqueItems": True, "description": "Exact original page IDs only; no explanation or rule paths.",
+                        "type": "array", "items": {"type": "string"},
+                        "description": "Original page IDs of this code; the host restates them.",
                     }
-                    schema["properties"]["part"] = solve_part_schema(check_names, context["code"]["code"])
+                    schema["properties"]["part"] = solve_part_schema(check_names)
                 sent_rules, sent_images = [], []
                 shared_file, introduces_shared = None, None
                 # Intake and each code own a conversation: a long shared history would be
@@ -755,11 +768,18 @@ class CadPipeline:
                             sent_rules.append(key)
                     request_images = tuple(p for p in request_images if str(p) not in agent["images"])
                     sent_images = [str(p) for p in request_images]
-                    task = (
+                    full_task = (
                         "Inspect all original pages. Return the complete source inventory with exact page/view/note/DATA ownership and complete feature census. Assign DATA by host groups (data_groups [{id,codes,exclude}]) and list data_entities only for entities that must be split from a group; the host fills each code's data_ids. No difficulty classification is needed. Also return customer_code: the numeric customer code printed in the job statistics/slip header (null when absent; never infer it from a name, barcode or part number) with customer_code_evidence. When customer_code is 851, or a drawing shows a welded assembly, return for each code a weld object {source_assembly_view_ids, source_weld_site_ids, weld_site_census} exactly as references/WELD_SITE_KEGAKI_CLOSURE.md defines it (set mark_status FLAGGED for now: the marks are derived when the code is solved) and never classify KEGAKI as NO for a code that has weld sites."
                         if stage == "intake" else
                         "Build the complete canonical part for the code in CONTEXT_JSON. Use the original pages attached to this conversation and the scoped inventory. Perform the routed source exhaustion and engineering challenge yourself, including witness endpoints, topology, ownership, dimensions and source reprojection. Use local tools for calculations. Before answering, call the validate tool with your complete part and correct every reported error; answer only with a part that passes it. Return part and evidence_refs containing ONLY exact page IDs. Include census only if features changed. SOURCE canonical members require group_id and source_member_id; DERIVED_RULE requires controlling_rule and source_member_ids. Polyline vertices are numeric arrays [x,y,bulge], not objects. Keep metadata concise. Use the required source-view fallback when flat geometry cannot be proved." + " " + HOST_VIEWS_ONLY_NOTE
                     )
+                    if stage != "intake":
+                        census = context["code"]["census"]
+                        full_task += " " + HOST_CANONICAL_NOTE
+                        if (census.get("weld_site_census") or {}).get("sites"):
+                            full_task += " " + HOST_WELD_NOTE
+                    task = ("Continue. The tool results below answer your last request; the task, rules and host "
+                            "notes given earlier still apply.") if agent["turns"] else full_task
                     compact_context = dict(context)
                     if agent["turns"]:
                         compact_context.pop("inventory", None)
@@ -1239,7 +1259,10 @@ class CadPipeline:
                         control.check()
                         await control.mutate(control.store.begin_attempt, control.run_id, name, checkpoint=cp)
                     if state["phase"] == "solving":
-                        model = self.agent_model if self.single_agent else route_model(
+                        if self.single_agent:
+                            state.setdefault("agent_model", (cp.get("agent:" + name) or {}).get("model")
+                                             or self._agent_model_for(code["census"]))
+                        model = state["agent_model"] if self.single_agent else route_model(
                             ({**code, "difficulty": self.difficulty, "difficulty_evidence": "User selected operational routing"} if self.difficulty != "auto" else code), state["attempt"], state["issues"], self.models
                         )
                         rules = (
@@ -1307,6 +1330,8 @@ class CadPipeline:
                             await control.save_async(cp)
                             if not self.single_agent or set(route["rule_paths"]) != previous_rules:
                                 continue
+                        if self.single_agent:
+                            answer["evidence_refs"] = list(code["page_ids"])  # an echo of the host's own scoped inventory
                         if answer.get("part", {}).get("code") != name or set(
                             answer.get("evidence_refs", [])
                         ) != set(code["page_ids"]):
