@@ -24,6 +24,11 @@ from .publication import OwnedPublisher, PublicationError
 from .mutations import AsyncMutations
 
 
+def usage_retry_delay(base, consecutive):
+    """Seconds before retrying a provider usage limit: double each wait, capped at 30 minutes."""
+    return min(base * 2 ** min(consecutive - 1, 10), max(base, 1800.0))
+
+
 class ApplicationService:
     def __init__(self, data_dir: Path, repo_root: Path, *, runner=None,
                  gateway_factory=GatewayRunner, pipeline_factory=CadPipeline,
@@ -51,6 +56,7 @@ class ApplicationService:
         self._repo_locks = {}
         self._probes = {}
         self._retry_at = {}
+        self._usage_waits = {}
         self._provider = {'status':'unchecked', 'message':'Checked when requested or before work starts'}
         self._connection_status = {}
         self._claude_login_process = None
@@ -495,6 +501,7 @@ class ApplicationService:
             raise ValueError('Interrupted request requires explicit gateway reconciliation')
         await self.mutations.run(self.store.resume_run,run['id'])
         self._retry_at.pop(run['id'],None)
+        self._usage_waits.pop(run['id'],None)
         return self.store.get_run(run['id'])
 
     async def cancel(self, job_id):
@@ -687,8 +694,13 @@ class ApplicationService:
         if not released:
             return
         await self.mutations.run(self.store.append_event,run['id'],'worker_state',{'status':status,'message':error})
-        if status in {'waiting_usage','waiting_output'}:
+        if status == 'waiting_usage':
+            self._usage_waits[run['id']] = self._usage_waits.get(run['id'],0)+1
+            self._retry_at[run['id']] = time.time()+usage_retry_delay(self.settings.retry_seconds,self._usage_waits[run['id']])
+        elif status == 'waiting_output':
             self._retry_at[run['id']] = time.time()+self.settings.retry_seconds
+        else:
+            self._usage_waits.pop(run['id'],None)
 
     async def _loop(self):
         next_scan = 0
