@@ -1,0 +1,6 @@
+# Rule files are measured in exact UTF-8 bytes (load budgets, hashes): keep LF on every platform.
+* text=auto eol=lf
+# DXF is stored byte-for-byte; the template is committed with CRLF.
+*.dxf -text
+*.png binary
+*.pdf binary

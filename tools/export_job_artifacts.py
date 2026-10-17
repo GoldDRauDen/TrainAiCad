@@ -264,7 +264,7 @@ def export_part_artifacts(job, output_dir, composite_only=False):
                 fail(f"{code}: individual DXF QA read-back failed")
             pending.replace(target_dxf)
             keep_pass.add(code)
-            entry.update({"cut_dxf": str(target_dxf.relative_to(root)), "cut_entity_count": len(expected),
+            entry.update({"cut_dxf": target_dxf.relative_to(root).as_posix(), "cut_entity_count": len(expected),
                           "canonical_cut_member_count": members, "closed_contours": contours,
                           "cut_readback": "PASS", "orientation": orientation})
         else:

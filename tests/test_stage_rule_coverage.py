@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 from audit_rule_coverage import CoverageError, audit  # noqa: E402
 from resolve_rules import ResolutionError, resolve_rules  # noqa: E402
 
-ROUTER = yaml.safe_load((ROOT / "skills/lispcad/router/ROUTER.yaml").read_text())
+ROUTER = yaml.safe_load((ROOT / "skills/lispcad/router/ROUTER.yaml").read_text(encoding="utf-8"))
 
 
 def census(source="PDF_ONLY", mode="FLAT_NO_BEND", reference="NO"):

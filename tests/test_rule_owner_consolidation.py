@@ -15,7 +15,7 @@ ACUTE = 'references/ACUTE_BEND_LT85_FROM_SOURCE.md'
 
 
 def census(mode='FLAT_NO_BEND', source='PDF_ONLY', **selected):
-    router = yaml.safe_load((ROOT / 'skills/lispcad/router/ROUTER.yaml').read_text())
+    router = yaml.safe_load((ROOT / 'skills/lispcad/router/ROUTER.yaml').read_text(encoding="utf-8"))
     return {'source_mode': source, 'part_mode': mode, 'reference_present': 'NO',
             'multi_code_or_assembly': 'NO',
             'features': {name: selected.get(name, 'NO') for name in router['feature_routes']}}
@@ -54,7 +54,7 @@ def test_acute_implementation_owner_keeps_bend_dependencies(state):
 
 
 def test_route_load_lists_have_no_repeated_path():
-    r = yaml.safe_load((ROOT / 'skills/lispcad/router/ROUTER.yaml').read_text())
+    r = yaml.safe_load((ROOT / 'skills/lispcad/router/ROUTER.yaml').read_text(encoding="utf-8"))
     for group in ('stage_routes', 'source_routes', 'mode_routes', 'feature_routes', 'customer_routes'):
         for name, route in r[group].items():
             assert len(route['load']) == len(set(route['load'])), (group, name)
@@ -62,14 +62,14 @@ def test_route_load_lists_have_no_repeated_path():
 
 def test_template_changes_trigger_both_production_events():
     # YAML 1.1 interprets unquoted 'on' as True.
-    wf = yaml.safe_load((ROOT / '.github/workflows/dxf-export-tests.yml').read_text())
+    wf = yaml.safe_load((ROOT / '.github/workflows/dxf-export-tests.yml').read_text(encoding="utf-8"))
     events = wf.get('on', wf.get(True))
     for event in ('push', 'pull_request'):
         assert 'templates/**' in events[event]['paths']
 
 
 def test_material_sharp_conflict_and_inner_hole_scope_share_one_decision_table():
-    text = (ROOT / 'references/MATERIAL_RULES.md').read_text()
+    text = (ROOT / 'references/MATERIAL_RULES.md').read_text(encoding="utf-8")
     decision = text.split('## SS t>=19 R3 scope and explicit-corner decisions', 1)[1].split('\n## ', 1)[0]
     assert 'Explicit customer sharp/pin-corner' in decision
     assert 'FLAG and obtain customer confirmation' in decision
