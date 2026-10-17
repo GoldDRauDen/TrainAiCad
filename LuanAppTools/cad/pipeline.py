@@ -436,8 +436,15 @@ def pin_customer(data):
             census["customer_code"] = customer
         weld = code.get("weld")
         if isinstance(weld, dict):
+            assembly = weld.get("source_assembly_view_ids")
+            if isinstance(assembly, list):
+                known = {v.get("id") for v in data.get("views", []) if isinstance(v, dict)}
+                unknown = [v for v in assembly if v not in known]
+                if unknown:
+                    raise PipelineError(
+                        "inventory_invalid", f"{code['code']}: weld.source_assembly_view_ids names unknown view(s) {unknown}")
             census["part_code"] = code["code"]
-            census["source_assembly_view_ids"] = weld.get("source_assembly_view_ids")
+            census["source_assembly_view_ids"] = assembly
             census["source_weld_site_ids"] = weld.get("source_weld_site_ids")
             sites = []
             for site in (weld.get("weld_site_census") or {}).get("sites", []):
@@ -445,7 +452,10 @@ def pin_customer(data):
                 if site["mark_status"] == "FLAGGED" and not site.get("unresolved_fields"):
                     site["unresolved_fields"] = ["mark geometry is derived when the code is solved"]
                 sites.append(site)
-            census["weld_site_census"] = {**(weld.get("weld_site_census") or {}), "sites": sites}
+            # Every original page is already proved inspected (validate_inventory), so "inspected assembly
+            # views" is the assembly list itself, restated once by the host instead of echoed by the model.
+            census["weld_site_census"] = {**(weld.get("weld_site_census") or {}), "sites": sites,
+                                          **({"inspected_assembly_view_ids": list(assembly)} if isinstance(assembly, list) else {})}
         elif customer == "851":
             census["part_code"] = code["code"]  # lets the resolver name the missing weld field
         pinned.append({**code, "census": census})
@@ -998,11 +1008,14 @@ class CadPipeline:
 
     async def _resolve_all(self, inventory, workspace, cancel):
         """Resolve every code's route now, so a census the repository rejects is repaired in the intake."""
+        problems = []
         for code in inventory["codes"]:
             try:
                 await self.repo.resolve(code["census"], workspace / "routing" / code["code"], cancel)
             except CadError as exc:
-                raise PipelineError("inventory_invalid", f"{code['code']}: {summarize_error(str(exc))}") from exc
+                problems.append(f"{code['code']}: {summarize_error(str(exc))}")
+        if problems:  # all of them at once: the intake gets a single repair turn
+            raise PipelineError("inventory_invalid", " | ".join(problems))
 
     async def run(
         self,

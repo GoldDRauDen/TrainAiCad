@@ -59,14 +59,14 @@ WELD_SITE_PROPERTIES = {
 WELD_CENSUS_SCHEMA = {
     "type": "object",
     "properties": {
-        "inspected_assembly_view_ids": _TEXTS,
+        "inspected_assembly_view_ids": {**_TEXTS, "description": "host-owned: always equals source_assembly_view_ids"},
         "source_evidence": {"type": "string"},
         "no_weld_evidence": {"type": "string"},
         "sites": {"type": "array", "items": {
             "type": "object", "properties": WELD_SITE_PROPERTIES,
             "required": ["weld_site_id", "status", "child_part_id", "assembly_view_id", "source_evidence"]}},
     },
-    "required": ["inspected_assembly_view_ids", "source_evidence", "sites"],
+    "required": ["source_evidence", "sites"],
 }
 
 # Per-code weld inventory as references/WELD_SITE_KEGAKI_CLOSURE.md defines it.
@@ -207,6 +207,10 @@ def prepare_part(part, notes, census=None):
     for key in WELD_KEYS:
         if census and census.get(key) is not None:
             prepared.setdefault(key, copy.deepcopy(census[key]))
+    welds = prepared.get("weld_site_census")
+    if isinstance(welds, dict) and isinstance(prepared.get("source_assembly_view_ids"), list):
+        # The repository requires the inspected views to equal the assembly views; it is one fact.
+        prepared["weld_site_census"] = {**welds, "inspected_assembly_view_ids": list(prepared["source_assembly_view_ids"])}
     return prepared
 
 

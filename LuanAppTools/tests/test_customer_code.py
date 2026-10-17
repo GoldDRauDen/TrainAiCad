@@ -84,7 +84,7 @@ def test_non_numeric_customer_code_is_repaired_inside_the_intake_conversation(se
 
 
 def test_pin_customer_defaults_and_validation():
-    data = {"customer_code": " 0851 ", "codes": [{"code": "26-000001", "census": {"features": {}}, "weld": {
+    data = {"customer_code": " 0851 ", "views": [{"id": "v1"}], "codes": [{"code": "26-000001", "census": {"features": {}}, "weld": {
         "source_assembly_view_ids": ["v1"], "source_weld_site_ids": ["W1"],
         "weld_site_census": {"sites": [{"weld_site_id": "W1"}]}}}]}
     pinned = pin_customer(data)
@@ -100,12 +100,13 @@ def test_pin_customer_defaults_and_validation():
 def test_prepare_part_copies_the_weld_census_without_overriding_the_model():
     census = {"source_assembly_view_ids": ["v1"], "source_weld_site_ids": ["W1"], "weld_site_census": {"sites": []}}
     part = prepare_part(synthetic_part(), [], census)
-    assert part["source_assembly_view_ids"] == ["v1"] and part["weld_site_census"] == {"sites": []}
+    assert part["source_assembly_view_ids"] == ["v1"]
+    assert part["weld_site_census"] == {"sites": [], "inspected_assembly_view_ids": ["v1"]}
     own = synthetic_part()
     own["source_weld_site_ids"] = ["MINE"]
     assert prepare_part(own, [], census)["source_weld_site_ids"] == ["MINE"]
     census["weld_site_census"]["sites"].append("x")  # the copy is independent of the census
-    assert part["weld_site_census"] == {"sites": []}
+    assert part["weld_site_census"]["sites"] == []
 
 
 def test_weld_schema_covers_every_site_key_the_repository_reads():
@@ -161,3 +162,41 @@ def test_resolver_survives_customer_notes_with_non_ascii_text(setup, tmp_path): 
               "features": {name: "NO" for name in repo.router["feature_routes"]}}
     route = asyncio.run(repo.resolve(census, tmp_path / "route", asyncio.Event()))
     assert any(ord(ch) > 127 for note in route["customer_rules"]["notes"] for ch in note)
+
+
+def weld_data(assembly, inspected, views=("v1",)):
+    return {"customer_code": "851", "views": [{"id": v} for v in views], "codes": [
+        {"code": "26-000001", "census": {"features": {}}, "weld": {
+            "source_assembly_view_ids": list(assembly), "source_weld_site_ids": [],
+            "weld_site_census": {"inspected_assembly_view_ids": list(inspected), "source_evidence": "x" * 10,
+                                 "no_weld_evidence": "no weld symbol in any view", "sites": []}}}]}
+
+
+def test_inspected_views_are_derived_from_the_assembly_views():
+    # Every original page is already proved inspected, so the model's second list is a pure echo.
+    # It once listed all four inspected views next to an empty assembly list and failed the repository gate.
+    pinned = pin_customer(weld_data([], ["v1", "v2", "v3"], views=("v1", "v2", "v3")))
+    assert pinned["codes"][0]["census"]["weld_site_census"]["inspected_assembly_view_ids"] == []
+    pinned = pin_customer(weld_data(["v1", "v2"], ["v1"], views=("v1", "v2")))
+    assert pinned["codes"][0]["census"]["weld_site_census"]["inspected_assembly_view_ids"] == ["v1", "v2"]
+
+
+def test_unknown_assembly_view_is_rejected_at_intake():
+    with pytest.raises(PipelineError, match=r"26-000001.*unknown view.*ghost"):
+        pin_customer(weld_data(["ghost"], [], views=("v1",)))
+
+
+def test_every_failing_code_is_reported_in_one_repair_message(setup):  # noqa: F811
+    runner = CustomerRunner({"26-000001": synthetic_part(), "26-000002": synthetic_part("26-000002")}, ["851"])
+    with pytest.raises(PipelineError) as stopped:
+        run_pipeline(setup, runner)
+    assert "26-000001" in str(stopped.value) and "26-000002" in str(stopped.value)
+    repair = runner.requests[1].prompt.rsplit("CONTEXT_JSON\n", 1)[1]
+    assert "26-000001" in json.loads(repair)["validation_error"] and "26-000002" in json.loads(repair)["validation_error"]
+
+
+def test_prepare_part_fills_inspected_views_from_the_assembly_list():
+    part = synthetic_part()
+    part["source_assembly_view_ids"] = ["v1", "v2"]
+    part["weld_site_census"] = {"source_evidence": "x" * 10, "sites": []}
+    assert prepare_part(part, [])["weld_site_census"]["inspected_assembly_view_ids"] == ["v1", "v2"]
