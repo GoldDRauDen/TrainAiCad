@@ -107,15 +107,15 @@ inventing a record.
 - [ ] **Step 1: tests.** `test_first_turn_rules_go_to_shared_context` (fake runner with `supports_shared_context = True`: request 1 `shared_context` contains `FILE AI_BOOTSTRAP.md`, `prompt` does not); `test_same_route_codes_share_identical_context` (two codes, equal `shared_context`); `test_resume_turn_does_not_resend_rules`; `test_runner_without_support_keeps_inline_rules`; in test_runners: `test_claude_argv_uses_append_system_prompt_file` (path with spaces and non-ASCII), `test_old_cli_falls_back_to_prompt`.
 - [ ] **Step 2-4: fail, implement (hash-named UTF-8 file; version >= 2.1.301 else prepend to prompt), pass.** **Step 5: commit** `feat(luanapp): share rules across sessions via appended system prompt`.
 
-### Task 8: customer_code and KH851 census
+### Task 8: customer_code and the KH851 weld census
 
-**Files:** Modify `LuanAppTools/cad/pipeline.py` (intake schema, `normalize_inventory`, `run`, `_job`), `LuanAppTools/cad/repository.py` (intake rules add `references/WELD_SITE_KEGAKI_CLOSURE.md`); Test `LuanAppTools/tests/test_customer_code.py`.
+**Files:** Modify `LuanAppTools/cad/pipeline.py` (intake schema, `pin_customer`, `_resolve_all`, `_job`, intake rules), `LuanAppTools/cad/contract.py` (`WELD_SCHEMA`, `WELD_SITE_PROPERTIES`, `prepare_part(part, notes, census)`), `LuanAppTools/ai/tools.py`, `LuanAppTools/cad/repository.py` (tools run with `-X utf8`); Test `LuanAppTools/tests/test_customer_code.py`.
 
 **Interfaces:**
-- Produces: intake field `customer_code: str | None` (+ `customer_code_evidence`); census keys `customer_code`, `part_code`, `source_assembly_view_ids`, `source_weld_site_ids`, `weld_site_census` filled by host; job JSON key `customer_code`.
+- Produces: intake fields `customer_code` (digits or null) and per-code `weld` = the repository's own trio `{source_assembly_view_ids, source_weld_site_ids, weld_site_census}`; `pin_customer(data) -> dict` fills census `customer_code`, `part_code`, the trio, and site defaults (`parent_code`, `mark_status=FLAGGED`); `CadPipeline._resolve_all(inventory, workspace, cancel)` raising `PipelineError("inventory_invalid")`; job JSON key `customer_code`.
 
-- [ ] **Step 1: tests.** `test_customer_code_reaches_resolver_and_job` (non-851 code `646`: resolver census has it; job JSON has `customer_code == "646"`); `test_non_numeric_customer_code_is_rejected_at_intake`; `test_kh851_requires_weld_census_and_repairs_once` (first intake lacks census → repair turn in the same session; second passes); `test_no_customer_code_keeps_current_behaviour`.
-- [ ] **Step 2-4: fail, implement, pass.** **Step 5: commit** `feat(luanapp): carry customer_code and the KH851 weld census`.
+- [x] Tests: customer code reaches resolver, prompt and job; none keeps behaviour; non-numeric is repaired inside the intake conversation; `pin_customer` defaults; `prepare_part` copies the trio without overriding the model; weld schema covers every site key the guard reads; KH851 end to end (repair once, then export); KH851 that never supplies the census stops after one repair without paying for a solve; resolver survives non-ASCII customer notes.
+- [x] Finding: `resolve_rules.py` crashed on Windows for customers whose notes contain non-ASCII text (859 has a "greater or equal" sign) because a piped stdout is cp1252; repository tools now run with `-X utf8`.
 
 ### Task 9: Verify and run end to end
 

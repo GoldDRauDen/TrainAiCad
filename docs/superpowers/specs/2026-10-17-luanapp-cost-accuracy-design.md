@@ -67,8 +67,8 @@ Ngoài phạm vi: sửa nội dung rule repo; QA độc lập; nạp rule theo g
 - Gateway (9Router) giữ hành vi cũ.
 
 ### WP6 — customer_code
-- Intake trả `customer_code` (chuỗi số hoặc null) kèm bằng chứng; host ghim vào census mỗi mã và vào job JSON. Với KH851 (hoặc khi có census mối hàn) intake phải trả census mối hàn theo `references/WELD_SITE_KEGAKI_CLOSURE.md`; host chép sang `part` để AI không phải lặp lại.
-- Sau intake, host gọi `resolve` cho từng mã; lỗi `ResolutionError` vào đường sửa intake một lần có sẵn thay vì làm hỏng cả run.
+- Intake trả `customer_code` (chuỗi số hoặc null) và, với mỗi mã có mối hàn (hoặc khi khách là 851), đối tượng `weld` đúng ba khóa của repo (`source_assembly_view_ids`, `source_weld_site_ids`, `weld_site_census`, theo `references/WELD_SITE_KEGAKI_CLOSURE.md`). Host ghim vào census (`customer_code`, `part_code`, mặc định `parent_code`, `mark_status=FLAGGED`), gọi `resolve` cho mọi mã ngay sau intake (lỗi vào đường sửa intake một lần), chép bộ ba sang `part` khi AI không tự khai, và gửi `customer_code` trong job JSON.
+- Phát hiện: `resolve_rules.py` văng `UnicodeEncodeError` trên Windows với khách có ghi chú không ASCII (ví dụ 859) vì stdout qua pipe là cp1252; mọi tool của repo giờ chạy với `-X utf8`.
 
 ## 5. Kiểm thử và nghiệm thu
 
