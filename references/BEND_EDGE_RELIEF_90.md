@@ -50,7 +50,7 @@ At each relevant bend end, establish a local frame from source-proved physical e
 
 The sign and magnitude must come from actual source geometry/witnesses. Do not infer `S` from visual similarity, sample coordinates, symmetry, bbox, or Nobi arithmetic.
 
-**Reference edges (explicit):** measure `S` at one bend end along the bend direction, between (a) the **bend-zone start line** (the outer virtual-sharp line of that bend, where the bend edge begins) and (b) the **neighbouring web/main-face edge** that continues past the bend end. `S>0` = that neighbour edge is **set back** from the sharp line, leaving a step (bậc) — e.g. 060722: steps +5.1 upper and +1.6 lower; `S=0` = flush; `S<0` = the neighbour edge is recessed inward past the sharp line toward the bend. Read the step from DATA/PDF witnesses; never assume flush.
+**Reference edges:** prove the zero-offset/virtual-sharp reference and the actual neighbouring web edge in one physical source frame; identify each edge and the local positive-S direction, then measure their signed separation perpendicular to those parallel edges. Check each junction independently; dividing a width difference equally requires source-proved centring/side witnesses. Neither page direction nor overlapping virtual-sharp DASHED bend pairs proves a material intersection. `S=t>0` is Case A, not an `R=t` instruction; S, thickness t, corner radius R and Nobi are distinct quantities.
 
 `S` is a local edge/topology parameter. It is not Nobi and it is not a bend allowance.
 
@@ -133,6 +133,8 @@ For one physical junction, apply the first controlling mechanism whose scope is 
 Never generate duplicate reliefs from multiple mechanisms at the same junction.
 
 ## 8. QA
+
+**BEND_END_STEP_CHECK:** inventory every relevant source junction and supply its edge witnesses, signed direction, mechanism and relief owners using the bend-end contract in `tools/CANONICAL_INPUT_SCHEMA_V434.md`. `tools/bend_end_guard.py`, called by normal canonical export, remeasures S and rejects missing sites, unproved physical R=t/crossing triggers, or added relief at a positive-step site controlled by this mechanism; a local unresolved S remains FLAGGED under REVIEW_PREVIEW_POLICY.
 
 Before production PASS for an affected junction, verify:
 

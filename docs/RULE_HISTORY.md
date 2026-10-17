@@ -2,6 +2,10 @@
 
 Verbatim archive of rule blocks removed from routed files. The Router does NOT load this file, and it is NOT production authority. It keeps provenance only. Restoring any block into a routed file requires explicit user approval (`DUYỆT`), per `AGENTS.md`.
 
+## Superseded bend-intersection shorthand
+
+Superseded from `skills/lispcad/features/SLIT_RELIEF.md`: "only when two perpendicular bend lines cross" and "When two outer edges fold in different directions and both outside dimensions must remain unchanged, create an R=t escape relief at their intersection". The owner now requires a source-proved physical intersection after step and bend-domain closure. Positive-step formulas are unchanged; evidence stays in regression/qa.
+
 ## Archived from skills/lispcad/core/DRAWING_READING.md
 
 ## V4.7 DXF-first output mode (approved 2026-09-26)
