@@ -64,20 +64,40 @@ def stadium_geometry(vertices, closed=True):
         if not all(math.isfinite(c) for v in pts for c in v):
             raise SlotAnchorError("SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE")
         arcs = []
-        lines = 0
+        straight_segments = []
         for i, (x, y, bulge) in enumerate(pts):
             nx, ny, _ = pts[(i + 1) % 4]
+            if math.hypot(nx - x, ny - y) <= 1e-10:
+                raise SlotAnchorError("SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE")
             if abs(bulge) <= 1e-10:
-                lines += 1
+                straight_segments.append(((x, y), (nx, ny)))
                 continue
             center, _, _, radius = bulge_to_arc(Vec2(x, y), Vec2(nx, ny), bulge)
-            arcs.append((float(center.x), float(center.y), float(radius), bulge))
+            arcs.append((float(center.x), float(center.y), float(radius), bulge,
+                         (x, y), (nx, ny)))
         # A convex stadium has two same-direction semicircles (CW: -1/-1, CCW: +1/+1).
-        if (len(arcs) != 2 or lines != 2 or arcs[0][3] * arcs[1][3] <= 0 or
+        if (len(arcs) != 2 or len(straight_segments) != 2 or arcs[0][3] * arcs[1][3] <= 0 or
                 any(abs(abs(a[3]) - 1.0) > 1e-7 for a in arcs)):
             raise SlotAnchorError("SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE")
         if abs(arcs[0][2] - arcs[1][2]) > 1e-7:
             raise SlotAnchorError("SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE")
+        # Two equal semicircles alone do not prove a stadium. Every straight
+        # side must meet *its own* arc tangentially at both endpoints.
+        # Otherwise an oblique/warped quadrilateral can pass the size witness.
+        for start, end in straight_segments:
+            vx, vy = end[0] - start[0], end[1] - start[1]
+            length = math.hypot(vx, vy)
+            for endpoint in (start, end):
+                touching = [a for a in arcs if
+                            math.dist(endpoint, a[4]) <= 1e-7 or
+                            math.dist(endpoint, a[5]) <= 1e-7]
+                if len(touching) != 1:
+                    raise SlotAnchorError("SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE")
+                arc = touching[0]
+                radial_dot = ((endpoint[0] - arc[0]) * vx +
+                              (endpoint[1] - arc[1]) * vy)
+                if abs(radial_dot) > 1e-7 * max(1.0, arc[2] * length):
+                    raise SlotAnchorError("SLOT_CANONICAL_GEOMETRY_UNVERIFIABLE")
         dx, dy = arcs[1][0] - arcs[0][0], arcs[1][1] - arcs[0][1]
         distance = math.hypot(dx, dy)
         if distance <= 1e-10:
