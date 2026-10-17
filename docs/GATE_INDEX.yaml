@@ -57,6 +57,9 @@ gates:
 - id: BEND_EDGE_LENGTH_LOCK
   files:
   - references/BEND_EDGE_RELIEF_90.md
+- id: BEND_END_STEP_CHECK
+  files:
+  - references/BEND_EDGE_RELIEF_90.md
 - id: BEND_SIGN_LOCKED
   files:
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md

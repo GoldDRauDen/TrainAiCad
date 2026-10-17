@@ -1,0 +1,2345 @@
+{
+  "source_pdf": "521017-17.pdf",
+  "source_sha256": "ef18f1eeaee9bae29cf3b1063d7122f3079768550537710e7edc140a8cc8c321",
+  "authority": "PDF p6 plus explicit user2026-10-17: both junctions protrude by t; normal unfold; no corner relief",
+  "job": {
+    "canonical_contract": "TrainAiCad-CANONICAL-V4.34",
+    "job_id": "521017-17",
+    "customer_code": 795,
+    "repo_snapshot": "13c566984315a4501a08767c228f1c9f4c6e89c7",
+    "source_sha256": "ef18f1eeaee9bae29cf3b1063d7122f3079768550537710e7edc140a8cc8c321",
+    "source_mode": "PDF_ONLY",
+    "reference_present": false,
+    "parts": [
+      {
+        "code": "26-061099",
+        "material": "SUS304-2B",
+        "thickness_mm": 2,
+        "status": "PASS",
+        "checks": {
+          "contour_topology": "PASS",
+          "datum": "PASS",
+          "feature_count": "PASS",
+          "unfold": "PASS",
+          "containment": "PASS",
+          "bend_domain": "PASS",
+          "material_rules": "PASS",
+          "slot_semantics": "N/A"
+        },
+        "flags": [],
+        "entities": [
+          {
+            "entity_id": "P061099_OUTER",
+            "type": "LWPOLYLINE",
+            "role": "outer",
+            "vertices": [
+              [
+                5.0,
+                13.32,
+                0.0
+              ],
+              [
+                108.64,
+                13.32,
+                0.0
+              ],
+              [
+                108.64,
+                5.0,
+                0.0
+              ],
+              [
+                113.64,
+                0.0,
+                0.0
+              ],
+              [
+                223.64,
+                0.0,
+                0.0
+              ],
+              [
+                228.64,
+                5.0,
+                0.0
+              ],
+              [
+                228.64,
+                61.64,
+                0.0
+              ],
+              [
+                223.64,
+                66.64,
+                0.0
+              ],
+              [
+                113.64,
+                66.64,
+                0.0
+              ],
+              [
+                108.64,
+                61.64,
+                0.0
+              ],
+              [
+                108.64,
+                53.32,
+                0.0
+              ],
+              [
+                5.0,
+                53.32,
+                0.0
+              ],
+              [
+                0.0,
+                48.32,
+                0.0
+              ],
+              [
+                0.0,
+                18.32,
+                0.0
+              ]
+            ],
+            "closed": true
+          },
+          {
+            "entity_id": "P061099_B1_LINE1",
+            "type": "LINE",
+            "role": "bend",
+            "start": [
+              46.32,
+              13.32
+            ],
+            "end": [
+              46.32,
+              53.32
+            ],
+            "linetype": "DASHED"
+          },
+          {
+            "entity_id": "P061099_B1_LINE2",
+            "type": "LINE",
+            "role": "bend",
+            "start": [
+              50,
+              13.32
+            ],
+            "end": [
+              50,
+              53.32
+            ],
+            "linetype": "DASHED"
+          },
+          {
+            "entity_id": "P061099_B2_LINE1",
+            "type": "LINE",
+            "role": "bend",
+            "start": [
+              106.64,
+              13.32
+            ],
+            "end": [
+              106.64,
+              53.32
+            ],
+            "linetype": "DASHED"
+          },
+          {
+            "entity_id": "P061099_B2_LINE2",
+            "type": "LINE",
+            "role": "bend",
+            "start": [
+              110.32,
+              13.32
+            ],
+            "end": [
+              110.32,
+              53.32
+            ],
+            "linetype": "DASHED"
+          },
+          {
+            "entity_id": "P061099_B3_LINE1",
+            "type": "LINE",
+            "role": "bend",
+            "start": [
+              108.64,
+              11.32
+            ],
+            "end": [
+              228.64,
+              11.32
+            ],
+            "linetype": "DASHED"
+          },
+          {
+            "entity_id": "P061099_B3_LINE2",
+            "type": "LINE",
+            "role": "bend",
+            "start": [
+              108.64,
+              15
+            ],
+            "end": [
+              228.64,
+              15
+            ],
+            "linetype": "DASHED"
+          },
+          {
+            "entity_id": "P061099_B4_LINE1",
+            "type": "LINE",
+            "role": "bend",
+            "start": [
+              108.64,
+              51.64
+            ],
+            "end": [
+              228.64,
+              51.64
+            ],
+            "linetype": "DASHED"
+          },
+          {
+            "entity_id": "P061099_B4_LINE2",
+            "type": "LINE",
+            "role": "bend",
+            "start": [
+              108.64,
+              55.32
+            ],
+            "end": [
+              228.64,
+              55.32
+            ],
+            "linetype": "DASHED"
+          },
+          {
+            "entity_id": "P061099_LOWER4_D7_H1",
+            "type": "CIRCLE",
+            "role": "hole",
+            "center": [
+              10.0,
+              23.32
+            ],
+            "radius": 3.5
+          },
+          {
+            "entity_id": "P061099_LOWER4_D7_H2",
+            "type": "CIRCLE",
+            "role": "hole",
+            "center": [
+              10.0,
+              43.32
+            ],
+            "radius": 3.5
+          },
+          {
+            "entity_id": "P061099_LOWER4_D7_H3",
+            "type": "CIRCLE",
+            "role": "hole",
+            "center": [
+              30.0,
+              23.32
+            ],
+            "radius": 3.5
+          },
+          {
+            "entity_id": "P061099_LOWER4_D7_H4",
+            "type": "CIRCLE",
+            "role": "hole",
+            "center": [
+              30.0,
+              43.32
+            ],
+            "radius": 3.5
+          },
+          {
+            "entity_id": "P061099_UPPER4_D7_H1",
+            "type": "CIRCLE",
+            "role": "hole",
+            "center": [
+              214.24,
+              21.32
+            ],
+            "radius": 3.5
+          },
+          {
+            "entity_id": "P061099_UPPER4_D7_H2",
+            "type": "CIRCLE",
+            "role": "hole",
+            "center": [
+              214.24,
+              45.32
+            ],
+            "radius": 3.5
+          },
+          {
+            "entity_id": "P061099_UPPER4_D7_H3",
+            "type": "CIRCLE",
+            "role": "hole",
+            "center": [
+              178.64,
+              21.32
+            ],
+            "radius": 3.5
+          },
+          {
+            "entity_id": "P061099_UPPER4_D7_H4",
+            "type": "CIRCLE",
+            "role": "hole",
+            "center": [
+              178.64,
+              45.32
+            ],
+            "radius": 3.5
+          }
+        ],
+        "source_groups": [
+          {
+            "group_id": "P061099_G_OUTER",
+            "family": "OUTER",
+            "status": "PROVED",
+            "source_quantity": 1,
+            "evidence": "PDF p6: closed material perimeter traced from physical contour",
+            "members": [
+              {
+                "member_id": "P061099_M_OUTER",
+                "status": "PROVED"
+              }
+            ]
+          },
+          {
+            "group_id": "P061099_G_LOWER_C5",
+            "family": "CHAMFER_FILLET",
+            "status": "PROVED",
+            "source_quantity": 2,
+            "evidence": "PDF p6: 2-C5, free end corners of50mm lower flange",
+            "members": [
+              {
+                "member_id": "P061099_M_LOWER_C5_1",
+                "status": "PROVED"
+              },
+              {
+                "member_id": "P061099_M_LOWER_C5_2",
+                "status": "PROVED"
+              }
+            ]
+          },
+          {
+            "group_id": "P061099_G_UPPER_C5",
+            "family": "CHAMFER_FILLET",
+            "status": "PROVED",
+            "source_quantity": 4,
+            "evidence": "PDF p6: 2x2-C5, both free-edge corners of each15mm upper lip",
+            "members": [
+              {
+                "member_id": "P061099_M_UPPER_C5_1",
+                "status": "PROVED"
+              },
+              {
+                "member_id": "P061099_M_UPPER_C5_2",
+                "status": "PROVED"
+              },
+              {
+                "member_id": "P061099_M_UPPER_C5_3",
+                "status": "PROVED"
+              },
+              {
+                "member_id": "P061099_M_UPPER_C5_4",
+                "status": "PROVED"
+              }
+            ]
+          },
+          {
+            "group_id": "P061099_G_B1",
+            "family": "BEND",
+            "status": "PROVED",
+            "source_quantity": 1,
+            "evidence": "PDF p6: F1.RIGHT_BEND <-> F2.BOTTOM_BEND, actual shared edge 40.0mm",
+            "members": [
+              {
+                "member_id": "P061099_M_B1",
+                "status": "PROVED"
+              }
+            ]
+          },
+          {
+            "group_id": "P061099_G_B2",
+            "family": "BEND",
+            "status": "PROVED",
+            "source_quantity": 1,
+            "evidence": "PDF p6: F2.TOP_BEND <-> F3.LEFT_BEND, actual shared edge 40.0mm",
+            "members": [
+              {
+                "member_id": "P061099_M_B2",
+                "status": "PROVED"
+              }
+            ]
+          },
+          {
+            "group_id": "P061099_G_B3",
+            "family": "BEND",
+            "status": "PROVED",
+            "source_quantity": 1,
+            "evidence": "PDF p6: F3.LOWER_BEND <-> F4.BASE_BEND, actual shared edge 120.0mm",
+            "members": [
+              {
+                "member_id": "P061099_M_B3",
+                "status": "PROVED"
+              }
+            ]
+          },
+          {
+            "group_id": "P061099_G_B4",
+            "family": "BEND",
+            "status": "PROVED",
+            "source_quantity": 1,
+            "evidence": "PDF p6: F3.UPPER_BEND <-> F5.BASE_BEND, actual shared edge 120.0mm",
+            "members": [
+              {
+                "member_id": "P061099_M_B4",
+                "status": "PROVED"
+              }
+            ]
+          },
+          {
+            "group_id": "P061099_G_LOWER4_D7",
+            "family": "HOLE",
+            "status": "PROVED",
+            "source_quantity": 4,
+            "evidence": "PDF p6: 4-dia7 left group; own50x40 face, X10+20 and Y10+20",
+            "members": [
+              {
+                "member_id": "P061099_M_LOWER4_D7_H1",
+                "status": "PROVED"
+              },
+              {
+                "member_id": "P061099_M_LOWER4_D7_H2",
+                "status": "PROVED"
+              },
+              {
+                "member_id": "P061099_M_LOWER4_D7_H3",
+                "status": "PROVED"
+              },
+              {
+                "member_id": "P061099_M_LOWER4_D7_H4",
+                "status": "PROVED"
+              }
+            ]
+          },
+          {
+            "group_id": "P061099_G_UPPER4_D7",
+            "family": "HOLE",
+            "status": "PROVED",
+            "source_quantity": 4,
+            "evidence": "PDF p6: 4-dia7 right group; red あける confirms all four; X free edge14.4+35.6, Y10+24",
+            "members": [
+              {
+                "member_id": "P061099_M_UPPER4_D7_H1",
+                "status": "PROVED"
+              },
+              {
+                "member_id": "P061099_M_UPPER4_D7_H2",
+                "status": "PROVED"
+              },
+              {
+                "member_id": "P061099_M_UPPER4_D7_H3",
+                "status": "PROVED"
+              },
+              {
+                "member_id": "P061099_M_UPPER4_D7_H4",
+                "status": "PROVED"
+              }
+            ]
+          }
+        ],
+        "canonical_members": [
+          {
+            "canonical_member_id": "P061099_CM_OUTER",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_OUTER",
+            "group_id": "P061099_G_OUTER",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_OUTER"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_LOWER_C5_1",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_LOWER_C5_1",
+            "group_id": "P061099_G_LOWER_C5",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_OUTER"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_LOWER_C5_2",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_LOWER_C5_2",
+            "group_id": "P061099_G_LOWER_C5",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_OUTER"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_UPPER_C5_1",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_UPPER_C5_1",
+            "group_id": "P061099_G_UPPER_C5",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_OUTER"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_UPPER_C5_2",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_UPPER_C5_2",
+            "group_id": "P061099_G_UPPER_C5",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_OUTER"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_UPPER_C5_3",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_UPPER_C5_3",
+            "group_id": "P061099_G_UPPER_C5",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_OUTER"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_UPPER_C5_4",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_UPPER_C5_4",
+            "group_id": "P061099_G_UPPER_C5",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_OUTER"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_B1",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_B1",
+            "group_id": "P061099_G_B1",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_B1_LINE1",
+              "P061099_B1_LINE2"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_B2",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_B2",
+            "group_id": "P061099_G_B2",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_B2_LINE1",
+              "P061099_B2_LINE2"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_B3",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_B3",
+            "group_id": "P061099_G_B3",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_B3_LINE1",
+              "P061099_B3_LINE2"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_B4",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_B4",
+            "group_id": "P061099_G_B4",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_B4_LINE1",
+              "P061099_B4_LINE2"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_LOWER4_D7_H1",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_LOWER4_D7_H1",
+            "group_id": "P061099_G_LOWER4_D7",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_LOWER4_D7_H1"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_LOWER4_D7_H2",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_LOWER4_D7_H2",
+            "group_id": "P061099_G_LOWER4_D7",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_LOWER4_D7_H2"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_LOWER4_D7_H3",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_LOWER4_D7_H3",
+            "group_id": "P061099_G_LOWER4_D7",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_LOWER4_D7_H3"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_LOWER4_D7_H4",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_LOWER4_D7_H4",
+            "group_id": "P061099_G_LOWER4_D7",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_LOWER4_D7_H4"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_UPPER4_D7_H1",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_UPPER4_D7_H1",
+            "group_id": "P061099_G_UPPER4_D7",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_UPPER4_D7_H1"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_UPPER4_D7_H2",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_UPPER4_D7_H2",
+            "group_id": "P061099_G_UPPER4_D7",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_UPPER4_D7_H2"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_UPPER4_D7_H3",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_UPPER4_D7_H3",
+            "group_id": "P061099_G_UPPER4_D7",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_UPPER4_D7_H3"
+            ]
+          },
+          {
+            "canonical_member_id": "P061099_CM_UPPER4_D7_H4",
+            "origin": "SOURCE",
+            "source_member_id": "P061099_M_UPPER4_D7_H4",
+            "group_id": "P061099_G_UPPER4_D7",
+            "status": "PROVED",
+            "entity_ids": [
+              "P061099_UPPER4_D7_H4"
+            ]
+          }
+        ],
+        "witness_required_feature_ids": [
+          "P061099_M_LOWER4_D7_H1",
+          "P061099_M_LOWER4_D7_H2",
+          "P061099_M_LOWER4_D7_H3",
+          "P061099_M_LOWER4_D7_H4",
+          "P061099_M_UPPER4_D7_H1",
+          "P061099_M_UPPER4_D7_H2",
+          "P061099_M_UPPER4_D7_H3",
+          "P061099_M_UPPER4_D7_H4"
+        ],
+        "feature_witness_graph": {
+          "nodes": {
+            "P061099_M_LOWER4_D7_H1_X_D": "OUTER_EDGE",
+            "P061099_M_LOWER4_D7_H1_X_0": "HOLE_CENTER",
+            "P061099_M_LOWER4_D7_H1_Y_D": "OUTER_EDGE",
+            "P061099_M_LOWER4_D7_H1_Y_0": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H1_Y_1": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H1_Y_2": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H1_Y_3": "HOLE_CENTER",
+            "P061099_M_LOWER4_D7_H2_X_D": "OUTER_EDGE",
+            "P061099_M_LOWER4_D7_H2_X_0": "HOLE_CENTER",
+            "P061099_M_LOWER4_D7_H2_Y_D": "OUTER_EDGE",
+            "P061099_M_LOWER4_D7_H2_Y_0": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H2_Y_1": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H2_Y_2": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H2_Y_3": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H2_Y_4": "HOLE_CENTER",
+            "P061099_M_LOWER4_D7_H3_X_D": "OUTER_EDGE",
+            "P061099_M_LOWER4_D7_H3_X_0": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H3_X_1": "HOLE_CENTER",
+            "P061099_M_LOWER4_D7_H3_Y_D": "OUTER_EDGE",
+            "P061099_M_LOWER4_D7_H3_Y_0": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H3_Y_1": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H3_Y_2": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H3_Y_3": "HOLE_CENTER",
+            "P061099_M_LOWER4_D7_H4_X_D": "OUTER_EDGE",
+            "P061099_M_LOWER4_D7_H4_X_0": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H4_X_1": "HOLE_CENTER",
+            "P061099_M_LOWER4_D7_H4_Y_D": "OUTER_EDGE",
+            "P061099_M_LOWER4_D7_H4_Y_0": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H4_Y_1": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H4_Y_2": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H4_Y_3": "REFERENCE_DATUM",
+            "P061099_M_LOWER4_D7_H4_Y_4": "HOLE_CENTER",
+            "P061099_M_UPPER4_D7_H1_X_D": "OUTER_EDGE",
+            "P061099_M_UPPER4_D7_H1_X_0": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H1_X_1": "HOLE_CENTER",
+            "P061099_M_UPPER4_D7_H1_Y_D": "OUTER_EDGE",
+            "P061099_M_UPPER4_D7_H1_Y_0": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H1_Y_1": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H1_Y_2": "HOLE_CENTER",
+            "P061099_M_UPPER4_D7_H2_X_D": "OUTER_EDGE",
+            "P061099_M_UPPER4_D7_H2_X_0": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H2_X_1": "HOLE_CENTER",
+            "P061099_M_UPPER4_D7_H2_Y_D": "OUTER_EDGE",
+            "P061099_M_UPPER4_D7_H2_Y_0": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H2_Y_1": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H2_Y_2": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H2_Y_3": "HOLE_CENTER",
+            "P061099_M_UPPER4_D7_H3_X_D": "OUTER_EDGE",
+            "P061099_M_UPPER4_D7_H3_X_0": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H3_X_1": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H3_X_2": "HOLE_CENTER",
+            "P061099_M_UPPER4_D7_H3_Y_D": "OUTER_EDGE",
+            "P061099_M_UPPER4_D7_H3_Y_0": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H3_Y_1": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H3_Y_2": "HOLE_CENTER",
+            "P061099_M_UPPER4_D7_H4_X_D": "OUTER_EDGE",
+            "P061099_M_UPPER4_D7_H4_X_0": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H4_X_1": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H4_X_2": "HOLE_CENTER",
+            "P061099_M_UPPER4_D7_H4_Y_D": "OUTER_EDGE",
+            "P061099_M_UPPER4_D7_H4_Y_0": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H4_Y_1": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H4_Y_2": "REFERENCE_DATUM",
+            "P061099_M_UPPER4_D7_H4_Y_3": "HOLE_CENTER"
+          },
+          "edges": [
+            {
+              "from_node": "P061099_M_LOWER4_D7_H1_X_D",
+              "to_node": "P061099_M_LOWER4_D7_H1_X_0",
+              "axis": "X",
+              "kind": "LOCAL",
+              "value_mm": 10.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower flange free end to first hole column",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "lower flange free end to first hole column"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H1_Y_D",
+              "to_node": "P061099_M_LOWER4_D7_H1_Y_0",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 15.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower channel-lip OD",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "lower channel-lip OD"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H1_Y_0",
+              "to_node": "P061099_M_LOWER4_D7_H1_Y_1",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": -3.68,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / side bend deduction",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "side bend deduction"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H1_Y_1",
+              "to_node": "P061099_M_LOWER4_D7_H1_Y_2",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 2.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / web is inset t2 from44OD channel edge",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "web is inset t2 from44OD channel edge"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H1_Y_2",
+              "to_node": "P061099_M_LOWER4_D7_H1_Y_3",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 10.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / 40-wide web/lower flange edge to lower hole row",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "40-wide web/lower flange edge to lower hole row"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H2_X_D",
+              "to_node": "P061099_M_LOWER4_D7_H2_X_0",
+              "axis": "X",
+              "kind": "LOCAL",
+              "value_mm": 10.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower flange free end to first hole column",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "lower flange free end to first hole column"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H2_Y_D",
+              "to_node": "P061099_M_LOWER4_D7_H2_Y_0",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 15.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower channel-lip OD",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "lower channel-lip OD"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H2_Y_0",
+              "to_node": "P061099_M_LOWER4_D7_H2_Y_1",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": -3.68,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / side bend deduction",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "side bend deduction"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H2_Y_1",
+              "to_node": "P061099_M_LOWER4_D7_H2_Y_2",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 2.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / web is inset t2 from44OD channel edge",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "web is inset t2 from44OD channel edge"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H2_Y_2",
+              "to_node": "P061099_M_LOWER4_D7_H2_Y_3",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 10.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / 40-wide web/lower flange edge to lower hole row",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "40-wide web/lower flange edge to lower hole row"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H2_Y_3",
+              "to_node": "P061099_M_LOWER4_D7_H2_Y_4",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 20.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower hole row pitch",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "lower hole row pitch"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H3_X_D",
+              "to_node": "P061099_M_LOWER4_D7_H3_X_0",
+              "axis": "X",
+              "kind": "CHAIN",
+              "value_mm": 10.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower flange free end to first hole column",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "lower flange free end to first hole column"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H3_X_0",
+              "to_node": "P061099_M_LOWER4_D7_H3_X_1",
+              "axis": "X",
+              "kind": "CHAIN",
+              "value_mm": 20.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower hole column pitch",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "lower hole column pitch"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H3_Y_D",
+              "to_node": "P061099_M_LOWER4_D7_H3_Y_0",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 15.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower channel-lip OD",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "lower channel-lip OD"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H3_Y_0",
+              "to_node": "P061099_M_LOWER4_D7_H3_Y_1",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": -3.68,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / side bend deduction",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "side bend deduction"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H3_Y_1",
+              "to_node": "P061099_M_LOWER4_D7_H3_Y_2",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 2.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / web is inset t2 from44OD channel edge",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "web is inset t2 from44OD channel edge"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H3_Y_2",
+              "to_node": "P061099_M_LOWER4_D7_H3_Y_3",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 10.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / 40-wide web/lower flange edge to lower hole row",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "40-wide web/lower flange edge to lower hole row"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H4_X_D",
+              "to_node": "P061099_M_LOWER4_D7_H4_X_0",
+              "axis": "X",
+              "kind": "CHAIN",
+              "value_mm": 10.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower flange free end to first hole column",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "lower flange free end to first hole column"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H4_X_0",
+              "to_node": "P061099_M_LOWER4_D7_H4_X_1",
+              "axis": "X",
+              "kind": "CHAIN",
+              "value_mm": 20.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower hole column pitch",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "lower hole column pitch"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H4_Y_D",
+              "to_node": "P061099_M_LOWER4_D7_H4_Y_0",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 15.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower channel-lip OD",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "lower channel-lip OD"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H4_Y_0",
+              "to_node": "P061099_M_LOWER4_D7_H4_Y_1",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": -3.68,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / side bend deduction",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "side bend deduction"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H4_Y_1",
+              "to_node": "P061099_M_LOWER4_D7_H4_Y_2",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 2.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / web is inset t2 from44OD channel edge",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "web is inset t2 from44OD channel edge"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H4_Y_2",
+              "to_node": "P061099_M_LOWER4_D7_H4_Y_3",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 10.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / 40-wide web/lower flange edge to lower hole row",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "40-wide web/lower flange edge to lower hole row"
+              }
+            },
+            {
+              "from_node": "P061099_M_LOWER4_D7_H4_Y_3",
+              "to_node": "P061099_M_LOWER4_D7_H4_Y_4",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 20.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower hole row pitch",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "lower hole row pitch"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H1_X_D",
+              "to_node": "P061099_M_UPPER4_D7_H1_X_0",
+              "axis": "X",
+              "kind": "CHAIN",
+              "value_mm": 228.64,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / upper physical free end after50+64+122-2N unfold",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "upper physical free end after50+64+122-2N unfold"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H1_X_0",
+              "to_node": "P061099_M_UPPER4_D7_H1_X_1",
+              "axis": "X",
+              "kind": "CHAIN",
+              "value_mm": -14.4,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / upper free edge to right hole column",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "upper free edge to right hole column"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H1_Y_D",
+              "to_node": "P061099_M_UPPER4_D7_H1_Y_0",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 15.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower lip OD",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "lower lip OD"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H1_Y_0",
+              "to_node": "P061099_M_UPPER4_D7_H1_Y_1",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": -3.68,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / side bend deduction",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "side bend deduction"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H1_Y_1",
+              "to_node": "P061099_M_UPPER4_D7_H1_Y_2",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 10.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / 44OD upper-base edge to first hole row",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "44OD upper-base edge to first hole row"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H2_X_D",
+              "to_node": "P061099_M_UPPER4_D7_H2_X_0",
+              "axis": "X",
+              "kind": "CHAIN",
+              "value_mm": 228.64,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / upper physical free end after50+64+122-2N unfold",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "upper physical free end after50+64+122-2N unfold"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H2_X_0",
+              "to_node": "P061099_M_UPPER4_D7_H2_X_1",
+              "axis": "X",
+              "kind": "CHAIN",
+              "value_mm": -14.4,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / upper free edge to right hole column",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "upper free edge to right hole column"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H2_Y_D",
+              "to_node": "P061099_M_UPPER4_D7_H2_Y_0",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 15.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower lip OD",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "lower lip OD"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H2_Y_0",
+              "to_node": "P061099_M_UPPER4_D7_H2_Y_1",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": -3.68,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / side bend deduction",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "side bend deduction"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H2_Y_1",
+              "to_node": "P061099_M_UPPER4_D7_H2_Y_2",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 10.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / 44OD upper-base edge to first hole row",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "44OD upper-base edge to first hole row"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H2_Y_2",
+              "to_node": "P061099_M_UPPER4_D7_H2_Y_3",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 24.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / upper row pitch",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "upper row pitch"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H3_X_D",
+              "to_node": "P061099_M_UPPER4_D7_H3_X_0",
+              "axis": "X",
+              "kind": "CHAIN",
+              "value_mm": 228.64,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / upper physical free end after50+64+122-2N unfold",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "upper physical free end after50+64+122-2N unfold"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H3_X_0",
+              "to_node": "P061099_M_UPPER4_D7_H3_X_1",
+              "axis": "X",
+              "kind": "CHAIN",
+              "value_mm": -14.4,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / upper free edge to right hole column",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "upper free edge to right hole column"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H3_X_1",
+              "to_node": "P061099_M_UPPER4_D7_H3_X_2",
+              "axis": "X",
+              "kind": "CHAIN",
+              "value_mm": -35.6,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / upper column pitch",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "upper column pitch"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H3_Y_D",
+              "to_node": "P061099_M_UPPER4_D7_H3_Y_0",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 15.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower lip OD",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "lower lip OD"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H3_Y_0",
+              "to_node": "P061099_M_UPPER4_D7_H3_Y_1",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": -3.68,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / side bend deduction",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "side bend deduction"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H3_Y_1",
+              "to_node": "P061099_M_UPPER4_D7_H3_Y_2",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 10.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / 44OD upper-base edge to first hole row",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "44OD upper-base edge to first hole row"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H4_X_D",
+              "to_node": "P061099_M_UPPER4_D7_H4_X_0",
+              "axis": "X",
+              "kind": "CHAIN",
+              "value_mm": 228.64,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / upper physical free end after50+64+122-2N unfold",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "upper physical free end after50+64+122-2N unfold"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H4_X_0",
+              "to_node": "P061099_M_UPPER4_D7_H4_X_1",
+              "axis": "X",
+              "kind": "CHAIN",
+              "value_mm": -14.4,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / upper free edge to right hole column",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "upper free edge to right hole column"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H4_X_1",
+              "to_node": "P061099_M_UPPER4_D7_H4_X_2",
+              "axis": "X",
+              "kind": "CHAIN",
+              "value_mm": -35.6,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / upper column pitch",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "upper column pitch"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H4_Y_D",
+              "to_node": "P061099_M_UPPER4_D7_H4_Y_0",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 15.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / lower lip OD",
+                "endpoint_verified": true,
+                "from_type": "OUTER_EDGE",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "lower lip OD"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H4_Y_0",
+              "to_node": "P061099_M_UPPER4_D7_H4_Y_1",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": -3.68,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / side bend deduction",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "side bend deduction"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H4_Y_1",
+              "to_node": "P061099_M_UPPER4_D7_H4_Y_2",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 10.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / 44OD upper-base edge to first hole row",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "REFERENCE_DATUM",
+                "physical_witness": "44OD upper-base edge to first hole row"
+              }
+            },
+            {
+              "from_node": "P061099_M_UPPER4_D7_H4_Y_2",
+              "to_node": "P061099_M_UPPER4_D7_H4_Y_3",
+              "axis": "Y",
+              "kind": "CHAIN",
+              "value_mm": 24.0,
+              "proof": {
+                "pdf_page": 6,
+                "evidence_ref": "tmp/geometry6.png / upper row pitch",
+                "endpoint_verified": true,
+                "from_type": "REFERENCE_DATUM",
+                "to_type": "HOLE_CENTER",
+                "physical_witness": "upper row pitch"
+              }
+            }
+          ],
+          "targets": [
+            {
+              "feature_id": "P061099_M_LOWER4_D7_H1",
+              "datum_node": "P061099_M_LOWER4_D7_H1_X_D",
+              "feature_node": "P061099_M_LOWER4_D7_H1_X_0",
+              "axis": "X",
+              "coordinate_mm": 10.0,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_LOWER4_D7_H1"
+            },
+            {
+              "feature_id": "P061099_M_LOWER4_D7_H1",
+              "datum_node": "P061099_M_LOWER4_D7_H1_Y_D",
+              "feature_node": "P061099_M_LOWER4_D7_H1_Y_3",
+              "axis": "Y",
+              "coordinate_mm": 23.32,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_LOWER4_D7_H1"
+            },
+            {
+              "feature_id": "P061099_M_LOWER4_D7_H2",
+              "datum_node": "P061099_M_LOWER4_D7_H2_X_D",
+              "feature_node": "P061099_M_LOWER4_D7_H2_X_0",
+              "axis": "X",
+              "coordinate_mm": 10.0,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_LOWER4_D7_H2"
+            },
+            {
+              "feature_id": "P061099_M_LOWER4_D7_H2",
+              "datum_node": "P061099_M_LOWER4_D7_H2_Y_D",
+              "feature_node": "P061099_M_LOWER4_D7_H2_Y_4",
+              "axis": "Y",
+              "coordinate_mm": 43.32,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_LOWER4_D7_H2"
+            },
+            {
+              "feature_id": "P061099_M_LOWER4_D7_H3",
+              "datum_node": "P061099_M_LOWER4_D7_H3_X_D",
+              "feature_node": "P061099_M_LOWER4_D7_H3_X_1",
+              "axis": "X",
+              "coordinate_mm": 30.0,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_LOWER4_D7_H3"
+            },
+            {
+              "feature_id": "P061099_M_LOWER4_D7_H3",
+              "datum_node": "P061099_M_LOWER4_D7_H3_Y_D",
+              "feature_node": "P061099_M_LOWER4_D7_H3_Y_3",
+              "axis": "Y",
+              "coordinate_mm": 23.32,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_LOWER4_D7_H3"
+            },
+            {
+              "feature_id": "P061099_M_LOWER4_D7_H4",
+              "datum_node": "P061099_M_LOWER4_D7_H4_X_D",
+              "feature_node": "P061099_M_LOWER4_D7_H4_X_1",
+              "axis": "X",
+              "coordinate_mm": 30.0,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_LOWER4_D7_H4"
+            },
+            {
+              "feature_id": "P061099_M_LOWER4_D7_H4",
+              "datum_node": "P061099_M_LOWER4_D7_H4_Y_D",
+              "feature_node": "P061099_M_LOWER4_D7_H4_Y_4",
+              "axis": "Y",
+              "coordinate_mm": 43.32,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_LOWER4_D7_H4"
+            },
+            {
+              "feature_id": "P061099_M_UPPER4_D7_H1",
+              "datum_node": "P061099_M_UPPER4_D7_H1_X_D",
+              "feature_node": "P061099_M_UPPER4_D7_H1_X_1",
+              "axis": "X",
+              "coordinate_mm": 214.24,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_UPPER4_D7_H1"
+            },
+            {
+              "feature_id": "P061099_M_UPPER4_D7_H1",
+              "datum_node": "P061099_M_UPPER4_D7_H1_Y_D",
+              "feature_node": "P061099_M_UPPER4_D7_H1_Y_2",
+              "axis": "Y",
+              "coordinate_mm": 21.32,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_UPPER4_D7_H1"
+            },
+            {
+              "feature_id": "P061099_M_UPPER4_D7_H2",
+              "datum_node": "P061099_M_UPPER4_D7_H2_X_D",
+              "feature_node": "P061099_M_UPPER4_D7_H2_X_1",
+              "axis": "X",
+              "coordinate_mm": 214.24,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_UPPER4_D7_H2"
+            },
+            {
+              "feature_id": "P061099_M_UPPER4_D7_H2",
+              "datum_node": "P061099_M_UPPER4_D7_H2_Y_D",
+              "feature_node": "P061099_M_UPPER4_D7_H2_Y_3",
+              "axis": "Y",
+              "coordinate_mm": 45.32,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_UPPER4_D7_H2"
+            },
+            {
+              "feature_id": "P061099_M_UPPER4_D7_H3",
+              "datum_node": "P061099_M_UPPER4_D7_H3_X_D",
+              "feature_node": "P061099_M_UPPER4_D7_H3_X_2",
+              "axis": "X",
+              "coordinate_mm": 178.64,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_UPPER4_D7_H3"
+            },
+            {
+              "feature_id": "P061099_M_UPPER4_D7_H3",
+              "datum_node": "P061099_M_UPPER4_D7_H3_Y_D",
+              "feature_node": "P061099_M_UPPER4_D7_H3_Y_2",
+              "axis": "Y",
+              "coordinate_mm": 21.32,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_UPPER4_D7_H3"
+            },
+            {
+              "feature_id": "P061099_M_UPPER4_D7_H4",
+              "datum_node": "P061099_M_UPPER4_D7_H4_X_D",
+              "feature_node": "P061099_M_UPPER4_D7_H4_X_2",
+              "axis": "X",
+              "coordinate_mm": 178.64,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_UPPER4_D7_H4"
+            },
+            {
+              "feature_id": "P061099_M_UPPER4_D7_H4",
+              "datum_node": "P061099_M_UPPER4_D7_H4_Y_D",
+              "feature_node": "P061099_M_UPPER4_D7_H4_Y_3",
+              "axis": "Y",
+              "coordinate_mm": 45.32,
+              "datum_coordinate_mm": 0.0,
+              "datum_entity_id": "P061099_OUTER",
+              "entity_id": "P061099_UPPER4_D7_H4"
+            }
+          ]
+        },
+        "source_mode": "PDF_ONLY",
+        "source_pdf_page": 6,
+        "complete_source_bundle_id": "521017-17-PDF-p6-barcode-061099",
+        "part_identity_graph": {
+          "slip_work_no": "26-061099",
+          "barcode": "061099",
+          "drawing_page": 6,
+          "material": "SUS304",
+          "thickness_mm": 2,
+          "ownership_evidence": "CAD request p1 matching row; unique barcode p6"
+        },
+        "source_utilization_status": "CLOSED",
+        "flat_attempted": true,
+        "high_source_evidence": true,
+        "defensible_flat_exists": true,
+        "unclassified_source_member_count": 0,
+        "holistic_challenge_run": true,
+        "material_audit": {
+          "grade_source": "p1 304-2B / drawing SUS304",
+          "laser_r_row": "Bo_R_Hole row 10",
+          "min_cut_hole_mm": 1.0,
+          "general_C0_5": "Title-block edge break on thickness edges; planar n-C leaders retain independent scope"
+        },
+        "drawing_only_inventory": [
+          {
+            "view": "TOP",
+            "role": "Hole witnesses consumed; channel-wall thickness projections excluded from CUT"
+          },
+          {
+            "view": "FRONT",
+            "role": "50/120/62/15 face order, signs, OD ownership and four upper C5 consumed"
+          },
+          {
+            "view": "END",
+            "role": "40web and44OD channel with two15mm lips; positive thickness step confirmed"
+          }
+        ],
+        "dimensions": [],
+        "source_manufacturing_notes": [
+          {
+            "note_text": "4-dia7 through; ordinary cut holes (no English piercing stamp)",
+            "candidate_family": "HOLE",
+            "code_scope": "26-061099",
+            "resolution": "ROUTED",
+            "evidence_ref": "PDF p6"
+          },
+          {
+            "note_text": "4-dia7 through; ordinary cut holes (no English piercing stamp)",
+            "candidate_family": "HOLE",
+            "code_scope": "26-061099",
+            "resolution": "ROUTED",
+            "evidence_ref": "PDF p6"
+          },
+          {
+            "note_text": "Handwritten long:170+2+64-(3.68x2)=228.64; width:15+44+15-(3.68x2)=66.64",
+            "candidate_family": "BEND",
+            "code_scope": "26-061099",
+            "resolution": "ROUTED",
+            "evidence_ref": "PDF p6"
+          },
+          {
+            "note_text": "2-C5 lower free end;2x2-C5 upper lip free edges",
+            "candidate_family": "CHAMFER_FILLET",
+            "code_scope": "26-061099",
+            "resolution": "ROUTED",
+            "evidence_ref": "PDF p6"
+          },
+          {
+            "note_text": "あける: upper4-dia7 ARE required",
+            "candidate_family": "HOLE",
+            "code_scope": "26-061099",
+            "resolution": "ROUTED",
+            "evidence_ref": "PDF p6"
+          },
+          {
+            "note_text": "User confirmed both mixed-axis junctions protrude by thickness2mm; normal join, no corner relief",
+            "candidate_family": "SLIT_RELIEF",
+            "code_scope": "26-061099",
+            "resolution": "IRRELEVANT_TO_MANUFACTURING",
+            "evidence_ref": "PDF p6",
+            "source": "USER clarification2026-10-17"
+          }
+        ],
+        "corner_callout_tuples": [
+          {
+            "family": "C",
+            "value_mm": 5,
+            "quantity": 2,
+            "evidence": "2-C5, free end corners of50mm lower flange"
+          },
+          {
+            "family": "C",
+            "value_mm": 5,
+            "quantity": 4,
+            "evidence": "2x2-C5, both free-edge corners of each15mm upper lip"
+          }
+        ],
+        "face_graph": {
+          "faces": [
+            {
+              "face_id": "F1",
+              "source_view": "PDFp6 TOP+FRONT+END, tmp/geometry6.png",
+              "local_origin": [
+                0,
+                0,
+                2
+              ],
+              "local_axis_u": [
+                1,
+                0,
+                0
+              ],
+              "local_axis_v": [
+                0,
+                1,
+                0
+              ],
+              "normal_orientation": [
+                0,
+                0,
+                1
+              ],
+              "contour_edge_ids": [
+                "F1.FREE",
+                "F1.RIGHT_BEND"
+              ],
+              "source_dimensions": [
+                {
+                  "OD_length": 50,
+                  "width": 40
+                }
+              ]
+            },
+            {
+              "face_id": "F2",
+              "source_view": "PDFp6 TOP+FRONT+END, tmp/geometry6.png",
+              "local_origin": [
+                48,
+                0,
+                0
+              ],
+              "local_axis_u": [
+                0,
+                0,
+                1
+              ],
+              "local_axis_v": [
+                0,
+                1,
+                0
+              ],
+              "normal_orientation": [
+                -1,
+                0,
+                0
+              ],
+              "contour_edge_ids": [
+                "F2.FREE",
+                "F2.BOTTOM_BEND",
+                "F2.TOP_BEND"
+              ],
+              "source_dimensions": [
+                {
+                  "OD_height": 64,
+                  "printed_underside_height": 62,
+                  "t_owner": 2,
+                  "width": 40
+                }
+              ]
+            },
+            {
+              "face_id": "F3",
+              "source_view": "PDFp6 TOP+FRONT+END, tmp/geometry6.png",
+              "local_origin": [
+                48,
+                -2,
+                64
+              ],
+              "local_axis_u": [
+                1,
+                0,
+                0
+              ],
+              "local_axis_v": [
+                0,
+                1,
+                0
+              ],
+              "normal_orientation": [
+                0,
+                0,
+                1
+              ],
+              "contour_edge_ids": [
+                "F3.FREE",
+                "F3.LEFT_BEND",
+                "F3.LOWER_BEND",
+                "F3.UPPER_BEND"
+              ],
+              "source_dimensions": [
+                {
+                  "OD_length": 122,
+                  "printed_upper_span": 120,
+                  "t_owner": 2,
+                  "OD_width": 44
+                }
+              ]
+            },
+            {
+              "face_id": "F4",
+              "source_view": "PDFp6 TOP+FRONT+END, tmp/geometry6.png",
+              "local_origin": [
+                50,
+                -2,
+                62
+              ],
+              "local_axis_u": [
+                1,
+                0,
+                0
+              ],
+              "local_axis_v": [
+                0,
+                0,
+                1
+              ],
+              "normal_orientation": [
+                0,
+                -1,
+                0
+              ],
+              "contour_edge_ids": [
+                "F4.FREE",
+                "F4.BASE_BEND"
+              ],
+              "source_dimensions": [
+                {
+                  "lip_length": 120,
+                  "OD_lip": 15
+                }
+              ]
+            },
+            {
+              "face_id": "F5",
+              "source_view": "PDFp6 TOP+FRONT+END, tmp/geometry6.png",
+              "local_origin": [
+                50,
+                42,
+                77
+              ],
+              "local_axis_u": [
+                1,
+                0,
+                0
+              ],
+              "local_axis_v": [
+                0,
+                0,
+                -1
+              ],
+              "normal_orientation": [
+                0,
+                1,
+                0
+              ],
+              "contour_edge_ids": [
+                "F5.FREE",
+                "F5.BASE_BEND"
+              ],
+              "source_dimensions": [
+                {
+                  "lip_length": 120,
+                  "OD_lip": 15
+                }
+              ]
+            }
+          ],
+          "bends": [
+            {
+              "bend_id": "P061099_B1",
+              "source_member_ids": [
+                "P061099_M_B1"
+              ],
+              "face_A": "F1",
+              "face_B": "F2",
+              "face_A_shared_edge": "F1.RIGHT_BEND",
+              "face_B_shared_edge": "F2.BOTTOM_BEND",
+              "face_A_free_edges": [
+                "F1.FREE"
+              ],
+              "face_B_free_edges": [
+                "F2.FREE"
+              ],
+              "edge_orientation": "formed-source edge retained through flatX transform",
+              "attachment_source_evidence": "PDFp6 formed continuity + user confirmation: both corner steps=t2; join normally",
+              "signed_angle_deg": -90,
+              "rotation_axis_formed": [
+                0,
+                1,
+                0
+              ],
+              "material_domain": {
+                "entity_ids": [
+                  "P061099_B1_LINE1",
+                  "P061099_B1_LINE2"
+                ],
+                "axis": "X",
+                "span_mm": [
+                  13.32,
+                  53.32
+                ],
+                "edge_length_mm": 40.0,
+                "evidence_ref": "PDFp6 width40 or lip120 shared edge"
+              },
+              "N_mm": 3.68,
+              "thickness_mm": 2
+            },
+            {
+              "bend_id": "P061099_B2",
+              "source_member_ids": [
+                "P061099_M_B2"
+              ],
+              "face_A": "F2",
+              "face_B": "F3",
+              "face_A_shared_edge": "F2.TOP_BEND",
+              "face_B_shared_edge": "F3.LEFT_BEND",
+              "face_A_free_edges": [
+                "F2.FREE"
+              ],
+              "face_B_free_edges": [
+                "F3.FREE"
+              ],
+              "edge_orientation": "formed-source edge retained through flatX transform",
+              "attachment_source_evidence": "PDFp6 formed continuity + user confirmation: both corner steps=t2; join normally",
+              "signed_angle_deg": 90,
+              "rotation_axis_formed": [
+                0,
+                1,
+                0
+              ],
+              "material_domain": {
+                "entity_ids": [
+                  "P061099_B2_LINE1",
+                  "P061099_B2_LINE2"
+                ],
+                "axis": "X",
+                "span_mm": [
+                  13.32,
+                  53.32
+                ],
+                "edge_length_mm": 40.0,
+                "evidence_ref": "PDFp6 width40 or lip120 shared edge"
+              },
+              "N_mm": 3.68,
+              "thickness_mm": 2
+            },
+            {
+              "bend_id": "P061099_B3",
+              "source_member_ids": [
+                "P061099_M_B3"
+              ],
+              "face_A": "F3",
+              "face_B": "F4",
+              "face_A_shared_edge": "F3.LOWER_BEND",
+              "face_B_shared_edge": "F4.BASE_BEND",
+              "face_A_free_edges": [
+                "F3.FREE"
+              ],
+              "face_B_free_edges": [
+                "F4.FREE"
+              ],
+              "edge_orientation": "formed-source edge retained through flatY transform",
+              "attachment_source_evidence": "PDFp6 formed continuity + user confirmation: both corner steps=t2; join normally",
+              "signed_angle_deg": 90,
+              "rotation_axis_formed": [
+                1,
+                0,
+                0
+              ],
+              "material_domain": {
+                "entity_ids": [
+                  "P061099_B3_LINE1",
+                  "P061099_B3_LINE2"
+                ],
+                "axis": "Y",
+                "span_mm": [
+                  108.64,
+                  228.64
+                ],
+                "edge_length_mm": 120.0,
+                "evidence_ref": "PDFp6 width40 or lip120 shared edge"
+              },
+              "N_mm": 3.68,
+              "thickness_mm": 2
+            },
+            {
+              "bend_id": "P061099_B4",
+              "source_member_ids": [
+                "P061099_M_B4"
+              ],
+              "face_A": "F3",
+              "face_B": "F5",
+              "face_A_shared_edge": "F3.UPPER_BEND",
+              "face_B_shared_edge": "F5.BASE_BEND",
+              "face_A_free_edges": [
+                "F3.FREE"
+              ],
+              "face_B_free_edges": [
+                "F5.FREE"
+              ],
+              "edge_orientation": "formed-source edge retained through flatY transform",
+              "attachment_source_evidence": "PDFp6 formed continuity + user confirmation: both corner steps=t2; join normally",
+              "signed_angle_deg": -90,
+              "rotation_axis_formed": [
+                1,
+                0,
+                0
+              ],
+              "material_domain": {
+                "entity_ids": [
+                  "P061099_B4_LINE1",
+                  "P061099_B4_LINE2"
+                ],
+                "axis": "Y",
+                "span_mm": [
+                  108.64,
+                  228.64
+                ],
+                "edge_length_mm": 120.0,
+                "evidence_ref": "PDFp6 width40 or lip120 shared edge"
+              },
+              "N_mm": 3.68,
+              "thickness_mm": 2
+            }
+          ]
+        },
+        "per_bend_witness_ledger": [
+          {
+            "bend_id": "P061099_B1",
+            "source_group_id": "P061099_G_B1",
+            "ordered_faces": [
+              "F1",
+              "F2"
+            ],
+            "od_actual_mm": [
+              50,
+              182.32
+            ],
+            "nobi_mm": 3.68,
+            "flat_mm": 228.64,
+            "bend_pair_mm": [
+              46.32,
+              50
+            ],
+            "source_pdf_page": 6,
+            "evidence_ref": "PDFp6 handwritten N3.68, physical formed witnesses and positive-step user clarification",
+            "thickness_single_use": "t added once to web62->64 and upper span120->122; existing44OD not expanded again",
+            "source_attachment_identity": "F1.RIGHT_BEND <-> F2.BOTTOM_BEND"
+          },
+          {
+            "bend_id": "P061099_B2",
+            "source_group_id": "P061099_G_B2",
+            "ordered_faces": [
+              "F2",
+              "F3"
+            ],
+            "od_actual_mm": [
+              110.32,
+              122
+            ],
+            "nobi_mm": 3.68,
+            "flat_mm": 228.64,
+            "bend_pair_mm": [
+              106.64,
+              110.32
+            ],
+            "source_pdf_page": 6,
+            "evidence_ref": "PDFp6 handwritten N3.68, physical formed witnesses and positive-step user clarification",
+            "thickness_single_use": "t added once to web62->64 and upper span120->122; existing44OD not expanded again",
+            "source_attachment_identity": "F2.TOP_BEND <-> F3.LEFT_BEND"
+          },
+          {
+            "bend_id": "P061099_B3",
+            "source_group_id": "P061099_G_B3",
+            "ordered_faces": [
+              "F3",
+              "F4"
+            ],
+            "od_actual_mm": [
+              15,
+              55.32
+            ],
+            "nobi_mm": 3.68,
+            "flat_mm": 66.64,
+            "bend_pair_mm": [
+              11.32,
+              15
+            ],
+            "source_pdf_page": 6,
+            "evidence_ref": "PDFp6 handwritten N3.68, physical formed witnesses and positive-step user clarification",
+            "thickness_single_use": "t added once to web62->64 and upper span120->122; existing44OD not expanded again",
+            "source_attachment_identity": "F3.LOWER_BEND <-> F4.BASE_BEND"
+          },
+          {
+            "bend_id": "P061099_B4",
+            "source_group_id": "P061099_G_B4",
+            "ordered_faces": [
+              "F3",
+              "F5"
+            ],
+            "od_actual_mm": [
+              55.32,
+              15
+            ],
+            "nobi_mm": 3.68,
+            "flat_mm": 66.64,
+            "bend_pair_mm": [
+              51.64,
+              55.32
+            ],
+            "source_pdf_page": 6,
+            "evidence_ref": "PDFp6 handwritten N3.68, physical formed witnesses and positive-step user clarification",
+            "thickness_single_use": "t added once to web62->64 and upper span120->122; existing44OD not expanded again",
+            "source_attachment_identity": "F3.UPPER_BEND <-> F5.BASE_BEND"
+          }
+        ],
+        "user_clarification": {
+          "source": "Current user message2026-10-17",
+          "fact": "Both junctions have positive protruding step equal to sheet thickness; no relief; join bends normally",
+          "scope": "26-061099 only",
+          "step_mm": 2,
+          "interpretation": "S=+2, not a radius R2 instruction"
+        },
+        "bend_end_relief_audit": {
+          "controlling_rule": "BEND_EDGE_RELIEF_90 CaseA + direct user clarification",
+          "junctions": [
+            {
+              "site": "LOWER_SIDE",
+              "S_mm": 2,
+              "T_mm": 2,
+              "decision": "NO_SLIT_NO_RELIEF"
+            },
+            {
+              "site": "UPPER_SIDE",
+              "S_mm": 2,
+              "T_mm": 2,
+              "decision": "NO_SLIT_NO_RELIEF"
+            }
+          ],
+          "side_root_flat_x_mm": 108.64,
+          "web_side_edge_y_mm": [
+            13.32,
+            53.32
+          ],
+          "no_opposite_fold_R_t_relief": "No zero-step intersection: positive stepped junctions, confirmed by user",
+          "physical_bend_axes_cross": false
+        },
+        "flat_equations": {
+          "X": {
+            "ordered_od_mm": [
+              50,
+              64,
+              122
+            ],
+            "deductions_mm": [
+              3.68,
+              3.68
+            ],
+            "result_mm": 228.64
+          },
+          "Y": {
+            "ordered_od_mm": [
+              15,
+              44,
+              15
+            ],
+            "deductions_mm": [
+              3.68,
+              3.68
+            ],
+            "result_mm": 66.64
+          }
+        },
+        "dx_label": true,
+        "source_physical_member_count": 19,
+        "proved_source_member_count": 19,
+        "bend_end_source_edges": {
+          "CHANNEL_LOWER": {
+            "physical_edge_id": "F3.LOWER_OUTSIDE",
+            "frame_id": "PDF_P6_FORMED_TOP",
+            "type": "LINE",
+            "start": [
+              50,
+              -2
+            ],
+            "end": [
+              170,
+              -2
+            ],
+            "proof": {
+              "source_pdf_page": 6,
+              "evidence_ref": "521017-17.pdf p6 TOP/END, 44OD channel lower outside edge",
+              "endpoint_verified": true
+            }
+          },
+          "WEB_LOWER": {
+            "physical_edge_id": "F2.LOWER_SIDE",
+            "frame_id": "PDF_P6_FORMED_TOP",
+            "type": "LINE",
+            "start": [
+              0,
+              0
+            ],
+            "end": [
+              50,
+              0
+            ],
+            "proof": {
+              "source_pdf_page": 6,
+              "evidence_ref": "521017-17.pdf p6 TOP/END, 40-wide web lower side, step=t2",
+              "endpoint_verified": true
+            }
+          },
+          "CHANNEL_UPPER": {
+            "physical_edge_id": "F3.UPPER_OUTSIDE",
+            "frame_id": "PDF_P6_FORMED_TOP",
+            "type": "LINE",
+            "start": [
+              50,
+              42
+            ],
+            "end": [
+              170,
+              42
+            ],
+            "proof": {
+              "source_pdf_page": 6,
+              "evidence_ref": "521017-17.pdf p6 TOP/END, 44OD channel upper outside edge",
+              "endpoint_verified": true
+            }
+          },
+          "WEB_UPPER": {
+            "physical_edge_id": "F2.UPPER_SIDE",
+            "frame_id": "PDF_P6_FORMED_TOP",
+            "type": "LINE",
+            "start": [
+              0,
+              40
+            ],
+            "end": [
+              50,
+              40
+            ],
+            "proof": {
+              "source_pdf_page": 6,
+              "evidence_ref": "521017-17.pdf p6 TOP/END, 40-wide web upper side, step=t2",
+              "endpoint_verified": true
+            }
+          }
+        },
+        "source_bend_end_site_ids": [
+          "LOWER_JOIN",
+          "UPPER_JOIN"
+        ],
+        "bend_end_junctions": [
+          {
+            "site_id": "LOWER_JOIN",
+            "status": "PROVED",
+            "frame_id": "PDF_P6_FORMED_TOP",
+            "bend_ids": [
+              "P061099_B2",
+              "P061099_B3"
+            ],
+            "flush_edge_id": "CHANNEL_LOWER",
+            "web_edge_id": "WEB_LOWER",
+            "positive_axis": [
+              0,
+              1
+            ],
+            "positive_axis_evidence_ref": "PDFp6 44OD vs40 web; user confirms positive protruding step at both sites",
+            "included_angle_deg": 90,
+            "S_mm": 2,
+            "mechanism": "BEND_END_OFFSET_90",
+            "decision": "NO_RELIEF",
+            "relief_member_ids": []
+          },
+          {
+            "site_id": "UPPER_JOIN",
+            "status": "PROVED",
+            "frame_id": "PDF_P6_FORMED_TOP",
+            "bend_ids": [
+              "P061099_B2",
+              "P061099_B4"
+            ],
+            "flush_edge_id": "CHANNEL_UPPER",
+            "web_edge_id": "WEB_UPPER",
+            "positive_axis": [
+              0,
+              -1
+            ],
+            "positive_axis_evidence_ref": "PDFp6 44OD vs40 web; user confirms positive protruding step at both sites",
+            "included_angle_deg": 90,
+            "S_mm": 2,
+            "mechanism": "BEND_END_OFFSET_90",
+            "decision": "NO_RELIEF",
+            "relief_member_ids": []
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "step_mm": 2,
+    "thickness_mm": 2,
+    "bbox_mm": [
+      0,
+      0,
+      228.64,
+      66.64
+    ],
+    "face_count": 5,
+    "bend_count": 4,
+    "hole_count": 8,
+    "chamfer_count": 6,
+    "saved_geometry_count": 30
+  }
+}

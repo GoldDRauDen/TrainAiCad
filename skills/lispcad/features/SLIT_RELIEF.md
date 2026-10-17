@@ -48,11 +48,11 @@ QA: close source-note provenance when applicable, correct quantity/value/positio
 
 ## Generic crossing-bend and opposite-fold construction
 
-**Standard crossing-bend slit relief** (original V4.3 rule, only when two perpendicular bend lines cross):
+**Standard crossing-bend slit relief** (original V4.3 rule, only when source-proved perpendicular physical bend domains intersect after step/edge closure; overlapping virtual-sharp DASHED pairs alone are insufficient):
 - Retract longer edge by `t`; slit inward by `t + 0.2`; diagonal slit to bend-line intersection; read any drawing-specific offset or FLAG if unknown.
 
 **Opposite-fold fixed-outside R=t relief** (approved calibration `055962`):
-- When **two outer edges fold in different directions** and both outside dimensions must remain unchanged, create an `R=t` escape relief at their intersection without shortening either outside dimension. This is a distinct topology/operation from the standard slit relief and from material-table automatic laser fillets. Determine its exact tangency and retained-material side from the real bend/edge topology; if those are unclear, do not invent them.
+- When **two outer material edges actually intersect after step and bend-domain closure**, fold in different directions and require both outside dimensions unchanged, create `R=t` escape relief at that proved intersection. Different fold directions alone do not trigger it. A positive-step normal junction follows BEND_EDGE_RELIEF_90 Case A unless an independently proved specific mechanism controls; retain that mechanism's tangency/material-side proof.
 - In `055962`, `t=2 mm` gives the two confirmed R2 reliefs. A separately observed R2 on an unbent corner is NOT automatically this relief.
 - A proved connected LINE + local ARC + LINE relief is one operation, not three. A local R0.5 is not universal Laser R or a required slit radius. Approved 055958 method/count and independent pending fields remain in `../../../regression/features/520924-19_APPROVED.md`.
 
