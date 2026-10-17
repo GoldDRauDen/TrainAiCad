@@ -30,6 +30,7 @@ from LuanAppTools.ai.tools import HostTools, TOOL_DESCRIPTION
 from LuanAppTools.core.settings import DEFAULT_MODELS
 from LuanAppTools.core.store import Store
 from .contract import solve_part_schema
+from .gates import GateIndex, describe_failure, summarize_error
 from .evidence import prepare_evidence, check_data_provenance, compact_entity
 from .repository import PinnedRepository, CadError
 
@@ -526,6 +527,7 @@ class CadPipeline:
         self.single_agent = single_agent
         self.agent_model = dict(agent_model or {"model": "sonnet-5.5", "effort": "medium"})
         self.repo = repository
+        self._gates = None
         self.runner = runner
         self.gateway = gateway
         self.attempt_timeout = attempt_timeout
@@ -536,6 +538,11 @@ class CadPipeline:
             raise ValueError(
                 "Independent source QA requires Sonnet high (sonnet-5.5/high)"
             )
+
+    def gate_index(self):
+        if self._gates is None:
+            self._gates = GateIndex.from_repo(self.repo)
+        return self._gates
 
     async def _begin_budget(self, control, checkpoint, state):
         """Reconcile an unacknowledged active deadline before any attempt work."""
@@ -856,8 +863,12 @@ class CadPipeline:
                     except (ValueError, KeyError, TypeError, CadError) as exc:
                         error = str(exc)
                         if self.single_agent and "Traceback (most recent call last)" in error:
-                            error = error.strip().splitlines()[-1]
+                            error = summarize_error(error)
                         answer = {"error": error}
+                        if call["name"] == "validate":
+                            advice = self.gate_index().advise(error)
+                            if advice:
+                                answer["gates"] = advice
                         image = None
                     history.append({"request": call, "result": answer})
                     if image:
@@ -1252,7 +1263,7 @@ class CadPipeline:
                         raise
                     cp["response"] = None
                     state.pop("interaction", None)
-                    state["issues"].append(str(exc))
+                    state["issues"].append(describe_failure(str(exc), self.gate_index()) if isinstance(exc, CadError) else str(exc))
                     state["phase"] = "solve_ready" if state["attempt"] < 2 else "failed"
                     await control.save_async(cp)
                     if isinstance(exc, PipelineError) and exc.kind in {"no_progress", "inventory_qa_rejected", "inventory_qa_incomplete", "inventory_qa_invalid"}:
