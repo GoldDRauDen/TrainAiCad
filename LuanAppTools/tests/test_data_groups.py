@@ -125,3 +125,99 @@ def test_pipeline_sends_compact_evidence_and_stores_expanded_inventory(setup):  
     inventory = control.store.get_run(control.run_id)["checkpoint"]["inventory"]
     assert len(inventory["data_entities"]) == 2 and "data_groups" not in inventory
     assert sorted(inventory["codes"][0]["data_ids"]) == sorted(d["id"] for d in inventory["data_entities"])
+
+
+def _inventory(**overrides):
+    inventory = {
+        "pages": [{"page_id": "a.pdf:p1"}, {"page_id": "a.pdf:p2"}, {"page_id": "a.pdf:p3"}],
+        "views": [
+            {"id": "v1", "page_id": "a.pdf:p1", "codes": ["26-000001"]},
+            {"id": "v2", "page_id": "a.pdf:p2", "codes": ["26-000001", "26-000002"]},
+        ],
+        "notes": [{"id": "n1", "page_id": "a.pdf:p2", "codes": ["26-000002"]}],
+        "data_entities": [{"id": "d#1", "codes": ["26-000001"]}, {"id": "d#2", "codes": []}],
+        "codes": [
+            {"code": "26-000001", "page_ids": ["a.pdf:p1"], "view_ids": [], "note_ids": [], "data_ids": []},
+            {"code": "26-000002", "page_ids": ["a.pdf:p3"], "view_ids": ["v2"], "note_ids": ["wrong"], "data_ids": ["d#2"]},
+        ],
+    }
+    inventory.update(overrides)
+    return inventory
+
+
+def test_code_links_are_derived_from_item_ownership():
+    from LuanAppTools.cad.pipeline import complete_code_links
+
+    original = _inventory()
+    snapshot = copy.deepcopy(original)
+    result = complete_code_links(original)
+    assert original == snapshot  # input is not mutated
+    first, second = result["codes"]
+    assert first["view_ids"] == ["v1", "v2"] and first["note_ids"] == [] and first["data_ids"] == ["d#1"]
+    assert second["view_ids"] == ["v2"] and second["note_ids"] == ["n1"] and second["data_ids"] == []
+    # Pages are the model's pages plus every page its views and notes sit on.
+    assert first["page_ids"] == ["a.pdf:p1", "a.pdf:p2"]
+    assert second["page_ids"] == ["a.pdf:p3", "a.pdf:p2"]
+
+
+def test_code_links_leave_malformed_payloads_for_validation():
+    from LuanAppTools.cad.pipeline import complete_code_links
+
+    assert complete_code_links({"codes": "nope"}) == {"codes": "nope"}
+    partial = {"codes": [{"code": "26-000001"}], "views": [{"id": "v", "codes": ["26-000001"]}]}
+    assert complete_code_links(partial)["codes"][0]["view_ids"] == ["v"]  # missing page_id tolerated
+
+
+def test_pipeline_accepts_an_intake_whose_code_lists_omit_pages(setup):  # noqa: F811
+    repo, source, control = setup
+    d = ezdxf.new()
+    d.modelspace().add_circle((20, 10), 4)
+    d.saveas(source / "data.dxf")
+
+    class SparseRunner(IntakeOnlyRunner):
+        async def complete(self, request, **kwargs):
+            result = await super().complete(request, **kwargs)
+            code = result.data["codes"][0]
+            code.update(page_ids=[], view_ids=[], note_ids=[], data_ids=[])
+            return result
+
+    with pytest.raises((PipelineError, ProviderError)):
+        asyncio.run(CadPipeline(repo, SparseRunner()).run(source, control, job_name="SPARSE"))
+    inventory = control.store.get_run(control.run_id)["checkpoint"]["inventory"]
+    code = inventory["codes"][0]
+    assert code["page_ids"] == ["source.pdf:p1"] and code["view_ids"] == ["v1"] and len(code["data_ids"]) == 1
+
+
+def test_source_mode_is_pinned_to_the_job_source_relationship():
+    from LuanAppTools.cad.pipeline import pin_source_mode
+
+    data = {"codes": [
+        {"code": "26-000001", "census": {"source_mode": "PDF_ONLY", "reference_present": "NO"}},
+        {"code": "26-000002", "census": {"source_mode": "PDF_DATA_RAW", "reference_present": "NO"}},
+    ]}
+    snapshot = copy.deepcopy(data)
+    result = pin_source_mode(data, "PDF_DATA_RAW")
+    assert data == snapshot
+    assert [c["census"]["source_mode"] for c in result["codes"]] == ["PDF_DATA_RAW", "PDF_DATA_RAW"]
+    # Only the source relationship is pinned: a claimed reference still fails validation.
+    data["codes"][0]["census"]["reference_present"] = "YES"
+    assert pin_source_mode(data, "PDF_DATA_RAW")["codes"][0]["census"]["reference_present"] == "YES"
+    assert pin_source_mode({"codes": "nope"}, "PDF_ONLY") == {"codes": "nope"}
+
+
+def test_pipeline_accepts_a_per_code_pdf_only_claim_when_the_job_has_data(setup):  # noqa: F811
+    repo, source, control = setup
+    d = ezdxf.new()
+    d.modelspace().add_circle((20, 10), 4)
+    d.saveas(source / "data.dxf")
+
+    class WrongModeRunner(IntakeOnlyRunner):
+        async def complete(self, request, **kwargs):
+            result = await super().complete(request, **kwargs)
+            result.data["codes"][0]["census"]["source_mode"] = "PDF_ONLY"
+            return result
+
+    with pytest.raises((PipelineError, ProviderError)):
+        asyncio.run(CadPipeline(repo, WrongModeRunner()).run(source, control, job_name="MODE"))
+    inventory = control.store.get_run(control.run_id)["checkpoint"]["inventory"]
+    assert inventory["codes"][0]["census"]["source_mode"] == "PDF_DATA_RAW"

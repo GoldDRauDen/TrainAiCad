@@ -326,13 +326,63 @@ def expand_data_groups(data, evidence):
         raise PipelineError("inventory_invalid", str(exc)) from exc
     result = {k: v for k, v in data.items() if k != "data_groups"}
     result["data_entities"] = [*explicit, *expanded]
-    if isinstance(result.get("codes"), list):
-        # The host owns the entity echo: each code's DATA ids follow the expanded inventory.
-        result["codes"] = [
-            {**code, "data_ids": [i["id"] for i in result["data_entities"] if code.get("code") in i.get("codes", [])]}
-            for code in result["codes"]
-        ]
     return result
+
+
+def complete_code_links(data):
+    """Derive each code's page/view/note/DATA lists from the items' own `codes`.
+
+    A view, note or DATA entity states which codes own it; the per-code lists are the
+    same fact restated. Deriving them removes an echo the model can get wrong without
+    weakening the check (unknown codes and unscoped items still fail validation).
+    """
+    codes = data.get("codes")
+    if not isinstance(codes, list):
+        return data
+    pages = {}
+    for key in ("views", "notes"):
+        for item in data.get(key, []):
+            if isinstance(item, dict) and "id" in item and "page_id" in item:
+                pages[item["id"]] = item["page_id"]
+    completed = []
+    for code in codes:
+        if not isinstance(code, dict) or "code" not in code:
+            completed.append(code)
+            continue
+        links = {}
+        for list_key, source_key in (("view_ids", "views"), ("note_ids", "notes"), ("data_ids", "data_entities")):
+            links[list_key] = [
+                item["id"]
+                for item in data.get(source_key, [])
+                if isinstance(item, dict) and code["code"] in item.get("codes", []) and "id" in item
+            ]
+        page_ids = list(code.get("page_ids", []))
+        for item_id in (*links["view_ids"], *links["note_ids"]):
+            if item_id in pages and pages[item_id] not in page_ids:
+                page_ids.append(pages[item_id])
+        completed.append({**code, **links, "page_ids": page_ids})
+    return {**data, "codes": completed}
+
+
+def pin_source_mode(data, source_mode):
+    """The host classifies the job's one source relationship from the files themselves."""
+    codes = data.get("codes")
+    if not isinstance(codes, list):
+        return data
+    return {
+        **data,
+        "codes": [
+            {**code, "census": {**code["census"], "source_mode": source_mode}}
+            if isinstance(code, dict) and isinstance(code.get("census"), dict)
+            else code
+            for code in codes
+        ],
+    }
+
+
+def normalize_inventory(data, evidence, source_mode):
+    """Host-owned restatements of the model's intake: DATA groups, code links, source mode."""
+    return pin_source_mode(complete_code_links(expand_data_groups(data, evidence)), source_mode)
 
 
 def validate_inventory(data, evidence, source_mode, *, require_difficulty=True):
@@ -981,7 +1031,7 @@ class CadPipeline:
                 {"model": self.models["medium"]["model"], "effort": "medium"},
             )
             try:
-                cp["inventory"] = validate_inventory(expand_data_groups(data, evidence), evidence, source_mode, require_difficulty=not self.single_agent)
+                cp["inventory"] = validate_inventory(normalize_inventory(data, evidence, source_mode), evidence, source_mode, require_difficulty=not self.single_agent)
             except PipelineError as exc:
                 if not self.single_agent or cp["intake"].get("inventory_repaired"):
                     raise
@@ -993,7 +1043,7 @@ class CadPipeline:
                     "source_mode": source_mode, "validation_error": str(exc),
                     "instruction": "Correct the complete inventory in this conversation; preserve inspected source facts.",
                 }, evidence.images, bootstrap, tools, control, cp, cp["intake"], self.agent_model)
-                cp["inventory"] = validate_inventory(expand_data_groups(data, evidence), evidence, source_mode, require_difficulty=False)
+                cp["inventory"] = validate_inventory(normalize_inventory(data, evidence, source_mode), evidence, source_mode, require_difficulty=False)
             cp["inventory_version"] = INTAKE_CACHE_VERSION + (":single" if self.single_agent else "")
             cp["response"] = None
             await control.save_async(cp)
