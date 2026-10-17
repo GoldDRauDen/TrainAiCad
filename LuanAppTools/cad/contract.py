@@ -6,6 +6,8 @@ fails when a key read by tools/*.py is missing from this description.
 """
 from __future__ import annotations
 
+import re
+
 _POINT = {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}
 _FLAG = {"type": "boolean"}
 _COUNT = {"type": "integer", "minimum": 0}
@@ -125,3 +127,54 @@ def contract_notes(text):
         return text
     end = text.find("### Minimal structural synthetic example", start)
     return text[start:end if end > 0 else len(text)].strip()
+
+
+class ContractError(ValueError):
+    """The part breaks a rule the repository states but its exporter does not enforce."""
+
+
+# Printed/handwritten flat arithmetic such as "161+41-9.78=192.22" (HOLISTIC_ENGINEERING_CHALLENGE section 3).
+FLAT_ARITHMETIC = re.compile(r"\d+(?:\.\d+)?(?:\s*[+\-\u2212\u2013]\s*\d+(?:\.\d+)?)+\s*=\s*\d+(?:\.\d+)?")
+
+HOST_VIEWS_ONLY_NOTE = (
+    "VIEWS_ONLY is a last executable fallback, never a shortcut (AI_ENTRYPOINT section 2). Set source_exhausted=true "
+    "and holistic_challenge_run=true only after you really harvested every source view/face and ran the holistic "
+    "challenge. List every FACE_GRAPH candidate you tested in face_graph_candidates "
+    "[{candidate_id, constraint_result, evidence_used}]; evidence_used must include the id of each printed or "
+    "handwritten flat-arithmetic note of this code (the host rejects a VIEWS_ONLY part that ignores one). Name what "
+    "stays unresolved in unresolved_objects, keep views_only_canonical_member_ids equal to "
+    "proved_source_view_member_ids, and set flat_attempted=true when you attempted the flat. The host sets "
+    "high_source_evidence when the drawing carries flat arithmetic: build the flat from it instead of giving up. A "
+    "VIEWS_ONLY part also needs preview_reason=separate_source_views, non-empty flags and a unique view_id on every "
+    "non-TEXT entity."
+)
+
+
+def flat_arithmetic_notes(notes):
+    return [n for n in notes if isinstance(n, dict) and FLAT_ARITHMETIC.search(str(n.get("text", "")))]
+
+
+def prepare_part(part, notes):
+    """Host-owned restatements derived from the code's own notes; never overrides the model."""
+    if not flat_arithmetic_notes(notes) or not isinstance(part, dict):
+        return part
+    prepared = dict(part)
+    prepared.setdefault("high_source_evidence", True)
+    if prepared.get("status") in ("PASS", "PREVIEW", "REVIEW"):
+        prepared.setdefault("flat_attempted", True)
+    return prepared
+
+
+def check_flat_attempt(part, notes):
+    """A VIEWS_ONLY part must show it tested the flat that printed arithmetic closes."""
+    if not isinstance(part, dict) or part.get("status") != "VIEWS_ONLY":
+        return
+    cited = {ref for candidate in part.get("face_graph_candidates") or [] if isinstance(candidate, dict)
+             for ref in candidate.get("evidence_used") or [] if isinstance(ref, str)}
+    missing = [n for n in flat_arithmetic_notes(notes) if n.get("id") not in cited]
+    if missing:
+        listed = "; ".join(f"{n.get('id')} ({FLAT_ARITHMETIC.search(str(n.get('text'))).group(0)})" for n in missing)
+        raise ContractError(
+            f"FLAT_ARITHMETIC_NOT_TESTED: {listed} - test the formed topology this flat arithmetic closes and cite "
+            "its note id in face_graph_candidates[].evidence_used before choosing VIEWS_ONLY "
+            "(HOLISTIC_ENGINEERING_CHALLENGE section 3)")

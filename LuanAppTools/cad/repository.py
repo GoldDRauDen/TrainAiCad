@@ -218,15 +218,15 @@ class PinnedRepository:
         code = """import json,sys
 from canonical_contract import validate_canonical_job
 from export_dxf import validate_job
-from holistic_engineering_guard import canonical_job_anomalies
+from holistic_engineering_guard import canonical_job_anomalies, job_anomalies
 j=json.load(open(sys.argv[1],encoding='utf-8'))
 errors=[]
 v={}
-for name,check in [('canonical',validate_canonical_job),('export',validate_job),('geometry',canonical_job_anomalies)]:
+for name,check in [('canonical',validate_canonical_job),('export',validate_job),('geometry',canonical_job_anomalies),('holistic',job_anomalies)]:
     try:
         result=check(j)
         if name=='canonical': v=result
-        if name=='geometry' and result: errors.extend(result)
+        if name in ('geometry','holistic') and result: errors.extend(result)
     except Exception as exc:
         errors.append(name+': '+str(exc))
 if errors: raise ValueError(' | '.join(errors))

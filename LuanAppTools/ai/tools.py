@@ -3,6 +3,7 @@
 import ast
 import math
 import operator
+from LuanAppTools.cad.contract import check_flat_attempt, prepare_part
 from LuanAppTools.cad.evidence import compact_entity, crop_page_bounded
 
 TOOL_DESCRIPTION = """Optional tool_requests: [{"name":"crop","arguments":{"page_id":"...","rect":[x0,y0,x1,y1]}}, {"name":"read_rule","arguments":{"path":"an already routed path"}}, {"name":"calculate","arguments":{"expression":"numeric arithmetic"}}, {"name":"data_group","arguments":{"group_id":"a DATA group id from the evidence","offset":0,"limit":200}} (compact DXF entities of one group, at most 300 per call), {"name":"validate","arguments":{"part":{complete canonical part}}}]. Return a tool request OR the final stage object. Host will return tool results and any crop image. No shell, file writes, network or child agents are available."""
@@ -43,7 +44,7 @@ def calculate(expression):
 
 
 class HostTools:
-    def __init__(self, repo, evidence, allowed_rules, job_name, cancel):
+    def __init__(self, repo, evidence, allowed_rules, job_name, cancel, notes=()):
         self.repo, self.evidence, self.allowed_rules, self.job_name, self.cancel = (
             repo,
             evidence,
@@ -51,6 +52,7 @@ class HostTools:
             job_name,
             cancel,
         )
+        self.notes = list(notes)
 
     def data_group(self, args):
         group_id = args.get("group_id")
@@ -97,10 +99,14 @@ class HostTools:
                 raise ValueError("Rule is not routed for this stage")
             return {"path": args["path"], "text": self.repo.read(args["path"])}, None
         if name == "validate":
+            if not isinstance(args.get("part"), dict):
+                raise ValueError("validate needs the complete part object")
+            part = prepare_part(args["part"], self.notes)
+            check_flat_attempt(part, self.notes)
             job = {
                 "canonical_contract": self.repo.contract,
                 "job_id": self.job_name,
-                "parts": [args["part"]],
+                "parts": [part],
             }
             return (
                 await self.repo.validate(

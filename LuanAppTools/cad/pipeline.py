@@ -29,7 +29,7 @@ from LuanAppTools.ai.routing import route_model
 from LuanAppTools.ai.tools import HostTools, TOOL_DESCRIPTION
 from LuanAppTools.core.settings import DEFAULT_MODELS
 from LuanAppTools.core.store import Store
-from .contract import solve_part_schema
+from .contract import HOST_VIEWS_ONLY_NOTE, ContractError, check_flat_attempt, prepare_part, solve_part_schema
 from .gates import GateIndex, describe_failure, summarize_error
 from .evidence import prepare_evidence, check_data_provenance, compact_entity
 from .repository import PinnedRepository, CadError
@@ -688,7 +688,7 @@ class CadPipeline:
                     task = (
                         "Inspect all original pages. Return the complete source inventory with exact page/view/note/DATA ownership and complete feature census. Assign DATA by host groups (data_groups [{id,codes,exclude}]) and list data_entities only for entities that must be split from a group; the host fills each code's data_ids. No difficulty classification is needed."
                         if stage == "intake" else
-                        "Build the complete canonical part for the code in CONTEXT_JSON. Use the original pages attached to this conversation and the scoped inventory. Perform the routed source exhaustion and engineering challenge yourself, including witness endpoints, topology, ownership, dimensions and source reprojection. Use local tools for calculations. Before answering, call the validate tool with your complete part and correct every reported error; answer only with a part that passes it. Return part and evidence_refs containing ONLY exact page IDs. Include census only if features changed. SOURCE canonical members require group_id and source_member_id; DERIVED_RULE requires controlling_rule and source_member_ids. Polyline vertices are numeric arrays [x,y,bulge], not objects. Keep metadata concise. Use the required source-view fallback when flat geometry cannot be proved."
+                        "Build the complete canonical part for the code in CONTEXT_JSON. Use the original pages attached to this conversation and the scoped inventory. Perform the routed source exhaustion and engineering challenge yourself, including witness endpoints, topology, ownership, dimensions and source reprojection. Use local tools for calculations. Before answering, call the validate tool with your complete part and correct every reported error; answer only with a part that passes it. Return part and evidence_refs containing ONLY exact page IDs. Include census only if features changed. SOURCE canonical members require group_id and source_member_id; DERIVED_RULE requires controlling_rule and source_member_ids. Polyline vertices are numeric arrays [x,y,bulge], not objects. Keep metadata concise. Use the required source-view fallback when flat geometry cannot be proved." + " " + HOST_VIEWS_ONLY_NOTE
                     )
                     compact_context = dict(context)
                     if agent["turns"]:
@@ -1099,6 +1099,7 @@ class CadPipeline:
                 }
                 for d in evidence.dxf
             ]
+            code_notes = [n for n in inventory["notes"] if n["id"] in code["note_ids"]]
             context = {
                 "code": code,
                 "inventory": scoped_inventory(inventory, code),
@@ -1139,6 +1140,8 @@ class CadPipeline:
                             + self.repo.stage_text(route, "L2_GEOMETRY")
                             + "\n"
                             + self.repo.stage_text(route, "L3_VALIDATE_EXPORT_QA")
+                            + "\nFILE tools/DXF_INPUT_SCHEMA.md (part contract)\n"
+                            + self.repo.contract_notes()
                         )
                         tools = HostTools(
                             self.repo,
@@ -1146,6 +1149,7 @@ class CadPipeline:
                             route["rule_paths"],
                             job_name,
                             control.cancel,
+                            notes=code_notes,
                         )
                         answer = await self._interact(
                             "solve",
@@ -1198,7 +1202,11 @@ class CadPipeline:
                                 "evidence_incomplete",
                                 "Candidate code/source evidence mismatch",
                             )
-                        state["candidate"] = answer["part"]
+                        state["candidate"] = prepare_part(answer["part"], code_notes)
+                        try:
+                            check_flat_attempt(state["candidate"], code_notes)
+                        except ContractError as exc:
+                            raise PipelineError("flat_untested", str(exc)) from exc
                         try:
                             check_data_provenance(
                                 state["candidate"],
