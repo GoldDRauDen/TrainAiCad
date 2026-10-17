@@ -120,6 +120,8 @@ def test_pipeline_sends_compact_evidence_and_stores_expanded_inventory(setup):  
     with pytest.raises((PipelineError, ProviderError)):
         asyncio.run(CadPipeline(repo, runner).run(source, control, job_name="GROUPS"))
     assert '"attributes"' not in runner.requests[0].prompt
+    assert '"vertices"' not in runner.requests[0].prompt  # intake sees group summaries only
+    assert "data_group" in runner.requests[0].prompt
     inventory = control.store.get_run(control.run_id)["checkpoint"]["inventory"]
     assert len(inventory["data_entities"]) == 2 and "data_groups" not in inventory
     assert sorted(inventory["codes"][0]["data_ids"]) == sorted(d["id"] for d in inventory["data_entities"])

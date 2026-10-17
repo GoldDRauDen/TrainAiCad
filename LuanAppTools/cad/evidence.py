@@ -24,12 +24,14 @@ class Evidence:
     def public(self):
         return {"pages": self.pages, "dxf": self.dxf}
 
-    def prompt(self):
-        """Model-facing view: same physical facts as `public()` without DXF bookkeeping.
+    def intake_view(self):
+        """Model-facing intake view: per-group summaries, never per-entity geometry.
 
+        Intake only has to say which code owns which DATA group; entity detail is
+        fetched on demand (`data_group` tool) or sent with the code's solve stage.
         Raw `dxf` stays the host authority for provenance and read-back checks.
         """
-        return {"pages": self.pages, "dxf": [compact_drawing(d) for d in self.dxf]}
+        return {"pages": self.pages, "dxf": [summarize_drawing(d) for d in self.dxf]}
 
 
 def _value(v):
@@ -164,22 +166,64 @@ def compact_entity(entity, parent_id=None):
     return result
 
 
-def compact_drawing(drawing):
-    owner = {i.split("#", 1)[1]: g["id"] for g in drawing.get("groups", []) for i in g["entity_ids"]}
-    entities = []
-    for entity in drawing["entities"]:
-        compact = compact_entity(entity)
-        if entity["id"] in owner:
-            compact["group"] = owner[entity["id"]]
-        entities.append(compact)
+_MAX_HOLES = 12
+_MAX_ARCS = 6
+_MAX_TEXTS = 10
+
+
+def summarize_drawing(drawing):
+    by_id = {e["id"]: e for e in drawing["entities"]}
+    groups = []
+    for group in drawing.get("groups", []):
+        members = [by_id[i.split("#", 1)[1]] for i in group["entity_ids"]]
+        types, layers, unsupported = {}, {}, {}
+        for e in members:
+            types[e["type"]] = types.get(e["type"], 0) + 1
+            layers[e["layer"]] = layers.get(e["layer"], 0) + 1
+            if e.get("unsupported"):
+                unsupported[e["type"]] = unsupported.get(e["type"], 0) + 1
+        circles = [e for e in members if e["type"] == "CIRCLE"]
+        arcs = sorted((e for e in members if e["type"] == "ARC"), key=lambda e: -e["radius"])
+        texts = [e for e in members if e["type"] in ("TEXT", "MTEXT")]
+        summary = {
+            "id": group["id"],
+            "bbox": group["bbox"],
+            "count": len(members),
+            "types": types,
+            "layers": layers,
+        }
+        if unsupported:
+            summary["unsupported"] = unsupported
+        if circles:
+            summary["circles"] = [
+                {"id": e["id"], "center": _rounded(e["center"][:2]), "radius": _rounded(e["radius"])}
+                for e in circles[:_MAX_HOLES]
+            ]
+            if len(circles) > _MAX_HOLES:
+                summary["circles_total"] = len(circles)
+        if arcs:
+            summary["arcs"] = [
+                {
+                    "id": e["id"],
+                    "center": _rounded(e["center"][:2]),
+                    "radius": _rounded(e["radius"]),
+                    "start_angle": _rounded(e["start_angle"]),
+                    "end_angle": _rounded(e["end_angle"]),
+                }
+                for e in arcs[:_MAX_ARCS]
+            ]
+            if len(arcs) > _MAX_ARCS:
+                summary["arcs_total"] = len(arcs)
+        if texts:
+            summary["texts"] = [{"id": e["id"], "text": str(e["text"])[:80]} for e in texts[:_MAX_TEXTS]]
+            if len(texts) > _MAX_TEXTS:
+                summary["texts_total"] = len(texts)
+        groups.append(summary)
     return {
         "id": drawing["id"],
         "units": drawing["units"],
-        "entities": entities,
-        "groups": [
-            {"id": g["id"], "bbox": g["bbox"], "count": len(g["entity_ids"])}
-            for g in drawing.get("groups", [])
-        ],
+        "entity_count": len(drawing["entities"]),
+        "groups": groups,
     }
 
 

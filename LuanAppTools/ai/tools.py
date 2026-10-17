@@ -3,9 +3,9 @@
 import ast
 import math
 import operator
-from LuanAppTools.cad.evidence import crop_page_bounded
+from LuanAppTools.cad.evidence import compact_entity, crop_page_bounded
 
-TOOL_DESCRIPTION = """Optional tool_requests: [{"name":"crop","arguments":{"page_id":"...","rect":[x0,y0,x1,y1]}}, {"name":"read_rule","arguments":{"path":"an already routed path"}}, {"name":"calculate","arguments":{"expression":"numeric arithmetic"}}, {"name":"validate","arguments":{"part":{complete canonical part}}}]. Return a tool request OR the final stage object. Host will return tool results and any crop image. No shell, file writes, network or child agents are available."""
+TOOL_DESCRIPTION = """Optional tool_requests: [{"name":"crop","arguments":{"page_id":"...","rect":[x0,y0,x1,y1]}}, {"name":"read_rule","arguments":{"path":"an already routed path"}}, {"name":"calculate","arguments":{"expression":"numeric arithmetic"}}, {"name":"data_group","arguments":{"group_id":"a DATA group id from the evidence","offset":0,"limit":200}} (compact DXF entities of one group, at most 300 per call), {"name":"validate","arguments":{"part":{complete canonical part}}}]. Return a tool request OR the final stage object. Host will return tool results and any crop image. No shell, file writes, network or child agents are available."""
 
 
 def calculate(expression):
@@ -52,6 +52,24 @@ class HostTools:
             cancel,
         )
 
+    def data_group(self, args):
+        group_id = args.get("group_id")
+        offset, limit = args.get("offset", 0), args.get("limit", 200)
+        if type(offset) is not int or type(limit) is not int or offset < 0 or not 1 <= limit <= 300:
+            raise ValueError("offset must be >= 0 and limit must be 1-300")
+        for drawing in self.evidence.dxf:
+            for group in drawing.get("groups", []):
+                if group["id"] == group_id:
+                    entities = {e["id"]: e for e in drawing["entities"]}
+                    ids = group["entity_ids"]
+                    return {
+                        "group_id": group_id,
+                        "total": len(ids),
+                        "offset": offset,
+                        "entities": [compact_entity(entities[i.split("#", 1)[1]]) for i in ids[offset : offset + limit]],
+                    }
+        raise ValueError("Unknown DATA group")
+
     async def execute(self, call, *, timeout: float = 1200):
         name = call["name"]
         args = call["arguments"]
@@ -70,6 +88,8 @@ class HostTools:
                 "page_id": args["page_id"],
                 "rect": args["rect"],
             }, path
+        if name == "data_group":
+            return self.data_group(args), None
         if name == "calculate":
             return {"value": calculate(args["expression"])}, None
         if name == "read_rule":
