@@ -29,7 +29,8 @@ from LuanAppTools.ai.routing import route_model
 from LuanAppTools.ai.tools import HostTools, TOOL_DESCRIPTION
 from LuanAppTools.core.settings import DEFAULT_MODELS
 from LuanAppTools.core.store import Store
-from .contract import HOST_VIEWS_ONLY_NOTE, ContractError, check_flat_attempt, prepare_part, solve_part_schema
+from .contract import (
+    HOST_VIEWS_ONLY_NOTE, WELD_SCHEMA, ContractError, check_flat_attempt, prepare_part, solve_part_schema)
 from .gates import GateIndex, describe_failure, summarize_error
 from .evidence import prepare_evidence, check_data_provenance, compact_entity
 from .repository import PinnedRepository, CadError
@@ -152,6 +153,8 @@ STAGE_SCHEMAS = {
                 k: {"type": "array"}
                 for k in ("pages", "views", "notes", "data_entities", "data_groups")
             },
+            "customer_code": {"type": ["string", "null"]},
+            "customer_code_evidence": {"type": "string"},
             "codes": {
                 "type": "array",
                 "items": {
@@ -175,6 +178,7 @@ STAGE_SCHEMAS = {
                         },
                         "difficulty": {"type": "string"},
                         "independent": {"type": "boolean"},
+                        "weld": WELD_SCHEMA,
                     },
                     "required": ["code", "page_ids", "view_ids", "note_ids", "data_ids", "census", "difficulty", "difficulty_evidence", "independent"],
                 },
@@ -245,7 +249,7 @@ STAGE_SCHEMAS["qa_global"] = {
 
 
 INTAKE_CACHE_VERSION = hashlib.sha256(
-    json.dumps({"schema": STAGE_SCHEMAS["intake"], "validator": "v1"}, sort_keys=True).encode()
+    json.dumps({"schema": STAGE_SCHEMAS["intake"], "validator": "v2"}, sort_keys=True).encode()
 ).hexdigest()
 
 
@@ -406,9 +410,51 @@ def pin_source_mode(data, source_mode):
     }
 
 
+def pin_customer(data):
+    """The numeric customer code (job statistics) and each code's weld inventory become census fields.
+
+    The resolver and the canonical contract read them from the census/job, never from model prose.
+    """
+    raw = data.get("customer_code")
+    if raw is None:
+        customer = None
+    elif isinstance(raw, str) and raw.strip().isdigit():
+        customer = str(int(raw.strip()))
+    else:
+        raise PipelineError(
+            "inventory_invalid", "customer_code must be the numeric code from the job statistics sheet, or null")
+    codes = data.get("codes")
+    if not isinstance(codes, list):
+        return {**data, "customer_code": customer}
+    pinned = []
+    for code in codes:
+        if not isinstance(code, dict) or not isinstance(code.get("census"), dict):
+            pinned.append(code)
+            continue
+        census = dict(code["census"])
+        if customer is not None:
+            census["customer_code"] = customer
+        weld = code.get("weld")
+        if isinstance(weld, dict):
+            census["part_code"] = code["code"]
+            census["source_assembly_view_ids"] = weld.get("source_assembly_view_ids")
+            census["source_weld_site_ids"] = weld.get("source_weld_site_ids")
+            sites = []
+            for site in (weld.get("weld_site_census") or {}).get("sites", []):
+                site = {"parent_code": code["code"], "mark_status": "FLAGGED", **site}
+                if site["mark_status"] == "FLAGGED" and not site.get("unresolved_fields"):
+                    site["unresolved_fields"] = ["mark geometry is derived when the code is solved"]
+                sites.append(site)
+            census["weld_site_census"] = {**(weld.get("weld_site_census") or {}), "sites": sites}
+        elif customer == "851":
+            census["part_code"] = code["code"]  # lets the resolver name the missing weld field
+        pinned.append({**code, "census": census})
+    return {**data, "customer_code": customer, "codes": pinned}
+
+
 def normalize_inventory(data, evidence, source_mode):
-    """Host-owned restatements of the model's intake: DATA groups, code links, source mode."""
-    return pin_source_mode(complete_code_links(expand_data_groups(data, evidence)), source_mode)
+    """Host-owned restatements of the model's intake: DATA groups, code links, source mode, customer."""
+    return pin_customer(pin_source_mode(complete_code_links(expand_data_groups(data, evidence)), source_mode))
 
 
 def validate_inventory(data, evidence, source_mode, *, require_difficulty=True):
@@ -548,6 +594,7 @@ class CadPipeline:
         self.agent_model = dict(agent_model or {"model": "sonnet-5.5", "effort": "medium"})
         self.repo = repository
         self._gates = None
+        self._customer_code = None
         self.runner = runner
         self.gateway = gateway
         self.attempt_timeout = attempt_timeout
@@ -699,7 +746,7 @@ class CadPipeline:
                     request_images = tuple(p for p in request_images if str(p) not in agent["images"])
                     sent_images = [str(p) for p in request_images]
                     task = (
-                        "Inspect all original pages. Return the complete source inventory with exact page/view/note/DATA ownership and complete feature census. Assign DATA by host groups (data_groups [{id,codes,exclude}]) and list data_entities only for entities that must be split from a group; the host fills each code's data_ids. No difficulty classification is needed."
+                        "Inspect all original pages. Return the complete source inventory with exact page/view/note/DATA ownership and complete feature census. Assign DATA by host groups (data_groups [{id,codes,exclude}]) and list data_entities only for entities that must be split from a group; the host fills each code's data_ids. No difficulty classification is needed. Also return customer_code: the numeric customer code printed in the job statistics/slip header (null when absent; never infer it from a name, barcode or part number) with customer_code_evidence. When customer_code is 851, or a drawing shows a welded assembly, return for each code a weld object {source_assembly_view_ids, source_weld_site_ids, weld_site_census} exactly as references/WELD_SITE_KEGAKI_CLOSURE.md defines it (set mark_status FLAGGED for now: the marks are derived when the code is solved) and never classify KEGAKI as NO for a code that has weld sites."
                         if stage == "intake" else
                         "Build the complete canonical part for the code in CONTEXT_JSON. Use the original pages attached to this conversation and the scoped inventory. Perform the routed source exhaustion and engineering challenge yourself, including witness endpoints, topology, ownership, dimensions and source reprojection. Use local tools for calculations. Before answering, call the validate tool with your complete part and correct every reported error; answer only with a part that passes it. Return part and evidence_refs containing ONLY exact page IDs. Include census only if features changed. SOURCE canonical members require group_id and source_member_id; DERIVED_RULE requires controlling_rule and source_member_ids. Polyline vertices are numeric arrays [x,y,bulge], not objects. Keep metadata concise. Use the required source-view fallback when flat geometry cannot be proved." + " " + HOST_VIEWS_ONLY_NOTE
                     )
@@ -945,8 +992,17 @@ class CadPipeline:
         return {
             "canonical_contract": self.repo.contract,
             "job_id": name,
+            **({"customer_code": self._customer_code} if self._customer_code else {}),
             "parts": parts,
         }
+
+    async def _resolve_all(self, inventory, workspace, cancel):
+        """Resolve every code's route now, so a census the repository rejects is repaired in the intake."""
+        for code in inventory["codes"]:
+            try:
+                await self.repo.resolve(code["census"], workspace / "routing" / code["code"], cancel)
+            except CadError as exc:
+                raise PipelineError("inventory_invalid", f"{code['code']}: {summarize_error(str(exc))}") from exc
 
     async def run(
         self,
@@ -1041,6 +1097,8 @@ class CadPipeline:
             )
         source_mode = "PDF_DATA_RAW" if evidence.dxf else "PDF_ONLY"
         bootstrap = self.repo.bootstrap_text(source_mode)
+        intake_rules = (bootstrap + "\nFILE references/WELD_SITE_KEGAKI_CLOSURE.md\n"
+                        + self.repo.read("references/WELD_SITE_KEGAKI_CLOSURE.md"))
         if not cp.get("inventory"):
             candidates = await asyncio.to_thread(
                 control.store.reusable_inventories,
@@ -1050,6 +1108,7 @@ class CadPipeline:
             for cached in candidates:
                 try:
                     candidate = validate_inventory(cached["inventory"], evidence, source_mode, require_difficulty=not self.single_agent)
+                    await self._resolve_all(candidate, control.workspace, control.cancel)
                     review = cached.get("inventory_review")
                     if review is not None:
                         validate_inventory_review(review, candidate, evidence)
@@ -1075,7 +1134,7 @@ class CadPipeline:
                     "source_mode": source_mode,
                 },
                 evidence.images,
-                bootstrap,
+                intake_rules,
                 tools,
                 control,
                 cp,
@@ -1083,7 +1142,9 @@ class CadPipeline:
                 {"model": self.models["medium"]["model"], "effort": "medium"},
             )
             try:
-                cp["inventory"] = validate_inventory(normalize_inventory(data, evidence, source_mode), evidence, source_mode, require_difficulty=not self.single_agent)
+                candidate = validate_inventory(normalize_inventory(data, evidence, source_mode), evidence, source_mode, require_difficulty=not self.single_agent)
+                await self._resolve_all(candidate, control.workspace, control.cancel)
+                cp["inventory"] = candidate
             except PipelineError as exc:
                 if not self.single_agent or cp["intake"].get("inventory_repaired"):
                     raise
@@ -1094,12 +1155,15 @@ class CadPipeline:
                     "evidence": evidence.intake_view(), "feature_families": list(self.repo.router["feature_routes"]),
                     "source_mode": source_mode, "validation_error": str(exc),
                     "instruction": "Correct the complete inventory in this conversation; preserve inspected source facts.",
-                }, evidence.images, bootstrap, tools, control, cp, cp["intake"], self.agent_model)
-                cp["inventory"] = validate_inventory(normalize_inventory(data, evidence, source_mode), evidence, source_mode, require_difficulty=False)
+                }, evidence.images, intake_rules, tools, control, cp, cp["intake"], self.agent_model)
+                candidate = validate_inventory(normalize_inventory(data, evidence, source_mode), evidence, source_mode, require_difficulty=False)
+                await self._resolve_all(candidate, control.workspace, control.cancel)
+                cp["inventory"] = candidate
             cp["inventory_version"] = INTAKE_CACHE_VERSION + (":single" if self.single_agent else "")
             cp["response"] = None
             await control.save_async(cp)
         inventory = validate_inventory(cp["inventory"], evidence, source_mode, require_difficulty=not self.single_agent)
+        self._customer_code = inventory.get("customer_code")
         if cp.get("inventory_review"):
             validate_inventory_review(cp["inventory_review"], inventory, evidence)
         results = []
@@ -1183,6 +1247,8 @@ class CadPipeline:
                             job_name,
                             control.cancel,
                             notes=code_notes,
+                            customer_code=self._customer_code,
+                            census=code["census"],
                         )
                         answer = await self._interact(
                             "solve",
@@ -1235,7 +1301,7 @@ class CadPipeline:
                                 "evidence_incomplete",
                                 "Candidate code/source evidence mismatch",
                             )
-                        state["candidate"] = prepare_part(answer["part"], code_notes)
+                        state["candidate"] = prepare_part(answer["part"], code_notes, code["census"])
                         try:
                             check_flat_attempt(state["candidate"], code_notes)
                         except ContractError as exc:

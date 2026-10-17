@@ -6,6 +6,7 @@ fails when a key read by tools/*.py is missing from this description.
 """
 from __future__ import annotations
 
+import copy
 import re
 
 _POINT = {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}
@@ -37,6 +38,46 @@ ENTITY_PROPERTIES = {
     "layer": {"type": "string", "enum": ["0"]},
 }
 
+WELD_SITE_PROPERTIES = {
+    "weld_site_id": {"type": "string"},
+    "status": {"type": "string", "enum": ["PROVED", "FLAGGED"]},
+    "parent_code": {"type": "string", "description": "the host fills this with the code being described"},
+    "child_part_id": {"type": "string"},
+    "assembly_view_id": {"type": "string"},
+    "source_evidence": {"type": "string", "description": "scoped source/witness evidence, 8+ characters"},
+    "host_face": {"type": "string"},
+    "unresolved_fields": _TEXTS,
+    "weld_required_cue": _FLAG,
+    "self_locating": _FLAG,
+    "mark_required_by_source": _FLAG,
+    "not_required_evidence": {"type": "string"},
+    "mark_status": {"type": "string", "enum": ["PROVED", "FLAGGED"]},
+    "mark_member_ids": _TEXTS,
+    "datum_evidence": {"type": "string"},
+}
+
+WELD_CENSUS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "inspected_assembly_view_ids": _TEXTS,
+        "source_evidence": {"type": "string"},
+        "no_weld_evidence": {"type": "string"},
+        "sites": {"type": "array", "items": {
+            "type": "object", "properties": WELD_SITE_PROPERTIES,
+            "required": ["weld_site_id", "status", "child_part_id", "assembly_view_id", "source_evidence"]}},
+    },
+    "required": ["inspected_assembly_view_ids", "source_evidence", "sites"],
+}
+
+# Per-code weld inventory as references/WELD_SITE_KEGAKI_CLOSURE.md defines it.
+WELD_SCHEMA = {
+    "type": "object",
+    "properties": {"source_assembly_view_ids": _TEXTS, "source_weld_site_ids": _TEXTS,
+                   "weld_site_census": WELD_CENSUS_SCHEMA},
+    "required": ["source_assembly_view_ids", "source_weld_site_ids", "weld_site_census"],
+}
+WELD_KEYS = tuple(WELD_SCHEMA["properties"])
+
 PART_PROPERTIES = {
     "preview_reason": {"type": "string", "enum": PREVIEW_REASONS,
                        "description": "PREVIEW needs numeric_only_known_topology; VIEWS_ONLY needs separate_source_views"},
@@ -55,7 +96,7 @@ PART_PROPERTIES = {
     "source_manufacturing_notes": _RECORDS,
     "source_assembly_view_ids": _TEXTS,
     "source_weld_site_ids": _TEXTS,
-    "weld_site_census": _OBJECT,
+    "weld_site_census": WELD_CENSUS_SCHEMA,
     "complete_source_bundle_id": {"type": "string"},
     "shared_assembly_view_role": _FLAG,
     # Holistic challenge record read by tools/holistic_engineering_guard.py.
@@ -154,14 +195,18 @@ def flat_arithmetic_notes(notes):
     return [n for n in notes if isinstance(n, dict) and FLAT_ARITHMETIC.search(str(n.get("text", "")))]
 
 
-def prepare_part(part, notes):
-    """Host-owned restatements derived from the code's own notes; never overrides the model."""
-    if not flat_arithmetic_notes(notes) or not isinstance(part, dict):
+def prepare_part(part, notes, census=None):
+    """Host-owned restatements derived from the code's own source records; never overrides the model."""
+    if not isinstance(part, dict):
         return part
     prepared = dict(part)
-    prepared.setdefault("high_source_evidence", True)
-    if prepared.get("status") in ("PASS", "PREVIEW", "REVIEW"):
-        prepared.setdefault("flat_attempted", True)
+    if flat_arithmetic_notes(notes):
+        prepared.setdefault("high_source_evidence", True)
+        if prepared.get("status") in ("PASS", "PREVIEW", "REVIEW"):
+            prepared.setdefault("flat_attempted", True)
+    for key in WELD_KEYS:
+        if census and census.get(key) is not None:
+            prepared.setdefault(key, copy.deepcopy(census[key]))
     return prepared
 
 

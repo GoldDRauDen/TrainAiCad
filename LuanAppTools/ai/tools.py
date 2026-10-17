@@ -44,7 +44,7 @@ def calculate(expression):
 
 
 class HostTools:
-    def __init__(self, repo, evidence, allowed_rules, job_name, cancel, notes=()):
+    def __init__(self, repo, evidence, allowed_rules, job_name, cancel, notes=(), customer_code=None, census=None):
         self.repo, self.evidence, self.allowed_rules, self.job_name, self.cancel = (
             repo,
             evidence,
@@ -53,6 +53,7 @@ class HostTools:
             cancel,
         )
         self.notes = list(notes)
+        self.customer_code, self.census = customer_code, census
 
     def data_group(self, args):
         group_id = args.get("group_id")
@@ -101,11 +102,12 @@ class HostTools:
         if name == "validate":
             if not isinstance(args.get("part"), dict):
                 raise ValueError("validate needs the complete part object")
-            part = prepare_part(args["part"], self.notes)
+            part = prepare_part(args["part"], self.notes, self.census)
             check_flat_attempt(part, self.notes)
             job = {
                 "canonical_contract": self.repo.contract,
                 "job_id": self.job_name,
+                **({"customer_code": self.customer_code} if self.customer_code else {}),
                 "parts": [part],
             }
             return (

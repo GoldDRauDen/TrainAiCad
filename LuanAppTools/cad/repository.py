@@ -18,6 +18,10 @@ import yaml
 from LuanAppTools.ai.protocol import cancellable, ProviderError
 
 
+# The repository tools print customer notes (for example '>=19 mm') as UTF-8; a Windows pipe defaults to cp1252.
+UTF8_MODE = ("-X", "utf8")
+
+
 class CadError(RuntimeError):
     def __init__(self, message, kind="canonical_invalid"):
         super().__init__(message)
@@ -199,6 +203,7 @@ class PinnedRepository:
             await run_tool(
                 [
                     sys.executable,
+                    *UTF8_MODE,
                     self.root / "tools/resolve_rules.py",
                     source,
                     "--repo-root",
@@ -237,7 +242,7 @@ print(json.dumps(v))
             raise ProviderError("timeout", "Host validation elapsed budget exhausted")
         return json.loads(
             await run_tool(
-                [sys.executable, "-c", code, path],
+                [sys.executable, *UTF8_MODE, "-c", code, path],
                 self.root / "tools",
                 cancel,
                 timeout=remaining,
@@ -252,6 +257,7 @@ print(json.dumps(v))
         output = workspace / "output"
         args = [
             sys.executable,
+            *UTF8_MODE,
             self.root / "tools/export_canonical_dxf.py",
             path,
             output,
