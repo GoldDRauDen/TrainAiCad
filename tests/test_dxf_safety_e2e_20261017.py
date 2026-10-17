@@ -196,3 +196,69 @@ def test_unproved_inward_side_and_zero_bend_dir_fail_closed():
         slit_dir_from_bend((0, 0), (0, 1))
     with pytest.raises(ValueError):
         slit_dir_from_bend((1, 0), (1, 0))
+
+
+@pytest.mark.parametrize("source_vertices", [CW, CCW])
+def test_v434_slot_witness_to_composite_and_individual_cut(tmp_path, source_vertices):
+    """Real V4.34 gate chain: member -> witness -> saved composite -> saved CUT."""
+    verts = [[x + 12, y + 6, bulge] for x, y, bulge in source_vertices]
+    p = _part(length=40, width=30)
+    p["entities"][0]["entity_id"] = "E_OUTER"
+    p["entities"].append({
+        "entity_id": "E_SLOT", "type": "LWPOLYLINE", "role": "slot",
+        "closed": True, "vertices": verts,
+    })
+    p["source_groups"] = [
+        {"group_id": "G_OUTER", "family": "OUTER", "status": "PROVED",
+         "source_quantity": 1, "members": [{"member_id": "M_OUTER", "status": "PROVED"}]},
+        {"group_id": "G_SLOT", "family": "SLOT", "status": "PROVED",
+         "source_quantity": 1, "members": [{"member_id": "M_SLOT", "status": "PROVED"}]},
+    ]
+    p["canonical_members"] = [
+        {"canonical_member_id": "CM_OUTER", "origin": "SOURCE",
+         "source_member_id": "M_OUTER", "group_id": "G_OUTER",
+         "status": "PROVED", "entity_ids": ["E_OUTER"]},
+        {"canonical_member_id": "CM_SLOT", "origin": "SOURCE",
+         "source_member_id": "M_SLOT", "group_id": "G_SLOT",
+         "status": "PROVED", "entity_ids": ["E_SLOT"]},
+    ]
+    p["slot_anchor_records"] = [{
+        "slot_id": "M_SLOT", "entity_id": "E_SLOT",
+        "source_pdf_page": 2, "evidence_ref": "PDF:p2:slot",
+        "witness_verified": True, "anchor_point": [12, 9.75],
+        "anchor_type": "SLOT_MIDPOINT", "axis_unit": [0, 1],
+        "width_mm": 6.6, "center_distance_mm": 4,
+        "overall_length_mm": 10.6, "canonical_midpoint": [12, 9.75],
+    }]
+    p["witness_required_feature_ids"] = ["M_SLOT"]
+    p["feature_witness_graph"] = {
+        "nodes": {"D": "OUTER_EDGE", "S": "SLOT_MIDPOINT"},
+        "edges": [
+            {"from_node": "D", "to_node": "S", "axis": axis, "kind": "LOCAL",
+             "value_mm": value,
+             "proof": {"pdf_page": 2, "evidence_ref": "PDF:p2:slot",
+                       "endpoint_verified": True, "from_type": "OUTER_EDGE",
+                       "to_type": "SLOT_MIDPOINT"}}
+            for axis, value in (("X", 12), ("Y", 9.75))
+        ],
+        "targets": [
+            {"feature_id": "M_SLOT", "datum_node": "D", "feature_node": "S",
+             "axis": axis, "coordinate_mm": value, "entity_id": "E_SLOT",
+             "datum_entity_id": "E_OUTER", "datum_coordinate_mm": 0}
+            for axis, value in (("X", 12), ("Y", 9.75))
+        ],
+    }
+    index = 1 if source_vertices is CCW else 0
+    jid = f"V434SLOT{index}"
+    result = export_canonical_job({
+        "canonical_contract": "TrainAiCad-CANONICAL-V4.34",
+        "job_id": jid, "parts": [p],
+    }, tmp_path, individual_dxf=True)
+    assert result["status"] == "PASS"
+    combined = ezdxf.readfile(tmp_path / f"{jid}_ALL.dxf")
+    cut = ezdxf.readfile(tmp_path / "parts_dxf" / "26-061234.dxf")
+    assert sum(e.dxftype() == "ARC" for e in combined.modelspace()) == 2
+    assert sum(e.dxftype() == "ARC" for e in cut.modelspace()) == 2
+    assert all(e.dxftype() in {"LINE", "ARC", "CIRCLE"}
+               for e in cut.modelspace())
+    assert cut.audit().has_errors is False
