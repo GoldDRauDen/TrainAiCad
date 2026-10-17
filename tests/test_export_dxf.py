@@ -43,7 +43,7 @@ def test_two_part_dxf_and_manifest(tmp_path):
         assert doc.header["$INSUNITS"] == 4
         assert all(e.dxf.layer == "0" for e in doc.modelspace())
     assert (tmp_path / "520924-19_MANIFEST.json").is_file()
-    assert json.loads((tmp_path / "520924-19_MANIFEST.json").read_text())["contract"] == "TrainAiCad-DXF-V4.7"
+    assert json.loads((tmp_path / "520924-19_MANIFEST.json").read_text(encoding="utf-8"))["contract"] == "TrainAiCad-DXF-V4.7"
     assert not any(e.dxftype() == "LWPOLYLINE" for e in ezdxf.readfile(tmp_path / "520924-19_ALL.dxf").modelspace())
 
 
@@ -209,7 +209,7 @@ def test_manifest_only_when_requested(tmp_path):
     manifest = export_job({"job_id": "EX", "parts": [part("P1")]},
                           tmp_path, write_manifest=True)
     assert sorted(p.name for p in tmp_path.iterdir()) == ["EX_ALL.dxf", "EX_MANIFEST.json"]
-    assert json.loads((tmp_path / "EX_MANIFEST.json").read_text())["filename"] == manifest["filename"]
+    assert json.loads((tmp_path / "EX_MANIFEST.json").read_text(encoding="utf-8"))["filename"] == manifest["filename"]
 
 
 def _marks(p, xs, top, last="LJ"):

@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import shutil
 import ezdxf
+from ezdxf import bbox as dxf_bbox
 import fitz
 
 
@@ -22,6 +23,15 @@ class Evidence:
 
     def public(self):
         return {"pages": self.pages, "dxf": self.dxf}
+
+    def intake_view(self):
+        """Model-facing intake view: per-group summaries, never per-entity geometry.
+
+        Intake only has to say which code owns which DATA group; entity detail is
+        fetched on demand (`data_group` tool) or sent with the code's solve stage.
+        Raw `dxf` stays the host authority for provenance and read-back checks.
+        """
+        return {"pages": self.pages, "dxf": [summarize_drawing(d) for d in self.dxf]}
 
 
 def _value(v):
@@ -109,6 +119,180 @@ def physical_entity(e, parent=None):
     return result
 
 
+# DXF attributes that can carry manufacturing meaning (dashed bend lines, colour-coded
+# layers); every other attribute is bookkeeping already summarised by the fields above.
+_MEANINGFUL_ATTRIBUTES = {
+    "color": 256,
+    "linetype": "BYLAYER",
+    "lineweight": -1,
+    "true_color": None,
+    "thickness": 0,
+}
+_GEOMETRY_KEYS = (
+    "start", "end", "center", "radius", "start_angle", "end_angle", "closed", "vertices",
+    "text", "transform", "control_points", "fit_points", "knots", "weights", "skipped",
+    "decode_error",
+)
+
+
+def _rounded(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, float):
+        return round(value, 6)
+    if isinstance(value, (list, tuple)):
+        return [_rounded(v) for v in value]
+    return value
+
+
+def compact_entity(entity, parent_id=None):
+    """Model-facing entity: geometry, layer and meaningful attributes at 1e-6 precision."""
+    result = {"type": entity["type"], "layer": entity["layer"]}
+    if entity["id"] != parent_id:
+        result = {"id": entity["id"], **result}
+    attributes = entity.get("attributes", {})
+    for key, default in _MEANINGFUL_ATTRIBUTES.items():
+        if key in attributes and attributes[key] != default:
+            result[key] = _rounded(attributes[key])
+    for key in _GEOMETRY_KEYS:
+        if key in entity:
+            result[key] = _rounded(entity[key])
+    if "extrusion" in entity and list(entity["extrusion"]) != [0, 0, 1]:
+        result["extrusion"] = _rounded(entity["extrusion"])
+    if entity.get("unsupported"):
+        result["unsupported"] = True
+    if "physical" in entity:
+        result["physical"] = [compact_entity(child, entity["id"]) for child in entity["physical"]]
+    return result
+
+
+_MAX_HOLES = 12
+_MAX_ARCS = 6
+_MAX_TEXTS = 10
+
+
+def summarize_drawing(drawing):
+    by_id = {e["id"]: e for e in drawing["entities"]}
+    groups = []
+    for group in drawing.get("groups", []):
+        members = [by_id[i.split("#", 1)[1]] for i in group["entity_ids"]]
+        types, layers, unsupported = {}, {}, {}
+        for e in members:
+            types[e["type"]] = types.get(e["type"], 0) + 1
+            layers[e["layer"]] = layers.get(e["layer"], 0) + 1
+            if e.get("unsupported"):
+                unsupported[e["type"]] = unsupported.get(e["type"], 0) + 1
+        circles = [e for e in members if e["type"] == "CIRCLE"]
+        arcs = sorted((e for e in members if e["type"] == "ARC"), key=lambda e: -e["radius"])
+        texts = [e for e in members if e["type"] in ("TEXT", "MTEXT")]
+        summary = {
+            "id": group["id"],
+            "bbox": group["bbox"],
+            "count": len(members),
+            "types": types,
+            "layers": layers,
+        }
+        if unsupported:
+            summary["unsupported"] = unsupported
+        if circles:
+            summary["circles"] = [
+                {"id": e["id"], "center": _rounded(e["center"][:2]), "radius": _rounded(e["radius"])}
+                for e in circles[:_MAX_HOLES]
+            ]
+            if len(circles) > _MAX_HOLES:
+                summary["circles_total"] = len(circles)
+        if arcs:
+            summary["arcs"] = [
+                {
+                    "id": e["id"],
+                    "center": _rounded(e["center"][:2]),
+                    "radius": _rounded(e["radius"]),
+                    "start_angle": _rounded(e["start_angle"]),
+                    "end_angle": _rounded(e["end_angle"]),
+                }
+                for e in arcs[:_MAX_ARCS]
+            ]
+            if len(arcs) > _MAX_ARCS:
+                summary["arcs_total"] = len(arcs)
+        if texts:
+            summary["texts"] = [{"id": e["id"], "text": str(e["text"])[:80]} for e in texts[:_MAX_TEXTS]]
+            if len(texts) > _MAX_TEXTS:
+                summary["texts_total"] = len(texts)
+        groups.append(summary)
+    return {
+        "id": drawing["id"],
+        "units": drawing["units"],
+        "entity_count": len(drawing["entities"]),
+        "groups": groups,
+    }
+
+
+def _entity_box(entity):
+    try:
+        box = dxf_bbox.extents([entity])
+    except Exception:
+        return None
+    if not box.has_data:
+        return None
+    return [round(box.extmin.x, 6), round(box.extmin.y, 6), round(box.extmax.x, 6), round(box.extmax.y, 6)]
+
+
+def cluster_boxes(boxes, tolerance=1e-6):
+    """Connected components of touching/overlapping boxes. `None` boxes stay alone.
+
+    Returns lists of box indexes: boxed clusters ordered by (min x, min y), then each
+    unbounded entity in document order. A hint for the model, never an ownership proof.
+    """
+    parent = list(range(len(boxes)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    active = []
+    for i in sorted((i for i, b in enumerate(boxes) if b), key=lambda i: boxes[i][0]):
+        x0, y0, _, y1 = boxes[i]
+        active = [j for j in active if boxes[j][2] >= x0 - tolerance]
+        for j in active:
+            if boxes[j][1] <= y1 + tolerance and y0 <= boxes[j][3] + tolerance:
+                parent[find(i)] = find(j)
+        active.append(i)
+    clusters = {}
+    for i, box in enumerate(boxes):
+        if box:
+            clusters.setdefault(find(i), []).append(i)
+    ordered = sorted(
+        clusters.values(),
+        key=lambda members: (min(boxes[i][0] for i in members), min(boxes[i][1] for i in members)),
+    )
+    return ordered + [[i] for i, box in enumerate(boxes) if not box]
+
+
+def data_groups(drawing_id, entities, boxes):
+    groups = []
+    for number, members in enumerate(cluster_boxes(boxes), 1):
+        known = [boxes[i] for i in members if boxes[i]]
+        groups.append(
+            {
+                "id": f"{drawing_id}#G{number}",
+                "bbox": (
+                    [
+                        min(b[0] for b in known),
+                        min(b[1] for b in known),
+                        max(b[2] for b in known),
+                        max(b[3] for b in known),
+                    ]
+                    if known
+                    else None
+                ),
+                "entity_ids": [f"{drawing_id}#{entities[i]['id']}" for i in sorted(members)],
+            }
+        )
+    return groups
+
+
 def prepare_evidence(source: Path, workspace: Path):
     source = Path(source).resolve()
     workspace = Path(workspace).resolve()
@@ -159,12 +343,17 @@ def prepare_evidence(source: Path, workspace: Path):
             doc = ezdxf.readfile(path)
             if doc.audit().has_errors:
                 raise ValueError("Source DXF audit failed")
+            modelspace = list(doc.modelspace())
+            entities = [physical_entity(e) for e in modelspace]
             drawings.append(
                 {
                     "id": rel.as_posix(),
                     "file": str(path),
                     "units": doc.units,
-                    "entities": [physical_entity(e) for e in doc.modelspace()],
+                    "entities": entities,
+                    "groups": data_groups(
+                        rel.as_posix(), entities, [_entity_box(e) for e in modelspace]
+                    ),
                 }
             )
     if not pages:

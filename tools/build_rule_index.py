@@ -95,7 +95,7 @@ def main() -> int:
         document = build_index(root)
         raw = yaml.safe_dump(document, allow_unicode=True, sort_keys=False)
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(raw, encoding="utf-8")
+        target.write_bytes(raw.encode("utf-8"))  # exact bytes: no platform newline translation
         record = {"path": str(target), "bytes": len(raw.encode("utf-8")),
                   "sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
                   "active_modules": len(document["production"]["active_modules"])}
