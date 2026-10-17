@@ -24,6 +24,9 @@ class AIRequest:
     session_id: str | None = None
     resume_session: bool = False
     history: tuple[dict, ...] = ()
+    # Rules shared by every code, kept out of the user message so fresh sessions can reuse the
+    # provider's cache. Must live inside the run workspace.
+    shared_context_file: Path | None = None
 
 
 @dataclass

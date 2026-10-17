@@ -29,7 +29,13 @@ _CLI_MODEL_IDS = {
 }
 
 
+# --append-system-prompt-file first shipped in the CLI generation this runner is verified against.
+SHARED_CONTEXT_MIN_VERSION = (2, 1, 301)
+
+
 class ClaudeRunner:
+    supports_shared_context = True
+
     def __init__(self, command=None):
         self.command = tuple(command or ("claude",))
 
@@ -126,7 +132,7 @@ class ClaudeRunner:
                 "unavailable", "Could not open the official Claude sign-in window"
             ) from exc
 
-    def argv(self, request, workspace):
+    def argv(self, request, workspace, shared_file=False):
         return [
             *self.executable(),
             "--print",
@@ -152,6 +158,8 @@ class ClaudeRunner:
             request.effort,
             "--json-schema",
             json.dumps(request.schema),
+            *(["--append-system-prompt-file", str(local_path(request.shared_context_file, workspace))]
+              if shared_file else []),
             *(["--resume" if request.resume_session else "--session-id", request.session_id]
               if request.session_id else ["--no-session-persistence"]),
         ]
@@ -159,9 +167,16 @@ class ClaudeRunner:
     async def complete(self, request, *, workspace, cancel, emit):
         if cancel.is_set():
             raise asyncio.CancelledError()
-        await cancellable(self.preflight(), cancel, min(request.timeout, 30))
+        provider = await cancellable(self.preflight(), cancel, min(request.timeout, 30))
         workspace = Path(workspace).resolve()
-        content = [{"type": "text", "text": request.prompt}]
+        text, shared_file = request.prompt, False
+        if request.shared_context_file is not None:
+            shared_path = local_path(request.shared_context_file, workspace)
+            if tuple(int(part) for part in provider["version"].split(".")) >= SHARED_CONTEXT_MIN_VERSION:
+                shared_file = True
+            else:  # older CLI: same rules, just back in the user message
+                text = shared_path.read_text(encoding="utf-8") + "\n" + text
+        content = [{"type": "text", "text": text}]
         for path in request.paths:
             content[0]["text"] += "\nApproved local source: " + str(
                 local_path(path, workspace)
@@ -190,7 +205,7 @@ class ClaudeRunner:
             else {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
         )
         process = await asyncio.create_subprocess_exec(
-            *self.argv(request, workspace),
+            *self.argv(request, workspace, shared_file),
             cwd=workspace,
             env=self.environment(),
             stdin=asyncio.subprocess.PIPE,
