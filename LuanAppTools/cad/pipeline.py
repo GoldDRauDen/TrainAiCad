@@ -140,6 +140,10 @@ class PipelineResult:
 # row exhausted both attempts without a validated representation.
 MAX_CONSECUTIVE_FAILED_CODES = 2
 
+# The same host validation error this many times in a row ends the attempt (not the job):
+# further rounds only re-read the whole conversation to guess the same answer again.
+MAX_IDENTICAL_VALIDATION_ERRORS = 3
+
 STAGE_SCHEMAS = {
     "intake": {
         "type": "object",
@@ -289,6 +293,10 @@ def interaction_schema(stage, *, single_agent=False):
             },
         },
     }
+
+
+def _error_signature(error):
+    return re.sub(r"\s+", " ", re.sub(r"\d{2}-\d{5,}", "<code>", summarize_error(error)))[:300]
 
 
 def fingerprint(data):
@@ -853,6 +861,8 @@ class CadPipeline:
                             control.cancel,
                             remaining,
                         )
+                        if call["name"] == "validate":
+                            interaction["last_error"], interaction["repeat"] = None, 0
                     except ProviderError as exc:
                         if exc.kind == "timeout":
                             raise PipelineError(
@@ -869,6 +879,20 @@ class CadPipeline:
                             advice = self.gate_index().advise(error)
                             if advice:
                                 answer["gates"] = advice
+                            signature = _error_signature(error)
+                            repeat = interaction.get("repeat", 0) + 1 if interaction.get("last_error") == signature else 1
+                            interaction["last_error"], interaction["repeat"] = signature, repeat
+                            await control.emit({"kind": "validation_error", "stage": stage,
+                                                "code": context.get("code", {}).get("code"),
+                                                "signature": signature[:200], "count": repeat})
+                            if repeat >= MAX_IDENTICAL_VALIDATION_ERRORS:
+                                raise PipelineError(
+                                    "validation_stalled",
+                                    f"Validation returned the same error {repeat} times: {signature[:200]}")
+                            if repeat == MAX_IDENTICAL_VALIDATION_ERRORS - 1:
+                                answer["repeated"] = (
+                                    "The identical validation error came back twice in a row. Change the fields "
+                                    "named in 'gates' (or the part structure); do not reshuffle unrelated fields.")
                         image = None
                     history.append({"request": call, "result": answer})
                     if image:
