@@ -118,8 +118,18 @@ def validate_entity(entity, part_code, preview):
             fail(f"{part_code}: omit duplicate closing vertex; use closed=true")
         if entity.get("closed") and role in ("outer", "cutout", "slot"):
             area = signed_poly_area(vertices)
-            if (role == "outer" and area <= 0) or (role in ("cutout", "slot") and area >= 0):
+            if ((role == "outer" and area <= 0) or
+                    (role in ("cutout", "slot") and abs(area) <= 1e-10) or
+                    (role == "cutout" and area >= 0)):
                 fail(f"{part_code}: wrong winding or degenerate closed {role} polyline")
+            if role == "slot" and area > 0:
+                # A proved convex stadium has identical physical CUT geometry
+                # in CW and CCW. Do not relax winding for arbitrary cutouts.
+                from slot_anchor import SlotAnchorError, stadium_geometry
+                try:
+                    stadium_geometry(vertices)
+                except SlotAnchorError:
+                    fail(f"{part_code}: CCW slot needs valid stadium geometry")
     elif t == "CIRCLE":
         point(entity.get("center"), f"{part_code} circle")
         if number(entity.get("radius"), f"{part_code} radius") <= 0:
@@ -170,6 +180,19 @@ def jlj_marks_check(part):
     n = 2 + (length > 1500) + (length > 2000)  # J count + 1 LJ
     x0, top = min(xs), max(ys)
     want = [(x0 + 30 + i * (length - 60) / (n - 1), top, "LJ" if i == n - 1 else "J") for i in range(n)]
+    # The top of the *bounding box* is not proof of an actual material
+    # edge (e.g. a notch can remove the edge exactly at an LJ mark).
+    top_edges = []
+    for ent in outer:
+        vertices = ent["vertices"]
+        segments = (vertices + vertices[:1]) if ent.get("closed") else vertices
+        for a, b in zip(segments, segments[1:]):
+            if (abs(a[2]) <= 1e-10 and
+                    abs(a[1] - top) <= 1e-6 and abs(b[1] - top) <= 1e-6):
+                top_edges.append((min(a[0], b[0]), max(a[0], b[0])))
+    if any(not any(left - 1e-6 <= x <= right + 1e-6
+                   for left, right in top_edges) for x, _, _ in want):
+        fail(f"{code}: J/LJ_MARKS_NOT_ON_TOP_MATERIAL_EDGE")
     pts = sorted((round(e["point"][0], 6), round(e["point"][1], 6)) for e in marks if e["type"] == "POINT")
     txt = sorted((round(e["insert"][0], 6), round(e["insert"][1], 6), e["text"]) for e in marks if e["type"] == "TEXT")
     if pts != [(round(x, 6), round(y, 6)) for x, y, _ in want] or \
