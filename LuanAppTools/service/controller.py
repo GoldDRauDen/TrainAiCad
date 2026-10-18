@@ -164,8 +164,8 @@ class ApplicationService:
     def update_settings(self, changes: dict):
         if not isinstance(changes, dict):
             raise ValueError('Expected a JSON object')
-        if any(value is None and key != 'individual_destination' for key,value in changes.items()):
-            raise ValueError('Only individual_destination may be null')
+        if any(value is None and key not in {'individual_destination','output_destination'} for key,value in changes.items()):
+            raise ValueError('Only individual_destination and output_destination may be null')
         allowed = set(self.settings.public_dict())
         if set(changes) - allowed:
             raise ValueError('Unknown settings: ' + ', '.join(sorted(set(changes)-allowed)))
@@ -230,6 +230,7 @@ class ApplicationService:
         return {'difficulty':difficulty, 'individual':individual, 'parts_destination':str(destination) if destination else None,
                 'single_agent':True, 'agent_model':{'model':self.settings.agent_model,'effort':self.settings.agent_effort},
                 'conversation':self.settings.conversation,'prompt_style':self.settings.prompt_style,
+                'output_destination':self.settings.output_destination,
                 'models':self.settings.public_dict()['models'], 'attempt_timeout':self.settings.attempt_timeout,
                 'workspace_root':self.settings.workspace_root,
                 'provider':connection['provider'], 'gateway_authorized':connection['provider'] != 'claude',
@@ -645,7 +646,8 @@ class ApplicationService:
                 exported=run['checkpoint']['export']['files']
                 await control.boundary()
                 await self.publisher.run(run,control,files={k:Path(v) for k,v in exported.items()},
-                    parts_destination=Path(run['config']['parts_destination']) if run['config'].get('parts_destination') else None,timeout=self.settings.output_timeout)
+                    parts_destination=Path(run['config']['parts_destination']) if run['config'].get('parts_destination') else None,
+                    combined_destination=Path(run['config']['output_destination']) if run['config'].get('output_destination') else None,timeout=self.settings.output_timeout)
             else:
                 if not control.gateway_authorized:
                     try:
@@ -657,10 +659,11 @@ class ApplicationService:
                 config = run['config']
                 gateway = self._gateway_for_config(config) if control.gateway_authorized else None
                 pipeline = self.pipeline_factory(repo,self.runner,gateway=gateway,models=config.get('models'),attempt_timeout=config.get('attempt_timeout',1200),difficulty=config.get('difficulty','auto'),single_agent=config.get('single_agent',False),agent_model=config.get('agent_model'),conversation=config.get('conversation','code'),prompt_style=config.get('prompt_style','full'))
-                result = await pipeline.run(run['snapshot_dir'],control,job_name=self.store.get_job(run['job_id'])['name'],individual=config.get('individual',False))
+                result = await pipeline.run(run['snapshot_dir'],control,job_name=self.store.get_job(run['job_id'])['name'],individual=config.get('individual',False),output_folder=config.get('output_destination'))
                 await control.boundary()
                 await self.publisher.run(run,control,files=result.staged_files,
-                                        parts_destination=Path(config['parts_destination']) if config.get('parts_destination') else None,timeout=self.settings.output_timeout)
+                                        parts_destination=Path(config['parts_destination']) if config.get('parts_destination') else None,
+                                        combined_destination=Path(config['output_destination']) if config.get('output_destination') else None,timeout=self.settings.output_timeout)
         except Paused:
             await self._release_if_current(run,control,'paused')
         except asyncio.CancelledError:

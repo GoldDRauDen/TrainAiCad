@@ -32,6 +32,7 @@ class Settings:
     default_difficulty: str = 'auto'
     individual_output: bool = False
     individual_destination: str | None = None
+    output_destination: str | None = None
     workspace_root: str = ''
     retry_seconds: float = 60.0
     shutdown_seconds: float = 10.0
@@ -83,6 +84,13 @@ class Settings:
             if validate_roots and not destination.is_dir():
                 raise ValueError('Individual destination must be a directory')
             self.individual_destination = str(destination)
+        if self.output_destination is not None:
+            if not isinstance(self.output_destination, str) or len(self.output_destination) > 500 or any(ord(c) < 32 for c in self.output_destination):
+                raise ValueError('Invalid output destination')
+            chosen = Path(self.output_destination).expanduser()
+            if not chosen.is_absolute():
+                raise ValueError('Output destination must be an absolute path')
+            self.output_destination = str(chosen.resolve())
         if not isinstance(self.gateway_model, str) or len(self.gateway_model) > 200 or any(ord(c) < 32 for c in self.gateway_model):
             raise ValueError('Invalid gateway model')
         if self.gateway_effort not in {'medium','high','xhigh','max'}:
@@ -118,7 +126,7 @@ class Settings:
     def public_dict(self) -> dict:
         return {
             'roots': [str(root) for root in self.roots],
-            **{name: getattr(self, name) for name in ('max_active_jobs', 'max_ai_calls', 'max_opus_calls', 'scan_interval', 'stable_seconds', 'attempt_timeout', 'gateway_url', 'default_difficulty', 'individual_output', 'individual_destination', 'workspace_root', 'retry_seconds', 'shutdown_seconds', 'gateway_model', 'gateway_effort', 'output_timeout', 'active_provider', 'openai_model', 'custom_auth_mode', 'custom_auth_header', 'custom_send_effort')},
+            **{name: getattr(self, name) for name in ('max_active_jobs', 'max_ai_calls', 'max_opus_calls', 'scan_interval', 'stable_seconds', 'attempt_timeout', 'gateway_url', 'default_difficulty', 'individual_output', 'individual_destination', 'output_destination', 'workspace_root', 'retry_seconds', 'shutdown_seconds', 'gateway_model', 'gateway_effort', 'output_timeout', 'active_provider', 'openai_model', 'custom_auth_mode', 'custom_auth_header', 'custom_send_effort')},
             'models': {key: dict(value) for key, value in self.models.items()},
             'agent_model': self.agent_model,
             'agent_effort': self.agent_effort,

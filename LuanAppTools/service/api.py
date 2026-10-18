@@ -83,6 +83,7 @@ class SettingsBody(Body):
     default_difficulty: Literal['auto','easy','medium','hard'] | None = None
     individual_output: bool | None = None
     individual_destination: str | None = None
+    output_destination: str | None = None
     workspace_root: str | None = None
     retry_seconds: float | None = None
     shutdown_seconds: float | None = None

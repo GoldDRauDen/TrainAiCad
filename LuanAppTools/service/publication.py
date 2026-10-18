@@ -45,7 +45,7 @@ class OwnedPublisher:
         await process.wait()
         await done.wait()  # Exit audit must commit before a control action writes state.
 
-    async def run(self,run,control,*,files=None,parts_destination=None,timeout=120):
+    async def run(self,run,control,*,files=None,parts_destination=None,combined_destination=None,timeout=120):
         if control.cancel.is_set(): raise asyncio.CancelledError()
         control.workspace.mkdir(parents=True,exist_ok=True)
         result_path=control.workspace/('publication-'+uuid.uuid4().hex+'.json')
@@ -60,7 +60,8 @@ class OwnedPublisher:
             await self._write(self.store.append_event,run['id'],'publication_process_started',{'process':identity})
             payload={'db_path':str(self.store.db_path),'archive_dir':str(self.archive_dir),'run_id':run['id'],
                      'lease':control.lease,'source_hash':run['source_hash'],'files':{k:str(v) for k,v in files.items()} if files is not None else None,
-                     'parts_destination':str(parts_destination) if parts_destination else None,'result_path':str(result_path)}
+                     'parts_destination':str(parts_destination) if parts_destination else None,
+                     'combined_destination':str(combined_destination) if combined_destination else None,'result_path':str(result_path)}
             from LuanAppTools.ai.protocol import ProviderError
             try:
                 await cancellable(process.communicate(json.dumps(payload).encode()),control.cancel,timeout)
@@ -94,7 +95,8 @@ def worker():
         else:
             result=publisher.publish(payload['run_id'],payload['lease'],payload['source_hash'],
                       {k:Path(v) for k,v in payload['files'].items()},
-                      parts_destination=Path(payload['parts_destination']) if payload['parts_destination'] else None)
+                      parts_destination=Path(payload['parts_destination']) if payload['parts_destination'] else None,
+                      combined_destination=Path(payload['combined_destination']) if payload.get('combined_destination') else None)
         response={'ok':True,'result':result}
     except Exception as exc:
         response={'ok':False,'message':str(exc)}

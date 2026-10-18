@@ -1028,6 +1028,14 @@ function SettingsForm({
             }
           />
         </label>
+        <label>
+          Thư mục xuất DXF tổng (để trống = thư mục input của job)
+          <input
+            value={form.output_destination || ""}
+            placeholder="Đường dẫn tuyệt đối, ví dụ D:\DXF-OUT"
+            onChange={(e) => put("output_destination", e.target.value || null)}
+          />
+        </label>
 
       </section>
       <section className="panel form-section">

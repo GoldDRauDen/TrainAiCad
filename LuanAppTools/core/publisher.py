@@ -35,7 +35,20 @@ class Publisher:
             if file_hash(contained_path(folder, entry['path'])) != entry['sha256']:
                 raise ValueError('Source changed before publication')
 
-    def _prepare(self, run, lease, files, parts_destination):
+    @staticmethod
+    def _destination_root(destination):
+        """An output root outside the job folder: no symlink components, created if missing."""
+        root = Path(destination).expanduser().absolute()
+        # Resolve only after rejecting symlink components in the supplied destination.
+        cursor = root
+        while cursor != cursor.parent:
+            if cursor.is_symlink():
+                raise ValueError('Symlink output destination is not allowed')
+            cursor = cursor.parent
+        root.mkdir(parents=True, exist_ok=True)
+        return root.resolve(strict=True)
+
+    def _prepare(self, run, lease, files, parts_destination, combined_destination=None):
         job = self.store.get_job(run['job_id'])
         folder = job['folder']
         allowed_combined = {f"{job['name']}_ALL.dxf", f"{job['name']}_ALL_REVIEW_ONLY.dxf"}
@@ -45,21 +58,16 @@ class Publisher:
         for name, stage in files.items():
             relative = Path(name)
             if name in allowed_combined:
-                root, relative_target = folder, relative
+                if combined_destination is None:
+                    root, relative_target = folder, relative
+                else:
+                    root, relative_target = self._destination_root(combined_destination), Path(relative.name)
                 combined = True
             elif len(relative.parts) == 2 and relative.parts[0] == 'parts_dxf' and re.fullmatch(r'[A-Za-z0-9_-]+\.dxf', relative.name):
                 if parts_destination is None:
                     root, relative_target = folder, relative
                 else:
-                    root, relative_target = Path(parts_destination).expanduser().absolute(), Path(relative.name)
-                    # Resolve only after rejecting symlink components in the supplied destination.
-                    cursor = root
-                    while cursor != cursor.parent:
-                        if cursor.is_symlink():
-                            raise ValueError('Symlink output destination is not allowed')
-                        cursor = cursor.parent
-                    root.mkdir(parents=True, exist_ok=True)
-                    root = root.resolve(strict=True)
+                    root, relative_target = self._destination_root(parts_destination), Path(relative.name)
                 combined = False
             else:
                 raise ValueError('Unsupported output name or unsafe path')
@@ -196,12 +204,12 @@ class Publisher:
         except (ValueError, KeyError):
             pass
 
-    def publish(self, run_id: str, lease: str, source_hash: str, staged_files: dict[str, Path], *, parts_destination: Path | None = None) -> dict:
+    def publish(self, run_id: str, lease: str, source_hash: str, staged_files: dict[str, Path], *, parts_destination: Path | None = None, combined_destination: Path | None = None) -> dict:
         run = self.store.assert_lease(run_id, lease, source_hash)
         try:
             if run['publication']:
                 raise ValueError('Publication is already prepared; use retry to reuse its local files')
-            journal = self._prepare(run, lease, staged_files, parts_destination)
+            journal = self._prepare(run, lease, staged_files, parts_destination, combined_destination)
             return self._execute(run, lease, journal)
         except Exception as exc:
             self._pending(run_id, lease, source_hash, exc)
