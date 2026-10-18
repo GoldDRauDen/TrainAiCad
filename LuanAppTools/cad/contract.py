@@ -18,6 +18,10 @@ _RECORDS = {"type": "array", "items": {"type": "object"}}
 _OBJECT = {"type": "object"}
 
 PREVIEW_REASONS = ["numeric_only_known_topology", "separate_source_views"]
+# HOLISTIC_ENGINEERING_CHALLENGE section 5: why a part stays unresolved.
+BLOCKER_CLASSES = [
+    "TRUE_SOURCE_AMBIGUITY", "AI_INTERPRETATION_GAP", "SOURCE_MEMBER_CENSUS_GAP", "PART_IDENTITY_GAP",
+    "GEOMETRY_DECODE_GAP", "ROUTING_COVERAGE_GAP", "CUSTOMER_CONFIRMATION_PENDING"]
 STATUSES = ["PASS", "PREVIEW", "VIEWS_ONLY", "REVIEW"]
 
 ENTITY_PROPERTIES = {
@@ -123,6 +127,11 @@ PART_PROPERTIES = {
     },
     "unresolved_objects": {"type": "array", "items": {},
                            "description": "VIEWS_ONLY: the specific unresolved object(s) after source exhaustion"},
+    # Host-owned: recorded by the host and removed before the repository sees the part (see split_blocker).
+    "blocker": {"type": "object", "properties": {
+        "class": {"type": "string", "enum": BLOCKER_CLASSES},
+        "rule": {"type": "string", "description": "repository rule path that blocks the part"},
+        "evidence": {"type": "string", "description": "source ids used"}}, "required": ["class", "rule"]},
 }
 
 
@@ -165,6 +174,13 @@ def solve_part_schema(check_names, code=None):
         "required": ["code", "material", "thickness_mm", "status", "checks", "flags", "entities",
                      "source_groups", "canonical_members"],
     }
+
+
+def split_blocker(part):
+    """(part without the host-owned `blocker` key, the blocker or None); the input is not modified."""
+    if not isinstance(part, dict):
+        return part, None
+    return {k: v for k, v in part.items() if k != "blocker"}, part.get("blocker")
 
 
 def contract_notes(text):
@@ -234,6 +250,13 @@ def check_flat_attempt(part, notes):
             "its note id in face_graph_candidates[].evidence_used before choosing VIEWS_ONLY "
             "(HOLISTIC_ENGINEERING_CHALLENGE section 3)")
 
+
+HOST_BLOCKER_NOTE = (
+    "When the part is not PASS, record why in blocker {class, rule, evidence}: class is one of "
+    + ", ".join(BLOCKER_CLASSES) + " (HOLISTIC_ENGINEERING_CHALLENGE section 5); rule is the repository rule path "
+    "that blocks you; evidence names the source ids you used. A gap in your own interpretation is "
+    "AI_INTERPRETATION_GAP, never missing source data."
+)
 
 HOST_CANONICAL_NOTE = (
     "Every PROVED HOLE or SLOT source member needs witness_required_feature_ids and a feature_witness_graph (V4.34 "

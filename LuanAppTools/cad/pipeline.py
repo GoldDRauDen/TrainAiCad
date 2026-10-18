@@ -30,8 +30,9 @@ from LuanAppTools.ai.tools import HostTools, TOOL_DESCRIPTION
 from LuanAppTools.core.settings import DEFAULT_MODELS
 from LuanAppTools.core.store import Store
 from .contract import (
-    FLAT_ARITHMETIC, HOST_CANONICAL_NOTE, HOST_NEXT_CODE_NOTE, HOST_VIEWS_ONLY_NOTE, HOST_WELD_NOTE, WELD_SCHEMA,
-    ContractError, check_flat_attempt, namespace_entity_ids, prepare_part, solve_part_schema)
+    FLAT_ARITHMETIC, HOST_BLOCKER_NOTE, HOST_CANONICAL_NOTE, HOST_NEXT_CODE_NOTE, HOST_VIEWS_ONLY_NOTE, HOST_WELD_NOTE, WELD_SCHEMA,
+    ContractError, check_flat_attempt, namespace_entity_ids, prepare_part, solve_part_schema,
+    split_blocker)
 from .closure import ClosureContext, ViewsOnlyRejected
 from .gates import GateIndex, describe_failure, summarize_error
 from .evidence import prepare_evidence, check_data_provenance, compact_entity
@@ -804,7 +805,7 @@ class CadPipeline:
                     full_task = (
                         "Inspect all original pages. Return the complete source inventory with exact page/view/note/DATA ownership and complete feature census. Assign DATA by host groups (data_groups [{id,codes,exclude}]) and list data_entities only for entities that must be split from a group; the host fills each code's data_ids. No difficulty classification is needed. For every view also return dimensions: the numeric dimension values printed on that view (an empty list when it has none). Also return customer_code: the numeric customer code printed in the job statistics/slip header (null when absent; never infer it from a name, barcode or part number) with customer_code_evidence. When customer_code is 851, or a drawing shows a welded assembly, return for each code a weld object {source_assembly_view_ids, source_weld_site_ids, weld_site_census} exactly as references/WELD_SITE_KEGAKI_CLOSURE.md defines it (set mark_status FLAGGED for now: the marks are derived when the code is solved) and never classify KEGAKI as NO for a code that has weld sites."
                         if stage == "intake" else
-                        "Build the complete canonical part for the code in CONTEXT_JSON. Use the original pages attached to this conversation and the scoped inventory. Perform the routed source exhaustion and engineering challenge yourself, including witness endpoints, topology, ownership, dimensions and source reprojection. Use local tools for calculations. Before answering, call the validate tool with your complete part and correct every reported error; answer only with a part that passes it. Return part and evidence_refs containing ONLY exact page IDs. Include census only if features changed. SOURCE canonical members require group_id and source_member_id; DERIVED_RULE requires controlling_rule and source_member_ids. Polyline vertices are numeric arrays [x,y,bulge], not objects. Keep metadata concise. Use the required source-view fallback when flat geometry cannot be proved." + " " + HOST_VIEWS_ONLY_NOTE
+                        "Build the complete canonical part for the code in CONTEXT_JSON. Use the original pages attached to this conversation and the scoped inventory. Perform the routed source exhaustion and engineering challenge yourself, including witness endpoints, topology, ownership, dimensions and source reprojection. Use local tools for calculations. Before answering, call the validate tool with your complete part and correct every reported error; answer only with a part that passes it. Return part and evidence_refs containing ONLY exact page IDs. Include census only if features changed. SOURCE canonical members require group_id and source_member_id; DERIVED_RULE requires controlling_rule and source_member_ids. Polyline vertices are numeric arrays [x,y,bulge], not objects. Keep metadata concise. Use the required source-view fallback when flat geometry cannot be proved." + " " + HOST_VIEWS_ONLY_NOTE + " " + HOST_BLOCKER_NOTE
                     )
                     if stage != "intake":
                         census = context["code"]["census"]
@@ -1390,6 +1391,12 @@ class CadPipeline:
                                 "evidence_incomplete",
                                 "Candidate code/source evidence mismatch",
                             )
+                        answer["part"], blocker = split_blocker(answer["part"])
+                        if blocker is not None:
+                            state["blocker"] = blocker
+                            await control.emit({"kind": "blocker_recorded", "code": name, "blocker": blocker})
+                        else:
+                            state.pop("blocker", None)
                         state["candidate"] = prepare_part(answer["part"], code_notes, code["census"])
                         try:
                             check_flat_attempt(state["candidate"], code_notes)

@@ -4,7 +4,7 @@ import ast
 import math
 import operator
 import re
-from LuanAppTools.cad.contract import check_flat_attempt, prepare_part
+from LuanAppTools.cad.contract import check_flat_attempt, prepare_part, split_blocker
 from LuanAppTools.cad.evidence import compact_entity, crop_page_bounded
 
 # A validation error's `gates` name the exporter/guard source line that rejected the part. The model's own
@@ -129,7 +129,7 @@ class HostTools:
                 raise ValueError("validate needs the complete part object")
             if self.closure is not None:
                 self.closure.admit(args["part"], history)
-            part = prepare_part(args["part"], self.notes, self.census)
+            part = prepare_part(split_blocker(args["part"])[0], self.notes, self.census)
             check_flat_attempt(part, self.notes)
             job = {
                 "canonical_contract": self.repo.contract,
