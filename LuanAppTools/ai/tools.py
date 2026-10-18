@@ -62,7 +62,8 @@ def line_range(text, start, limit):
 
 
 class HostTools:
-    def __init__(self, repo, evidence, allowed_rules, job_name, cancel, notes=(), customer_code=None, census=None):
+    def __init__(self, repo, evidence, allowed_rules, job_name, cancel, notes=(), customer_code=None, census=None,
+                 closure=None):
         self.repo, self.evidence, self.allowed_rules, self.job_name, self.cancel = (
             repo,
             evidence,
@@ -72,6 +73,7 @@ class HostTools:
         )
         self.notes = list(notes)
         self.customer_code, self.census = customer_code, census
+        self.closure = closure  # cad.closure.ClosureContext: gates VIEWS_ONLY when printed flat arithmetic closes
 
     def data_group(self, args):
         group_id = args.get("group_id")
@@ -91,7 +93,7 @@ class HostTools:
                     }
         raise ValueError("Unknown DATA group")
 
-    async def execute(self, call, *, timeout: float = 1200):
+    async def execute(self, call, *, timeout: float = 1200, history=()):
         name = call["name"]
         args = call["arguments"]
         if not isinstance(args, dict):
@@ -125,6 +127,8 @@ class HostTools:
         if name == "validate":
             if not isinstance(args.get("part"), dict):
                 raise ValueError("validate needs the complete part object")
+            if self.closure is not None:
+                self.closure.admit(args["part"], history)
             part = prepare_part(args["part"], self.notes, self.census)
             check_flat_attempt(part, self.notes)
             job = {

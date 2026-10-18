@@ -32,6 +32,7 @@ from LuanAppTools.core.store import Store
 from .contract import (
     FLAT_ARITHMETIC, HOST_CANONICAL_NOTE, HOST_NEXT_CODE_NOTE, HOST_VIEWS_ONLY_NOTE, HOST_WELD_NOTE, WELD_SCHEMA,
     ContractError, check_flat_attempt, namespace_entity_ids, prepare_part, solve_part_schema)
+from .closure import ClosureContext, ViewsOnlyRejected
 from .gates import GateIndex, describe_failure, summarize_error
 from .evidence import prepare_evidence, check_data_provenance, compact_entity
 from .repository import PinnedRepository, CadError
@@ -1003,7 +1004,7 @@ class CadPipeline:
                                 "Attempt elapsed budget exhausted before host tool",
                             )
                         answer, image = await cancellable(
-                            tools.execute(call, timeout=remaining),
+                            tools.execute(call, timeout=remaining, history=history),
                             control.cancel,
                             remaining,
                         )
@@ -1315,6 +1316,11 @@ class CadPipeline:
                             + "\nFILE tools/DXF_INPUT_SCHEMA.md (part contract)\n"
                             + self.repo.contract_notes()
                         )
+                        # Printed flat arithmetic that closes against this code's views must be tried before VIEWS_ONLY.
+                        closure = ClosureContext(
+                            notes=tuple(code_notes),
+                            views=tuple(v for v in inventory["views"] if v["id"] in code["view_ids"]),
+                        ) if self.single_agent else None
                         tools = HostTools(
                             self.repo,
                             evidence,
@@ -1324,6 +1330,7 @@ class CadPipeline:
                             notes=code_notes,
                             customer_code=self._customer_code,
                             census=code["census"],
+                            closure=closure,
                         )
                         answer = await self._interact(
                             "solve",
@@ -1341,6 +1348,11 @@ class CadPipeline:
                             state,
                             model,
                         )
+                        if closure is not None:
+                            try:  # the model may have skipped the validate tool; the same gate runs on the answer
+                                closure.admit(answer["part"], state.get("interaction", {}).get("history", []))
+                            except ViewsOnlyRejected as exc:
+                                raise PipelineError("views_only_unproved", str(exc)) from exc
                         if self.single_agent and answer.get("census"):
                             # A feature update is commonly a partial census. Keep
                             # the pinned source role and unchanged families explicit.
