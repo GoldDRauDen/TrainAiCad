@@ -41,6 +41,7 @@ class Settings:
     active_provider: str = 'claude'
     agent_model: str = 'sonnet-5.5'
     agent_effort: str = 'medium'
+    conversation: str = 'job'
     openai_model: str = ''
     custom_auth_mode: str = 'none'
     custom_auth_header: str = 'Authorization'
@@ -89,6 +90,8 @@ class Settings:
             raise ValueError('Unsupported AI provider')
         if self.agent_model not in {'haiku-5.5', 'sonnet-5.5', 'opus-5.5'} or self.agent_effort not in {'medium', 'high', 'xhigh', 'max'}:
             raise ValueError('Unsupported job agent model or effort')
+        if self.conversation not in {'job', 'code'}:
+            raise ValueError('Unsupported conversation scope')
         if not isinstance(self.openai_model, str) or len(self.openai_model) > 200 or any(ord(c) < 32 for c in self.openai_model):
             raise ValueError('Invalid OpenAI model')
         if self.custom_auth_mode not in {'none', 'bearer', 'header'}:
@@ -116,6 +119,7 @@ class Settings:
             'models': {key: dict(value) for key, value in self.models.items()},
             'agent_model': self.agent_model,
             'agent_effort': self.agent_effort,
+            'conversation': self.conversation,
         }
 
     def save(self) -> Path:

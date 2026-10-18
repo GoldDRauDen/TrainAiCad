@@ -241,6 +241,13 @@ HOST_CANONICAL_NOTE = (
     "instead of PROVED, with canonical status SOURCE_VIEW (or PREVIEW / FLAGGED_NO_GEOMETRY)."
 )
 
+HOST_NEXT_CODE_NOTE = (
+    "This conversation already inspected or solved other codes of this job. Keep what the validate tool taught you "
+    "about the part contract (field names, ids, layout), but derive this code's geometry only from its own source "
+    "views and DATA: never copy or mirror another code's geometry, mirror partners included (BEND_UNFOLD: "
+    "\"Never mirror every bent part by default\")."
+)
+
 HOST_WELD_NOTE = (
     "This code has weld sites (customer 851). Record every weld mark you cannot prove yet like this before "
     "validating: a source_groups entry {group_id, family: KEGAKI, status: FLAGGED, source_quantity: 1, members: "

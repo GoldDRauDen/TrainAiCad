@@ -30,8 +30,8 @@ from LuanAppTools.ai.tools import HostTools, TOOL_DESCRIPTION
 from LuanAppTools.core.settings import DEFAULT_MODELS
 from LuanAppTools.core.store import Store
 from .contract import (
-    HOST_CANONICAL_NOTE, HOST_VIEWS_ONLY_NOTE, HOST_WELD_NOTE, WELD_SCHEMA, ContractError, check_flat_attempt,
-    namespace_entity_ids, prepare_part, solve_part_schema)
+    HOST_CANONICAL_NOTE, HOST_NEXT_CODE_NOTE, HOST_VIEWS_ONLY_NOTE, HOST_WELD_NOTE, WELD_SCHEMA, ContractError,
+    check_flat_attempt, namespace_entity_ids, prepare_part, solve_part_schema)
 from .gates import GateIndex, describe_failure, summarize_error
 from .evidence import prepare_evidence, check_data_provenance, compact_entity
 from .repository import PinnedRepository, CadError
@@ -600,12 +600,20 @@ class CadPipeline:
         difficulty: str = 'auto',
         single_agent: bool = False,
         agent_model: dict | None = None,
+        conversation: str = 'code',
     ):
         if difficulty not in {'auto', 'easy', 'medium', 'hard'}:
             raise ValueError('Unsupported difficulty')
+        if conversation not in {'code', 'job'}:
+            raise ValueError('Unsupported conversation scope')
         self.difficulty = difficulty
         # Missing config means a pre-migration run; preserve its checkpoint contract.
         self.single_agent = single_agent
+        # 'job': the intake and every code share one conversation, so the pages are read once and what the
+        # validate tool teaches carries from code to code. 'code': the intake and each code own one, which
+        # keeps every call's history short (commit 72f6282). Both are measured with bench/run_metrics.py.
+        self.one_conversation = single_agent and conversation == 'job'
+        self._job_schema = None
         self.agent_model = dict(agent_model or {"model": "sonnet-5.5", "effort": "medium"})
         self.repo = repository
         self._gates = None
@@ -620,6 +628,34 @@ class CadPipeline:
             raise ValueError(
                 "Independent source QA requires Sonnet high (sonnet-5.5/high)"
             )
+
+    def _check_names(self):
+        import ast
+        tree = ast.parse(self.repo.read("tools/export_dxf.py"))
+        return next(ast.literal_eval(node.value) for node in tree.body
+                    if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "CHECKS" for t in node.targets))
+
+    def _stage_schema(self, stage):
+        schema = interaction_schema(stage, single_agent=self.single_agent)
+        if self.single_agent and stage == "solve":
+            # No per-code detail here: the schema is part of the cache prefix before the shared rules.
+            schema["properties"]["evidence_refs"] = {
+                "type": "array", "items": {"type": "string"},
+                "description": "Original page IDs of this code; the host restates them.",
+            }
+            schema["properties"]["part"] = solve_part_schema(self._check_names())
+        return schema
+
+    def _conversation_schema(self):
+        """One output schema for every turn of a job conversation (intake and solve fields together).
+
+        The schema is a tool definition at the start of the cache prefix: changing it between turns would make
+        the provider rebuild the whole conversation. The host still checks the required fields of each stage.
+        """
+        if self._job_schema is None:
+            properties = {**self._stage_schema("intake")["properties"], **self._stage_schema("solve")["properties"]}
+            self._job_schema = {"type": "object", "properties": properties}
+        return self._job_schema
 
     def _agent_model_for(self, census):
         model = dict(self.agent_model)
@@ -732,23 +768,12 @@ class CadPipeline:
                     {"stage": stage, **context, "tool_results": history},
                     ensure_ascii=False,
                 )
-                schema = interaction_schema(stage, single_agent=self.single_agent)
-                if self.single_agent and stage == "solve":
-                    import ast
-                    tree = ast.parse(self.repo.read("tools/export_dxf.py"))
-                    check_names = next(ast.literal_eval(node.value) for node in tree.body
-                        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "CHECKS" for t in node.targets))
-                    # No per-code detail here: the schema is part of the cache prefix before the shared rules.
-                    schema["properties"]["evidence_refs"] = {
-                        "type": "array", "items": {"type": "string"},
-                        "description": "Original page IDs of this code; the host restates them.",
-                    }
-                    schema["properties"]["part"] = solve_part_schema(check_names)
+                schema = self._conversation_schema() if self.one_conversation else self._stage_schema(stage)
                 sent_rules, sent_images = [], []
                 shared_file, introduces_shared = None, None
                 # Intake and each code own a conversation: a long shared history would be
                 # re-read (or, after the cache expires, rebuilt) on every later call.
-                agent_key = "agent" if stage == "intake" else "agent:" + context["code"]["code"]
+                agent_key = "agent" if stage == "intake" or self.one_conversation else "agent:" + context["code"]["code"]
                 agent = checkpoint.get(agent_key)
                 request_images = tuple([*images, *extra_images])
                 if self.single_agent:
@@ -778,10 +803,14 @@ class CadPipeline:
                         full_task += " " + HOST_CANONICAL_NOTE
                         if (census.get("weld_site_census") or {}).get("sites"):
                             full_task += " " + HOST_WELD_NOTE
-                    task = ("Continue. The tool results below answer your last request; the task, rules and host "
-                            "notes given earlier still apply.") if agent["turns"] else full_task
+                        if self.one_conversation and agent["turns"]:
+                            full_task += " " + HOST_NEXT_CODE_NOTE
+                    # In a job conversation every code (and every new attempt) opens with its full task.
+                    opening = not agent["turns"] or (self.one_conversation and interaction_key not in agent["tool_counts"])
+                    task = full_task if opening else ("Continue. The tool results below answer your last request; the task, "
+                                                      "rules and host notes given earlier still apply.")
                     compact_context = dict(context)
-                    if agent["turns"]:
+                    if not opening:
                         compact_context.pop("inventory", None)
                         compact_context.pop("previous_candidate", None)
                     start = agent["tool_counts"].get(interaction_key, 0)
@@ -1260,7 +1289,9 @@ class CadPipeline:
                         control.check()
                         await control.mutate(control.store.begin_attempt, control.run_id, name, checkpoint=cp)
                     if state["phase"] == "solving":
-                        if self.single_agent:
+                        if self.one_conversation:  # one conversation cannot change its effort per code
+                            state.setdefault("agent_model", dict(self.agent_model))
+                        elif self.single_agent:
                             state.setdefault("agent_model", (cp.get("agent:" + name) or {}).get("model")
                                              or self._agent_model_for(code["census"]))
                         model = state["agent_model"] if self.single_agent else route_model(

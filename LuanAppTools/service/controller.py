@@ -229,6 +229,7 @@ class ApplicationService:
         connection = self._connection_config(self.settings.active_provider)
         return {'difficulty':difficulty, 'individual':individual, 'parts_destination':str(destination) if destination else None,
                 'single_agent':True, 'agent_model':{'model':self.settings.agent_model,'effort':self.settings.agent_effort},
+                'conversation':self.settings.conversation,
                 'models':self.settings.public_dict()['models'], 'attempt_timeout':self.settings.attempt_timeout,
                 'workspace_root':self.settings.workspace_root,
                 'provider':connection['provider'], 'gateway_authorized':connection['provider'] != 'claude',
@@ -655,7 +656,7 @@ class ApplicationService:
                     repo = await asyncio.to_thread(PinnedRepository.pin,self.repo_root,self.data_dir/'engines'/run['repo_commit'],run['repo_commit'])
                 config = run['config']
                 gateway = self._gateway_for_config(config) if control.gateway_authorized else None
-                pipeline = self.pipeline_factory(repo,self.runner,gateway=gateway,models=config.get('models'),attempt_timeout=config.get('attempt_timeout',1200),difficulty=config.get('difficulty','auto'),single_agent=config.get('single_agent',False),agent_model=config.get('agent_model'))
+                pipeline = self.pipeline_factory(repo,self.runner,gateway=gateway,models=config.get('models'),attempt_timeout=config.get('attempt_timeout',1200),difficulty=config.get('difficulty','auto'),single_agent=config.get('single_agent',False),agent_model=config.get('agent_model'),conversation=config.get('conversation','code'))
                 result = await pipeline.run(run['snapshot_dir'],control,job_name=self.store.get_job(run['job_id'])['name'],individual=config.get('individual',False))
                 await control.boundary()
                 await self.publisher.run(run,control,files=result.staged_files,
