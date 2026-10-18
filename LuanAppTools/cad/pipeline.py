@@ -30,8 +30,8 @@ from LuanAppTools.ai.tools import HostTools, TOOL_DESCRIPTION
 from LuanAppTools.core.settings import DEFAULT_MODELS
 from LuanAppTools.core.store import Store
 from .contract import (
-    HOST_CANONICAL_NOTE, HOST_NEXT_CODE_NOTE, HOST_VIEWS_ONLY_NOTE, HOST_WELD_NOTE, WELD_SCHEMA, ContractError,
-    check_flat_attempt, namespace_entity_ids, prepare_part, solve_part_schema)
+    FLAT_ARITHMETIC, HOST_CANONICAL_NOTE, HOST_NEXT_CODE_NOTE, HOST_VIEWS_ONLY_NOTE, HOST_WELD_NOTE, WELD_SCHEMA,
+    ContractError, check_flat_attempt, namespace_entity_ids, prepare_part, solve_part_schema)
 from .gates import GateIndex, describe_failure, summarize_error
 from .evidence import prepare_evidence, check_data_provenance, compact_entity
 from .repository import PinnedRepository, CadError
@@ -276,7 +276,7 @@ def interaction_schema(stage, *, single_agent=False):
         codes = {"type": "array", "items": text}
         shapes = {
             "pages": ({"page_id": text, "disposition": {"type": "string", "enum": ["inspected", "drawing_only"]}}, ["page_id", "disposition"]),
-            "views": ({"id": text, "page_id": text, "rect": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4}, "codes": codes, "disposition": text}, ["id", "page_id", "rect", "codes"]),
+            "views": ({"id": text, "page_id": text, "rect": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4}, "codes": codes, "disposition": text, "dimensions": {"type": "array", "items": {"type": "number"}}}, ["id", "page_id", "rect", "codes"]),
             "notes": ({"id": text, "page_id": text, "text": text, "codes": codes, "disposition": text}, ["id", "page_id", "text", "codes"]),
             "data_entities": ({"id": text, "codes": codes, "identity_evidence": text, "disposition": text}, ["id", "codes"]),
             "data_groups": ({"id": text, "codes": codes, "identity_evidence": text, "disposition": text, "exclude": codes}, ["id", "codes"]),
@@ -502,6 +502,13 @@ def validate_inventory(data, evidence, source_mode, *, require_difficulty=True):
                 raise ValueError("Source evidence scope mismatch")
             if not item["codes"] and not item.get("disposition"):
                 raise ValueError("Unscoped source evidence")
+        if not require_difficulty:  # single-agent intake: printed flat arithmetic is checked against the views
+            arithmetic = [n for n in notes.values() if FLAT_ARITHMETIC.search(str(n.get("text", "")))]
+            ownerless = [n["id"] for n in arithmetic if not n["codes"]]
+            if ownerless:
+                raise ValueError("Printed flat arithmetic needs an owning code: " + ", ".join(ownerless))
+            if arithmetic and any("dimensions" not in v for v in views.values() if v["codes"]):
+                raise ValueError("Every view of a code needs its printed dimensions when a flat arithmetic note exists")
         physical = {
             d["id"] + "#" + str(e["id"]) for d in evidence.dxf for e in d["entities"]
         }
@@ -794,7 +801,7 @@ class CadPipeline:
                     request_images = tuple(p for p in request_images if str(p) not in agent["images"])
                     sent_images = [str(p) for p in request_images]
                     full_task = (
-                        "Inspect all original pages. Return the complete source inventory with exact page/view/note/DATA ownership and complete feature census. Assign DATA by host groups (data_groups [{id,codes,exclude}]) and list data_entities only for entities that must be split from a group; the host fills each code's data_ids. No difficulty classification is needed. Also return customer_code: the numeric customer code printed in the job statistics/slip header (null when absent; never infer it from a name, barcode or part number) with customer_code_evidence. When customer_code is 851, or a drawing shows a welded assembly, return for each code a weld object {source_assembly_view_ids, source_weld_site_ids, weld_site_census} exactly as references/WELD_SITE_KEGAKI_CLOSURE.md defines it (set mark_status FLAGGED for now: the marks are derived when the code is solved) and never classify KEGAKI as NO for a code that has weld sites."
+                        "Inspect all original pages. Return the complete source inventory with exact page/view/note/DATA ownership and complete feature census. Assign DATA by host groups (data_groups [{id,codes,exclude}]) and list data_entities only for entities that must be split from a group; the host fills each code's data_ids. No difficulty classification is needed. For every view also return dimensions: the numeric dimension values printed on that view (an empty list when it has none). Also return customer_code: the numeric customer code printed in the job statistics/slip header (null when absent; never infer it from a name, barcode or part number) with customer_code_evidence. When customer_code is 851, or a drawing shows a welded assembly, return for each code a weld object {source_assembly_view_ids, source_weld_site_ids, weld_site_census} exactly as references/WELD_SITE_KEGAKI_CLOSURE.md defines it (set mark_status FLAGGED for now: the marks are derived when the code is solved) and never classify KEGAKI as NO for a code that has weld sites."
                         if stage == "intake" else
                         "Build the complete canonical part for the code in CONTEXT_JSON. Use the original pages attached to this conversation and the scoped inventory. Perform the routed source exhaustion and engineering challenge yourself, including witness endpoints, topology, ownership, dimensions and source reprojection. Use local tools for calculations. Before answering, call the validate tool with your complete part and correct every reported error; answer only with a part that passes it. Return part and evidence_refs containing ONLY exact page IDs. Include census only if features changed. SOURCE canonical members require group_id and source_member_id; DERIVED_RULE requires controlling_rule and source_member_ids. Polyline vertices are numeric arrays [x,y,bulge], not objects. Keep metadata concise. Use the required source-view fallback when flat geometry cannot be proved." + " " + HOST_VIEWS_ONLY_NOTE
                     )

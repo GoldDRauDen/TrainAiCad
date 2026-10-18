@@ -84,6 +84,8 @@ class NotedRunner(SingleRunner):
         result = await super().complete(request, **kwargs)
         if "codes" in result.data:  # intake: the drawing carries printed flat arithmetic
             result.data["notes"] = [dict(NOTE)]
+            for view in result.data["views"]:  # the intake now records the printed dimensions of every view
+                view["dimensions"] = []
         return result
 
 
