@@ -64,6 +64,7 @@ class SettingsBody(Body):
     agent_model: Literal['haiku-5.5','sonnet-5.5','opus-5.5'] | None = None
     agent_effort: Literal['medium','high','xhigh','max'] | None = None
     conversation: Literal['job','code'] | None = None
+    prompt_style: Literal['minimal','full'] | None = None
     roots: list[str] | None = None
     max_active_jobs: int | None = None
     max_ai_calls: int | None = None

@@ -42,6 +42,7 @@ class Settings:
     agent_model: str = 'sonnet-5.5'
     agent_effort: str = 'medium'
     conversation: str = 'job'
+    prompt_style: str = 'minimal'
     openai_model: str = ''
     custom_auth_mode: str = 'none'
     custom_auth_header: str = 'Authorization'
@@ -92,6 +93,8 @@ class Settings:
             raise ValueError('Unsupported job agent model or effort')
         if self.conversation not in {'job', 'code'}:
             raise ValueError('Unsupported conversation scope')
+        if self.prompt_style not in {'minimal', 'full'}:
+            raise ValueError('Unsupported prompt style')
         if not isinstance(self.openai_model, str) or len(self.openai_model) > 200 or any(ord(c) < 32 for c in self.openai_model):
             raise ValueError('Invalid OpenAI model')
         if self.custom_auth_mode not in {'none', 'bearer', 'header'}:
@@ -120,6 +123,7 @@ class Settings:
             'agent_model': self.agent_model,
             'agent_effort': self.agent_effort,
             'conversation': self.conversation,
+            'prompt_style': self.prompt_style,
         }
 
     def save(self) -> Path:
