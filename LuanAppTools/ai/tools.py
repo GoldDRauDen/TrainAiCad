@@ -3,10 +3,17 @@
 import ast
 import math
 import operator
+import re
 from LuanAppTools.cad.contract import check_flat_attempt, prepare_part
 from LuanAppTools.cad.evidence import compact_entity, crop_page_bounded
 
-TOOL_DESCRIPTION = """Optional tool_requests: [{"name":"crop","arguments":{"page_id":"...","rect":[x0,y0,x1,y1]}}, {"name":"read_rule","arguments":{"path":"an already routed path"}}, {"name":"calculate","arguments":{"expression":"numeric arithmetic"}}, {"name":"data_group","arguments":{"group_id":"a DATA group id from the evidence","offset":0,"limit":200}} (compact DXF entities of one group, at most 300 per call), {"name":"validate","arguments":{"part":{complete canonical part}}}]. Return a tool request OR the final stage object. Host will return tool results and any crop image. No shell, file writes, network or child agents are available."""
+# A validation error's `gates` name the exporter/guard source line that rejected the part. The model's own
+# file tools cannot reach the pinned repository (the CLI runs --restricted inside the run workspace), so the
+# host serves those lines: only pinned tools/NAME.py files, always as a bounded numbered range.
+TOOL_SOURCE = re.compile(r"tools/[A-Za-z0-9_]+\.py")
+MAX_SOURCE_LINES = 120
+
+TOOL_DESCRIPTION = """Optional tool_requests: [{"name":"crop","arguments":{"page_id":"...","rect":[x0,y0,x1,y1]}}, {"name":"read_rule","arguments":{"path":"an already routed path"}} (optionally with "start" and "limit" for a line range), {"name":"read_rule","arguments":{"path":"tools/NAME.py as named in a validation error's gates","start":first line,"limit":lines to read, at most 120}} (the checking code behind an exporter error; start and limit are required for tools/NAME.py), {"name":"calculate","arguments":{"expression":"numeric arithmetic"}}, {"name":"data_group","arguments":{"group_id":"a DATA group id from the evidence","offset":0,"limit":200}} (compact DXF entities of one group, at most 300 per call), {"name":"validate","arguments":{"part":{complete canonical part}}}]. Return a tool request OR the final stage object. Host will return tool results and any crop image. No shell, file writes, network or child agents are available."""
 
 
 def calculate(expression):
@@ -41,6 +48,17 @@ def calculate(expression):
         return value
 
     return evaluate(tree.body)
+
+
+def line_range(text, start, limit):
+    """Numbered lines start..start+limit-1 of `text` (clipped at the end of the file)."""
+    if type(start) is not int or type(limit) is not int or start < 1 or not 1 <= limit <= MAX_SOURCE_LINES:
+        raise ValueError(f"start and limit are required: start >= 1 and limit 1-{MAX_SOURCE_LINES}")
+    lines = text.splitlines()
+    if start > len(lines):
+        raise ValueError(f"start is past the end of the file ({len(lines)} lines)")
+    end = min(len(lines), start + limit - 1)
+    return {"start": start, "end": end, "text": "\n".join(f"{n}: {lines[n - 1]}" for n in range(start, end + 1))}
 
 
 class HostTools:
@@ -96,9 +114,14 @@ class HostTools:
         if name == "calculate":
             return {"value": calculate(args["expression"])}, None
         if name == "read_rule":
-            if args["path"] not in self.allowed_rules:
+            path = args.get("path")
+            routed = path in self.allowed_rules
+            if not routed and not (isinstance(path, str) and TOOL_SOURCE.fullmatch(path)):
                 raise ValueError("Rule is not routed for this stage")
-            return {"path": args["path"], "text": self.repo.read(args["path"])}, None
+            text = self.repo.read(path)
+            if routed and args.get("start") is None and args.get("limit") is None:
+                return {"path": path, "text": text}, None
+            return {"path": path, **line_range(text, args.get("start"), args.get("limit"))}, None
         if name == "validate":
             if not isinstance(args.get("part"), dict):
                 raise ValueError("validate needs the complete part object")

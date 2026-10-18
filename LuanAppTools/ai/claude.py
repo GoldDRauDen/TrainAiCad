@@ -250,7 +250,10 @@ class ClaudeRunner:
                             accepted=True,
                         )
                     session = event.get("session_id", session)
-                    model = event.get("model") or event.get("message", {}).get("model")
+                    # `message` is an object on assistant/user events but plain text on system events
+                    # (e.g. permission_denied after a Read outside the workspace).
+                    message = event.get("message")
+                    model = event.get("model") or (message.get("model") if isinstance(message, dict) else None)
                     # Claude Code can emit synthetic bookkeeping messages that do
                     # not identify a model. Ignore that marker and keep reading;
                     # a concrete model still has to be reported before success.

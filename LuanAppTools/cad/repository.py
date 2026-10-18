@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -240,7 +241,7 @@ print(json.dumps(v))
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise ProviderError("timeout", "Host validation elapsed budget exhausted")
-        return json.loads(
+        result = json.loads(
             await run_tool(
                 [sys.executable, *UTF8_MODE, "-c", code, path],
                 self.root / "tools",
@@ -248,6 +249,24 @@ print(json.dumps(v))
                 timeout=remaining,
             )
         )
+        # The checks above are the contract, not the exporter: layout gates such as "source views must be
+        # separated by >=10 mm" only run inside export_job. Run the real exporter once on this job too, so the
+        # model meets them in its own validate loop instead of after every code has been paid for.
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ProviderError("timeout", "Host validation elapsed budget exhausted")
+        trial = workspace / "trial-export"
+        shutil.rmtree(trial, ignore_errors=True)
+        trial.mkdir(parents=True)
+        (trial / "canonical.json").write_text(json.dumps(job), encoding="utf-8")
+        await run_tool(
+            [sys.executable, *UTF8_MODE, self.root / "tools/export_canonical_dxf.py",
+             trial / "canonical.json", trial / "output"],
+            self.root,
+            cancel,
+            timeout=remaining,
+        )
+        return result
 
     async def export(self, job, workspace, cancel, individual=False):
         self.verify()

@@ -31,7 +31,7 @@ from LuanAppTools.core.settings import DEFAULT_MODELS
 from LuanAppTools.core.store import Store
 from .contract import (
     HOST_CANONICAL_NOTE, HOST_VIEWS_ONLY_NOTE, HOST_WELD_NOTE, WELD_SCHEMA, ContractError, check_flat_attempt,
-    prepare_part, solve_part_schema)
+    namespace_entity_ids, prepare_part, solve_part_schema)
 from .gates import GateIndex, describe_failure, summarize_error
 from .evidence import prepare_evidence, check_data_provenance, compact_entity
 from .repository import PinnedRepository, CadError
@@ -1001,8 +1001,9 @@ class CadPipeline:
                                     f"Validation returned the same error {repeat} times: {signature[:200]}")
                             if repeat == MAX_IDENTICAL_VALIDATION_ERRORS - 1:
                                 answer["repeated"] = (
-                                    "The identical validation error came back twice in a row. Change the fields "
-                                    "named in 'gates' (or the part structure); do not reshuffle unrelated fields.")
+                                    "The identical validation error came back twice in a row. Read the checking code "
+                                    "named in 'gates' with read_rule {path, start, limit}, then change the fields it "
+                                    "tests (or the part structure); do not reshuffle unrelated fields.")
                         image = None
                     history.append({"request": call, "result": answer})
                     if image:
@@ -1490,7 +1491,7 @@ class CadPipeline:
                 "Some codes have no validated canonical/source-view representation after two attempts; proved parts remain checkpointed.",
             )
         await control.boundary()
-        aggregate = self._job(job_name, [p.canonical for p in results])
+        aggregate = self._job(job_name, namespace_entity_ids([p.canonical for p in results]))
         metadata, files = await self.repo.export(
             aggregate, control.workspace / "aggregate", control.cancel, individual
         )

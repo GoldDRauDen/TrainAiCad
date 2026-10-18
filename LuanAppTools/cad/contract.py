@@ -7,6 +7,7 @@ fails when a key read by tools/*.py is missing from this description.
 from __future__ import annotations
 
 import copy
+import hashlib
 import re
 
 _POINT = {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}
@@ -249,3 +250,55 @@ HOST_WELD_NOTE = (
     "prove is a RED (color 1, role kegaki) LINE entity owned by a PROVED member, on a PROVED weld site whose "
     "mark_status is PROVED and has datum_evidence."
 )
+
+
+# tools/export_dxf.py takes the stricter of the repository's two id rules; ids made here must satisfy it.
+ENTITY_ID_FORMAT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}")
+
+
+def namespace_entity_ids(parts):
+    """Copies of `parts` whose entity ids are unique across the composite job.
+
+    Each code is solved in its own conversation, so two codes can both call their outline E_OUTER while each
+    passes validation alone, and the composite export then refuses the job. A later part's colliding ids get
+    its work number as a prefix; every exact reference to them inside that part (members, witness graph, bends,
+    anchors, even dictionary keys) follows because the rename is by exact string value within the part. Text
+    that merely mentions an id is left alone. Parts without a collision are returned as they are.
+    """
+    used, result = set(), []
+    for part in parts:
+        ids = [e["entity_id"] for e in part.get("entities", ())
+               if isinstance(e, dict) and isinstance(e.get("entity_id"), str)]
+        clashing = [i for i in dict.fromkeys(ids) if i in used]
+        if clashing:
+            mapping = _new_entity_ids(part.get("code"), clashing, used | set(ids))
+            part = _rename_exact(part, mapping)
+            ids = [mapping.get(i, i) for i in ids]
+        used.update(ids)
+        result.append(part)
+    return result
+
+
+def _new_entity_ids(code, clashing, taken):
+    prefix = re.sub(r"[^A-Za-z0-9]", "", str(code))[:20] or "P"
+    mapping, taken = {}, set(taken)
+    for old in clashing:
+        candidate = f"{prefix}_{old}"
+        if not ENTITY_ID_FORMAT.fullmatch(candidate):
+            candidate = f"{prefix}_{hashlib.sha1(old.encode('utf-8')).hexdigest()[:12]}"
+        base, number = candidate, 2
+        while candidate in taken:
+            candidate, number = f"{base[:58]}_{number}", number + 1
+        mapping[old] = candidate
+        taken.add(candidate)
+    return mapping
+
+
+def _rename_exact(node, mapping):
+    if isinstance(node, str):
+        return mapping.get(node, node)
+    if isinstance(node, list):
+        return [_rename_exact(item, mapping) for item in node]
+    if isinstance(node, dict):
+        return {_rename_exact(key, mapping): _rename_exact(value, mapping) for key, value in node.items()}
+    return node

@@ -36,6 +36,9 @@ if prompt == 'schema_error':
     sys.exit(1)
 if prompt == 'synthetic':
     print(json.dumps({'type':'assistant','message':{'model':'<synthetic>'}}),flush=True)
+if prompt == 'denied':
+    # Recorded from Claude Code 2.1.301: a refused Read outside the workspace is a system event whose message is TEXT.
+    print(json.dumps({'type':'system','subtype':'permission_denied','tool_name':'Read','message':'outside the working directory'}),flush=True)
 print(json.dumps({'type':'system','subtype':'init','session_id':'s1','model':'wrong' if prompt=='mismatch' else 'claude-sonnet-5-5','effort':'high'}),flush=True)
 print(json.dumps({'type':'assistant','message':{'id':'m1','model':'claude-sonnet-5-5','usage':{'input_tokens':10,'output_tokens':2}}}),flush=True)
 print(json.dumps({'type':'result','subtype':'success','is_error':prompt=='rate','result':'rate_limit' if prompt=='rate' else '{"answer":42}', 'structured_output':{'answer':42},'session_id':'s1','usage':{'input_tokens':10,'output_tokens':5}}),flush=True)
@@ -163,6 +166,18 @@ def test_claude_synthetic_marker_is_not_a_model(cli, tmp_path):
         )
     )
     assert result.actual_model == "claude-sonnet-5-5"
+
+
+def test_claude_system_event_with_a_text_message_is_not_a_model_event(cli, tmp_path):
+    result = asyncio.run(
+        cli.complete(
+            request("denied"),
+            workspace=tmp_path,
+            cancel=asyncio.Event(),
+            emit=emit,
+        )
+    )
+    assert result.data == {"answer": 42}
 
 
 def test_claude_model_not_found_is_reported_before_synthetic_marker(cli, tmp_path):

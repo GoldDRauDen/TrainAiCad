@@ -43,6 +43,8 @@ def test_second_identical_error_adds_an_instruction(setup):  # noqa: F811
     # Each follow-up prompt carries only the newest tool results.
     (first,), (second,) = tool_results(runner.requests[2]), tool_results(runner.requests[3])
     assert "repeated" not in first["result"] and "repeated" in second["result"]
+    # The model's own attempt to open the gate's source failed in the real run; point it at the host tool.
+    assert "read_rule" in second["result"]["repeated"] and "start" in second["result"]["repeated"]
 
 
 def test_third_identical_error_ends_the_attempt_not_the_job(setup):  # noqa: F811
