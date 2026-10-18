@@ -507,10 +507,13 @@ def validate_inventory(data, evidence, source_mode, *, require_difficulty=True):
         if not require_difficulty:  # single-agent intake: printed flat arithmetic is checked against the views
             arithmetic = [n for n in notes.values() if FLAT_ARITHMETIC.search(str(n.get("text", "")))]
             ownerless = [n["id"] for n in arithmetic if not n["codes"]]
+            problems = []
             if ownerless:
-                raise ValueError("Printed flat arithmetic needs an owning code: " + ", ".join(ownerless))
+                problems.append("Printed flat arithmetic needs an owning code: " + ", ".join(ownerless))
             if arithmetic and any("dimensions" not in v for v in views.values() if v["codes"]):
-                raise ValueError("Every view of a code needs its printed dimensions when a flat arithmetic note exists")
+                problems.append("Every view of a code needs its printed dimensions when a flat arithmetic note exists")
+            if problems:
+                raise ValueError(" | ".join(problems))
         physical = {
             d["id"] + "#" + str(e["id"]) for d in evidence.dxf for e in d["entities"]
         }
@@ -803,7 +806,7 @@ class CadPipeline:
                     request_images = tuple(p for p in request_images if str(p) not in agent["images"])
                     sent_images = [str(p) for p in request_images]
                     full_task = (
-                        "Inspect all original pages. Return the complete source inventory with exact page/view/note/DATA ownership and complete feature census. Assign DATA by host groups (data_groups [{id,codes,exclude}]) and list data_entities only for entities that must be split from a group; the host fills each code's data_ids. No difficulty classification is needed. For every view also return dimensions: the numeric dimension values printed on that view (an empty list when it has none). Also return customer_code: the numeric customer code printed in the job statistics/slip header (null when absent; never infer it from a name, barcode or part number) with customer_code_evidence. When customer_code is 851, or a drawing shows a welded assembly, return for each code a weld object {source_assembly_view_ids, source_weld_site_ids, weld_site_census} exactly as references/WELD_SITE_KEGAKI_CLOSURE.md defines it (set mark_status FLAGGED for now: the marks are derived when the code is solved) and never classify KEGAKI as NO for a code that has weld sites."
+                        "Inspect all original pages. Return the complete source inventory with exact page/view/note/DATA ownership and complete feature census. Assign DATA by host groups (data_groups [{id,codes,exclude}]) and list data_entities only for entities that must be split from a group; the host fills each code's data_ids. No difficulty classification is needed. For every view also return dimensions: the numeric dimension values printed on that view (an empty list when it has none). A printed or handwritten flat arithmetic note (a+b-c=d) needs its owning code(s) in codes. Also return customer_code: the numeric customer code printed in the job statistics/slip header (null when absent; never infer it from a name, barcode or part number) with customer_code_evidence. When customer_code is 851, or a drawing shows a welded assembly, return for each code a weld object {source_assembly_view_ids, source_weld_site_ids, weld_site_census} exactly as references/WELD_SITE_KEGAKI_CLOSURE.md defines it (set mark_status FLAGGED for now: the marks are derived when the code is solved) and never classify KEGAKI as NO for a code that has weld sites."
                         if stage == "intake" else
                         "Build the complete canonical part for the code in CONTEXT_JSON. Use the original pages attached to this conversation and the scoped inventory. Perform the routed source exhaustion and engineering challenge yourself, including witness endpoints, topology, ownership, dimensions and source reprojection. Use local tools for calculations. Before answering, call the validate tool with your complete part and correct every reported error; answer only with a part that passes it. Return part and evidence_refs containing ONLY exact page IDs. Include census only if features changed. SOURCE canonical members require group_id and source_member_id; DERIVED_RULE requires controlling_rule and source_member_ids. Polyline vertices are numeric arrays [x,y,bulge], not objects. Keep metadata concise. Use the required source-view fallback when flat geometry cannot be proved." + " " + HOST_VIEWS_ONLY_NOTE + " " + HOST_BLOCKER_NOTE
                     )
@@ -1019,6 +1022,10 @@ class CadPipeline:
                             ) from exc
                         raise
                     except (ValueError, KeyError, TypeError, CadError) as exc:
+                        if isinstance(exc, ViewsOnlyRejected):
+                            # The verdict depends on the conversation so far: the same part may be right to resend
+                            # once a flat was attempted, so it must not count as an identical repeated request.
+                            seen.discard(signature)
                         error = str(exc)
                         if self.single_agent and "Traceback (most recent call last)" in error:
                             error = summarize_error(error)
@@ -1349,11 +1356,7 @@ class CadPipeline:
                             state,
                             model,
                         )
-                        if closure is not None:
-                            try:  # the model may have skipped the validate tool; the same gate runs on the answer
-                                closure.admit(answer["part"], state.get("interaction", {}).get("history", []))
-                            except ViewsOnlyRejected as exc:
-                                raise PipelineError("views_only_unproved", str(exc)) from exc
+                        solve_history = list(state.get("interaction", {}).get("history", []))  # a reroute below pops it
                         if self.single_agent and answer.get("census"):
                             # A feature update is commonly a partial census. Keep
                             # the pinned source role and unchanged families explicit.
@@ -1391,6 +1394,11 @@ class CadPipeline:
                                 "evidence_incomplete",
                                 "Candidate code/source evidence mismatch",
                             )
+                        if closure is not None:
+                            try:  # the model may have skipped the validate tool; the same gate runs on the answer
+                                closure.admit(answer["part"], solve_history)
+                            except ViewsOnlyRejected as exc:
+                                raise PipelineError("views_only_unproved", str(exc)) from exc
                         answer["part"], blocker = split_blocker(answer["part"])
                         if blocker is not None:
                             state["blocker"] = blocker

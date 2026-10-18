@@ -37,9 +37,10 @@ def flat_attempt(width):
 class TurnRunner(SingleRunner):
     """Asks the host to validate the scripted parts one per round, then answers with the scripted final part."""
 
-    def __init__(self, parts, turns=(), *, dimensions=(80, 60, 6), notes=(NOTE,)):
+    def __init__(self, parts, turns=(), *, dimensions=(80, 60, 6), notes=(NOTE,), vary_flags=True, census=None):
         super().__init__(parts)
         self.turns, self.dimensions, self.notes, self.sent = list(turns), list(dimensions), list(notes), 0
+        self.vary_flags, self.census = vary_flags, census
 
     async def complete(self, request, **kwargs):
         context = json.loads(request.prompt.split("\nCONTEXT_JSON\n", 1)[1])
@@ -47,7 +48,7 @@ class TurnRunner(SingleRunner):
             self.requests.append(request)
             part = json.loads(json.dumps(self.turns.pop(0)))
             self.sent += 1
-            if part["status"] == "VIEWS_ONLY":  # keep identical rounds distinct for the existing repeat guard
+            if self.vary_flags and part["status"] == "VIEWS_ONLY":  # keep identical rounds distinct for the repeat guard
                 part["flags"] = [*part["flags"], f"round {self.sent}"]
             data = {"tool_requests": [{"name": "validate", "arguments": {"part": part}}]}
             return AIResult(data, {}, request.session_id, request.model, request.effort)
@@ -56,6 +57,8 @@ class TurnRunner(SingleRunner):
             result.data["notes"] = [dict(n) for n in self.notes]
             for view in result.data["views"]:
                 view["dimensions"] = list(self.dimensions)
+        if "part" in result.data and self.census:
+            result.data["census"] = self.census
         return result
 
 
@@ -77,6 +80,23 @@ def test_views_only_is_rejected_until_a_flat_was_attempted(setup):  # noqa: F811
     assert "WITNESS_REQUIRED_FEATURE_MISSING" in second["error"]  # the attempt failed a named gate
     assert "error" not in third  # now the VIEWS_ONLY validates
     assert [p.status for p in result.parts] == ["VIEWS_ONLY"]
+
+
+def test_resubmitting_the_unchanged_views_only_after_the_attempt_is_not_a_repeat(setup):  # noqa: F811
+    # The rejection says "submit VIEWS_ONLY only after the attempt": sending the same part again is the natural
+    # next move, and the answer to it changed because the history changed.
+    held = views_only_part(record=True, cite=CITE)
+    runner = TurnRunner({"26-000001": held}, [held, flat_attempt(130.22), held], vary_flags=False)
+    assert [p.status for p in run(setup, runner).parts] == ["VIEWS_ONLY"]
+
+
+def test_census_reroute_is_applied_before_the_admission_gate(setup):  # noqa: F811
+    runner = TurnRunner({"26-000001": views_only_part(record=True, cite=CITE)}, census={"features": {"KEGAKI": "YES"}})
+    with pytest.raises(PipelineError, match="Some codes have no"):
+        run(setup, runner)
+    control = setup[2]
+    state = control.store.get_run(control.run_id)["checkpoint"]["parts"]["26-000001"]
+    assert state["reroutes"] == 1  # the new route is loaded for free; only then is the answer judged
 
 
 def test_attempt_that_does_not_reproduce_the_result_does_not_unlock(setup):  # noqa: F811

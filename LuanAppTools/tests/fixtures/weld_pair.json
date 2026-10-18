@@ -1,13 +1,53 @@
 {
-  "source": "Reduced from run 48cf0b85 (job 520925-07, repo b471194). Only printed arithmetic, view dimensions and the structure of the recorded VIEWS_ONLY answer; no customer name, no barcode.",
+  "source": "Reduced from run 48cf0b85 (job 520925-07, repo b471194). Only printed arithmetic, view dimensions and the structure of the recorded VIEWS_ONLY answer; no customer name, no barcode. The drawing is shared by 26-056152 and 26-056153, so both recorded VIEWS_ONLY candidates are kept.",
   "weld_pair": {
     "code": "26-056152",
     "thickness_mm": 6,
-    "note": {"id": "N7_HW_CALC2", "text": "Handwritten '161+41-9.78=192.22' and '73+71-9.78=134.22'", "codes": ["26-056152"]},
+    "note": {
+      "id": "N7_HW_CALC2",
+      "text": "Handwritten '161+41-9.78=192.22' and '73+71-9.78=134.22'",
+      "codes": [
+        "26-056152",
+        "26-056153"
+      ]
+    },
     "views": [
-      {"id": "V2_TL", "dimensions": [38, 3, 25, 25, 30, 10, 15, 65, 6]},
-      {"id": "V2_TR", "dimensions": [155, 50, 6, 22, 70, 3, 6]},
-      {"id": "V2_BL", "dimensions": [88, 33, 30, 25, 38]}
+      {
+        "id": "V2_TL",
+        "dimensions": [
+          38,
+          3,
+          25,
+          25,
+          30,
+          10,
+          15,
+          65,
+          6
+        ]
+      },
+      {
+        "id": "V2_TR",
+        "dimensions": [
+          155,
+          50,
+          6,
+          22,
+          70,
+          3,
+          6
+        ]
+      },
+      {
+        "id": "V2_BL",
+        "dimensions": [
+          88,
+          33,
+          30,
+          25,
+          38
+        ]
+      }
     ],
     "candidate": {
       "status": "VIEWS_ONLY",
@@ -21,17 +61,110 @@
         "Handwritten flat arithmetic closes two L-bent parts but neither is proved to belong to this code"
       ],
       "face_graph_candidates": [
-        {"candidate_id": "C1_A_FLAT_PLATE", "constraint_result": "FAIL: slip size is reference only; ownership of the plate vs the edge-on strips is unproved", "evidence_used": ["V2_TR", "N1_SLIP"]},
-        {"candidate_id": "C2_L_PART_161x41_flat_192.22", "constraint_result": "UNPROVED: ownership of this arithmetic by the code is not proved", "evidence_used": ["V2_TL", "V2_TR", "N7_HW_CALC2"]},
-        {"candidate_id": "C3_L_PART_73x71_flat_134.22", "constraint_result": "UNPROVED: ownership of this arithmetic by the code is not proved", "evidence_used": ["V2_TL", "V2_TR", "N7_HW_CALC2"]}
+        {
+          "candidate_id": "C1_A_FLAT_PLATE",
+          "constraint_result": "FAIL: slip size is reference only; ownership of the plate vs the edge-on strips is unproved",
+          "evidence_used": [
+            "V2_TR",
+            "N1_SLIP"
+          ]
+        },
+        {
+          "candidate_id": "C2_L_PART_161x41_flat_192.22",
+          "constraint_result": "UNPROVED: ownership of this arithmetic by the code is not proved",
+          "evidence_used": [
+            "V2_TL",
+            "V2_TR",
+            "N7_HW_CALC2"
+          ]
+        },
+        {
+          "candidate_id": "C3_L_PART_73x71_flat_134.22",
+          "constraint_result": "UNPROVED: ownership of this arithmetic by the code is not proved",
+          "evidence_used": [
+            "V2_TL",
+            "V2_TR",
+            "N7_HW_CALC2"
+          ]
+        }
       ],
-      "unresolved_objects": ["Owner of the handwritten flats 192.22 and 134.22", "Attachment edges and bend list of the weldment"]
+      "unresolved_objects": [
+        "Owner of the handwritten flats 192.22 and 134.22",
+        "Attachment edges and bend list of the weldment"
+      ]
+    },
+    "other_hand_candidate": {
+      "status": "VIEWS_ONLY",
+      "thickness_mm": 6,
+      "preview_reason": "separate_source_views",
+      "source_exhausted": true,
+      "holistic_challenge_run": true,
+      "flat_attempted": true,
+      "flags": [
+        "VIEWS_ONLY: part identity inside the drawing is not proved; relation to the other-hand code is suggested but not proved",
+        "Handwritten flat arithmetic closes two L-bent parts but neither is proved to belong to this code"
+      ],
+      "face_graph_candidates": [
+        {
+          "candidate_id": "C1_A_FLAT_PLATE",
+          "constraint_result": "FAIL: slip size is reference only; ownership of the plate vs the edge-on strips is unproved",
+          "evidence_used": [
+            "V2_TR",
+            "N1_SLIP"
+          ]
+        },
+        {
+          "candidate_id": "C2_L_PART_161x41_flat_192.22",
+          "constraint_result": "UNPROVED: ownership of this arithmetic by the code is not proved",
+          "evidence_used": [
+            "V2_TL",
+            "V2_TR",
+            "N7_HW_CALC2"
+          ]
+        },
+        {
+          "candidate_id": "C3_L_PART_73x71_flat_134.22",
+          "constraint_result": "UNPROVED: ownership of this arithmetic by the code is not proved",
+          "evidence_used": [
+            "V2_TL",
+            "V2_TR",
+            "N7_HW_CALC2"
+          ]
+        },
+        {
+          "candidate_id": "C4_MIRROR_OF_OTHER_CODE",
+          "constraint_result": "NOT APPLIED: the reflection axis and feature scope are not source-proved",
+          "evidence_used": [
+            "N6_HW_AB",
+            "V2_TL"
+          ]
+        }
+      ],
+      "unresolved_objects": [
+        "Owner of the handwritten flats 192.22 and 134.22",
+        "Attachment edges and bend list of the weldment"
+      ]
     }
   },
   "control": {
     "code": "26-056159",
     "thickness_mm": 6,
-    "note": {"id": "N13_HW_CALC3", "text": "Handwritten '80+60-9.78=130.22'", "codes": ["26-056159"]},
-    "views": [{"id": "V3_SIDE", "dimensions": [80, 60, 6]}]
+    "note": {
+      "id": "N13_HW_CALC3",
+      "text": "Handwritten '80+60-9.78=130.22'",
+      "codes": [
+        "26-056159"
+      ]
+    },
+    "views": [
+      {
+        "id": "V3_SIDE",
+        "dimensions": [
+          80,
+          60,
+          6
+        ]
+      }
+    ]
   }
 }

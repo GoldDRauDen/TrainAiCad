@@ -20,9 +20,12 @@ def flat_attempt_entry(width, height, error):
             "result": {"error": error}}
 
 
-def test_recorded_056152_candidate_is_rejected():
+@pytest.mark.parametrize("candidate", ["candidate", "other_hand_candidate"])
+def test_recorded_candidates_of_both_codes_are_rejected(candidate):
+    # The drawing is shared by 056152 and 056153: the same arithmetic, views and VIEWS_ONLY decision.
+    assert PAIR["note"]["codes"] == ["26-056152", "26-056153"]
     with pytest.raises(ViewsOnlyRejected) as rejected:
-        context(PAIR).admit(PAIR["candidate"], [])
+        context(PAIR).admit(PAIR[candidate], [])
     message = str(rejected.value)
     assert "192.22" in message and "134.22" in message
     assert "161=155+6" in message and "73=70+3" in message

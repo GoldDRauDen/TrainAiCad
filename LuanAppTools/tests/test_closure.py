@@ -87,6 +87,11 @@ def test_admit_views_only():
     views_only = {"status": "VIEWS_ONLY", "thickness_mm": 6}
     with pytest.raises(ViewsOnlyRejected, match=r"VIEWS_ONLY_ADMISSION.*161=155\+6.*192\.22.*HOLISTIC_ENGINEERING_CHALLENGE"):
         admit_views_only(views_only, closed, [])
+    with pytest.raises(ViewsOnlyRejected) as rejected:
+        admit_views_only(views_only, closed, [])
+    advice = str(rejected.value)  # lead with the way out, not with the unlock recipe (HOLISTIC section 7)
+    assert "in this attempt" in advice and "FLAG only the member you cannot prove" in advice
+    assert "formed topology" in advice and advice.index("FLAG only") < advice.index("formed topology")
     admit_views_only(views_only, closed, [Attempt(True, "WITNESS_REQUIRED_FEATURE_MISSING", (192.22, 134.22))])
     admit_views_only(views_only, closed, [Attempt(True, "G", (50.0, 134.221))])  # either axis, within 0.011
     for attempt in (Attempt(True, "G", (100.0, 40.0)),  # extent does not reproduce a result

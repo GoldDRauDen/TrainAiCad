@@ -33,6 +33,13 @@ def test_flat_arithmetic_note_without_owner_is_rejected():
         check(inventory([note], [{**VIEW, "dimensions": [80, 60]}]))
 
 
+def test_both_intake_problems_are_reported_in_one_error():
+    note = {**ARITHMETIC, "codes": [], "disposition": "scope unresolved"}
+    with pytest.raises(PipelineError) as raised:
+        check(inventory([note], [VIEW]))  # no owner and no dimensions: one repair turn must be enough
+    assert "owning code" in str(raised.value) and "printed dimensions" in str(raised.value)
+
+
 def test_views_need_dimensions_when_arithmetic_exists():
     with pytest.raises(PipelineError, match="printed dimensions"):
         check(inventory([ARITHMETIC], [VIEW]))
@@ -84,3 +91,4 @@ def test_ownerless_note_is_repaired_in_the_same_conversation(setup):  # noqa: F8
     result = asyncio.run(CadPipeline(repo, runner, single_agent=True).run(source, control, job_name="OWNER"))
     assert result.staged_files and len(runner.requests) == 3  # intake, its repair, one solve
     assert "owning code" in runner.requests[1].prompt
+    assert "owning code" in runner.requests[0].prompt  # the intake task itself names the owner rule

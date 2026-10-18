@@ -156,12 +156,12 @@ def _message(closed):
     printed = "; ".join(f"{c.equation.text} [{', '.join(c.matches)}]" for c in closed)
     results = ", ".join(_text(c.equation.result) for c in closed)
     return (
-        f"VIEWS_ONLY_ADMISSION: printed flat arithmetic closes against this code's views ({printed}) but no flat "
-        f"attempt that failed a named repository gate and reproduces {results} was validated. "
+        f"VIEWS_ONLY_ADMISSION: printed flat arithmetic closes against this code's views ({printed}) but in this "
+        f"attempt no flat that failed a named repository gate and reproduces {results} was validated. "
         "HOLISTIC_ENGINEERING_CHALLENGE §3 reopens the source when printed flat arithmetic closes; §7 keeps a "
-        "local uncertainty local. Build the flat (status PASS, or PREVIEW with a FLAG for what is unproved) and "
-        "validate it; submit VIEWS_ONLY only if that attempt fails a named gate and its outer extent reproduces the "
-        "printed result. When a flat attempt already passed validate, submit that flat instead."
+        "local uncertainty local. Validate the flat, correct the errors it reports, FLAG only the member you cannot "
+        "prove and submit that flat (PASS, or PREVIEW with the FLAG). VIEWS_ONLY is admitted only when a named "
+        "repository gate rejects the formed topology itself."
     )
 
 
