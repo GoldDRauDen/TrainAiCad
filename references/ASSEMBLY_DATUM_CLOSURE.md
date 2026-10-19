@@ -15,4 +15,6 @@ When a hole, slot, locating mark or other manufacturing feature has NO directly 
 
 `tools/assembly_datum_solver.py` provides a deterministic, source-proof-gated graph solver for the arithmetic and cycle consistency. The L3 holistic guard independently recomputes any **declared** `assembly_indirect_candidates` from corresponding `assembly_datum_traces`, and fails incorrect/unattempted proof for production. **Source census must declare the candidates**; the tool cannot discover them by itself.
 
+**Stacked parts:** printed dimensions are assembled dimensions. Only when the source/user states that part B sits on part A: offset A's relevant contour inward by tA as an UNSAVED reference line; B's bend line and flange size derive from that line; B's edge facing A retreats by tA so the assembled height stays as printed. Never write the reference line to the DXF.
+
 This procedure is conditional: do not create a fictitious assembly for standalone flat parts or override a genuinely explicit source feature dimension. The fixture `regression/datum/521013-04_059636_assembly_graph.json` tests this class of error only; its offsets are not general rules.

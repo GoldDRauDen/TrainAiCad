@@ -5,13 +5,13 @@ Use the current pinned repository and its routed rules. Read the drawing itself;
 ## Read sequence
 
 1. Map code(s), pages and views. Record only the material, thickness, revision and source notes that affect the part.
-2. Trace the actual outside contour, openings, steps, notches, corner radii/chamfers and feature families before assigning coordinates. Do not begin from a bounding rectangle.
+2. Trace the actual outside contour, openings, steps, notches, corner radii/chamfers and feature families before assigning coordinates. Do not begin from a bounding rectangle. Census every notch/cut-out and dimensioned rectangle: each ends as built, user-cancelled (reason recorded) or a local FLAG with coordinates; never drop one silently.
 3. For every used dimension, identify both physical witness endpoints, its semantic meaning, datum, axis signs and owner. A printed top-left origin overrides a customary CAD origin; unresolved source frame blocks production coordinates. See `DATUM_DIMENSION.md`.
 4. Link features shown in multiple views to one source member, using the controlling view/detail and face.
 5. Apply handwritten corrections or Nobi only to the member/bend the leader or source context identifies. Unclear scope remains local FLAG/REVIEW.
 6. Lock code, material and thickness before resolving material, thread-pilot, Nobi or feasibility rules.
 
-Inspect orthographic, section, detail, assembly, mirror and development views as applicable. Compare corresponding sibling views before deciding an inner/outer face. Reflect a symmetric partner only when the source/user establishes its code, axis and scope; reflect all proved features/bends/marks, then revalidate. A mirrored inside view alone does not establish a new code, and symmetry does not make every bent part a mirror.
+Inspect orthographic, section, detail, assembly, mirror and development views as applicable. Compare corresponding sibling views before deciding an inner/outer face. Read the projection method from the title block (`三角法` = third angle): top/bottom views sit above/below the main view and their edge nearest the main view is the part's FRONT; a web edge-on at the rear with flanges toward the viewer means the main view shows the INNER face (`CAD_OUTPUT.md` 5d). Take an end tab's side from the thick edge-on line at the end of the top/bottom view; a rotated section cannot give left/right. Unreadable -> local FLAG. Reflect a symmetric partner only when the source/user establishes its code, axis and scope; reflect all proved features/bends/marks, then revalidate. A mirrored inside view alone does not establish a new code, and symmetry does not make every bent part a mirror.
 
 ## Multi-page and clustered DATA
 
