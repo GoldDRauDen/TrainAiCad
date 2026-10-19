@@ -44,7 +44,7 @@ def _mark(part, positions):
 ])
 def test_jlj_exact_thresholds_and_composite_readback(tmp_path, length, count):
     p = _part(length=length)
-    xs = [30 + i * (length - 60) / (count - 1) for i in range(count)]
+    xs = [35 + i * (length - 67) / (count - 1) for i in range(count)]
     _mark(p, xs)
     name = f"J{int(length * 100)}"
     export_job({"job_id": name, "parts": [p]}, tmp_path)
@@ -57,13 +57,13 @@ def test_jlj_exact_thresholds_and_composite_readback(tmp_path, length, count):
 
 def test_jlj_rejects_marks_at_missing_top_material_edge(tmp_path):
     p = _part(length=1012)
-    # The LJ nominal location x=982 is in an actual notch (970..990).
+    # The LJ nominal location x=980 is in an actual notch (970..990).
     p["entities"][0]["vertices"] = [
         [0, 0, 0], [1012, 0, 0], [1012, 80, 0],
         [990, 80, 0], [990, 70, 0], [970, 70, 0],
         [970, 80, 0], [0, 80, 0],
     ]
-    _mark(p, [30, 982])
+    _mark(p, [35, 980])
     with pytest.raises(ValueError, match="J/LJ_MARKS_NOT_ON_TOP_MATERIAL_EDGE"):
         export_job({"job_id": "NOTCH", "parts": [p]}, tmp_path)
     assert not list(tmp_path.glob("*.dxf"))
@@ -72,7 +72,7 @@ def test_jlj_rejects_marks_at_missing_top_material_edge(tmp_path):
 def test_jlj_production_cut_files_exclude_marks(tmp_path):
     p = _part(length=1200)
     p["entities"][0]["entity_id"] = "E_OUTER"
-    _mark(p, [30, 1170])
+    _mark(p, [35, 1168])
     p["entities"][1]["entity_id"] = "E_J"
     p["entities"][2]["entity_id"] = "E_J_TEXT"
     p["entities"][3]["entity_id"] = "E_LJ"
