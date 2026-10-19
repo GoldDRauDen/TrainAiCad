@@ -44,7 +44,7 @@ Do not substitute:
 - a reference/sample coordinate for a source-missing OD.
 - a dimension from another feature row (e.g. a hole-row `30`) as a step height or OD term.
 
-A section dimension whose extension lines touch the inner vs outer face decides which face carries `+t`; read the touched face per extension line, and keep two plates joined by a U tab as separate faces.
+A section dimension whose extension lines touch the inner vs outer face decides which face carries `+t`; read the touched face per extension line, and keep two plates joined by a U tab as separate faces. Where the adjacent face is absent (notch), the wall belongs to the face that has material and sits at that face's own OD plane measured from its free end (first face x=OD1; last face x=total-OD_last, i.e. line1 of the last bend), never at the neighbour's OD. A tab width measured from the outer face includes t (e.g. 30+t); place it by line1_prev+d, or from the far side by line2_next-d.
 
 For non-90-degree bends, retain existing routed ID->OD and acute-bend rules. This module controls **ownership and measurement meaning**: offsets/thickness terms must land on the correct face contribution and must not be consumed twice.
 

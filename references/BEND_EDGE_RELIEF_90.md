@@ -34,7 +34,7 @@ For every proved bend, lock the actual material shared edge before unfold/output
 
 The **bend-edge length** is the physical length of the shared edge over which material actually bends. It is not the face bbox, not the total flat width/height, and not a convenient extension through neighboring material.
 
-A bend pair must be clipped to this real material domain and to any real void/relief intersections.
+A bend pair must be clipped to this real material domain and to any real void/relief intersections; a notch/cut-out at the bend end shortens the bend-edge length by its size.
 
 ### 057873 regression intent
 
@@ -53,6 +53,8 @@ The sign and magnitude must come from actual source geometry/witnesses. Do not i
 **Reference edges:** prove the zero-offset/virtual-sharp reference and the actual neighbouring web edge in one physical source frame; identify each edge and the local positive-S direction, then measure their signed separation perpendicular to those parallel edges. Check each junction independently; dividing a width difference equally requires source-proved centring/side witnesses. Neither page direction nor overlapping virtual-sharp DASHED bend pairs proves a material intersection. `S=t>0` is Case A, not an `R=t` instruction; S, thickness t, corner radius R and Nobi are distinct quantities.
 
 `S` is a local edge/topology parameter. It is not Nobi and it is not a bend allowance.
+
+**Per bend end (inventory every end, none skipped):** collinear/parallel edges form no corner B -> no slit; a wall/chamfer that ends at the bend end forms B -> measure S and apply §4. Record the decision for each end.
 
 ## 4. BEND_END_OFFSET_90 relief decision
 
