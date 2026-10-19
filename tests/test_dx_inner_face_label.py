@@ -66,3 +66,12 @@ def test_rule_text_inner_face_and_mirror_pair():
     assert "symmetric (đối xứng) to the PDF view" not in text
     schema = (ROOT / "tools/DXF_INPUT_SCHEMA.md").read_text(encoding="utf-8")
     assert "inner (back) face" in schema and "対称" in schema
+
+
+def test_kegaki_face_is_outer_face_rule_text():
+    """521019-13: the KEGAKI face is the OUTER face (rule text present in both contracts)."""
+    for rel in ("skills/lispcad/core/CAD_OUTPUT.md", "tools/DXF_INPUT_SCHEMA.md"):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        assert "KEGAKI" in text and "outer face" in text, rel
+    assert "KEGAKI face is the OUTER face" in (
+        ROOT / "skills/lispcad/core/CAD_OUTPUT.md").read_text(encoding="utf-8")
