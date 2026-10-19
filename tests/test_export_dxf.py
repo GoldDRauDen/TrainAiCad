@@ -220,21 +220,21 @@ def _marks(p, xs, top, last="LJ"):
 
 
 def test_jlj_marks_required_for_narrow_long_blank_only(tmp_path):
-    # L=1012, Oy=99.5 -> 1 J + 1 LJ at x=35 and L-32, on the top edge.
+    # L=1012, Oy=99.5 -> 1 J + 1 LJ at x=30 and L-30, on the top edge.
     long_part = part("000001", (1012, 99.5))
     with pytest.raises(Exception, match="J/LJ_MARKS_MISSING_OR_WRONG"):
         export_job({"job_id": "J", "parts": [long_part]}, tmp_path, mode="single")
-    _marks(long_part, [35, 980], 99.5)
+    _marks(long_part, [30, 982], 99.5)
     export_job({"job_id": "J", "parts": [long_part]}, tmp_path, mode="single")
     doc = ezdxf.readfile(next(tmp_path.glob("J_ALL*.dxf")))
     assert sorted(e.dxf.text for e in doc.modelspace() if e.dxftype() == "TEXT"
                   and e.dxf.text in ("J", "LJ")) == ["J", "LJ"]
     # 2 J + LJ above 1500; wrong spacing fails.
     p2 = part("000002", (1600, 80))
-    _marks(p2, [35, 801.5, 1568], 80)
+    _marks(p2, [30, 800, 1570], 80)
     export_job({"job_id": "J2", "parts": [p2]}, tmp_path, mode="single")
     p3 = part("000003", (1600, 80))
-    _marks(p3, [35, 700, 1568], 80)
+    _marks(p3, [30, 700, 1570], 80)
     with pytest.raises(Exception, match="J/LJ_MARKS_MISSING_OR_WRONG"):
         export_job({"job_id": "J3", "parts": [p3]}, tmp_path, mode="single")
 
@@ -242,11 +242,11 @@ def test_jlj_marks_required_for_narrow_long_blank_only(tmp_path):
 def test_jlj_marks_forbidden_below_threshold_and_undefined_above_2500(tmp_path):
     short = part("000001", (990, 99.5))  # Ox<1000: no marks
     export_job({"job_id": "J4", "parts": [short]}, tmp_path, mode="single")
-    _marks(short, [35, 958], 99.5)
+    _marks(short, [30, 960], 99.5)
     with pytest.raises(Exception, match="only for blank"):
         export_job({"job_id": "J4", "parts": [short]}, tmp_path, mode="single")
     wide = part("000002", (1200, 120))  # Oy>100: no marks
-    _marks(wide, [35, 1168], 120)
+    _marks(wide, [30, 1170], 120)
     with pytest.raises(Exception, match="only for blank"):
         export_job({"job_id": "J5", "parts": [wide]}, tmp_path, mode="single")
     huge = part("000003", (2600, 50))

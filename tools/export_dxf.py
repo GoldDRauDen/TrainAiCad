@@ -25,8 +25,7 @@ CUT_ROLES = {"outer", "cutout", "hole", "slot"}
 # every saved DXF writes outlines/cutouts/slots as separate LINE and ARC entities.
 TEMPLATE = Path(__file__).resolve().parent.parent / "templates" / "CAD_OUTPUT_TEMPLATE.dxf"
 JLJ_TEXT_HEIGHT_MM = 10.0         # J/LJ TEXT height (template sample)
-JLJ_FIRST_OFFSET_MM = 35.0        # first J: 35 mm from the left end of the blank
-JLJ_LAST_OFFSET_MM = 32.0         # LJ: 32 mm from the right end of the blank
+JLJ_INSET_MM = 30.0               # first J / LJ sit 30 mm inside the ends of the top (max Y) edge
 COMPOSITE_GAP_MM = 150.0          # edge-to-edge between code clusters in the combined DXF
 SOURCE_VIEW_GAP_MM = 10.0         # separation between VIEWS_ONLY source views inside one code
 # Label sizes/positions follow the sample layout stored in templates/CAD_OUTPUT_TEMPLATE.dxf
@@ -170,7 +169,7 @@ def validate_entity(entity, part_code, preview):
 
 
 def jlj_marks_check(part):
-    """Laser_SheetMetal J/LJ: blank Oy<=100 and Ox>=1000 -> POINT+TEXT on the top edge, x=35..L-32 evenly."""
+    """Laser_SheetMetal J/LJ: blank Oy<=100 and Ox>=1000 -> POINT+TEXT on the top edge, x = X1+30 .. X2-30 evenly (X1/X2 = left/right ends of the max-Y edge)."""
     code = part.get("code", "?")
     outer = [e for e in part["entities"] if e.get("role") == "outer"]
     marks = [e for e in part["entities"] if e.get("role") == "mark"]
@@ -184,11 +183,9 @@ def jlj_marks_check(part):
     if length > 2500:
         fail(f"{code}: J/LJ count undefined for L>2500; flag instead of guessing")
     n = 2 + (length > 1500) + (length > 2000)  # J count + 1 LJ
-    x0, top = min(xs), max(ys)
-    span = length - JLJ_FIRST_OFFSET_MM - JLJ_LAST_OFFSET_MM
-    want = [(x0 + JLJ_FIRST_OFFSET_MM + i * span / (n - 1), top, "LJ" if i == n - 1 else "J") for i in range(n)]
-    # The top of the *bounding box* is not proof of an actual material
-    # edge (e.g. a notch can remove the edge exactly at an LJ mark).
+    top = max(ys)
+    # Top (max Y) material edge first: X1 / X2 are its left / right ends, so a chamfer
+    # C5 on the left and C2 on the right give 35 and L-32 for a rectangle-like blank.
     top_edges = []
     for ent in outer:
         vertices = ent["vertices"]
@@ -197,6 +194,11 @@ def jlj_marks_check(part):
             if (abs(a[2]) <= 1e-10 and
                     abs(a[1] - top) <= 1e-6 and abs(b[1] - top) <= 1e-6):
                 top_edges.append((min(a[0], b[0]), max(a[0], b[0])))
+    if not top_edges:
+        fail(f"{code}: J/LJ_MARKS_NOT_ON_TOP_MATERIAL_EDGE")
+    x_first = min(left for left, _ in top_edges) + JLJ_INSET_MM
+    x_last = max(right for _, right in top_edges) - JLJ_INSET_MM
+    want = [(x_first + i * (x_last - x_first) / (n - 1), top, "LJ" if i == n - 1 else "J") for i in range(n)]
     if any(not any(left - 1e-6 <= x <= right + 1e-6
                    for left, right in top_edges) for x, _, _ in want):
         fail(f"{code}: J/LJ_MARKS_NOT_ON_TOP_MATERIAL_EDGE")
