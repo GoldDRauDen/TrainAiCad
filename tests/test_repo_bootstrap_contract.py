@@ -95,8 +95,10 @@ def test_release_pin_detector_rejects_a_real_release():
     assert re.search(r"\bV4\.\d+\b", "current release via AI_ENTRYPOINT.md") is None
 
 
-def test_job_notes_and_reports_are_vietnamese():
+def test_dxf_notes_are_vietnamese():
     agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    assert "## 6. Language of job notes and reports" in agents
+    assert "## 6. Language of notes inside the DXF" in agents
     assert "Vietnamese" in agents and "tiếng Việt" in agents
     assert "`DUYỆT`" in agents
+    template = (ROOT / "templates" / "CAD_OUTPUT_TEMPLATE.dxf").read_text(encoding="utf-8", errors="ignore")
+    assert "Ghi bằng tiếng việt" in template

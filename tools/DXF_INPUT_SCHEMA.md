@@ -16,7 +16,7 @@ The serializer accepts **independently interpreted and verified** PDF drawing ge
 
 `python tools/export_dxf.py job.json out/` emits exactly ONE DXF, with all declared drawing codes in `job.parts` order from **top to bottom**, visible code annotation and >=10 mm layout-only geometric bbox clearance:
 - All statuses PASS: `<JOB>_ALL.dxf`, production only if upstream Section 5 validations were actually executed.
-- One or more PREVIEW/VIEWS_ONLY/FLAG codes: `<JOB>_ALL_REVIEW_ONLY.dxf` including *every* code; explicit global **REVIEW ONLY - NO CUT**; no misleading production file.
+- One or more PREVIEW/VIEWS_ONLY/FLAG codes: `<JOB>_ALL_REVIEW_ONLY.dxf` including *every* code; explicit global Vietnamese note **CHỈ XEM XÉT - KHÔNG CẮT**; every note/FLAG/preview text written into the DXF is Vietnamese; no misleading production file.
 
 Part labels and review/status annotation are `TEXT` on generated **non-plot, non-cut `AI_META`** (not machining Layer 0). Code labels sit outside each part geometry bounding box; source views are also labeled. ALL actual geometric primitives remain on Layer 0. Exclude `AI_META` from CAM. Review-only composites are never cut, even if some individual clusters are accurate.
 

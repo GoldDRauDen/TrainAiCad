@@ -39,6 +39,7 @@ DX_LABEL_CLEARANCE_MM = 23.0
 FLAG_LABEL_CLEARANCE_MM = 49.0
 FLAG_LABEL_HEIGHT_MM = 15.0
 FLAG_LINE_PITCH_MM = 25.0       # one horizontal FLAG line per flag, stacked top to bottom
+REVIEW_BANNER = "CHỈ XEM XÉT - KHÔNG CẮT - CÒN MÃ CHƯA GIẢI QUYẾT"  # all DXF notes are Vietnamese (AGENTS.md §6)
 PIECE_SEPARATOR = ":S"            # canonical entity piece id: <entity_id>:S0001
 
 
@@ -601,7 +602,7 @@ def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=F
                        "entity_count": rec["entity_count"]})
         cursor = bottom - gap_mm - LABEL_RESERVE_MM
     if review:
-        label("REVIEW ONLY - NO CUT - UNRESOLVED CODES PRESENT", (0, stack_height + 12), color=6)
+        label(REVIEW_BANNER, (0, stack_height + 12), color=6)
     filename = f"{jid}_ALL_REVIEW_ONLY.dxf" if review else f"{jid}_ALL.dxf"
     target = out / filename
     write_and_audit(merged, target, len(expected_geometry) + annotation_count)
@@ -614,7 +615,7 @@ def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=F
         fail("Missing or misordered code labels in combined DXF")
     if labels.count("dx") != dx_expected:
         fail("dx label count does not match PDF back-face parts")
-    if review and "REVIEW ONLY - NO CUT - UNRESOLVED CODES PRESENT" not in labels:
+    if review and REVIEW_BANNER not in labels:
         fail("REVIEW_ONLY output missing global NO CUT label")
     for upper, lower in zip(layout, layout[1:]):
         lower_label_top = lower["combined_bbox_mm"][3] + LABEL_RESERVE_MM

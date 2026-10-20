@@ -8,6 +8,7 @@ import ezdxf
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+import export_dxf  # noqa: E402
 from export_dxf import export_job  # noqa: E402
 
 
@@ -181,7 +182,8 @@ def test_one_review_only_with_user_authorized_unknown_diameter_and_source_views(
     meta = [e.dxf.text for e in doc.modelspace() if e.dxf.layer == "AI_META"]
     assert meta.index("043791") < meta.index("043797 [FLAG]") < meta.index("043796 [VIEWS_ONLY - FLAG]")
     assert "043796 VIEW FRONT" in meta and "043796 VIEW SIDE" in meta
-    assert "REVIEW ONLY - NO CUT - UNRESOLVED CODES PRESENT" in meta
+    assert export_dxf.REVIEW_BANNER == "CHỈ XEM XÉT - KHÔNG CẮT - CÒN MÃ CHƯA GIẢI QUYẾT"
+    assert export_dxf.REVIEW_BANNER in meta
     geometry = [e for e in doc.modelspace() if e.dxf.layer == "0"]
     assert any(e.dxftype() == "CIRCLE" and e.dxf.get("color", 256) == 6 for e in geometry)
     # 4 outline LINE (a) + 4 outline LINE (b) + 2 source-view LINE (c); bends are DASHED

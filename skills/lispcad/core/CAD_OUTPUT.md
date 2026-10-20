@@ -15,7 +15,7 @@ Canonical input may keep `LWPOLYLINE`; saved manufacturing curves are exploded i
 6. **Combined file layout.** Parts stack top-to-bottom in job order. A cluster is its outline bounding box plus the code label 10 mm above the outline (label height 10 mm). The gap between clusters is at least **150 mm**, measured from the bottom of the upper outline to the top of the lower cluster label. Source views of a code stay 10 mm apart.
 7. **Labels (combined file only; AI_META, non-cut).**
    - `dx`: height 20 mm, 23 mm left of the outline, centred vertically. Written only when the part carries `dx_label: true`, i.e. only when the part is drawn from its INNER face (rule 5d). It is not written for mirror-image (対称) parts, which are drawn mirrored directly (rule 5e). Individual CUT files never carry `dx`.
-   - FLAG: one horizontal line per flag, `<CODE> FLAG: <flag text>`, height 15 mm, pitch 25 mm, top-right, 49 mm right of the outline. The first flag starts at the outline top; each further flag sits on the next line below.
+   - FLAG: one line per flag, `<CODE> FLAG: <Vietnamese text>`, height 15 mm, pitch 25 mm, top-right, 49 mm right of the outline. The first flag starts at the outline top; each further flag sits on the next line below.
    - Individual CUT files carry no labels.
 8. **Customer conflicts.** When a customer's explicit corner instruction conflicts with an automatic rule (for example SS t>=19 R3 against a customer sharp corner), set FLAG and wait for customer confirmation. Do not silently override either way.
 
