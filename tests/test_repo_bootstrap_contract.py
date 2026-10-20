@@ -93,3 +93,10 @@ def test_ci_tracks_bootstrap_files():
 def test_release_pin_detector_rejects_a_real_release():
     assert re.search(r"\bV4\.\d+\b", "orchestration V4.34 supplement") is not None
     assert re.search(r"\bV4\.\d+\b", "current release via AI_ENTRYPOINT.md") is None
+
+
+def test_job_notes_and_reports_are_vietnamese():
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    assert "## 6. Language of job notes and reports" in agents
+    assert "Vietnamese" in agents and "tiếng Việt" in agents
+    assert "`DUYỆT`" in agents
