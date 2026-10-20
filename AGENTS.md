@@ -21,5 +21,5 @@ A normal E2E request does not authorize repository changes.
 
 Only modify or push production rules after explicit user approval such as `DUYỆT` or `PUSH`. Apply the current repo calibration and update discipline, add relevant executable regression tests, run required QA, and merge only after all required checks pass. Do not edit portable or history files as a shortcut around modular production authority.
 
-## 6. Language of job notes and reports
-Job notes (the Project doc `<JOB>_job_notes.md`), review summaries, FLAG/confirmation lists and the final report to the user are written in **Vietnamese** (tiếng Việt). Keep identifiers verbatim: work codes, entity IDs, file names, rule names, coordinates and Japanese source text. Generated DXF content, repository rule files and tool code keep their own language. Approved by the user (`DUYỆT`) on 2026-10-20.
+## 6. Language of notes inside the DXF
+Every note written into the combined DXF is Vietnamese (tiếng Việt, with diacritics; the template font is Arial TrueType): the `<CODE> FLAG: ...` lines, Magenta preview/estimate notes and the global review banner. Keep identifiers verbatim: work codes, entity IDs, file names, rule names, coordinates and Japanese source text. No language is mandated for chat replies or Project job notes. Approved by the user (`DUYỆT`) on 2026-10-20.
