@@ -24,16 +24,21 @@ CUT_ROLES = {"outer", "cutout", "hole", "slot"}
 # V4.35 output rules (approved 2026-10-14). Canonical input may keep LWPOLYLINE;
 # every saved DXF writes outlines/cutouts/slots as separate LINE and ARC entities.
 TEMPLATE = Path(__file__).resolve().parent.parent / "templates" / "CAD_OUTPUT_TEMPLATE.dxf"
+JLJ_TEXT_HEIGHT_MM = 10.0         # J/LJ TEXT height (template sample)
+JLJ_INSET_MM = 30.0               # first J / LJ sit 30 mm inside the ends of the top (max Y) edge
 COMPOSITE_GAP_MM = 150.0          # edge-to-edge between code clusters in the combined DXF
 SOURCE_VIEW_GAP_MM = 10.0         # separation between VIEWS_ONLY source views inside one code
-CODE_LABEL_OFFSET_MM = 2.0        # code label sits 2 mm above its cluster
-CODE_LABEL_HEIGHT_MM = 3.0
+# Label sizes/positions follow the sample layout stored in templates/CAD_OUTPUT_TEMPLATE.dxf
+# (100x100 sample part: code label h10 baseline 10 mm above the outline, dx h20 right edge 23 mm
+# left of the outline, FLAG h15 at 49 mm right of the outline with 25 mm line pitch).
+CODE_LABEL_OFFSET_MM = 10.0       # code label baseline sits 10 mm above its cluster
+CODE_LABEL_HEIGHT_MM = 10.0
 LABEL_RESERVE_MM = CODE_LABEL_OFFSET_MM + CODE_LABEL_HEIGHT_MM  # space the label takes above a cluster
 DX_LABEL_HEIGHT_MM = 20.0
-DX_LABEL_CLEARANCE_MM = 10.0
-FLAG_LABEL_CLEARANCE_MM = 10.0
-FLAG_LABEL_HEIGHT_MM = 3.0
-FLAG_LINE_PITCH_MM = 4.5        # one horizontal FLAG line per flag, stacked top to bottom
+DX_LABEL_CLEARANCE_MM = 23.0
+FLAG_LABEL_CLEARANCE_MM = 49.0
+FLAG_LABEL_HEIGHT_MM = 15.0
+FLAG_LINE_PITCH_MM = 25.0       # one horizontal FLAG line per flag, stacked top to bottom
 PIECE_SEPARATOR = ":S"            # canonical entity piece id: <entity_id>:S0001
 
 
@@ -99,7 +104,7 @@ def validate_entity(entity, part_code, preview):
     if role == "mark" and (col != 256 or t not in ("POINT", "TEXT")):
         fail(f"{part_code}: J/LJ mark must be ByLayer POINT or TEXT")
     if t == "TEXT" and role == "mark":
-        if entity.get("text") not in ("J", "LJ") or entity.get("height") != 10:
+        if entity.get("text") not in ("J", "LJ") or entity.get("height") != JLJ_TEXT_HEIGHT_MM:
             fail(f"{part_code}: mark TEXT must be J or LJ, height 10")
     elif t == "TEXT" and (not preview or col != 6 or role != "estimated_note"):
         fail(f"{part_code}: source TEXT only for adjacent Magenta preview notes; code labels are generated in AI_META")
@@ -164,7 +169,7 @@ def validate_entity(entity, part_code, preview):
 
 
 def jlj_marks_check(part):
-    """Laser_SheetMetal J/LJ: blank Oy<=100 and Ox>=1000 -> POINT+TEXT on the top edge, x=30..L-30 evenly."""
+    """Laser_SheetMetal J/LJ: blank Oy<=100 and Ox>=1000 -> POINT+TEXT on the top edge, x = X1+30 .. X2-30 evenly (X1/X2 = left/right ends of the max-Y edge)."""
     code = part.get("code", "?")
     outer = [e for e in part["entities"] if e.get("role") == "outer"]
     marks = [e for e in part["entities"] if e.get("role") == "mark"]
@@ -178,10 +183,9 @@ def jlj_marks_check(part):
     if length > 2500:
         fail(f"{code}: J/LJ count undefined for L>2500; flag instead of guessing")
     n = 2 + (length > 1500) + (length > 2000)  # J count + 1 LJ
-    x0, top = min(xs), max(ys)
-    want = [(x0 + 30 + i * (length - 60) / (n - 1), top, "LJ" if i == n - 1 else "J") for i in range(n)]
-    # The top of the *bounding box* is not proof of an actual material
-    # edge (e.g. a notch can remove the edge exactly at an LJ mark).
+    top = max(ys)
+    # Top (max Y) material edge first: X1 / X2 are its left / right ends, so a chamfer
+    # C5 on the left and C2 on the right give 35 and L-32 for a rectangle-like blank.
     top_edges = []
     for ent in outer:
         vertices = ent["vertices"]
@@ -190,6 +194,11 @@ def jlj_marks_check(part):
             if (abs(a[2]) <= 1e-10 and
                     abs(a[1] - top) <= 1e-6 and abs(b[1] - top) <= 1e-6):
                 top_edges.append((min(a[0], b[0]), max(a[0], b[0])))
+    if not top_edges:
+        fail(f"{code}: J/LJ_MARKS_NOT_ON_TOP_MATERIAL_EDGE")
+    x_first = min(left for left, _ in top_edges) + JLJ_INSET_MM
+    x_last = max(right for _, right in top_edges) - JLJ_INSET_MM
+    want = [(x_first + i * (x_last - x_first) / (n - 1), top, "LJ" if i == n - 1 else "J") for i in range(n)]
     if any(not any(left - 1e-6 <= x <= right + 1e-6
                    for left, right in top_edges) for x, _, _ in want):
         fail(f"{code}: J/LJ_MARKS_NOT_ON_TOP_MATERIAL_EDGE")
@@ -347,12 +356,15 @@ def new_doc():
 
     Only the unit declaration is overridden: coordinates are millimetres. The modelspace
     must be empty; DIM dimensions are never written into CUT output.
+
+    The template file carries a sample layout (part, labels, J/LJ marks) as the visual spec of
+    text style, text sizes and POINT/TEXT placement. Those sample entities are removed here;
+    the sizes live in the constants above and tests/test_cad_output_template.py keeps them in sync.
     """
     if not TEMPLATE.exists():
         fail(f"CAD output template missing: {TEMPLATE.name}")
     doc = ezdxf.readfile(TEMPLATE)
-    if len(doc.modelspace()) != 0:
-        fail("CAD output template modelspace must be empty")
+    doc.modelspace().delete_all_entities()
     doc.header["$INSUNITS"] = 4
     doc.header["$MEASUREMENT"] = 1
     if "DASHED" not in doc.linetypes:
