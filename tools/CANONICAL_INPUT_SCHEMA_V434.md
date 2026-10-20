@@ -54,7 +54,7 @@ For applicable bend ends, declare per-part `source_bend_end_site_ids` and matchi
 - Each proved site: `site_id`, `status:"PROVED"`, two existing `bend_ids`, `frame_id`, `flush_edge_id`, `web_edge_id`, unit `positive_axis`, `positive_axis_evidence_ref`, `included_angle_deg`, `S_mm`, `mechanism:"BEND_END_OFFSET_90"`, `decision:"NO_RELIEF"|"SLIT"`, `relief_member_ids:[]`. S is remeasured from both edges; numeric witness tolerance is1e-7mm, not a manufacturing step threshold. A positive S needs NO_RELIEF and no scoped relief geometry; nonpositive S needs SLIT with physical canonical owners.
 - A generic required slit supplies `slit_construction:{actual_edge_id,side_edge_id,bend_id,inward_hint,side_void_normal,web_void_normal,evidence_ref}`. The edge IDs name proved `CANONICAL_FLAT` edges in `bend_end_source_edges`; evidence closes their source-to-flat mapping and inward/void sides. The actual edge retains the physical identity of `web_edge_id`; the two finite edges meet at the slit base. The controlled bend's canonical material-domain line proves bend direction. The guard rebuilds the existing connected slit rule from these witnesses, material and thickness, then checks the actual three Green LINE/ARC/LINE entities, t+0.2 actual-edge depth, R0.5 and lead. Missing or mismatched construction blocks save.
 - `relief_member_ids` names proved canonical relief members with matching mechanism and site ownership; ordinary holes/contours cannot stand in for relief. Members and geometry carry `bend_end_site_id`, Green LINE/ARC relief roles (`slit`, `relief`, `bend_relief`); automatic relief, including non90 and derived relief-role geometry, cannot omit its inventory/owner. This prevents an empty decision list hiding a linked addition. Missing/duplicate inventory sites, wrong source frames, directions, S or owners block export. Explicit source slit features outside bend-end scope retain their existing source-group contract.
-- A separately controlled site uses `decision:"SEPARATE_RULE"`, its mechanism and `special_rule_evidence_ref`. `OPPOSITE_FOLD_R_T`/`CROSSING_BEND` additionally need `intersection_edge_ids`: two proven finite source bend edges in the same physical frame, each with its owning `bend_id`, whose segments actually intersect; crossing-bend domains must be perpendicular. `BOXMET` needs a four-flange face-graph star whose central face owns both controlled bends. `CUSTOM_SOURCE_SLIT` needs a proved `SLIT_RELIEF` source group (`source_group_id`) owning its relief members. `NON_90_RELIEF` needs its non90 angle and `angle_evidence_ref`; the90-degree S decision is not applied to it. Each mechanism retains its own routed manufacturing gates.
+- A separately controlled site uses `decision:"SEPARATE_RULE"`, its mechanism and `special_rule_evidence_ref`. `OPPOSITE_FOLD_R_T` additionally needs `intersection_edge_ids`: two proven finite source bend edges in the same physical frame, each with its owning `bend_id`, whose segments actually intersect. (`CROSSING_BEND` was removed 2026-10-20: a same-direction corner is an ordinary `BEND_END_OFFSET_90` site.) `BOXMET` needs a four-flange face-graph star whose central face owns both controlled bends. `CUSTOM_SOURCE_SLIT` needs a proved `SLIT_RELIEF` source group (`source_group_id`) owning its relief members. `NON_90_RELIEF` needs its non90 angle and `angle_evidence_ref`; the90-degree S decision is not applied to it. Each mechanism retains its own routed manufacturing gates.
 - An unresolved site stays in the inventory with `status:"FLAGGED"`, `decision:"FLAGGED"` and no proved relief geometry; it cannot enter a PASS part or erase another proved face/feature. Use the existing local preview policy rather than fabricating a slit or downgrading a defensible whole flat to VIEWS_ONLY.
 
 ## Export
@@ -67,3 +67,26 @@ Single PASS cut: rotate+translate the serialized cut copy only, preserving ARC r
 - `HL_DIRECTION_UNPROVED`, `PART_ORIENTATION_MISMATCH`
 
 The validity of an alleged PDF witness requires actual source QA; it is not established by self-consistent JSON alone. Source reference DXFs may challenge but never create or modify a witness.
+
+## Same-direction corner witness and corner inventory
+
+A `BEND_END_OFFSET_90` site at a same-direction box corner may carry `corner_retreat`:
+
+```json
+"corner_retreat": {"flange_ids": ["F4", "F5"], "depth_mm": {"F4": 30, "F5": 30},
+                   "bend_edge_length_mm": {"F4": 265, "F5": 83.2},
+                   "site_flange_id": "F5", "retreated_flange_id": "F5", "evidence_ref": "..."}
+```
+
+`tools/bend_end_guard.py` requires: depth-first choice (`BEND_END_CORNER_RETREAT_KHUYET_T` when the deeper flange retreats by mistake, depth tolerance 0.1 mm), `S_mm = -t` at the retreated flange's end and `S_mm = +t` at the other end (`BEND_END_CORNER_RETREAT_S_MISMATCH`), and evidence (`BEND_END_CORNER_RETREAT_UNPROVED`).
+
+`corner_inventory` (see `tools/corner_guard.py`) is required as soon as any `MATERIAL_AUTO_R` member exists, and census-checked against every sharp convex corner `<= 90` degrees of an outer LWPOLYLINE:
+
+```json
+"corner_inventory": [{"corner_id": "C1", "point": [0, 0], "drawn_shape": "SHARP|ROUNDED|CHAMFERED|UNKNOWN",
+  "decision": "CALLED|AUTO_R|FLAG|SHARP", "canonical_member_id": "...", "evidence_ref": "...",
+  "no_auto_r_reason": "SHARP decision only"}]
+```
+
+A corner DRAWN rounded/chamfered without a callout must be `FLAG` (never `AUTO_R`); `AUTO_R` needs `drawn_shape: SHARP`. `python tools/corner_ledger.py job.json` prints one Vietnamese row per corner and per bend end.
+

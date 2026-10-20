@@ -9,8 +9,8 @@ from __future__ import annotations
 import math
 
 TOL = 1e-7  # Coordinate arithmetic tolerance, never a manufacturing S threshold.
-AUTO_RELIEF_RULES = {"BEND_END_OFFSET_90", "OPPOSITE_FOLD_R_T", "CROSSING_BEND", "BOXMET", "NON_90_RELIEF"}
-SPECIAL_RULES = {"OPPOSITE_FOLD_R_T", "CROSSING_BEND", "BOXMET", "CUSTOM_SOURCE_SLIT", "NON_90_RELIEF"}
+AUTO_RELIEF_RULES = {"BEND_END_OFFSET_90", "OPPOSITE_FOLD_R_T", "BOXMET", "NON_90_RELIEF"}
+SPECIAL_RULES = {"OPPOSITE_FOLD_R_T", "BOXMET", "CUSTOM_SOURCE_SLIT", "NON_90_RELIEF"}
 RELIEF_ROLES = {"slit", "relief", "bend_relief"}
 
 
@@ -76,8 +76,6 @@ def _physical_intersection(site, edges):
     cross = lambda x, y: x[0]*y[1]-x[1]*y[0]
     denom = cross(u, v)
     if abs(denom) <= TOL*math.hypot(*u)*math.hypot(*v):
-        return False
-    if site.get("mechanism") == "CROSSING_BEND" and abs(sum(u[i]*v[i] for i in range(2))) > TOL*math.hypot(*u)*math.hypot(*v):
         return False
     return all(-TOL <= value <= 1+TOL for value in (cross(w, v)/denom, cross(w, u)/denom))
 
@@ -155,13 +153,29 @@ def _slit_construction_proved(site, part, edges, relief, entities, bends):
         return False
 
 
+def _check_corner_retreat(site, claimed, thickness):
+    """Same-direction box corner: depth-first retreat choice (references/BEND_EDGE_RELIEF_90.md section 9)."""
+    from corner_retreat import retreat_violation
+    witness = site["corner_retreat"]
+    error = retreat_violation(witness) if isinstance(witness, dict) else "BEND_END_CORNER_RETREAT_UNPROVED"
+    if error:
+        raise ValueError(error)
+    own = witness.get("site_flange_id")
+    if own not in witness["flange_ids"]:
+        raise ValueError("BEND_END_CORNER_RETREAT_UNPROVED")
+    # The retreated flange end is S=-t (slit); the other flange end is S=+t (no slit).
+    wanted = -thickness if own == witness["retreated_flange_id"] else thickness
+    if abs(claimed-wanted) > 1e-6:
+        raise ValueError("BEND_END_CORNER_RETREAT_S_MISMATCH")
+
+
 def _special_rule(site, part, edges, relief):
     mechanism = site.get("mechanism")
     if not relief:
         return "BEND_END_RELIEF_MEMBER_UNPROVED"
     if not site.get("special_rule_evidence_ref") or site.get("decision") != "SEPARATE_RULE":
         return "BEND_END_SPECIAL_RULE_UNPROVED"
-    if mechanism in {"OPPOSITE_FOLD_R_T", "CROSSING_BEND"}:
+    if mechanism == "OPPOSITE_FOLD_R_T":
         if not _physical_intersection(site, edges):
             return "BEND_END_PHYSICAL_INTERSECTION_UNPROVED"
     elif mechanism == "BOXMET":
@@ -252,6 +266,8 @@ def bend_end_errors(part):
             claimed = _number(site.get("S_mm"))
             if abs(actual-claimed) > TOL:
                 raise ValueError("BEND_END_STEP_MISMATCH")
+            if "corner_retreat" in site:
+                _check_corner_retreat(site, claimed, _number(part.get("thickness_mm")))
             # Source S is independently closed against the measured edges;
             # use it at exact zero to avoid pose-roundoff inventing a step.
             if claimed > 0:

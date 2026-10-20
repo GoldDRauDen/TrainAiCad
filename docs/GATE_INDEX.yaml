@@ -288,7 +288,11 @@ gates:
   - skills/lispcad/core/CROSS_FEATURE_VALIDATION.md
   - skills/lispcad/features/KEGAKI.md
   - skills/lispcad/router/FEATURE_CENSUS.md
-review_candidates: []
+review_candidates:
+- id: CROSSING_BEND
+  files:
+  - references/BEND_EDGE_RELIEF_90.md
+  - skills/lispcad/features/SLIT_RELIEF.md
 reviewed_non_gates:
 - ASSEMBLY_DATUM_GRAPH
 - BEND_EDGE
