@@ -110,4 +110,4 @@ When the actual Thickness (`t`) or Bend Length (`L`) does **not** exactly match 
 
 ### Relief selection before unfold
 
-Before declaring `SLIT_RELIEF=NO`, inspect each proved bend junction under `../features/SLIT_RELIEF.md`. It owns generic crossing-bend and opposite-fold fixed-outside R=t construction, and routes custom, signed-offset 90-degree and BOXMET mechanisms. BEND/MULTI_FACE/UNKNOWN mode loads this feature owner even when the preliminary relief census says NO: recheck and reroute if the source proves relief. No duplicate mechanism at one junction.
+Before declaring `SLIT_RELIEF=NO`, inspect each proved bend junction under `../features/SLIT_RELIEF.md`. It owns same-direction corner retreat (depth-first) and opposite-fold fixed-outside R=t construction, and routes custom, signed-offset 90-degree and BOXMET mechanisms. BEND/MULTI_FACE/UNKNOWN mode loads this feature owner even when the preliminary relief census says NO: recheck and reroute if the source proves relief. No duplicate mechanism at one junction.

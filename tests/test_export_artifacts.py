@@ -151,7 +151,7 @@ def test_pass_and_review_export_separation(tmp_path):
     # V4.35: the combined CUT file has no LWPOLYLINE; outlines are LINE/ARC pieces.
     composite_types = [e.dxftype() for e in composite.modelspace() if e.dxf.layer == "0"]
     assert "LWPOLYLINE" not in composite_types and "LINE" in composite_types
-    assert any("NO CUT" in e.dxf.text for e in composite.modelspace() if e.dxftype() == "TEXT")
+    assert any("KHÔNG CẮT" in e.dxf.text for e in composite.modelspace() if e.dxftype() == "TEXT")
 
 
 def test_all_pass_total_name_and_rebuild_without_json(tmp_path):

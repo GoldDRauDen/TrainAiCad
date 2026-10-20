@@ -16,7 +16,7 @@ The serializer accepts **independently interpreted and verified** PDF drawing ge
 
 `python tools/export_dxf.py job.json out/` emits exactly ONE DXF, with all declared drawing codes in `job.parts` order from **top to bottom**, visible code annotation and >=10 mm layout-only geometric bbox clearance:
 - All statuses PASS: `<JOB>_ALL.dxf`, production only if upstream Section 5 validations were actually executed.
-- One or more PREVIEW/VIEWS_ONLY/FLAG codes: `<JOB>_ALL_REVIEW_ONLY.dxf` including *every* code; explicit global **REVIEW ONLY - NO CUT**; no misleading production file.
+- One or more PREVIEW/VIEWS_ONLY/FLAG codes: `<JOB>_ALL_REVIEW_ONLY.dxf` including *every* code; explicit global Vietnamese note **CHỈ XEM XÉT - KHÔNG CẮT**; every note/FLAG/preview text written into the DXF is Vietnamese; no misleading production file.
 
 Part labels and review/status annotation are `TEXT` on generated **non-plot, non-cut `AI_META`** (not machining Layer 0). Code labels sit outside each part geometry bounding box; source views are also labeled. ALL actual geometric primitives remain on Layer 0. Exclude `AI_META` from CAM. Review-only composites are never cut, even if some individual clusters are accurate.
 
@@ -63,6 +63,6 @@ python -m pytest tests/ -q
 
 ## V4.35 input additions
 
-- Optional per-part boolean `dx_label` (default false): `true` only when the part is drawn from its inner (back) face. A 対称 mirror-image part is drawn mirrored directly and keeps `false`. Only the combined file draws the 20 mm `dx` label; individual CUT files never carry labels.
+- Optional per-part boolean `dx_label` (default false): `true` only when the part is drawn from its inner (back) face. A 対称 mirror-image part is drawn mirrored directly and keeps `false`. The face that carries the KEGAKI weld marks is the outer face: a part whose KEGAKI is on the drawn face is an outer-face drawing and keeps `false`. Only the combined file draws the 20 mm `dx` label; individual CUT files never carry labels.
 - LWPOLYLINE stays a valid canonical input type. Outlines, cutouts and slots are written as LINE/ARC pieces (`<entity_id>:S0001` ...), so the saved combined file has no LWPOLYLINE.
 - Composite default gap is 150 mm (`COMPOSITE_GAP_MM`), measured from an outline bottom to the next cluster's label top. Command default is `--gap-mm 150`; anything below 150 fails.

@@ -262,3 +262,18 @@ def test_v434_slot_witness_to_composite_and_individual_cut(tmp_path, source_vert
     assert all(e.dxftype() in {"LINE", "ARC", "CIRCLE"}
                for e in cut.modelspace())
     assert cut.audit().has_errors is False
+
+
+def test_jlj_uses_ends_of_max_y_edge_with_chamfers(tmp_path):
+    # C5 chamfer on the left, C2 on the right: first J at 5+30=35, LJ at L-2-30=L-32.
+    p = _part(length=1650, width=80)
+    p["entities"][0]["vertices"] = [
+        [0, 0, 0], [1650, 0, 0], [1650, 78, 0], [1648, 80, 0], [5, 80, 0], [0, 75, 0],
+    ]
+    _mark(p, [35, 826.5, 1618])
+    export_job({"job_id": "CHAMF", "parts": [p]}, tmp_path)
+    p2 = _part(length=1650, width=80)
+    p2["entities"][0]["vertices"] = p["entities"][0]["vertices"]
+    _mark(p2, [30, 840, 1620])  # ignores the chamfers: must fail
+    with pytest.raises(ValueError, match="J/LJ_MARKS_MISSING_OR_WRONG"):
+        export_job({"job_id": "CHAMF2", "parts": [p2]}, tmp_path)

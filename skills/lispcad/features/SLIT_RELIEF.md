@@ -14,7 +14,7 @@ A printed/handwritten `スリット`, `SLIT`, or equivalent explicit slit instru
 - If slit identity/scope is proved but a required numeric/position field remains unresolved, retain the feature and FLAG the unresolved field; do not silently drop `SLIT_RELIEF`.
 - Load/close `references/SOURCE_MANUFACTURING_NOTE_CENSUS.md` for source-note provenance.
 
-Existing crossing-bend, opposite-fold `R=t`, `055958`, BOXMET and other separately-triggered relief mechanisms remain independent. This section does not require an explicit `スリット` note for those already-approved mechanisms and does not change their trigger/orientation rules.
+Existing same-direction corner retreat (`BEND_EDGE_RELIEF_90.md` section 9), opposite-fold `R=t`, `055958`, BOXMET and other separately-triggered relief mechanisms remain independent. This section does not require an explicit `スリット` note for those already-approved mechanisms and does not change their trigger/orientation rules.
 
 ## Base classification
 
@@ -46,10 +46,9 @@ Preserve source-proved slit direction/connectivity and applicable local fillet/t
 QA: close source-note provenance when applicable, correct quantity/value/position/direction, correct mechanism/connectivity, no duplicate/coincident paths, no helper geometry in manufacturing CUT, correct BEND interaction, and saved-DXF physical read-back.
 
 
-## Generic crossing-bend and opposite-fold construction
+## Same-direction corner and opposite-fold construction
 
-**Standard crossing-bend slit relief** (original V4.3 rule, only when source-proved perpendicular physical bend domains intersect after step/edge closure; overlapping virtual-sharp DASHED pairs alone are insufficient):
-- Retract longer edge by `t`; slit inward by `t + 0.2`; diagonal slit to bend-line intersection; read any drawing-specific offset or FLAG if unknown.
+**Same-direction corner (replaces the old CROSSING_BEND mechanism, user 2026-10-20):** follow `../../../references/BEND_EDGE_RELIEF_90.md` section 9: the SHALLOWER flange retreats by `t` (depth differing by `>= 0.1 mm`; equal depth -> either, prefer the longer bend edge), then the normal step gate applies (`S=-t` -> slit `t + 0.2` + lead; the other end `S=+t` -> none). Never retreat the deeper flange (khuyết_t).
 
 **Opposite-fold fixed-outside R=t relief** (approved calibration `055962`):
 - When **two outer material edges actually intersect after step and bend-domain closure**, fold in different directions and require both outside dimensions unchanged, create `R=t` escape relief at that proved intersection. Different fold directions alone do not trigger it. A positive-step normal junction follows BEND_EDGE_RELIEF_90 Case A unless an independently proved specific mechanism controls; retain that mechanism's tangency/material-side proof.
@@ -61,4 +60,4 @@ QA: close source-note provenance when applicable, correct quantity/value/positio
 If the source proves a central/base rectangle with four adjacent bent flanges and BOXMET corner topology, load `../../../references/BOXMET_SLIT_RELIEF.md`. This reference decides which pair of flaps retreats by `t`, generates the four required slits, constructs the tangent `LINE + ARC R0.5 + LINE` geometry, and defines when the rule is not applicable. Do not omit a required BOXMET slit merely because the outer contour is already closed; do not auto-apply BOXMET slit logic to ordinary L/U/Z, single-flange/free-edge, non-crossing, or unrelated relief topology.
 ## One controlling mechanism per junction
 
-Execute `../../../references/BEND_EDGE_RELIEF_90.md` §7 precedence: revision/cancellation or explicit custom slit first; proved topology-specific BOXMET/opposite-fold next; signed-offset 90-degree gate next; generic crossing-bend only if its physical trigger still holds after domain closure. Unknown size/sign/direction remains local FLAG. Depth alone never proves direction, scope or connectivity. The bend mode loads this owner before a final NO decision; the independent SLIT_RELIEF feature route also remains available for flat/custom source slits.
+Execute `../../../references/BEND_EDGE_RELIEF_90.md` §7 precedence: revision/cancellation or explicit custom slit first; proved topology-specific BOXMET/opposite-fold next; signed-offset 90-degree gate next; same-direction corner retreat (section 9 of BEND_EDGE_RELIEF_90) only chooses the recessed flange and then uses the signed-offset gate. Unknown size/sign/direction remains local FLAG. Depth alone never proves direction, scope or connectivity. The bend mode loads this owner before a final NO decision; the independent SLIT_RELIEF feature route also remains available for flat/custom source slits.
