@@ -46,7 +46,7 @@ Rules:
 4. Never hardcode `BEND_CENTER -> SLIT`, and never copy coordinates from a reference DXF into a new drawing.
 5. When an explicit source slit dimension controls the custom feature, preserve that value. Do not replace it with a generic relief formula such as `t+0.2` or `t*sin(theta)`.
 6. If `スリット/SLIT` identity is proved but the exact construction remains incomplete, keep the feature routed and FLAG only the unresolved fields; do not delete the family.
-7. Existing separately-triggered mechanisms such as crossing-bend relief, opposite-fold `R=t`, BOXMET slit/relief, or other approved relief families remain independent. This custom-instruction gate does not disable or redefine their trigger rules.
+7. Existing separately-triggered mechanisms such as same-direction corner retreat (BEND_EDGE_RELIEF_90 section 9), opposite-fold `R=t`, BOXMET slit/relief, or other approved relief families remain independent. This custom-instruction gate does not disable or redefine their trigger rules.
 
 ## 4. SOURCE_NOTE_FEATURE_COMPLETENESS
 

@@ -26,6 +26,9 @@ Use the following terms consistently:
 
 Do not call the bend-end offset `bend setback`; bend setback is a different sheet-metal term.
 
+- **bậc** = **S**, the signed bend-end offset of this section. It decides slit / no slit.
+- **khuyết_t** (`khuyet_t`) = the `t x depth` notch left in a DEEPER flange's side edge when that flange is retreated although the other flange is shallower (§9). It is a different quantity from `S`; never call it a "bậc".
+
 ## 2. BEND_EDGE_LENGTH_LOCK
 
 For every proved bend, lock the actual material shared edge before unfold/output:
@@ -130,13 +133,13 @@ For one physical junction, apply the first controlling mechanism whose scope is 
 1. explicit revision/cancellation and explicit source-instructed custom slit semantics;
 2. topology-specific approved mechanism such as BOXMET or opposite-fold `R=t` where its trigger is proved;
 3. this `BEND_END_OFFSET_90` gate for the scoped 90-degree bend-end junction;
-4. generic crossing-bend relief only when its own crossing-bend trigger remains physically true after bend-domain and material-edge closure.
+4. same-direction box-corner retreat (§9) is not a separate relief mechanism: it only chooses which flange end is recessed (`S = -t`) and then applies this gate; the former `CROSSING_BEND` mechanism duplicated this gate and was removed (user 2026-10-20).
 
 Never generate duplicate reliefs from multiple mechanisms at the same junction.
 
 ## 8. QA
 
-**BEND_END_STEP_CHECK:** inventory every relevant source junction and supply its edge witnesses, signed direction, mechanism and relief owners using the bend-end contract in `tools/CANONICAL_INPUT_SCHEMA_V434.md`. `tools/bend_end_guard.py`, called by normal canonical export, remeasures S and rejects missing sites, unproved physical R=t/crossing triggers, or added relief at a positive-step site controlled by this mechanism; a local unresolved S remains FLAGGED under REVIEW_PREVIEW_POLICY.
+**BEND_END_STEP_CHECK:** (see also §9 `corner_retreat`, `tools/corner_guard.py`, `tools/corner_ledger.py`) inventory every relevant source junction and supply its edge witnesses, signed direction, mechanism and relief owners using the bend-end contract in `tools/CANONICAL_INPUT_SCHEMA_V434.md`. `tools/bend_end_guard.py`, called by normal canonical export, remeasures S and rejects missing sites, unproved physical R=t/crossing triggers, or added relief at a positive-step site controlled by this mechanism; a local unresolved S remains FLAGGED under REVIEW_PREVIEW_POLICY.
 
 Before production PASS for an affected junction, verify:
 
@@ -149,3 +152,17 @@ Before production PASS for an affected junction, verify:
 - for `S<0`, slit depth is `T+0.2` from the actual recessed edge and any reference-distance report equals `|S|+T+0.2`;
 - for `S>0`, no slit is added by this mechanism;
 - saved DXF read-back preserves the final physical CUT/BEND interaction.
+
+## 9. Same-direction box corner: which flange retreats
+
+User-approved 2026-10-20 from job 521019-05 (061247, 061248); evidence in `regression/bend/521019-05_CORNER_DEPTH_APPROVED.md`.
+
+Two flanges folded to the SAME side meet at a corner and collide by `t`; exactly one of them retreats its end edge by `t`.
+
+1. Compare the flange **depth** (OD extent perpendicular to the flange's own bend line). If the depths differ by `>= 0.1 mm`, the **shallower** flange retreats. Retreating the deeper one leaves a **khuyết_t** (a `t x shallower-depth` notch in the deeper flange's side edge, wrong after unfolding and for assembly).
+2. Depths equal (`< 0.1 mm`): either flange may retreat; prefer the one with the longer bend edge (appearance only).
+3. The retreated end has `S = -t` -> Case C (slit `T + 0.2` from the retreated edge, perpendicular to that flange's own bend line, one connected LINE + ARC R0.5 + LINE, lead per §5). The other end has `S = +t` -> Case A (no slit). If retreating the chosen flange is impossible (feature or view constraint), assemble as usual and FLAG locally; never guess.
+4. Opposite-direction crossings are NOT retreated: neither flange can lose `t` (both printed dimensions stay fixed) -> fixed outside `R = t` relief (`OPPOSITE_FOLD_R_T`). Fold directions are read from all three views (solid line = flange toward the viewer, dashed = away); a conflict between views is a local FLAG.
+
+Checked examples: 061247 top (265x30) and right (83.2x30) are equally deep, either may retreat; 061248 bottom (depth 50) against right (28.2) -> the right flange retreats. Executable: `tools/corner_retreat.py`; the site witness `corner_retreat` is validated in `tools/bend_end_guard.py`.
+

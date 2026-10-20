@@ -103,3 +103,19 @@ Both `044858` and `044859` require the corresponding mirrored slit.
 ## 7. Deduplication with 055958
 
 Older `055958` already proves one relief may be connected `LINE + ARC R0.5 + LINE`. V4.16 adds only BOXMET trigger/omission, L/W retreat selection, exact parameters, analytic construction, four-corner placement, bend interruption and 044858/044859 regression.
+
+## 8. Automatic generator `tools/boxmet_flat.py` / `tools/boxmet_job.py`
+
+When the source proves a four-flange box, enter `L, W, H1(bottom) H2(right) H3(top) H4(left), T, material, N` and generate the flat instead of computing it by hand:
+
+```
+python tools/boxmet_job.py --code 26-XXXXXX --L 200 --W 150 --H 30 30 30 30 --T 1.5 --material SS --N 2.54 --out job.json
+python tools/export_canonical_dxf.py job.json outdir        # only DXF writer; all guards run here
+```
+
+- Geometry is a port of `GoldDRauDen/BoxMetFlatV3` (`Boxmetcommand.cs`) and equals `references/dxf/MM.dxf` (`regression/boxmet/MM_L200_W150_H30_T1.5_N2.54.json`), except that the two long outside dashed lines are interrupted by `T` at both ends (real bend-edge length, `BEND_EDGE_RELIEF_90.md` section 2).
+- N is an INPUT (handwritten > customer > table); BoxMet's own `NobiLookup` is not used. Outer R comes from `MATERIAL_RULES.md` (no approved row -> corners stay sharp and are recorded as SHARP with reason). Lead is `slit_geometry.lead_val` (SS and t<=3.2 -> 3, else 6); BoxMet's `SS and T<6 -> 3` differs for SS 3.2<t<6.
+- Retreat per corner follows `BEND_EDGE_RELIEF_90.md` section 9 (depth first, longer bend edge on ties). For equal flange heights this is exactly the BoxMet L>=W rule.
+- A drawing that shows the box corners rounded/chamfered without a callout is refused (`BOXMET_CORNER_DRAWN_SHAPE_NOT_SHARP_FLAG`); the generator never rounds such a corner on its own.
+- Holes are given in the flat frame with their own evidence (`--hole X Y DIA EVIDENCE`).
+

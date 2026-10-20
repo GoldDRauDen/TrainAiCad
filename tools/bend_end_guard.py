@@ -9,8 +9,8 @@ from __future__ import annotations
 import math
 
 TOL = 1e-7  # Coordinate arithmetic tolerance, never a manufacturing S threshold.
-AUTO_RELIEF_RULES = {"BEND_END_OFFSET_90", "OPPOSITE_FOLD_R_T", "CROSSING_BEND", "BOXMET", "NON_90_RELIEF"}
-SPECIAL_RULES = {"OPPOSITE_FOLD_R_T", "CROSSING_BEND", "BOXMET", "CUSTOM_SOURCE_SLIT", "NON_90_RELIEF"}
+AUTO_RELIEF_RULES = {"BEND_END_OFFSET_90", "OPPOSITE_FOLD_R_T", "BOXMET", "NON_90_RELIEF"}
+SPECIAL_RULES = {"OPPOSITE_FOLD_R_T", "BOXMET", "CUSTOM_SOURCE_SLIT", "NON_90_RELIEF"}
 RELIEF_ROLES = {"slit", "relief", "bend_relief"}
 
 
@@ -76,8 +76,6 @@ def _physical_intersection(site, edges):
     cross = lambda x, y: x[0]*y[1]-x[1]*y[0]
     denom = cross(u, v)
     if abs(denom) <= TOL*math.hypot(*u)*math.hypot(*v):
-        return False
-    if site.get("mechanism") == "CROSSING_BEND" and abs(sum(u[i]*v[i] for i in range(2))) > TOL*math.hypot(*u)*math.hypot(*v):
         return False
     return all(-TOL <= value <= 1+TOL for value in (cross(w, v)/denom, cross(w, u)/denom))
 
@@ -155,13 +153,29 @@ def _slit_construction_proved(site, part, edges, relief, entities, bends):
         return False
 
 
+def _check_corner_retreat(site, claimed, thickness):
+    """Same-direction box corner: depth-first retreat choice (references/BEND_EDGE_RELIEF_90.md section 9)."""
+    from corner_retreat import retreat_violation
+    witness = site["corner_retreat"]
+    error = retreat_violation(witness) if isinstance(witness, dict) else "BEND_END_CORNER_RETREAT_UNPROVED"
+    if error:
+        raise ValueError(error)
+    own = witness.get("site_flange_id")
+    if own not in witness["flange_ids"]:
+        raise ValueError("BEND_END_CORNER_RETREAT_UNPROVED")
+    # The retreated flange end is S=-t (slit); the other flange end is S=+t (no slit).
+    wanted = -thickness if own == witness["retreated_flange_id"] else thickness
+    if abs(claimed-wanted) > 1e-6:
+        raise ValueError("BEND_END_CORNER_RETREAT_S_MISMATCH")
+
+
 def _special_rule(site, part, edges, relief):
     mechanism = site.get("mechanism")
     if not relief:
         return "BEND_END_RELIEF_MEMBER_UNPROVED"
     if not site.get("special_rule_evidence_ref") or site.get("decision") != "SEPARATE_RULE":
         return "BEND_END_SPECIAL_RULE_UNPROVED"
-    if mechanism in {"OPPOSITE_FOLD_R_T", "CROSSING_BEND"}:
+    if mechanism == "OPPOSITE_FOLD_R_T":
         if not _physical_intersection(site, edges):
             return "BEND_END_PHYSICAL_INTERSECTION_UNPROVED"
     elif mechanism == "BOXMET":
@@ -187,6 +201,64 @@ def _special_rule(site, part, edges, relief):
     return None
 
 
+def _segment_distance(a, b, c, d):
+    """Minimum distance between segments ab and cd (0 when they intersect)."""
+    def point_seg(p, q, r):
+        v = (r[0]-q[0], r[1]-q[1])
+        n = v[0]*v[0]+v[1]*v[1]
+        u = 0.0 if n <= 0 else max(0.0, min(1.0, ((p[0]-q[0])*v[0]+(p[1]-q[1])*v[1])/n))
+        return math.dist(p, (q[0]+u*v[0], q[1]+u*v[1]))
+    cross = lambda x, y: x[0]*y[1]-x[1]*y[0]
+    u, v, w = (b[0]-a[0], b[1]-a[1]), (d[0]-c[0], d[1]-c[1]), (c[0]-a[0], c[1]-a[1])
+    denom = cross(u, v)
+    if abs(denom) > 1e-12:
+        t, s = cross(w, v)/denom, cross(w, u)/denom
+        if 0 <= t <= 1 and 0 <= s <= 1:
+            return 0.0
+    return min(point_seg(a, c, d), point_seg(b, c, d), point_seg(c, a, b), point_seg(d, a, b))
+
+
+def undeclared_corner_pairs(part, entities):
+    """Bend pairs that share a face, are perpendicular and whose bend zones touch (distance <= max Nobi):
+    each such pair is a bend-end corner and MUST own a declared site (never discovered from the PDF here;
+    this closes the census against the part's own face graph and bend geometry)."""
+    bends = part.get("face_graph", {}).get("bends", [])
+    lines = {}
+    for bend in bends:
+        segs = []
+        for eid in bend.get("material_domain", {}).get("entity_ids", []):
+            ent = entities.get(eid, {})
+            if ent.get("type") == "LINE" and ent.get("role") == "bend":
+                try:
+                    segs.append((_point(ent["start"]), _point(ent["end"])))
+                except (ValueError, KeyError):
+                    pass
+        lines[bend.get("bend_id")] = segs
+    declared = {frozenset(site.get("bend_ids") or []) for site in part.get("bend_end_junctions", [])
+                if isinstance(site, dict)}
+    out = []
+    for i, b1 in enumerate(bends):
+        for b2 in bends[i+1:]:
+            if not ({b1.get("face_A"), b1.get("face_B")} & {b2.get("face_A"), b2.get("face_B")}):
+                continue
+            s1, s2 = lines.get(b1.get("bend_id")), lines.get(b2.get("bend_id"))
+            if not s1 or not s2:
+                continue
+            u = (s1[0][1][0]-s1[0][0][0], s1[0][1][1]-s1[0][0][1])
+            v = (s2[0][1][0]-s2[0][0][0], s2[0][1][1]-s2[0][0][1])
+            if math.hypot(*u) <= TOL or math.hypot(*v) <= TOL or \
+                    abs(sum(u[k]*v[k] for k in range(2))) > 1e-6*math.hypot(*u)*math.hypot(*v):
+                continue
+            try:
+                zone = max(float(b1.get("N_mm", 0)), float(b2.get("N_mm", 0))) + 1e-6
+            except (TypeError, ValueError):
+                continue
+            if min(_segment_distance(*x, *y) for x in s1 for y in s2) <= zone and \
+                    frozenset((b1.get("bend_id"), b2.get("bend_id"))) not in declared:
+                out.append(f"{b1.get('bend_id')}|{b2.get('bend_id')}")
+    return out
+
+
 def bend_end_errors(part):
     """Check a declared source site inventory, its actual S witnesses and output owners."""
     keys = ("source_bend_end_site_ids", "bend_end_junctions", "bend_end_source_edges")
@@ -195,6 +267,8 @@ def bend_end_errors(part):
         if (any(_automatic_relief(m, entities) or "bend_end_site_id" in m for m in part.get("canonical_members", [])) or
                 any("bend_end_site_id" in e for e in part.get("entities", []))):
             return ["BEND_END_SITE_CENSUS_MISMATCH"]
+        if part.get("status") == "PASS" and undeclared_corner_pairs(part, entities):
+            return ["BEND_END_SITE_CENSUS_MISMATCH"]  # perpendicular touching bends but no site inventory at all
         return []
     expected, sites = part.get(keys[0]), part.get(keys[1])
     if (not isinstance(expected, list) or any(not isinstance(x, str) or not x for x in expected) or
@@ -209,7 +283,7 @@ def bend_end_errors(part):
         return ["BEND_END_EDGE_UNPROVED"]
     members = {m.get("canonical_member_id"): m for m in part.get("canonical_members", [])}
     bends = {b.get("bend_id"): b for b in part.get("face_graph", {}).get("bends", [])}
-    errors = []
+    errors = [f"BEND_END_CORNER_SITE_MISSING:{pair}" for pair in undeclared_corner_pairs(part, entities)]
     for member in members.values():
         owner = member.get("bend_end_site_id")
         if (owner is not None or _automatic_relief(member, entities)) and owner not in expected:
@@ -252,6 +326,8 @@ def bend_end_errors(part):
             claimed = _number(site.get("S_mm"))
             if abs(actual-claimed) > TOL:
                 raise ValueError("BEND_END_STEP_MISMATCH")
+            if "corner_retreat" in site:
+                _check_corner_retreat(site, claimed, _number(part.get("thickness_mm")))
             # Source S is independently closed against the measured edges;
             # use it at exact zero to avoid pose-roundoff inventing a step.
             if claimed > 0:

@@ -229,6 +229,8 @@ def canonical_job_anomalies(job: Dict[str, Any]) -> List[str]:
         code = str(part.get("code", "?"))
         from bend_end_guard import bend_end_errors
         out.extend(f"{code}:{error}" for error in bend_end_errors(part))
+        from corner_guard import corner_errors
+        out.extend(f"{code}:{error}" for error in corner_errors(part))
         if job.get("canonical_contract") == "TrainAiCad-CANONICAL-V4.34" and part.get("status") == "PASS":
             from geometry_containment import part_containment_errors
             out.extend(f"{code}:{error}" for error in part_containment_errors(part))

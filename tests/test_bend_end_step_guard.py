@@ -120,25 +120,56 @@ def test_unscoped_non90_relief_cannot_bypass_mechanism_proof(tmp_path, omit_inve
         export_canonical_job(candidate, tmp_path)
 
 
-@pytest.mark.parametrize("end,valid", [([10, 1], False), ([5, 5], True)])
-def test_crossing_bend_requires_perpendicular_physical_domains(end, valid):
+def test_crossing_bend_mechanism_removed_duplicate_of_step_slit():
+    """CROSSING_BEND duplicated the step slit (user 2026-10-20); it is no longer a mechanism."""
     candidate = job()
     part = candidate["parts"][0]
     add_relief(part, rule="CROSSING_BEND")
     site = part["bend_end_junctions"][0]
     site.update(mechanism="CROSSING_BEND", decision="SEPARATE_RULE",
-                special_rule_evidence_ref="synthetic physical crossing control", intersection_edge_ids=["X1", "X2"])
-    for eid, start, stop, bid in (("X1", [0, 0], [10, 0], site["bend_ids"][0]),
-                                  ("X2", [5, -1], end, site["bend_ids"][1])):
-        part["bend_end_source_edges"][eid] = {
-            "type": "LINE", "physical_edge_id": eid, "frame_id": site["frame_id"],
-            "start": start, "end": stop, "bend_id": bid,
-            "proof": {"source_ref": "synthetic crossing", "endpoint_verified": True, "evidence_ref": "control"}}
+                special_rule_evidence_ref="synthetic", intersection_edge_ids=["X1", "X2"])
     errors = canonical_job_anomalies(candidate)
-    if valid:
-        assert not errors
-    else:
-        assert any("BEND_END_PHYSICAL_INTERSECTION_UNPROVED" in e for e in errors)
+    assert any("BEND_END_MECHANISM_UNPROVED" in e or "BEND_END_RELIEF_SCOPE_MISSING" in e for e in errors)
+
+
+def corner_site(candidate, **witness):
+    site = candidate["parts"][0]["bend_end_junctions"][0]
+    base = {"flange_ids": ["F_A", "F_B"], "depth_mm": {"F_A": 30.0, "F_B": 30.0},
+            "bend_edge_length_mm": {"F_A": 265.0, "F_B": 83.2},
+            "site_flange_id": "F_A", "retreated_flange_id": "F_B", "evidence_ref": "synthetic corner"}
+    base.update(witness)
+    site["corner_retreat"] = base
+    return site
+
+
+def test_corner_retreat_equal_depth_either_flange_is_valid():
+    candidate = job()
+    corner_site(candidate)  # F_A end is S=+t (not retreated), t=2, S=2
+    assert not canonical_job_anomalies(candidate)
+
+
+def test_corner_retreat_deeper_flange_leaves_khuyet_t():
+    candidate = job()
+    corner_site(candidate, depth_mm={"F_A": 70.0, "F_B": 30.0}, retreated_flange_id="F_A", site_flange_id="F_B")
+    assert any("BEND_END_CORNER_RETREAT_KHUYET_T" in e for e in canonical_job_anomalies(candidate))
+
+
+def test_corner_retreat_shallower_flange_is_valid():
+    candidate = job()
+    corner_site(candidate, depth_mm={"F_A": 70.0, "F_B": 30.0}, retreated_flange_id="F_B", site_flange_id="F_A")
+    assert not canonical_job_anomalies(candidate)
+
+
+def test_corner_retreat_sign_must_match_retreated_flange():
+    candidate = job()
+    corner_site(candidate, site_flange_id="F_B")  # F_B is the retreated one but the site has S=+2
+    assert any("BEND_END_CORNER_RETREAT_S_MISMATCH" in e for e in canonical_job_anomalies(candidate))
+
+
+def test_corner_retreat_requires_evidence():
+    candidate = job()
+    corner_site(candidate, evidence_ref="")
+    assert any("BEND_END_CORNER_RETREAT_UNPROVED" in e for e in canonical_job_anomalies(candidate))
 
 
 def test_positive_step_blocks_spurious_relief_before_any_dxf_is_saved(tmp_path):
@@ -301,3 +332,16 @@ def test_one_unresolved_site_stays_local_and_cannot_be_production_pass():
     assert any("BEND_END_STEP_UNRESOLVED" in error for error in canonical_job_anomalies(candidate))
     part["status"] = "PREVIEW"
     assert not canonical_job_anomalies(candidate)
+
+
+def test_perpendicular_touching_bends_must_own_a_declared_site():
+    """Closes the census against the part's own face graph (no silently skipped corner)."""
+    candidate = job()
+    part = candidate["parts"][0]
+    from bend_end_guard import undeclared_corner_pairs
+    entities = {e["entity_id"]: e for e in part["entities"]}
+    assert undeclared_corner_pairs(part, entities) == []
+    part["bend_end_junctions"] = part["bend_end_junctions"][:1]
+    part["source_bend_end_site_ids"] = part["source_bend_end_site_ids"][:1]
+    errors = canonical_job_anomalies(candidate)
+    assert any("BEND_END_CORNER_SITE_MISSING" in e for e in errors), errors
