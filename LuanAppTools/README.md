@@ -45,6 +45,24 @@ Bấm **Lưu & kiểm tra kết nối**. Khóa API được mã hóa bằng Wind
 - Không sửa rules trong lúc job đang chạy; mỗi lần chạy khóa commit và hash nguồn. Không lưu credential vào repo/cài đặt.
 - Launcher không thay đổi Execution Policy vĩnh viễn; tổ chức có policy chặn script cần quản trị viên xử lý theo chính sách nội bộ.
 
+## Xuất phần đã chốt, bằng chứng JSON, công cụ dựng sẵn (21/10/2026)
+
+Các thay đổi này chỉ nằm trong `LuanAppTools/`, không sửa rule hay công cụ của repo. **Chưa được chạy bằng job thật**; bật/tắt ở Cài đặt.
+
+| Việc | Mặc định | Ghi chú |
+| --- | --- | --- |
+| Xuất từ phần đã chốt, không gọi AI (`POST /api/jobs/{id}/export-saved`, nút "Xuất từ phần đã chốt") | luôn có | Gom các mã đã qua validate, xuất DXF tổng REVIEW ONLY có ghi mã thiếu trên lớp `AI_META`. Mã không có JSON hợp lệ nhưng có bản nháp thì vào như VIEWS_ONLY có cờ `DRAFT_UNVALIDATED` (serializer `export_dxf.py`) |
+| Tự xuất khi hết lượt giải mà còn mã chưa xong (`salvage_export`) | bật | Trước đây chỉ báo lỗi `no_valid_representation` và không ra file nào |
+| JSON từng mã ghi vào `evidence/<mã>.json` cạnh DXF tổng, kèm `_run.json` và `_job_canonical.json` (`write_evidence`) | bật | Thư mục con không bị quét như nguồn; lỗi ghi evidence không làm hỏng run đã publish |
+| Công cụ host `unfold_calc`, `build_part`, `render_preview` | luôn có | `build_part` dựng hồ sơ từ bản phác và chạy `validate` cùng lệnh; không bao giờ tự đặt PASS, Nobi hay `endpoint_verified` |
+| Trả `part_ref` thay vì chép lại cả JSON (`answer_by_ref`) | tắt | Đổi schema đáp án (`anyOf`), cần thử trước |
+| Mã khó chạy hội thoại riêng với effort cao hơn (`effort_by_difficulty`) | tắt | Chưa đo |
+| Gọi `boxmet_flat` / `boxmet_job` của repo (`repo_generators`, tool `run_generator`) | tắt | Chỉ chạy nếu snapshot repo đã có `tools/boxmet_*.py` |
+| Cắt sẵn ảnh từng hình chiếu (`precrop_views`) | tắt | Số đo: `crop` là yêu cầu công cụ nhiều nhất |
+| Kiểu chạy `agent` (`run_mode`) | `host` | Cho Claude CLI chạy `cad/agent_cli.py` bằng công cụ shell; **chưa xác minh** CLI `--restricted` chấp nhận mẫu `Bash(python ...:*)` |
+
+Đếm số lượt gọi AI theo mã và công cụ (chỉ đọc DB): `python -m LuanAppTools.bench.round_trips [--run RUN_ID]`.
+
 ## Phát triển và kiểm thử
 
 ```bash

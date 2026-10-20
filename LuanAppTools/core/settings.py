@@ -44,6 +44,17 @@ class Settings:
     agent_effort: str = 'medium'
     conversation: str = 'job'
     prompt_style: str = 'minimal'
+    # Output safety net: keep what was proved when a job stops, and keep the per-code JSON beside the DXF.
+    salvage_export: bool = True
+    write_evidence: bool = True
+    # Host-built parts: a final answer may name a part staged by build_part / repo generators.
+    answer_by_ref: bool = False
+    # Opt-in experiments, off until measured: own stronger conversation for hard codes, the repository's
+    # BOXMET generators as a host tool, and an agent mode where the model runs the app's own scripts.
+    effort_by_difficulty: bool = False
+    repo_generators: bool = False
+    precrop_views: bool = False
+    run_mode: str = 'host'
     openai_model: str = ''
     custom_auth_mode: str = 'none'
     custom_auth_header: str = 'Authorization'
@@ -103,6 +114,11 @@ class Settings:
             raise ValueError('Unsupported conversation scope')
         if self.prompt_style not in {'minimal', 'full'}:
             raise ValueError('Unsupported prompt style')
+        for name in ('salvage_export', 'write_evidence', 'answer_by_ref', 'effort_by_difficulty', 'repo_generators', 'precrop_views'):
+            if type(getattr(self, name)) is not bool:
+                raise ValueError(f'{name} must be boolean')
+        if self.run_mode not in {'host', 'agent'}:
+            raise ValueError('Unsupported run mode')
         if not isinstance(self.openai_model, str) or len(self.openai_model) > 200 or any(ord(c) < 32 for c in self.openai_model):
             raise ValueError('Invalid OpenAI model')
         if self.custom_auth_mode not in {'none', 'bearer', 'header'}:
@@ -132,6 +148,7 @@ class Settings:
             'agent_effort': self.agent_effort,
             'conversation': self.conversation,
             'prompt_style': self.prompt_style,
+            **{name: getattr(self, name) for name in ('salvage_export', 'write_evidence', 'answer_by_ref', 'effort_by_difficulty', 'repo_generators', 'precrop_views', 'run_mode')},
         }
 
     def save(self) -> Path:

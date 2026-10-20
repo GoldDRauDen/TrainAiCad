@@ -27,6 +27,8 @@ class AIRequest:
     # Rules shared by every code, kept out of the user message so fresh sessions can reuse the
     # provider's cache. Must live inside the run workspace.
     shared_context_file: Path | None = None
+    # Agent mode only: command prefixes the Claude CLI may run through its shell tool (see cad/agent_cli.py).
+    agent_commands: tuple[str, ...] = ()
 
 
 @dataclass

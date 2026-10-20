@@ -541,6 +541,30 @@ export function App() {
                       Tiếp tục
                     </button>
                   )}
+                  {[
+                    "paused",
+                    "error",
+                    "cancelled",
+                    "waiting_output",
+                    "waiting_usage",
+                    "waiting_fallback",
+                    "reconciliation_required",
+                  ].includes(detail.status) && (
+                    <button
+                      disabled={busy}
+                      onClick={() =>
+                        action(
+                          () =>
+                            api(`/api/jobs/${detail.id}/export-saved`, "POST", {
+                              drafts: true,
+                            }),
+                          "Đã xuất lại từ các mã đã chốt, không gọi AI",
+                        )
+                      }
+                    >
+                      Xuất từ phần đã chốt (không gọi AI)
+                    </button>
+                  )}
                   {![
                     "discovered",
                     "completed",
@@ -1035,6 +1059,64 @@ function SettingsForm({
             placeholder="Đường dẫn tuyệt đối, ví dụ D:\DXF-OUT"
             onChange={(e) => put("output_destination", e.target.value || null)}
           />
+        </label>
+        <label className="review">
+          <input
+            type="checkbox"
+            checked={form.salvage_export ?? true}
+            onChange={(e) => put("salvage_export", e.target.checked)}
+          />
+          Job dừng giữa chừng vẫn xuất DXF REVIEW ONLY từ các mã đã chốt
+        </label>
+        <label className="review">
+          <input
+            type="checkbox"
+            checked={form.write_evidence ?? true}
+            onChange={(e) => put("write_evidence", e.target.checked)}
+          />
+          Ghi JSON từng mã vào thư mục evidence/ cạnh DXF tổng
+        </label>
+        <label className="review">
+          <input
+            type="checkbox"
+            checked={form.answer_by_ref || false}
+            onChange={(e) => put("answer_by_ref", e.target.checked)}
+          />
+          Cho phép AI trả part_ref thay vì chép lại cả JSON (thử nghiệm, tắt mặc định)
+        </label>
+        <label className="review">
+          <input
+            type="checkbox"
+            checked={form.effort_by_difficulty || false}
+            onChange={(e) => put("effort_by_difficulty", e.target.checked)}
+          />
+          Mã khó chạy hội thoại riêng với effort cao hơn (thử nghiệm, tắt mặc định)
+        </label>
+        <label className="review">
+          <input
+            type="checkbox"
+            checked={form.repo_generators || false}
+            onChange={(e) => put("repo_generators", e.target.checked)}
+          />
+          Cho AI gọi bộ sinh BOXMET của repo (thử nghiệm, tắt mặc định)
+        </label>
+        <label className="review">
+          <input
+            type="checkbox"
+            checked={form.precrop_views || false}
+            onChange={(e) => put("precrop_views", e.target.checked)}
+          />
+          Cắt sẵn ảnh từng hình chiếu của mã gửi kèm lúc giải (thử nghiệm, tắt mặc định)
+        </label>
+        <label>
+          Kiểu chạy (thử nghiệm)
+          <select
+            value={form.run_mode || "host"}
+            onChange={(e) => put("run_mode", e.target.value)}
+          >
+            <option value="host">host điều khiển (mặc định)</option>
+            <option value="agent">agent chạy script của app (thử nghiệm)</option>
+          </select>
         </label>
 
       </section>
