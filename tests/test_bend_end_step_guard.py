@@ -332,3 +332,16 @@ def test_one_unresolved_site_stays_local_and_cannot_be_production_pass():
     assert any("BEND_END_STEP_UNRESOLVED" in error for error in canonical_job_anomalies(candidate))
     part["status"] = "PREVIEW"
     assert not canonical_job_anomalies(candidate)
+
+
+def test_perpendicular_touching_bends_must_own_a_declared_site():
+    """Closes the census against the part's own face graph (no silently skipped corner)."""
+    candidate = job()
+    part = candidate["parts"][0]
+    from bend_end_guard import undeclared_corner_pairs
+    entities = {e["entity_id"]: e for e in part["entities"]}
+    assert undeclared_corner_pairs(part, entities) == []
+    part["bend_end_junctions"] = part["bend_end_junctions"][:1]
+    part["source_bend_end_site_ids"] = part["source_bend_end_site_ids"][:1]
+    errors = canonical_job_anomalies(candidate)
+    assert any("BEND_END_CORNER_SITE_MISSING" in e for e in errors), errors

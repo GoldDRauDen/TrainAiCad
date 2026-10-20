@@ -120,3 +120,16 @@ def test_ledger_lists_corners_bend_ends_and_missing(tmp_path):
     job.write_text(json.dumps({"parts": [part]}), encoding="utf-8")
     assert main([str(job), "--out", str(tmp_path / "l.md")]) == 1
     assert (tmp_path / "l.md").read_text(encoding="utf-8").startswith("## T1")
+
+
+def test_draft_inventory_is_all_flag_unknown_and_never_auto_r(tmp_path):
+    from corner_guard import draft_inventory
+    rows = draft_inventory(square_part())
+    assert len(rows) == 4 and all(r["decision"] == "FLAG" and r["drawn_shape"] == "UNKNOWN" for r in rows)
+    part = square_part(canonical_members=[], corner_inventory=rows)
+    assert corner_errors(part) == []            # a drafted inventory is valid but every corner stays FLAGGED
+    assert all("CORNER_FLAG_UNRESOLVED" in e for e in corner_errors({**part, "status": "PASS"}))
+    job = tmp_path / "j.json"
+    job.write_text(json.dumps({"parts": [square_part()]}), encoding="utf-8")
+    assert main([str(job), "--draft", "--out", str(tmp_path / "d.json")]) == 0
+    assert len(json.loads((tmp_path / "d.json").read_text(encoding="utf-8"))["T1"]) == 4

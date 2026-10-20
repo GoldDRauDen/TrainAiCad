@@ -117,3 +117,14 @@ def corner_errors(part):
         if not any(math.dist(corner, p) <= POINT_TOL for p in points):
             errors.append(f"CORNER_CENSUS_MISSING:({corner[0]:.3f},{corner[1]:.3f})")
     return sorted(set(errors))
+
+
+def draft_inventory(part):
+    """Skeleton rows for every sharp convex corner (<= 90 degrees) of the outer polyline.
+
+    Every row starts as drawn_shape UNKNOWN / decision FLAG on purpose: the reader must look at the drawing
+    and set drawn_shape (and CALLED / AUTO_R / SHARP) per corner; nothing is defaulted to automatic R.
+    """
+    return [{"corner_id": f"C{i}", "point": [round(x, 6), round(y, 6)], "drawn_shape": "UNKNOWN",
+             "decision": "FLAG", "evidence_ref": "TODO: drawing evidence for this corner's drawn shape"}
+            for i, (x, y) in enumerate(outer_sharp_corners(part), 1)]

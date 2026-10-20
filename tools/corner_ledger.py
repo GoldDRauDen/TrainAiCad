@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from bend_end_guard import bend_end_errors  # noqa: E402
-from corner_guard import POINT_TOL, _finite_point, corner_errors, outer_sharp_corners  # noqa: E402
+from corner_guard import POINT_TOL, _finite_point, corner_errors, draft_inventory, outer_sharp_corners  # noqa: E402
 
 import math  # noqa: E402
 
@@ -61,9 +61,16 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("job")
     ap.add_argument("--out")
+    ap.add_argument("--draft", action="store_true",
+                    help="print a corner_inventory skeleton (all FLAG / UNKNOWN) for each part instead of the ledger")
     args = ap.parse_args(argv)
     job = json.loads(Path(args.job).read_text(encoding="utf-8"))
     job = job.get("job", job)
+    if args.draft:
+        drafts = {part.get("code", "?"): draft_inventory(part) for part in job.get("parts", [])}
+        text = json.dumps(drafts, indent=1, ensure_ascii=False)
+        Path(args.out).write_text(text, encoding="utf-8") if args.out else print(text)
+        return 0
     text, bad = "", False
     for part in job.get("parts", []):
         led = ledger(part)
