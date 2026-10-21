@@ -17,7 +17,7 @@ from weld_kegaki_guard import WeldKegakiError, check_weld_site_census
 ROOT = Path(__file__).resolve().parents[1]
 ROUTER = "skills/lispcad/router/ROUTER.yaml"
 BOOTSTRAP = (
-    "AI_BOOTSTRAP.md",
+    "JOB_CARD.md",
     "AI_ENTRYPOINT.md",
     "skills/lispcad/router/FEATURE_CENSUS.md",
     ROUTER,

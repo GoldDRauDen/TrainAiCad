@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ROUTER_PATH = "skills/lispcad/router/ROUTER.yaml"
 BASE_FILES = (
     "SKILL.md",
+    "JOB_CARD.md",
     "AI_BOOTSTRAP.md",
     "AI_ENTRYPOINT.md",
     "skills/lispcad/router/FEATURE_CENSUS.md",

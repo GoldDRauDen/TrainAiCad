@@ -312,6 +312,7 @@ review_candidates:
   - skills/lispcad/features/SLIT_RELIEF.md
 - id: SPLIT_FLANGE_10MM
   files:
+  - AI_ENTRYPOINT.md
   - references/AIKOKU_646_NOBI.md
   - references/NOBI_TABLES.md
   - references/REVIEW_PREVIEW_POLICY.md
