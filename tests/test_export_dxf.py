@@ -148,7 +148,7 @@ def test_each_flag_is_one_horizontal_line_top_to_bottom(tmp_path):
     doc = ezdxf.readfile(tmp_path / "FLAGS_ALL_REVIEW_ONLY.dxf")
     flags = sorted((e for e in doc.modelspace() if e.dxf.layer == "AI_META" and "FLAG: " in e.dxf.text),
                    key=lambda e: -e.dxf.insert.y)
-    assert [e.dxf.text for e in flags] == [f"043800 FLAG: {x}" for x in
+    assert [e.dxf.text for e in flags] == [f"FLAG: {x}" for x in
                                            ["first open question", "second open question", "third open question"]]
     assert all(e.dxf.rotation == 0 for e in flags)
     assert all(e.dxf.insert.x > 30 for e in flags)  # right of the 30 mm outline
