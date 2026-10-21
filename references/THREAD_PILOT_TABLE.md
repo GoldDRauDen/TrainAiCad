@@ -1,8 +1,10 @@
 # Thread Pilot Reference
 
+**Use `python tools/lookup.py pilot --thread M6` (coarse unless the source proves a fine pitch); it parses this table.**
+
 Source: approved V4.3 production baseline.
 
-### 7.1 Metric Thread Pilot Hole Diameters *(full table restored from V1)*
+### Metric coarse-pitch pilot hole diameters
 For laser cutting, threaded holes (marked `M*`) MUST be output as pilot holes using the standard diameters below:
 
 | Thread | Pitch | Pilot Hole $\varnothing$ (mm) | Pilot Radius (mm) |

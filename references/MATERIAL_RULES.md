@@ -1,7 +1,10 @@
+# Production reference — Laser corner R, hole capacity, White Piercing
+
+**Use `python tools/lookup.py laser-r --material <grade> --t <t>` and `python tools/lookup.py hole --material <grade> --t <t> --dia <effective Ø> [--piercing] [--through]`; they parse the worksheet table below and apply the lookup algorithm (alias, SUS430 split, L10, next-higher row, in-group hole inheritance). Read the table by eye only without Python. Corner class (which corners get the R) stays an engineering decision.**
+
 ## V4.34 approved Excel alias resolution (2026-10-13)
 Resolve printed material via `references/MATERIAL_ALIASES.yaml` and `tools/material_resolver.py` before selecting Laser R/hole-capacity rows. The alias table cites **Book1.xlsx / 一覧表2026.07.30 A28:E48**, including **SECC=ボンデ (A32) → SS**, **SECC-P (A38) → SS**, SPCC, SPHC, SS400, SUS and AL names. Preserve the printed grade separately. SUS430 retains its prior process split; surface `HL`, `2B`, `#400` are finishes, not independent grades. Excel `M51: H.L(ヘアライン)は横目` does NOT alone prove direction relative to the part: keep direction-uncertain HL as REVIEW with no production individual DXF. Customer-scoped exceptions and explicit PDF R/C still take precedence. Do not infer unidentified alloys from visual similarity.
 
-# Production reference — Laser corner R, hole capacity, White Piercing
 
 ## SS t>=19 R3 scope and explicit-corner decisions
 
@@ -62,7 +65,7 @@ The `※ケガキ不可` remark on the Cu/Brass last row means scribing/marking 
 
 | Process | Authoritative group |
 |---|---|
-| Nobi / bend deduction | **SS, SUS430, BRASS** in `references/NOBI_TABLES.md` (portable Section 7.3); numeric values unchanged |
+| Nobi / bend deduction | **SS, SUS430, BRASS** in `references/NOBI_TABLES.md` table 1; numeric values unchanged |
 | Laser R | Workbook **SUS, 他** |
 | Cut-hole minimum | Workbook **SUS, 他**; hole-limit blanks inherit only within this group |
 | 白ピアス / White Piercing capability | Workbook **SUS, 他**; 〇 is capability, not a request for a POINT |
@@ -89,7 +92,7 @@ An explicit PDF R/C still takes priority **at that corner**, including t>6. This
 3. If t falls between two explicit ranges, use the **next higher thickness row** (no interpolation). For a nonfinal row that has Min but blank Max, treat only its specified Min as explicit; for intermediate t choose the next higher row. A **last** row with a Min and no Max covers that Min and all greater thicknesses. Outside the material's defined ranges, or with no unambiguous row, ASK; do not invent a range.
 4. For a BLANK **hole-capacity** cell, inherit the last nonblank hole-capacity value above it **within the same material group only**. Do not inherit Laser R or White Piercing cells; their values are row-specific.
 5. Apply the approved L09 process split and L10 Cu/Brass thickness override first; then determine laser R only at corners belonging to the row's corner class. Subject to the SS t>=19 sharp/pin-conflict FLAG decision above, a PDF-specific R or C at that corner overrides the Excel R. Where Excel specifies R0.5/R2/R3 and PDF has no explicit R/C, bake it automatically into the actual contour; keep convex vs concave classification and do not blindly round internal notches. `R=t` bend-intersection relief is a separate feature class and must never be mistaken for material-table laser R.
-6. Calculate the **effective cut diameter** from an explicit drawing Ø when present, otherwise the pilot diameter from approved thread table 7.1 for a proved tapped M feature. PIERCING arrow/note scoped to that feature family => `POINT` ByLayer regardless of capacity. PIERCING plus THROUGH HOLE => `POINT` Color 3. Ø < t/2 => `POINT` ByLayer without a capacity FLAG. Else when effective Ø is below Excel minimum => `POINT` ByLayer without a capacity FLAG; otherwise `CIRCLE` ByLayer. An ambiguous feature identity => temporary `CIRCLE` Color 6 + FLAG; geometry/position uncertainty produces a separate independent FLAG.
+6. Calculate the **effective cut diameter** from an explicit drawing Ø when present, otherwise the pilot diameter from `THREAD_PILOT_TABLE.md` / `THREAD_FINE_PILOT_TABLE.md` (`python tools/lookup.py pilot --thread M6`) for a proved tapped M feature. PIERCING arrow/note scoped to that feature family => `POINT` ByLayer regardless of capacity. PIERCING plus THROUGH HOLE => `POINT` Color 3. Ø < t/2 => `POINT` ByLayer without a capacity FLAG. Else when effective Ø is below Excel minimum => `POINT` ByLayer without a capacity FLAG; otherwise `CIRCLE` ByLayer. An ambiguous feature identity => temporary `CIRCLE` Color 6 + FLAG; geometry/position uncertainty produces a separate independent FLAG.
 7. White Piercing `〇` and `×` are **machine-capability indicators**, never instructions to turn every hole into POINT; follow the explicit PDF PIERCING for the specified feature group even if worksheet is `×`, without a capacity-only FLAG. User-approved PROCESS POINT Color 3 is restricted to explicit `PIERCING + THROUGH HOLE`; other POINTs default ByLayer on Layer 0.
 8. Document the selected Excel row and any upward-thickness selection for ambiguous/nonstandard thickness; preserve unrelated dimensional/customer-approval FLAGs.
 

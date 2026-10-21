@@ -1,12 +1,13 @@
-# Nobi Allowance Reference Tables
+# Nobi Allowance Reference Tables (90° bends)
 
-## Approved 2026-10-12 recalibration from `旭26-9-18`
-Use the existing TrainAiCad unfolding formulas, NOT a new bend algorithm. `SUS` without documented 2B/#1 uses **2B** by default; an explicit #1 on source overrides. SUS304 t3 L1801–2400 V40 2B **7.84** (was erroneous 8.54) and #1 **7.80**. A legible handwritten PDF Nobi is higher authority and any table mismatch is an audit record, not QA REVIEW. 旭 Nobi does NOT backfill missing values for numeric customer code 646. Machine min L/Z is nonblocking feasibility WARN when proved geometry is correct. NC operations are excluded.
+**Use `python tools/lookup.py nobi ...`; it parses these tables, so do not read them by eye when Python runs.** Decision order and the missing-Nobi fallback (`SPLIT_FLANGE_10MM` + FLAG) belong to `skills/lispcad/modes/BEND_UNFOLD.md` §4.7.
 
-
-Source: approved V4.3 Nobi values, with approved L09 material-routing clarification on 2026-09-25. **SUS430 uses SS/SUS430/BRASS Nobi ONLY; use workbook group SUS, 他 for Laser R, hole limits and White Piercing in `references/MATERIAL_RULES.md`. Except for the SUS304 t3 V40 2B correction above, Nobi values remain unchanged.**
-
-### 7.3 Nobi Allowance Standards Tables *(fully restored from V1 — including the previously-dropped Copper table and all intermediate L-brackets)*
+- Values: approved V4.3 baseline + 2026-10-12 `旭26-9-18` recalibration (SUS304 t3 L1801–2400 V40 2B **7.84**, #1 **7.80**). Use the existing unfolding formulas, not a new bend algorithm.
+- `SUS` without documented 2B/#1 uses **2B** by default; an explicit #1 on source uses #1. Rows where #1 > 2B are genuine (different SUS finish), not swapped columns (user-confirmed 2026-10-21).
+- **SUS430 uses table 1 (SS, SUS430, BRASS) ONLY for Nobi**; Laser R, hole limits and White Piercing use workbook group SUS, 他 in `MATERIAL_RULES.md`.
+- `~ X` directly after another row of the same t means previous upper bound < L ≤ X.
+- Exact tabulated t only; a t not in the table is a FLAG (no next-higher row). Numeric customer 646 uses `AIKOKU_646_NOBI.md` only; 旭 values never backfill it.
+- Legible handwritten PDF Nobi outranks the table; a mismatch is an audit record, not REVIEW. Machine min L/Z is a nonblocking WARN when geometry is proved. NC operations are excluded.
 
 #### 1. SS, SUS430, BRASS ($R=0.6$ for $t \le 4.5$, $R=3.0$ for $t=5.0 \sim 9.0$, $R=6.0$ for $t=12.0$)
 
@@ -103,6 +104,6 @@ Source: approved V4.3 Nobi values, with approved L09 material-routing clarificat
 | :--- | :--- | :--- | :--- |
 | **3.0** | ~ 1900 | V18 | 5.10 |
 
-> **Note (`3.0mm / 1901~2400 / V25` for Aluminum, row above)**: Source table marks this cell `Confirm` — no numeric Nobi value available. Per Section 4.7 Rule 4 (No Table Match), treat as `is_flagged = true` and maintain flat blank at OD.
+> **Note:** the AL `3.0 / 1901~2400 / V25` cell is `Confirm` in the source: no numeric Nobi, so `SPLIT_FLANGE_10MM` + FLAG (`BEND_UNFOLD.md` §4.7).
 
 ---
