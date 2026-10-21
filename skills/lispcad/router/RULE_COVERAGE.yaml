@@ -48,11 +48,13 @@ release_coverage:
       - tests/test_v433_holistic_reference_guards.py
       - tests/test_weld_kegaki_guard.py
       - tests/test_kegaki_footprint.py
+      - tests/test_ortho_projection_od_separation.py
   V4.32:
     active:
       - AI_ENTRYPOINT.md
       - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
       - references/FORMED_PROFILE_OD_MEASUREMENT.md
+      - references/ORTHO_PROJECTION_OD_SEPARATION.md
       - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
       - skills/lispcad/modes/BEND_UNFOLD.md
       - skills/lispcad/core/DATUM_DIMENSION.md

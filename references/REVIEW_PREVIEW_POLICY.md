@@ -10,3 +10,4 @@ Applies only to a part with an unproved dimension, feature type, topology or dat
    In a chain-dimensioned outline, an undimensioned notch/step of the same family takes the dimensioned one's size; flag only when it visibly differs.
 6. **Sample/reference.** A sample may verify but never supply a missing source fact. Sample FLAG/Magenta geometry declared pending is `CUSTOMER_CONFIRMATION_PENDING`, not manufacturing geometry. Explicit user QA closes only its specific question.
 7. **Hole-family cancellation** is not a review state: see `DRAWING_READING.md` (V4.8) and `VALIDATION.md`.
+8. **Measurable source is not a review reason.** A rotated/auxiliary view or an unlabeled inside/outside dimension that can be measured in the DXF is measured and joined (`ORTHO_PROJECTION_OD_SEPARATION.md`); PREVIEW/FLAG is only for what remains unproved after that. Never describe an existing DXF entity as unclear.

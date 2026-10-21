@@ -46,6 +46,8 @@ Do not substitute:
 
 A section dimension whose extension lines touch the inner vs outer face decides which face carries `+t`; read the touched face per extension line, and keep two plates joined by a U tab as separate faces. Where the adjacent face is absent (notch), the wall belongs to the face that has material and sits at that face's own OD plane measured from its free end (first face x=OD1; last face x=total-OD_last, i.e. line1 of the last bend), never at the neighbour's OD. A tab width measured from the outer face includes t (e.g. 30+t); place it by line1_prev+d, or from the far side by line2_next-d.
 
+Printed numbers inside a rotated or auxiliary view are not OD evidence: measure OD from the DXF geometry and join the cut pieces as in `ORTHO_PROJECTION_OD_SEPARATION.md`. A flange/tab bent out of an edge locates that edge at its OUTER face plane (tangent + R + t), e.g. neck lines 304.0/305.8, not the printed panel width 306.
+
 For non-90-degree bends, retain existing routed ID->OD and acute-bend rules. This module controls **ownership and measurement meaning**: offsets/thickness terms must land on the correct face contribution and must not be consumed twice.
 
 ## 4. THICKNESS_SINGLE_USE remains mandatory
