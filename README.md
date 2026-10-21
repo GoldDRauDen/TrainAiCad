@@ -2,7 +2,7 @@
 
 TrainAiCad is a user-approved sheet-metal CAD production rule repository. It is **not an automatic training store** and historical files are not production authority.
 
-For any AI/agent starting a CAD job, **START HERE: [SKILL.md](SKILL.md)**.
+For any AI/agent starting a CAD job, **START HERE: [SKILL.md](SKILL.md)**, then the one-page [JOB_CARD.md](JOB_CARD.md) (re-read at every stage). Claude web Projects: [PROJECT_INSTRUCTIONS_CLAUDE_WEB.md](PROJECT_INSTRUCTIONS_CLAUDE_WEB.md).
 It is the single human/AI-facing workflow entry point; `AI_BOOTSTRAP.md`,
 `AI_ENTRYPOINT.md`, and routed modules remain the actual production authority.
 

@@ -6,8 +6,9 @@ description: Source-grounded mechanical sheet-metal CAD from PDF, images and cus
 # TrainAiCad — Universal CAD E2E Skill
 
 **This is the only cross-agent workflow entry point. It is not a second engineering
-rule source.** Read this file first, then resolve current engineering authority
-from the same repository revision. Repository: `GoldDRauDen/TrainAiCad`.
+rule source.** Read this file first, then `JOB_CARD.md` (re-read it at the start of
+every stage), then resolve current engineering authority from the same repository
+revision. Repository: `GoldDRauDen/TrainAiCad`.
 
 ## 0. Compatibility and tool gate
 

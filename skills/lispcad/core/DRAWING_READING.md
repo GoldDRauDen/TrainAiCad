@@ -19,11 +19,13 @@ When summary and detailed pages conflict for the same code, first apply the sour
 
 For a merged multi-part DXF, use only a user-declared or source-proved code-to-cluster mapping. If top-to-bottom order is explicitly given, order by descending global Y. An ambiguous row/overlap needs resolution; do not invent a left-right tie-breaker.
 
-## Read cost and OCR
+## Reading protocol (tools/pdf_views.py)
 
-Use text extraction to find candidate metadata and dimensions, then inspect the source image for semantics and geometry. Check orientation on a thumbnail; render only relevant geometry crops at a readable resolution, and reopen a crop only when a new witness, leader or handwritten-note question requires it. Administrative title-block text is ignored unless it resolves identity or a production conflict.
-
-Treat common OCR swaps (`B/8`, `O/0`, `S/5`, `Ø/O`, `M6/MG`) as candidates only. Verify the glyph on the drawing; manufacturing plausibility or a standard table cannot silently correct an ambiguous printed value.
+1. `python tools/pdf_views.py info <pdf>`: page count, rotation, `VECTOR` vs `SCANNED_IMAGE`.
+2. `render --page N --out pN.png` (10×10 grid A1–J10): orientation, views, title block, where each code/view sits. Ignore administrative title-block text unless it resolves identity or a production conflict.
+3. Vector page: `text --page N --dims [--cells C3:E5]` gives the exact printed strings (dimensions, `n-Ø`, `M`, `R`, `C`, `t`) with their cells. Take values from this text, never retype them from the image; OCR swaps (`B/8`, `O/0`, `S/5`, `Ø/O`, `M6/MG`) cannot occur there. Scanned page: read each value from a 600-dpi `crop` twice (two different crops or zooms); OCR output is only a candidate, and plausibility or a standard table never silently corrects an ambiguous glyph.
+4. `crop --cells ... --dpi 600` every region whose witness lines, leaders, arrows or handwriting decide meaning; the image decides which geometry a value belongs to, the text decides the value.
+5. Fill the dimension ledger (`JOB_CARD.md` item 2) before any arithmetic; every used value cites its crop/cell. A printed value with no ledger row is not used; a ledger row with no witness endpoints is FLAG.
 
 ## Manufacturing interpretation
 

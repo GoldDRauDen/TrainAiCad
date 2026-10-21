@@ -4,7 +4,7 @@ Thẻ việc ngắn: 12 điều không được quên + thứ tự bước + l�
 
 ## 12 non-negotiables
 
-1. **Look at the source yourself.** Render every page; crop and zoom each view, detail, note and title block. OCR, filename, bbox, entity count and familiar shapes are search hints, never proof.
+1. **Look at the source yourself.** `tools/pdf_views.py`: render every page with the grid, take vector text for exact values, crop at 600 dpi every view, detail, note and title block that decides meaning. OCR, filename, bbox, entity count and familiar shapes are search hints, never proof.
 2. **Dimension ledger before arithmetic.** Every number you use gets one row: `code | view | value | from-node | to-node | datum | kind (baseline/chain/overall/ordinate/reference) | crop ref`. Read each value twice (two different crops or zoom levels); OCR swaps `B/8 O/0 S/5 Ø/O M6/MG` are only candidates until the glyph is checked.
 3. **UNKNOWN ≠ NO.** A feature family is NO only with evidence; YES and UNKNOWN both load their rule (`FEATURE_CENSUS.md`).
 4. **Tables by tool, never by eye.** Nobi, Laser R, hole POINT/CIRCLE, thread pilot, ID→OD and unfold arithmetic come from `python tools/lookup.py` (commands below). Corner class and feature identity remain your engineering decision.
@@ -32,6 +32,10 @@ Work one code at a time and keep proved work per code; a failure in one code nev
 ## Tool commands
 
 ```sh
+python tools/pdf_views.py info drawing.pdf
+python tools/pdf_views.py render drawing.pdf --page 1 --out p1.png
+python tools/pdf_views.py text drawing.pdf --page 1 --dims [--cells C3:E5]
+python tools/pdf_views.py crop drawing.pdf --page 1 --cells C3:E5 --out c.png
 python tools/lookup.py nobi --material SPCC --t 1.6 --L 900 [--angle 135] [--surface "#1"] [--handwritten 0.36] [--no-j] [--customer 646]
 python tools/lookup.py laser-r --material SS400 --t 9
 python tools/lookup.py hole --material SS400 --t 9 --dia 4.2 [--piercing] [--through]
