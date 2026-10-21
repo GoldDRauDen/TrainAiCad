@@ -42,6 +42,7 @@ python tools/lookup.py hole --material SS400 --t 9 --dia 4.2 [--piercing] [--thr
 python tools/lookup.py pilot --thread M8x1
 python tools/lookup.py idod --t 3 --angle 165
 python tools/lookup.py unfold --od 410.8 20.8 175 --nobi 1.68 0.36
+python tools/resolve_rules.py --template > census.json   # every family UNKNOWN; set NO only with evidence
 python tools/resolve_rules.py census.json
 python tools/pair_consistency.py job.json CODE_A CODE_B [--mirror x|y|none]
 python tools/export_canonical_dxf.py job.json OUT/

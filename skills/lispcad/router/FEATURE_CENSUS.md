@@ -86,26 +86,16 @@ When a reversed-e mark is proved immediately above a barcode, record the scoped 
 
 ## Census schema
 
-Record at minimum:
+Record at minimum (one `census.json` per code; `python tools/resolve_rules.py census.json`):
 
 ```yaml
 source_mode: PDF_ONLY | PDF_DATA_RAW | TRAIN_REFERENCE | DIRECT_EXISTING_DXF_AUDIT
 part_mode: FLAT_NO_BEND | BEND | MULTI_FACE | UNKNOWN
 reference_present: YES | NO | UNKNOWN    # sample/reference present or planned; UNKNOWN loads firewall
 multi_code_or_assembly: YES | NO | UNKNOWN    # PART_IDENTITY_GRAPH route; only a proven NO skips it
+customer_code: "<numeric JOB STATISTICS code>" | null
 source_manufacturing_notes:
   - {note_text: "...", code_scope: "...", candidate_family: "...", resolution: ROUTED|CANCELLED|IRRELEVANT_TO_MANUFACTURING|UNRESOLVED}
-## V4.34 material / HL / witness census (non-feature fields)
-These fields are NOT feature families; they must not be added to `features:` (the resolver requires that key set to equal the Router's feature routes).
-```yaml
-material_and_grain:
-  printed_grade: "..."            # exact printed grade, e.g. SECC/ボンデ
-  alias_resolved: "...|UNRESOLVED" # via references/MATERIAL_ALIASES.yaml + tools/material_resolver.py
-  hairline_HL: {state: YES|NO|UNKNOWN, grain_vector_part_relative: PROVED|UNPROVED|NOT_APPLICABLE, evidence: []}
-  witness_graph_closed_for_HOLE_SLOT: YES|NO|NOT_APPLICABLE   # typed X/Y witness graph, slot anchor endpoints
-```
-HL with `grain_vector_part_relative: UNPROVED` forces REVIEW regardless of any Excel 横目 note.
-
 features:
   HOLE: {state: YES|NO|UNKNOWN, evidence: []}
   TAP: {state: YES|NO|UNKNOWN, evidence: []}
@@ -130,6 +120,18 @@ features:
   REVISION_CANCELLATION: {state: YES|NO|UNKNOWN, evidence: []}
 ```
 
+Material / HL / witness census — these fields are NOT feature families and must not be added to `features:` (the resolver requires that key set to equal the Router's feature routes):
+
+```yaml
+material_and_grain:
+  printed_grade: "..."            # exact printed grade, e.g. SECC/ボンデ
+  alias_resolved: "...|UNRESOLVED" # via references/MATERIAL_ALIASES.yaml + tools/material_resolver.py
+  hairline_HL: {state: YES|NO|UNKNOWN, grain_vector_part_relative: PROVED|UNPROVED|NOT_APPLICABLE, evidence: []}
+  witness_graph_closed_for_HOLE_SLOT: YES|NO|NOT_APPLICABLE   # typed X/Y witness graph, slot anchor endpoints
+```
+
+HL with `grain_vector_part_relative: UNPROVED` forces REVIEW regardless of any Excel 横目 note.
+
 Evidence items should identify source page/view/region or DATA entity group and the observed cue. Do not invent evidence IDs.
 
 ## Stage-plan invariant
@@ -151,7 +153,7 @@ safe by the basic flat/bend mode route.
 
 ## Hard stop
 
-If a source-supported family is discovered after routing but no route exists, emit `ROUTING_COVERAGE_GAP`. Do not silently treat it as generic CUT and do not continue to production PASS until the route is resolved.
+If a source-supported family is discovered after routing but no route exists, emit `ROUTING_COVERAGE_GAP`. Do not silently treat it as generic CUT and do not give production PASS until the route is resolved; the code is still drawn under `references/REVIEW_PREVIEW_POLICY.md`.
 
 If a relevant DXF polyline segment has nonzero bulge but its physical curve has not been decoded/accounted, the census is incomplete and production PASS is forbidden.
 

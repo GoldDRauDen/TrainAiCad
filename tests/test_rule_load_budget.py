@@ -16,19 +16,21 @@ sys.path.insert(0, str(ROOT / "tools"))
 from benchmark_rule_routes import benchmark  # noqa: E402
 
 # exact UTF-8 bytes of the unique rule files a job loads (all stages L0-L3)
-SCENARIO_BUDGET = {
-    "flat": (120_000, 180_000),
-    "flat_tap": (120_000, 206_000),
-    "bend_nobi": (120_000, 264_000),
-    "data_holes": (143_000, 225_000),
-    "unknown_complex": (151_000, 345_000),
+SCENARIO_BUDGET = {  # tightened 2026-10-21 after JOB_CARD/lookup slimming
+    "flat": (80_000, 150_000),
+    "flat_tap": (80_000, 172_000),
+    "bend_nobi": (80_000, 245_000),
+    "data_holes": (95_000, 182_000),
+    "unknown_complex": (110_000, 333_000),
 }
 FILE_BUDGET = {
-    "AI_ENTRYPOINT.md": 14_000,
-    "skills/lispcad/core/DRAWING_READING.md": 19_000,
-    "skills/lispcad/core/VALIDATION.md": 20_500,
-    "skills/lispcad/core/CAD_OUTPUT.md": 16_500,
+    "JOB_CARD.md": 6_000,
+    "AI_ENTRYPOINT.md": 9_000,
+    "skills/lispcad/core/DRAWING_READING.md": 6_000,
+    "skills/lispcad/core/VALIDATION.md": 13_800,
+    "skills/lispcad/core/CAD_OUTPUT.md": 13_000,
     "skills/lispcad/core/DATUM_DIMENSION.md": 16_500,
+    "references/MATERIAL_RULES.md": 9_000,
 }
 VERSIONED_HEADING = re.compile(r"^#{1,4} .*(?:V4\.\d+|20\d\d-\d\d-\d\d)", re.M)
 
