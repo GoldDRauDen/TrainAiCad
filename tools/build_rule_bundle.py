@@ -128,7 +128,7 @@ def main() -> int:
         if destination.is_relative_to(root):
             raise BundleError("Output must be outside repository working tree")
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(content, encoding="utf-8")
+        destination.write_bytes(content.encode("utf-8"))  # exact bytes: no platform newline translation
     except (BundleError, ValueError, OSError, KeyError, yaml.YAMLError) as exc:
         print(f"RULEPACK_BUILD_FAIL: {exc}", file=sys.stderr)
         return 2

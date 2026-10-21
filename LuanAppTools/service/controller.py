@@ -16,12 +16,19 @@ from LuanAppTools.ai.gateway import GatewayRunner
 from LuanAppTools.ai.protocol import AIRequest, ProviderError, validate_schema
 from LuanAppTools.cad.pipeline import CadPipeline, PipelineError, Paused, RunControl, STAGE_SCHEMAS, interaction_schema, reconcile_request
 from LuanAppTools.cad.repository import PinnedRepository
+from LuanAppTools.cad.salvage import build_export, collect, report as salvage_report
 from LuanAppTools.core.credentials import CredentialStore
+from LuanAppTools.core.evidence_files import write_evidence
 from LuanAppTools.core.settings import Settings
 from LuanAppTools.core.sources import discover_jobs, snapshot_job, contained_path, file_hash
 from LuanAppTools.core.store import Store
 from .publication import OwnedPublisher, PublicationError
 from .mutations import AsyncMutations
+
+
+def usage_retry_delay(base, consecutive):
+    """Seconds before retrying a provider usage limit: double each wait, capped at 30 minutes."""
+    return min(base * 2 ** min(consecutive - 1, 10), max(base, 1800.0))
 
 
 class ApplicationService:
@@ -51,6 +58,7 @@ class ApplicationService:
         self._repo_locks = {}
         self._probes = {}
         self._retry_at = {}
+        self._usage_waits = {}
         self._provider = {'status':'unchecked', 'message':'Checked when requested or before work starts'}
         self._connection_status = {}
         self._claude_login_process = None
@@ -158,8 +166,8 @@ class ApplicationService:
     def update_settings(self, changes: dict):
         if not isinstance(changes, dict):
             raise ValueError('Expected a JSON object')
-        if any(value is None and key != 'individual_destination' for key,value in changes.items()):
-            raise ValueError('Only individual_destination may be null')
+        if any(value is None and key not in {'individual_destination','output_destination'} for key,value in changes.items()):
+            raise ValueError('Only individual_destination and output_destination may be null')
         allowed = set(self.settings.public_dict())
         if set(changes) - allowed:
             raise ValueError('Unknown settings: ' + ', '.join(sorted(set(changes)-allowed)))
@@ -223,6 +231,11 @@ class ApplicationService:
         connection = self._connection_config(self.settings.active_provider)
         return {'difficulty':difficulty, 'individual':individual, 'parts_destination':str(destination) if destination else None,
                 'single_agent':True, 'agent_model':{'model':self.settings.agent_model,'effort':self.settings.agent_effort},
+                'conversation':self.settings.conversation,'prompt_style':self.settings.prompt_style,
+                'salvage_export':self.settings.salvage_export,'write_evidence':self.settings.write_evidence,
+                'answer_by_ref':self.settings.answer_by_ref,'effort_by_difficulty':self.settings.effort_by_difficulty,
+                'repo_generators':self.settings.repo_generators,'precrop_views':self.settings.precrop_views,'run_mode':self.settings.run_mode,
+                'output_destination':self.settings.output_destination,
                 'models':self.settings.public_dict()['models'], 'attempt_timeout':self.settings.attempt_timeout,
                 'workspace_root':self.settings.workspace_root,
                 'provider':connection['provider'], 'gateway_authorized':connection['provider'] != 'claude',
@@ -495,6 +508,7 @@ class ApplicationService:
             raise ValueError('Interrupted request requires explicit gateway reconciliation')
         await self.mutations.run(self.store.resume_run,run['id'])
         self._retry_at.pop(run['id'],None)
+        self._usage_waits.pop(run['id'],None)
         return self.store.get_run(run['id'])
 
     async def cancel(self, job_id):
@@ -633,11 +647,14 @@ class ApplicationService:
             if run['publication']:
                 await control.boundary()
                 await self.publisher.run(run,control,timeout=self.settings.output_timeout)
+                await self._write_evidence(run)
             elif run['checkpoint'].get('export'):
                 exported=run['checkpoint']['export']['files']
                 await control.boundary()
                 await self.publisher.run(run,control,files={k:Path(v) for k,v in exported.items()},
-                    parts_destination=Path(run['config']['parts_destination']) if run['config'].get('parts_destination') else None,timeout=self.settings.output_timeout)
+                    parts_destination=Path(run['config']['parts_destination']) if run['config'].get('parts_destination') else None,
+                    combined_destination=Path(run['config']['output_destination']) if run['config'].get('output_destination') else None,timeout=self.settings.output_timeout)
+                await self._write_evidence(run)
             else:
                 if not control.gateway_authorized:
                     try:
@@ -648,11 +665,13 @@ class ApplicationService:
                     repo = await asyncio.to_thread(PinnedRepository.pin,self.repo_root,self.data_dir/'engines'/run['repo_commit'],run['repo_commit'])
                 config = run['config']
                 gateway = self._gateway_for_config(config) if control.gateway_authorized else None
-                pipeline = self.pipeline_factory(repo,self.runner,gateway=gateway,models=config.get('models'),attempt_timeout=config.get('attempt_timeout',1200),difficulty=config.get('difficulty','auto'),single_agent=config.get('single_agent',False),agent_model=config.get('agent_model'))
-                result = await pipeline.run(run['snapshot_dir'],control,job_name=self.store.get_job(run['job_id'])['name'],individual=config.get('individual',False))
+                pipeline = self.pipeline_factory(repo,self.runner,gateway=gateway,models=config.get('models'),attempt_timeout=config.get('attempt_timeout',1200),difficulty=config.get('difficulty','auto'),single_agent=config.get('single_agent',False),agent_model=config.get('agent_model'),conversation=config.get('conversation','code'),prompt_style=config.get('prompt_style','full'),salvage_export=config.get('salvage_export',False),answer_by_ref=config.get('answer_by_ref',False),effort_by_difficulty=config.get('effort_by_difficulty',False),repo_generators=config.get('repo_generators',False),precrop_views=config.get('precrop_views',False),run_mode=config.get('run_mode','host'))
+                result = await pipeline.run(run['snapshot_dir'],control,job_name=self.store.get_job(run['job_id'])['name'],individual=config.get('individual',False),output_folder=config.get('output_destination'))
                 await control.boundary()
                 await self.publisher.run(run,control,files=result.staged_files,
-                                        parts_destination=Path(config['parts_destination']) if config.get('parts_destination') else None,timeout=self.settings.output_timeout)
+                                        parts_destination=Path(config['parts_destination']) if config.get('parts_destination') else None,
+                                        combined_destination=Path(config['output_destination']) if config.get('output_destination') else None,timeout=self.settings.output_timeout)
+                await self._write_evidence(run)
         except Paused:
             await self._release_if_current(run,control,'paused')
         except asyncio.CancelledError:
@@ -679,6 +698,66 @@ class ApplicationService:
             await self.mutations.run(self.store.append_event,run['id'],'worker_stopped',{'elapsed_seconds':time.monotonic()-started,'status':self.store.get_run(run['id'])['status']})
             self.controls.pop(run['id'],None); self.active.pop(run['id'],None)
 
+    async def _write_evidence(self,run):
+        """The per-code JSON beside the published DXF. Best effort: a published run never fails because of it."""
+        try:
+            config = run['config']
+            if not config.get('write_evidence',True):
+                return
+            current = self.store.get_run(run['id'])
+            if current['status'] != 'completed':
+                return
+            checkpoint = current['checkpoint']
+            salvage = checkpoint.get('salvage')
+            rows = self.store.parts((salvage or {}).get('source_run') or run['id'])
+            job = self.store.get_job(run['job_id'])
+            root = Path(config['output_destination']) if config.get('output_destination') else job['folder']
+            names = await asyncio.to_thread(write_evidence,root,job['name'],run,rows,salvage=salvage,
+                                            canonical_path=(checkpoint.get('export') or {}).get('canonical_path'))
+            await self.mutations.run(self.store.append_event,run['id'],'evidence_written',{'root':str(root),'files':names})
+        except Exception as exc:
+            try:
+                await self.mutations.run(self.store.append_event,run['id'],'evidence_failed',{'message':str(exc)})
+            except Exception:
+                pass
+
+    async def export_saved(self,job_id,*,drafts=True):
+        """Export the codes a stopped run already proved, with no model call.
+
+        The proved parts (and, when `drafts`, a flagged draft for a code whose last candidate failed validation) go
+        through the repository's exporter into a REVIEW-ONLY composite that names what is missing. The files are
+        published by a new run seeded with them, so the journaled publisher, ownership and archive rules still apply.
+        """
+        async with self._job_locks.setdefault(job_id,asyncio.Lock()):
+            job = self._allowed_job(job_id)
+            run = self._current(job_id)
+            if run['id'] in self.active or run['lease'] or run['status'] in {'running','pause_requested','publication_pending'}:
+                raise ValueError('Pause or cancel the running worker before exporting its saved parts')
+            if run['checkpoint'].get('pending'):
+                raise ValueError('An interrupted request must be reconciled first')
+            rows = self.store.parts(run['id'])
+            collected = collect(rows,run['checkpoint'],drafts=drafts)
+            if not collected['proved'] and not collected['drafted']:
+                raise ValueError('This run has no saved part to export')
+            if run['status'] == 'completed' and not collected['missing'] and not collected['drafted'] and not run['checkpoint'].get('salvage'):
+                raise ValueError('This run already published every code')
+            async with self._repo_locks.setdefault(run['repo_commit'],asyncio.Lock()):
+                repo = await asyncio.to_thread(PinnedRepository.pin,self.repo_root,self.data_dir/'engines'/run['repo_commit'],run['repo_commit'])
+            customer = (run['checkpoint'].get('inventory') or {}).get('customer_code')
+            envelope = {'canonical_contract':repo.contract,'job_id':job['name'],**({'customer_code':customer} if customer else {})}
+            workspace = self._workspace_root(run)/'work'/run['id']/f'salvage-{int(time.time())}'
+            cancel = asyncio.Event()
+            metadata,files = await build_export(repo,collected,envelope,workspace,cancel,
+                                                individual=bool(run['config'].get('individual',False)))
+            summary = {**salvage_report(collected),'source_run':run['id']}
+            new = await self.mutations.run(self.store.create_run,job_id,run['source_hash'],run['repo_commit'],
+                                           snapshot_dir=run['snapshot_dir'],force=True,config=dict(run['config']))
+            await self.mutations.run(self.store.save_checkpoint,new['id'],{
+                'export':{'files':{k:str(v) for k,v in files.items()},'canonical_path':str(workspace/'canonical.json'),'metadata':metadata},
+                'salvage':summary})
+            await self.mutations.run(self.store.append_event,new['id'],'salvage_export',summary)
+            return self.store.get_run(new['id'])
+
     async def _release_if_current(self,run,control,status,error=None):
         current = self.store.get_run(run['id'])
         if current['status'] in {'superseded','cancelled','completed','error'}:
@@ -687,8 +766,13 @@ class ApplicationService:
         if not released:
             return
         await self.mutations.run(self.store.append_event,run['id'],'worker_state',{'status':status,'message':error})
-        if status in {'waiting_usage','waiting_output'}:
+        if status == 'waiting_usage':
+            self._usage_waits[run['id']] = self._usage_waits.get(run['id'],0)+1
+            self._retry_at[run['id']] = time.time()+usage_retry_delay(self.settings.retry_seconds,self._usage_waits[run['id']])
+        elif status == 'waiting_output':
             self._retry_at[run['id']] = time.time()+self.settings.retry_seconds
+        else:
+            self._usage_waits.pop(run['id'],None)
 
     async def _loop(self):
         next_scan = 0

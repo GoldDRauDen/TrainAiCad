@@ -815,15 +815,17 @@ def test_direct_candidate_validation_uses_remaining_attempt_budget(
     original = asyncio.create_subprocess_exec
 
     async def launch(*argv, **kw):
+        # The code argument follows "-c"; interpreter flags such as "-X utf8" may precede it.
+        code_at = argv.index("-c") + 1 if "-c" in argv else None
         tracked = (
-            target["next"] and "-c" in argv and "validate_canonical_job" in argv[2]
+            target["next"] and code_at is not None and "validate_canonical_job" in argv[code_at]
         )
         if tracked:
             target["next"] = False
             argv = (
-                *argv[:2],
-                "import time;time.sleep(5);" + argv[2] + "\nopen(" + repr(str(completed)) + ',"w").write("completed")',
-                *argv[3:],
+                *argv[:code_at],
+                "import time;time.sleep(5);" + argv[code_at] + "\nopen(" + repr(str(completed)) + ',"w").write("completed")',
+                *argv[code_at + 1:],
             )
         child = await original(*argv, **kw)
         if tracked:

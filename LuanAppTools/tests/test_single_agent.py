@@ -25,12 +25,15 @@ def test_single_agent_exports_two_codes_without_qa_or_repeated_images(setup):
     result = asyncio.run(CadPipeline(repo, runner, single_agent=True).run(source, control, job_name="SINGLE", individual=True))
     assert len(result.parts) == 2 and len(result.staged_files) == 3
     assert len(runner.requests) == 3  # intake + one solve per code; no QA call
-    assert len({r.session_id for r in runner.requests}) == 1
-    assert [r.resume_session for r in runner.requests] == [False, True, True]
-    assert [len(r.images) for r in runner.requests] == [1, 0, 0]
+    # Intake and every code own a conversation, so cost stays linear in the number of codes.
+    assert len({r.session_id for r in runner.requests}) == 3
+    assert [r.resume_session for r in runner.requests] == [False, False, False]
+    assert [len(r.images) for r in runner.requests] == [1, 1, 1]  # each code gets only its own pages
     assert all(r.model == "sonnet-5.5" and r.effort == "medium" for r in runner.requests)
     assert all(p.qa["independent"] is False for p in result.parts)
-    assert sum(r.prompt.count("FILE AI_BOOTSTRAP.md") for r in runner.requests) == 1
+    assert [r.prompt.count("FILE AI_BOOTSTRAP.md") for r in runner.requests] == [1, 1, 1]
+    assert "26-000001" in runner.requests[1].prompt.rsplit("CONTEXT_JSON", 1)[1]
+    assert "validate tool" in runner.requests[1].prompt  # validate before answering
 
 
 def test_single_agent_pause_resume_keeps_session_and_finished_candidate(setup):
@@ -44,7 +47,7 @@ def test_single_agent_pause_resume_keeps_session_and_finished_candidate(setup):
     runner.pause = None
     result = asyncio.run(pipeline.run(source, control, job_name="SINGLE"))
     assert len(result.parts) == 2 and len(runner.requests) == 3
-    assert len({r.session_id for r in runner.requests}) == 1
+    assert len({r.session_id for r in runner.requests}) == 3
 
 
 def test_single_agent_still_rejects_invalid_geometry_and_bounds_retries(setup):
@@ -53,7 +56,10 @@ def test_single_agent_still_rejects_invalid_geometry_and_bounds_retries(setup):
     with pytest.raises(PipelineError, match="Some codes have no"):
         asyncio.run(CadPipeline(repo, runner, single_agent=True).run(source, control, job_name="SINGLE"))
     assert len(runner.requests) == 3
-    assert len({r.session_id for r in runner.requests}) == 1
+    # Both attempts for a code share that code's conversation; intake is separate.
+    assert len({r.session_id for r in runner.requests}) == 2
+    assert runner.requests[1].session_id == runner.requests[2].session_id
+    assert [r.resume_session for r in runner.requests] == [False, False, True]
     assert not list((control.workspace / "aggregate").rglob("*.dxf"))
 
 
@@ -91,8 +97,10 @@ def test_invalid_inventory_shape_is_corrected_in_same_conversation(setup):
     runner = RepairRunner({"26-000001": synthetic_part()})
     result = asyncio.run(CadPipeline(repo, runner, single_agent=True).run(source, control, job_name="REPAIR"))
     assert result.staged_files and len(runner.requests) == 3
-    assert len({r.session_id for r in runner.requests}) == 1
-    assert [len(r.images) for r in runner.requests] == [1, 0, 0]
+    # The inventory correction stays in the intake conversation; the code starts its own.
+    assert len({r.session_id for r in runner.requests}) == 2
+    assert runner.requests[0].session_id == runner.requests[1].session_id
+    assert [len(r.images) for r in runner.requests] == [1, 0, 1]
     assert "response_format" in runner.requests[1].prompt
 
 
@@ -125,3 +133,33 @@ def test_partial_census_keeps_source_role_without_wasting_an_attempt(setup):
     result = asyncio.run(CadPipeline(repo, runner, single_agent=True).run(source, control, job_name="PARTIAL"))
     assert result.staged_files and len(runner.requests) == 2
     assert control.store.attempts(control.run_id, "26-000001") == 1
+
+
+def test_job_stops_after_consecutive_failed_codes_instead_of_spending_on_the_rest(setup):
+    repo, source, control = setup
+    runner = SingleRunner({
+        "26-000001": synthetic_part(hole=True),
+        "26-000002": synthetic_part("26-000002", hole=True),
+        "26-000003": synthetic_part("26-000003"),
+    })
+    pipeline = CadPipeline(repo, runner, single_agent=True)
+    with pytest.raises(PipelineError) as stopped:
+        asyncio.run(pipeline.run(source, control, job_name="STOP"))
+    assert stopped.value.kind == "no_progress" and "26-000001" in str(stopped.value)
+    assert len(runner.requests) == 5  # intake + two attempts for each failing code; third code untouched
+    assert control.store.attempts(control.run_id, "26-000003") == 0
+    # Resuming never re-counts codes that already failed; it continues with the untouched code.
+    control.cancel = asyncio.Event()  # a new event loop needs a fresh event
+    control.pause = asyncio.Event()
+    with pytest.raises(PipelineError, match="Some codes have no"):
+        asyncio.run(pipeline.run(source, control, job_name="STOP"))
+    assert len(runner.requests) == 6
+    assert control.store.attempts(control.run_id, "26-000003") == 1
+
+
+def test_a_single_failed_code_does_not_stop_the_job(setup):
+    repo, source, control = setup
+    runner = SingleRunner({"26-000001": synthetic_part(hole=True), "26-000002": synthetic_part("26-000002")})
+    with pytest.raises(PipelineError, match="Some codes have no"):
+        asyncio.run(CadPipeline(repo, runner, single_agent=True).run(source, control, job_name="ONE"))
+    assert control.store.attempts(control.run_id, "26-000002") == 1

@@ -57,12 +57,24 @@ class ReviewBody(Body):
     reviewer: str = Field(default='local user', min_length=1, max_length=200)
     note: str = Field(default='', max_length=10000)
 
+class ExportSavedBody(Body):
+    drafts: bool = True
+
 class FolderBody(Body):
     target: Literal['source','individual'] = 'source'
 
 class SettingsBody(Body):
     agent_model: Literal['haiku-5.5','sonnet-5.5','opus-5.5'] | None = None
     agent_effort: Literal['medium','high','xhigh','max'] | None = None
+    conversation: Literal['job','code'] | None = None
+    prompt_style: Literal['minimal','full'] | None = None
+    salvage_export: bool | None = None
+    write_evidence: bool | None = None
+    answer_by_ref: bool | None = None
+    effort_by_difficulty: bool | None = None
+    repo_generators: bool | None = None
+    precrop_views: bool | None = None
+    run_mode: Literal['host','agent'] | None = None
     roots: list[str] | None = None
     max_active_jobs: int | None = None
     max_ai_calls: int | None = None
@@ -81,6 +93,7 @@ class SettingsBody(Body):
     default_difficulty: Literal['auto','easy','medium','hard'] | None = None
     individual_output: bool | None = None
     individual_destination: str | None = None
+    output_destination: str | None = None
     workspace_root: str | None = None
     retry_seconds: float | None = None
     shutdown_seconds: float | None = None
@@ -201,6 +214,10 @@ def create_app(data_dir: Path, repo_root: Path, start_scheduler: bool = True, *,
     @app.post('/api/jobs/{job_id}/resume')
     async def resume(job_id:str,body:Body):
         return jsonable_encoder({'run':service.store.public_run(await service.resume(job_id))})
+
+    @app.post('/api/jobs/{job_id}/export-saved')
+    async def export_saved(job_id:str,body:ExportSavedBody):
+        return jsonable_encoder({'run':service.store.public_run(await service.export_saved(job_id,drafts=body.drafts))})
 
     @app.post('/api/jobs/{job_id}/cancel')
     async def cancel(job_id:str,body:Body):

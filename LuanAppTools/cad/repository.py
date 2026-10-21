@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -16,6 +17,10 @@ import tarfile
 import time
 import yaml
 from LuanAppTools.ai.protocol import cancellable, ProviderError
+
+
+# The repository tools print customer notes (for example '>=19 mm') as UTF-8; a Windows pipe defaults to cp1252.
+UTF8_MODE = ("-X", "utf8")
 
 
 class CadError(RuntimeError):
@@ -186,6 +191,10 @@ class PinnedRepository:
     def stage_text(self, route, stage):
         return self.text(route["stage_plans"][stage]["rule_paths"])
 
+    def contract_notes(self):
+        from .contract import contract_notes
+        return contract_notes(self.read("tools/DXF_INPUT_SCHEMA.md"))
+
     async def resolve(self, census, workspace, cancel):
         self.verify()
         workspace.mkdir(parents=True, exist_ok=True)
@@ -195,6 +204,7 @@ class PinnedRepository:
             await run_tool(
                 [
                     sys.executable,
+                    *UTF8_MODE,
                     self.root / "tools/resolve_rules.py",
                     source,
                     "--repo-root",
@@ -214,15 +224,15 @@ class PinnedRepository:
         code = """import json,sys
 from canonical_contract import validate_canonical_job
 from export_dxf import validate_job
-from holistic_engineering_guard import canonical_job_anomalies
+from holistic_engineering_guard import canonical_job_anomalies, job_anomalies
 j=json.load(open(sys.argv[1],encoding='utf-8'))
 errors=[]
 v={}
-for name,check in [('canonical',validate_canonical_job),('export',validate_job),('geometry',canonical_job_anomalies)]:
+for name,check in [('canonical',validate_canonical_job),('export',validate_job),('geometry',canonical_job_anomalies),('holistic',job_anomalies)]:
     try:
         result=check(j)
         if name=='canonical': v=result
-        if name=='geometry' and result: errors.extend(result)
+        if name in ('geometry','holistic') and result: errors.extend(result)
     except Exception as exc:
         errors.append(name+': '+str(exc))
 if errors: raise ValueError(' | '.join(errors))
@@ -231,14 +241,32 @@ print(json.dumps(v))
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise ProviderError("timeout", "Host validation elapsed budget exhausted")
-        return json.loads(
+        result = json.loads(
             await run_tool(
-                [sys.executable, "-c", code, path],
+                [sys.executable, *UTF8_MODE, "-c", code, path],
                 self.root / "tools",
                 cancel,
                 timeout=remaining,
             )
         )
+        # The checks above are the contract, not the exporter: layout gates such as "source views must be
+        # separated by >=10 mm" only run inside export_job. Run the real exporter once on this job too, so the
+        # model meets them in its own validate loop instead of after every code has been paid for.
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ProviderError("timeout", "Host validation elapsed budget exhausted")
+        trial = workspace / "trial-export"
+        shutil.rmtree(trial, ignore_errors=True)
+        trial.mkdir(parents=True)
+        (trial / "canonical.json").write_text(json.dumps(job), encoding="utf-8")
+        await run_tool(
+            [sys.executable, *UTF8_MODE, self.root / "tools/export_canonical_dxf.py",
+             trial / "canonical.json", trial / "output"],
+            self.root,
+            cancel,
+            timeout=remaining,
+        )
+        return result
 
     async def export(self, job, workspace, cancel, individual=False):
         self.verify()
@@ -248,6 +276,7 @@ print(json.dumps(v))
         output = workspace / "output"
         args = [
             sys.executable,
+            *UTF8_MODE,
             self.root / "tools/export_canonical_dxf.py",
             path,
             output,

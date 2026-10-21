@@ -32,6 +32,7 @@ class Settings:
     default_difficulty: str = 'auto'
     individual_output: bool = False
     individual_destination: str | None = None
+    output_destination: str | None = None
     workspace_root: str = ''
     retry_seconds: float = 60.0
     shutdown_seconds: float = 10.0
@@ -41,6 +42,19 @@ class Settings:
     active_provider: str = 'claude'
     agent_model: str = 'sonnet-5.5'
     agent_effort: str = 'medium'
+    conversation: str = 'job'
+    prompt_style: str = 'minimal'
+    # Output safety net: keep what was proved when a job stops, and keep the per-code JSON beside the DXF.
+    salvage_export: bool = True
+    write_evidence: bool = True
+    # Host-built parts: a final answer may name a part staged by build_part / repo generators.
+    answer_by_ref: bool = False
+    # Opt-in experiments, off until measured: own stronger conversation for hard codes, the repository's
+    # BOXMET generators as a host tool, and an agent mode where the model runs the app's own scripts.
+    effort_by_difficulty: bool = False
+    repo_generators: bool = False
+    precrop_views: bool = False
+    run_mode: str = 'host'
     openai_model: str = ''
     custom_auth_mode: str = 'none'
     custom_auth_header: str = 'Authorization'
@@ -81,6 +95,13 @@ class Settings:
             if validate_roots and not destination.is_dir():
                 raise ValueError('Individual destination must be a directory')
             self.individual_destination = str(destination)
+        if self.output_destination is not None:
+            if not isinstance(self.output_destination, str) or len(self.output_destination) > 500 or any(ord(c) < 32 for c in self.output_destination):
+                raise ValueError('Invalid output destination')
+            chosen = Path(self.output_destination).expanduser()
+            if not chosen.is_absolute():
+                raise ValueError('Output destination must be an absolute path')
+            self.output_destination = str(chosen.resolve())
         if not isinstance(self.gateway_model, str) or len(self.gateway_model) > 200 or any(ord(c) < 32 for c in self.gateway_model):
             raise ValueError('Invalid gateway model')
         if self.gateway_effort not in {'medium','high','xhigh','max'}:
@@ -89,6 +110,15 @@ class Settings:
             raise ValueError('Unsupported AI provider')
         if self.agent_model not in {'haiku-5.5', 'sonnet-5.5', 'opus-5.5'} or self.agent_effort not in {'medium', 'high', 'xhigh', 'max'}:
             raise ValueError('Unsupported job agent model or effort')
+        if self.conversation not in {'job', 'code'}:
+            raise ValueError('Unsupported conversation scope')
+        if self.prompt_style not in {'minimal', 'full'}:
+            raise ValueError('Unsupported prompt style')
+        for name in ('salvage_export', 'write_evidence', 'answer_by_ref', 'effort_by_difficulty', 'repo_generators', 'precrop_views'):
+            if type(getattr(self, name)) is not bool:
+                raise ValueError(f'{name} must be boolean')
+        if self.run_mode not in {'host', 'agent'}:
+            raise ValueError('Unsupported run mode')
         if not isinstance(self.openai_model, str) or len(self.openai_model) > 200 or any(ord(c) < 32 for c in self.openai_model):
             raise ValueError('Invalid OpenAI model')
         if self.custom_auth_mode not in {'none', 'bearer', 'header'}:
@@ -112,10 +142,13 @@ class Settings:
     def public_dict(self) -> dict:
         return {
             'roots': [str(root) for root in self.roots],
-            **{name: getattr(self, name) for name in ('max_active_jobs', 'max_ai_calls', 'max_opus_calls', 'scan_interval', 'stable_seconds', 'attempt_timeout', 'gateway_url', 'default_difficulty', 'individual_output', 'individual_destination', 'workspace_root', 'retry_seconds', 'shutdown_seconds', 'gateway_model', 'gateway_effort', 'output_timeout', 'active_provider', 'openai_model', 'custom_auth_mode', 'custom_auth_header', 'custom_send_effort')},
+            **{name: getattr(self, name) for name in ('max_active_jobs', 'max_ai_calls', 'max_opus_calls', 'scan_interval', 'stable_seconds', 'attempt_timeout', 'gateway_url', 'default_difficulty', 'individual_output', 'individual_destination', 'output_destination', 'workspace_root', 'retry_seconds', 'shutdown_seconds', 'gateway_model', 'gateway_effort', 'output_timeout', 'active_provider', 'openai_model', 'custom_auth_mode', 'custom_auth_header', 'custom_send_effort')},
             'models': {key: dict(value) for key, value in self.models.items()},
             'agent_model': self.agent_model,
             'agent_effort': self.agent_effort,
+            'conversation': self.conversation,
+            'prompt_style': self.prompt_style,
+            **{name: getattr(self, name) for name in ('salvage_export', 'write_evidence', 'answer_by_ref', 'effort_by_difficulty', 'repo_generators', 'precrop_views', 'run_mode')},
         }
 
     def save(self) -> Path:
