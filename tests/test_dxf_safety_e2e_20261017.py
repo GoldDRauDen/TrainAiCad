@@ -138,7 +138,7 @@ def test_stadium_same_sign_arcs_but_nontangent_sides_are_rejected():
 
 @pytest.mark.parametrize("material,thickness,expected", [
     ("SS400", 3.2, 3.0), ("SECC-P", 1.2, 3.0),
-    ("ボンデ", 2.0, 3.0), ("SPCC", 3.3, 6.0),
+    ("ボンデ", 2.0, 3.0), ("SPCC", 4.0, 6.0),
     ("A5052", 2.5, 6.0), ("SUS304-2B", 2.0, 6.0),
 ])
 def test_lead_material_uses_source_backed_family(material, thickness, expected):

@@ -48,6 +48,8 @@ QA: close source-note provenance when applicable, correct quantity/value/positio
 
 ## Same-direction corner and opposite-fold construction
 
+**Lead value (vòi dẫn):** `LeadVal` is read from `../../../references/LEAD_TABLE.yaml` (workbook 一覧表2026.07.30 column G, user-approved 2026-10-21) via `slit_geometry.lead_val(material, t)`; both meeting edges are offset toward the void by `LeadVal` and the intersection is the lead end (bisector for any corner angle). A hook row (t>=19) or a thickness between table rows has no proved value -> local FLAG `LEAD_VALUE_UNPROVED`, nothing is drawn by guess. Reference: `055958` (t5 -> 6).
+
 **Same-direction corner (replaces the old CROSSING_BEND mechanism, user 2026-10-20):** follow `../../../references/BEND_EDGE_RELIEF_90.md` section 9: the SHALLOWER flange retreats by `t` (depth differing by `>= 0.1 mm`; equal depth -> either, prefer the longer bend edge), then the normal step gate applies (`S=-t` -> slit `t + 0.2` + lead; the other end `S=+t` -> none). Never retreat the deeper flange (khuyết_t).
 
 **Opposite-fold fixed-outside R=t relief** (approved calibration `055962`):

@@ -27,7 +27,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from corner_retreat import choose_retreat  # noqa: E402
-from slit_geometry import connected_slit, lead_val  # noqa: E402
+from slit_geometry import LeadValueUnproved, connected_slit, lead_val  # noqa: E402
 
 SLIT_COLOR = 3
 
@@ -73,7 +73,11 @@ def box_geometry(L, W, H1, H2, H3, H4, T, material, N):
     R = laser_r(material, T)
     sharp_corners = R is None
     R = 0.0 if sharp_corners else R
-    lv, sl = lead_val(material, T), T + 0.2
+    try:
+        lv = lead_val(material, T)
+    except LeadValueUnproved as exc:
+        raise BoxMetError(str(exc)) from exc  # FLAG: no proved lead for this material/thickness
+    sl = T + 0.2
     h1, h2, h3, h4 = (H["H1"] - N, H["H2"] - N, H["H3"] - N, H["H4"] - N)
     if R and any(h <= R + T for h in (h1, h2, h3, h4)):
         raise BoxMetError("BOXMET_FLAP_TOO_SHORT_FOR_R")

@@ -20,7 +20,7 @@ def test_lead_val_by_material():
     assert lead_val("SS", 3.2) == 3.0
     assert lead_val("SPCC", 1.2) == 3.0
     assert lead_val("SPCC", 3.2) == 3.0
-    assert lead_val("SPCC", 3.3) == 6.0
+    assert lead_val("SPCC", 4.0) == 6.0
     assert lead_val("SS", 6.0) == 6.0
     assert lead_val("AL", 2.5) == 6.0
     assert lead_val("SUS", 1.5) == 6.0

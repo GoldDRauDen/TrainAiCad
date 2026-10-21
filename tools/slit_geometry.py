@@ -45,19 +45,45 @@ def _positive(value, name):
     return v
 
 
-def lead_val(material: str, T: float) -> float:
-    """CAD slit lead: SS material family t<=3.2 -> 3; otherwise -> 6.
+class LeadValueUnproved(ValueError):
+    """The lead table has no proved straight value for this material/thickness (local FLAG, never a guess)."""
 
-    Use the approved source-backed material resolver rather than a duplicate
-    subset of SS grade names (e.g. SS400 and SECC-P).
+
+def _lead_rows(group):
+    import yaml
+    from pathlib import Path
+    cfg = yaml.safe_load((Path(__file__).resolve().parents[1] / "references" / "LEAD_TABLE.yaml").read_text(encoding="utf-8"))
+    return cfg["groups"].get(group)
+
+
+def _in_row(row, t):
+    lo, hi = row["t_min"], row.get("t_max")
+    above = t > lo if row.get("min_open") else t >= lo
+    below = True if hi is None else (t < hi if row.get("t_max_open") else t <= hi)
+    return above and below
+
+
+def lead_val(material: str, T: float) -> float:
+    """Slit lead value (offset of both meeting edges) from references/LEAD_TABLE.yaml (workbook column G).
+
+    Raises LeadValueUnproved (code LEAD_VALUE_UNPROVED:...) for an unresolved material, a thickness that falls in a
+    gap between rows, a missing row (e.g. Cu/Brass t>6) or the hook rows (t>=19): these are FLAGGED, not guessed.
     """
     thickness = _positive(T, "thickness")
     from material_resolver import MaterialResolveError, resolve_material
     try:
         group = resolve_material(material)["material_family"]
-    except MaterialResolveError:
-        group = None  # Existing conservative unknown-material lead is 6 mm.
-    return 3.0 if group == "SS" and thickness <= 3.2 else 6.0
+    except MaterialResolveError as exc:
+        raise LeadValueUnproved(f"LEAD_VALUE_UNPROVED:MATERIAL:{exc}") from exc
+    rows = _lead_rows("SUS" if group == "OTHER" else group)
+    if rows is None:
+        raise LeadValueUnproved(f"LEAD_VALUE_UNPROVED:GROUP:{group}")
+    row = next((r for r in rows if _in_row(r, thickness)), None)
+    if row is None:
+        raise LeadValueUnproved(f"LEAD_VALUE_UNPROVED:NO_ROW:{group}:t{thickness:g}")
+    if row["shape"] != "STRAIGHT":
+        raise LeadValueUnproved(f"LEAD_VALUE_UNPROVED:HOOK_{row['shape']}:{group}:t{thickness:g}")
+    return float(row["lead"])
 
 
 def slit_dir_from_bend(bend_dir, inward_hint):
