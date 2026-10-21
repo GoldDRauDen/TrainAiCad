@@ -6,6 +6,7 @@ weld positions from DXF samples or invent KEGAKI geometry.
 """
 from __future__ import annotations
 
+import math
 import re
 
 IDENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
@@ -68,6 +69,19 @@ def check_weld_site_census(
         fail(f"{code}: source WELD_SITE census != weld-site ledger")
     if not sites:
         _evidence(census.get("no_weld_evidence"), f"{code} no-weld disposition")
+        if mandatory and assembly:
+            # CHAIN_CENSUS_EMPTY: a part drawn in an assembly view with other
+            # LASER parts cannot silently carry an empty weld-site census.
+            partners = census.get("assembly_laser_partner_codes")
+            if not isinstance(partners, list) or any(
+                    not isinstance(p, str) or not p.strip() for p in partners):
+                fail(f"{code}: CHAIN_CENSUS_EMPTY: assembly_laser_partner_codes "
+                     "list required when weld_site_census.sites is empty (KH851)")
+            text = census["no_weld_evidence"]
+            missing = [p for p in partners if p not in text]
+            if missing:
+                fail(f"{code}: CHAIN_CENSUS_EMPTY: no_weld_evidence must name each laser "
+                     f"partner and why no KEGAKI host exists: {missing}")
     required_ids = []
     for site in sites:
         wid = site["weld_site_id"]
@@ -105,6 +119,51 @@ def check_weld_site_census(
     return {"active": True, "sites": sites, "required_site_ids": required_ids}
 
 
+def _seg(ent):
+    return ((float(ent["start"][0]), float(ent["start"][1])),
+            (float(ent["end"][0]), float(ent["end"][1])))
+
+
+def _shared(seg, other) -> float:
+    """Positive length shared by two collinear straight segments."""
+    (x0, y0), (x1, y1) = seg
+    length = math.hypot(x1 - x0, y1 - y0)
+    if length < 1e-6:
+        return 0.0
+    ux, uy = (x1 - x0) / length, (y1 - y0) / length
+    (ox0, oy0), (ox1, oy1) = other
+    if abs((ox0 - x0) * uy - (oy0 - y0) * ux) > 1e-6 or abs((ox1 - x0) * uy - (oy1 - y0) * ux) > 1e-6:
+        return 0.0
+    a = (ox0 - x0) * ux + (oy0 - y0) * uy
+    b = (ox1 - x0) * ux + (oy1 - y0) * uy
+    return max(0.0, min(length, max(a, b)) - max(0.0, min(a, b)))
+
+
+def check_kegaki_drawing_form(part: dict) -> None:
+    """KEGAKI LINEs: no duplicated/overlapping segment, none on the contour.
+
+    A KEGAKI boundary that coincides with a part edge is not drawn, and
+    adjacent contact zones are drawn as one UNION outline (KEGAKI_FOOTPRINT_FROM_PDF).
+    """
+    code = part["code"]
+    lines = [e for e in part.get("entities", [])
+             if e.get("role") == "kegaki" and e.get("type") == "LINE"]
+    for i, a in enumerate(lines):
+        for b in lines[i + 1:]:
+            if _shared(_seg(a), _seg(b)) > 1e-6:
+                fail(f"{code}: KEGAKI_DUPLICATE_SEGMENT: {a['entity_id']} overlaps {b['entity_id']}")
+    for outer in (e for e in part.get("entities", []) if e.get("role") == "outer"):
+        verts = outer.get("vertices") or []
+        for k, (x, y, bulge) in enumerate(verts):
+            if abs(bulge) > 1e-9:
+                continue
+            nx, ny, _ = verts[(k + 1) % len(verts)]
+            for line in lines:
+                if _shared(_seg(line), ((x, y), (nx, ny))) > 1e-6:
+                    fail(f"{code}: KEGAKI_ON_CONTOUR: {line['entity_id']} lies on the part contour; "
+                         "a boundary coinciding with the part edge is not drawn")
+
+
 def validate_weld_kegaki(part: dict, customer_code: str | None) -> dict:
     """Validate independently harvested weld sites against canonical KEGAKI."""
     code = part["code"]
@@ -118,6 +177,7 @@ def validate_weld_kegaki(part: dict, customer_code: str | None) -> dict:
     )
     if not closure["active"]:
         return {"status": "NOT_APPLICABLE"}
+    check_kegaki_drawing_form(part)
     required = set(closure["required_site_ids"])
     groups = part["source_groups"]
     by_source = {}

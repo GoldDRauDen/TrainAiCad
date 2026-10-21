@@ -148,6 +148,10 @@ def test_no_weld_on_inspected_customer_part_requires_explicit_negative_evidence(
     with pytest.raises(CanonicalContractError, match="no-weld disposition"):
         validate_canonical_job(job)
     part["weld_site_census"]["no_weld_evidence"] = "Source assembly inspected: no contact/weld site for this part"
+    # KH851 chain census: the laser partners in the assembly view must be listed (may be empty)
+    with pytest.raises(CanonicalContractError, match="CHAIN_CENSUS_EMPTY"):
+        validate_canonical_job(job)
+    part["weld_site_census"]["assembly_laser_partner_codes"] = []
     assert validate_canonical_job(job)["parts"][0]["weld_kegaki_closure"]["required_site_ids"] == []
 
 

@@ -125,6 +125,7 @@ feature_routes:
     load:
       - skills/lispcad/features/KEGAKI.md
       - references/WELD_SITE_KEGAKI_CLOSURE.md
+      - references/KEGAKI_FOOTPRINT_FROM_PDF.md
   PIASU:
     load:
       - skills/lispcad/features/HOLES_TAPS.md

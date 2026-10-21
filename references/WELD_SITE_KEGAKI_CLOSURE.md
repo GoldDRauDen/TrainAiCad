@@ -75,6 +75,19 @@ the source-only reference firewall remains mandatory.
   with the inventory. Ledger self-equality is never sufficient when
   the real source contains an unharvested weld feature.
 
+## Chain / pair census (stacked A–B–C assemblies)
+
+- N parts in a stacked assembly give at least N−1 contact pairs; every pair is a
+  weld site (PROVED/FLAGGED). Hosts: see `references/KEGAKI_FOOTPRINT_FROM_PDF.md` §1.
+- The mark lives on the laser part that receives the other part's edge, never on
+  the child. A non-laser host (purchased tube) has no DXF mark: record `host_not_laser`.
+- KH851 + `sites=[]` + non-empty `source_assembly_view_ids` requires
+  `weld_site_census.assembly_laser_partner_codes` (list, may be empty) and a
+  `no_weld_evidence` that names each listed partner; otherwise `CHAIN_CENSUS_EMPTY`.
+- Footprint dimensions are derived from the PDF views (`KEGAKI_FOOTPRINT_FROM_PDF.md`);
+  "no dimension printed on the mark" alone is not grounds for a FLAG.
+- Drawing form is guarded: `KEGAKI_ON_CONTOUR`, `KEGAKI_DUPLICATE_SEGMENT`.
+
 ## Regression targets (521013-12)
 
 - 059685: A-B installation/weld to KEGAKI is required under KH851
