@@ -585,7 +585,7 @@ def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=F
         label(code_label, (0.0, cursor + CODE_LABEL_OFFSET_MM))
         expected_labels.append(code_label)
         for index, flag in enumerate(p.get("flags", [])):
-            label(f"{p['code']} FLAG: {flag}",
+            label(f"FLAG: {flag}",
                   (xmax - xmin + FLAG_LABEL_CLEARANCE_MM, cursor - index * FLAG_LINE_PITCH_MM),
                   color=6, height=FLAG_LABEL_HEIGHT_MM, align=TextEntityAlignment.TOP_LEFT)
         if rec["dx_label"]:
