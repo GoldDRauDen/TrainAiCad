@@ -316,6 +316,7 @@ review_candidates:
   - references/AIKOKU_646_NOBI.md
   - references/NOBI_TABLES.md
   - references/REVIEW_PREVIEW_POLICY.md
+  - skills/lispcad/core/VALIDATION.md
   - skills/lispcad/modes/BEND_UNFOLD.md
 reviewed_non_gates:
 - ASSEMBLY_DATUM_GRAPH
