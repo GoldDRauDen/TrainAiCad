@@ -6,8 +6,9 @@ description: Source-grounded mechanical sheet-metal CAD from PDF, images and cus
 # TrainAiCad — Universal CAD E2E Skill
 
 **This is the only cross-agent workflow entry point. It is not a second engineering
-rule source.** Read this file first, then resolve current engineering authority
-from the same repository revision. Repository: `GoldDRauDen/TrainAiCad`.
+rule source.** Read this file first, then `JOB_CARD.md` (re-read it at the start of
+every stage), then resolve current engineering authority from the same repository
+revision. Repository: `GoldDRauDen/TrainAiCad`.
 
 ## 0. Compatibility and tool gate
 
@@ -42,7 +43,7 @@ do not hardcode it from this file.
 Default retrieval **excludes** `skills/lispcad/versions/`,
 `skills/lispcad/portable/`, `docs/history/`, and `regression/`.
 Regression documents are QA evidence, never new customer dimensional inputs.
-MCP under `services/trainaicad-mcp/` is research-only, not the default engine.
+MCP is research-only, not the default engine.
 
 ## 2. Trigger and per-code workflow
 
@@ -63,8 +64,8 @@ executable job, not only a textual interpretation. Follow the order in
    are mandatory.
 4. **Engineering geometry:** part identity, datum, witness graph, member
    inventory, families and, when applicable, FACE_GRAPH and bend terms. Build
-   per-code canonical Geometry JSON per `tools/CANONICAL_INPUT_SCHEMA_V431.md`
-   at the current revision.
+   per-code canonical Geometry JSON per `tools/CANONICAL_INPUT_SCHEMA_V434.md`
+   for new jobs (V4.31 inputs stay readable).
 5. **Independent validation:** run all Router and `VALIDATION.md` checks,
    including source-to-canonical completeness. Unresolved after source
    exhaustion means REVIEW semantics, not invented dimensions.

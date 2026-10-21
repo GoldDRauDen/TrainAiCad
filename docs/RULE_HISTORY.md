@@ -195,3 +195,41 @@ The completed SLIM_MAPPING and GATE_REVIEW records are retained at baseline comm
 - Slimming was applied on 2026-10-14: AI_ENTRYPOINT 20,864→13,290 bytes and SKILL 8,523→5,991 bytes at that checkpoint; do not report these old reductions as a new result. Rule ownership was checked sentence by sentence before replacing prose with pointers.
 - Approved gate classification: Group A plus NEAREST_VIEW_EDGE are gates; THICKNESS_SINGLE_USE, RAW_DATA_SNAPSHOT, PHYSICAL_DATA_BASELINE and DATA_PDF_DIM_DIFF are gates. Use full FOLD_BACK_SOURCE_REPROJECTION instead of FOLD_BACK. DATA_NO_DIM_COMPARE stays a customer policy, not a gate. Groups B/C are non-gate statuses/geometry/mechanisms/files. The executable classified lists remain in tools/build_gate_index.py.
 - Identifier overlap was only a discovery filter, never proof of semantic parity.
+
+## Superseded 2026-10-21 — Nobi fallback (user decision: split flange 10 mm; t not tabulated = FLAG)
+
+Replaced by `BEND_UNFOLD.md` §4.7 and `tools/lookup.py nobi`. Old OD-fallback, separate-views fallback for non-90° bends and next-higher-thickness rule are no longer active.
+
+### 4.7 Nobi (Bend Allowance) Lookup Priority & Sequential Formulas
+
+**2026-10-12 clarification:** If no defensible Nobi exists for a non-90° bend, preserve separate source/orthographic views under local REVIEW so the operator can assemble after customer confirmation. Never insert a 90° table value. KH646 is its own numeric customer-code route. Legible handwritten PDF Nobi overrides a differing table number with a nonblocking audit record.
+
+
+1. **Handwritten Nobi on Drawing**: Highest priority. Use directly (e.g., `-4.8`, `135° -1.71`) regardless of J-symbol.
+2. **No Handwritten Nobi + J-Symbol Present**: Look up Nobi from standard tables (Section 7.3) by Material, Thickness, Bend Length, and Angle — applying the Interpolation Rule in Section 4.8 when the exact value is not tabulated.
+3. **No Handwritten Nobi + J-Symbol Absent**: Draw the affected flange as a separate piece detached from the main body, offset by a fixed `10 mm` gap for downstream reassembly. Set `is_flagged = true`.
+4. **J-Symbol Present + No Table Match** (including out-of-range per Section 4.8): Maintain flat blank at Outside Dimension (OD) and draw bend line at OD design position. Set `is_flagged = true`.
+
+#### 4.8 Nobi Table Interpolation Rule (NEW — Conservative Round-Up, Shop-Practice Standard)
+When the actual Thickness (`t`) or Bend Length (`L`) does **not** exactly match a row in Section 7.3, do **NOT** interpolate numerically. Instead:
+- **Thickness mismatch**: Select the row with the **next higher tabulated t** (never round down). Rounding down risks selecting an undersized V-die opening for the actual material, risking cracking or improper die seating.
+- **Bend Length mismatch**: Within the selected `t` row group, select the **next higher L bracket** (next larger V-die). This yields a conservative (larger) Nobi deduction, which errs toward tooling safety.
+- **Out-of-Range**: If `t` or `L` exceeds the largest tabulated value for that material, do not guess. Set `is_flagged = true` and annotate `"OUT OF TABLE RANGE - CONFIRM NOBI WITH SHOP"` in Magenta (Color 6) per Section 4.4.
+- This rule applies uniformly across all four material tables in Section 7.3.
+
+
+**Handwritten/J mismatch audit:** Existing Rule 1 always draws with scoped legible N_hand, including bends marked J. Only if the approved table supplies a genuinely compatible N_table for the SAME material, thickness, bend length, angle and applicable surface state, record both and retain HANDWRITTEN_NOBI_DIFFERS_FROM_TABLE only as a nonblocking audit note if prescribed values differ. Do not borrow a 90° table row for a 165° bend; if the table has no match, never replace a proved handwritten Nobi with an OD fallback.
+
+## Moved 2026-10-21 — MATERIAL_RULES regression examples (now executable in tests/test_lookup.py)
+
+#### Regression examples (user-approved)
+
+- SS t9: hole threshold t/2 = 4.5. M4 pilot Ø3.3 and M5 pilot Ø4.2 => POINT ByLayer with no capacity FLAG. M6 pilot Ø5.0 => CIRCLE if no PIERCING, assuming verified M6 and coordinates.
+- SS t9 outside corner ≤90° with no explicit PDF R/C => R2 added (e.g. `055955`). SS t≤3.2 outside ≤90° => R0.5 added.
+- SUS t15–16 => minimum cut hole Ø10, independent of the unconditional POINT rule for Ø < t/2.
+- AL t5 => minimum cut hole 0.8t = Ø4. Ø3 with no PIERCING => POINT ByLayer with no capacity FLAG, although Ø3 is not < t/2.
+- SS t19+ => laser R3 only on outer-perimeter corners, including concave corners of that same perimeter, excluding interior holes/slots; ignore unexplained `※3` notation, not the R3 value.
+- L09 SUS430 t6: SS Nobi, SUS/他 Laser R0.5, SUS/他 inherited min hole t/2, 白ピアス 〇 as capacity only.
+- L10 Cu/Brass t6: R0.5 at eligible outside corner; t>6 NO automatic Laser R; at 5<t<6 use next-higher t6 row with R0.5.
+
+

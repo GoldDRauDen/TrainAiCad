@@ -75,7 +75,7 @@ Validation before continuing:
 - perpendicular distance `dist(C,L2) = Rin`;
 - center lies on the topology-proved curvature side of both faces.
 
-If the sign of either normal is unresolved, STOP/FLAG that bend. Do not select the candidate that merely reproduces the sample.
+If the sign of either normal is unresolved, FLAG that bend and draw per `REVIEW_PREVIEW_POLICY.md` §3. Do not select the candidate that merely reproduces the sample.
 
 ---
 

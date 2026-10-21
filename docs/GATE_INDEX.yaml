@@ -103,6 +103,7 @@ gates:
 - id: DATA_RAW_TO_MANUFACTURING_CONTRACT
   files:
   - references/SOURCE_DATA_CLASSIFICATION.md
+  - skills/lispcad/core/DATUM_DIMENSION.md
 - id: DATA_TAP_NOMINAL_VALIDATION_CHECK
   files:
   - skills/lispcad/core/VALIDATION.md
@@ -200,7 +201,6 @@ gates:
 - id: SAVED_DXF_LAYER0_ENTITY_IDS
   files:
   - references/CANONICAL_MEMBER_COMPLETENESS.md
-  - skills/lispcad/core/CAD_OUTPUT.md
 - id: SAVED_DXF_READBACK_PASS
   files:
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
@@ -310,6 +310,14 @@ review_candidates:
   files:
   - references/BOXMET_SLIT_RELIEF.md
   - skills/lispcad/features/SLIT_RELIEF.md
+- id: SPLIT_FLANGE_10MM
+  files:
+  - AI_ENTRYPOINT.md
+  - references/AIKOKU_646_NOBI.md
+  - references/NOBI_TABLES.md
+  - references/REVIEW_PREVIEW_POLICY.md
+  - skills/lispcad/core/VALIDATION.md
+  - skills/lispcad/modes/BEND_UNFOLD.md
 reviewed_non_gates:
 - ASSEMBLY_DATUM_GRAPH
 - BEND_EDGE

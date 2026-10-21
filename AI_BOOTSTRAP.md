@@ -19,7 +19,7 @@ When such an invocation accompanies PDF/image/customer DXF DATA, do not stop aft
 
 1. Access the current `GoldDRauDen/TrainAiCad` repository through the available GitHub connector/plugin or a local checkout.
 2. Establish repository freshness using the execution environment available to the agent. Never claim current-repo authority without actually reading the repository.
-3. Read `AI_ENTRYPOINT.md` in full.
+3. Read `JOB_CARD.md` (and re-read it at the start of every stage), then `AI_ENTRYPOINT.md` in full.
 4. Read the production router files named by the current entrypoint:
    - `skills/lispcad/router/FEATURE_CENSUS.md`
    - `skills/lispcad/router/ROUTER.yaml`

@@ -25,7 +25,7 @@ Approved calibration 520924-19, 2026-09-25. Uses `../../../references/MATERIAL_R
 
 ## V4.12 unresolved circular-hole diameter gate — before numeric POINT/CIRCLE tests
 
-When the source confirms a feature is a ROUND HOLE but its Ø is customer-pending, draw a source-supported, integer-rounded estimated **CIRCLE** on Layer `0`, Color `6` (Magenta) with adjacent `Ø? / CONFIRM DIAMETER` note and independent FLAG. Preserve separately proved centers, quantity and flat contour. Set PREVIEW / NO CUT. Do **not** apply `d<t/2` or capacity-based POINT rules using guessed Ø; those require a known effective diameter. Explicitly scoped PIERCING remains independently authoritative. Unknown round-hole identity or center follows V4.11 source-supported preview/VIEWS_ONLY and separate flags, not a fabricated verified hole.
+When the source confirms a feature is a ROUND HOLE but its Ø is customer-pending, draw a source-supported, integer-rounded estimated **CIRCLE** on Layer `0`, Color `6` (Magenta) with adjacent Vietnamese note `Ø? - xác nhận đường kính` and independent FLAG (`REVIEW_PREVIEW_POLICY.md` §2). Preserve separately proved centers, quantity and flat contour. Set PREVIEW / NO CUT. Do **not** apply `d<t/2` or capacity-based POINT rules using guessed Ø; those require a known effective diameter. Explicitly scoped PIERCING remains independently authoritative. Unknown round-hole identity or center follows V4.11 source-supported preview/VIEWS_ONLY and separate flags, not a fabricated verified hole.
 
 ## 3.3 Approved POINT / CIRCLE decision (first matching rule)
 

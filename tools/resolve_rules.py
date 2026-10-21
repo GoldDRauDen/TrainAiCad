@@ -17,7 +17,7 @@ from weld_kegaki_guard import WeldKegakiError, check_weld_site_census
 ROOT = Path(__file__).resolve().parents[1]
 ROUTER = "skills/lispcad/router/ROUTER.yaml"
 BOOTSTRAP = (
-    "AI_BOOTSTRAP.md",
+    "JOB_CARD.md",
     "AI_ENTRYPOINT.md",
     "skills/lispcad/router/FEATURE_CENSUS.md",
     ROUTER,
@@ -237,11 +237,32 @@ def resolve_rules(census: dict, root: Path = ROOT, router: dict | None = None) -
         "note": "Read mandatory stages in order and execute all gates; routing alone does not establish CAD PASS.",
     }
 
+def census_template(root: Path = ROOT) -> dict:
+    """Fail-safe census skeleton: every family UNKNOWN until evidence says NO."""
+    router = yaml.safe_load((Path(root) / ROUTER).read_text(encoding="utf-8"))
+    return {
+        "source_mode": "UNKNOWN_SET_ME",
+        "part_mode": "UNKNOWN",
+        "reference_present": "UNKNOWN",
+        "multi_code_or_assembly": "UNKNOWN",
+        "customer_code": None,
+        "source_manufacturing_notes": [],
+        "features": {k: {"state": "UNKNOWN", "evidence": []} for k in router["feature_routes"]},
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("census", type=Path, help="Complete Feature Census JSON")
+    parser.add_argument("census", type=Path, nargs="?", help="Complete Feature Census JSON")
     parser.add_argument("--repo-root", type=Path, default=ROOT)
+    parser.add_argument("--template", action="store_true",
+                        help="print a census skeleton with every family UNKNOWN; set NO only with evidence")
     args = parser.parse_args()
+    if args.template:
+        print(json.dumps(census_template(args.repo_root), ensure_ascii=False, indent=2))
+        return 0
+    if args.census is None:
+        parser.error("census JSON required (or --template)")
     try:
         census = json.loads(args.census.read_text(encoding="utf-8"))
         result = resolve_rules(census, args.repo_root)

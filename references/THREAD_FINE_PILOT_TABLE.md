@@ -1,4 +1,6 @@
 # Metric fine-pitch pilot drill diameters — CAD-only
+
+**Use `python tools/lookup.py pilot --thread M8x1` (coarse unless the source proves a fine pitch); it parses this table.**
 Source: `伸び下穴経路一覧.xlsx` / `タップ下穴!A19:H45`, 2026-10-12 selected rule baseline. The existing `THREAD_PILOT_TABLE.md` stays standard pitch authority. Apply this table **only if source proves the explicit fine pitch**, e.g. M8×1.0; an unspecified M8 uses coarse pitch. A nut symbol alone does not prove a tap.
 
 | Explicit thread × pitch | Effective pilot Ø mm |

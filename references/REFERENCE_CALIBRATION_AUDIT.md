@@ -1,6 +1,6 @@
 # Reference DXF calibration / direct audit (loaded when a reference/sample exists)
 
-Moved verbatim from `DRAWING_READING.md` §0.3 and §2.4 (with duplicate V4.13/V4.14/V4.17 reference wording from `VALIDATION.md` and `CAD_OUTPUT.md` consolidated here). Production PDF-only jobs do not load this file.
+Moved verbatim from former `DRAWING_READING.md` sections 0.3 and 2.4 (with duplicate V4.13/V4.14/V4.17 reference wording from `VALIDATION.md` and `CAD_OUTPUT.md` consolidated here). Production PDF-only jobs do not load this file.
 
 ### 0.3 Calibration / Regression Learning Protocol
 When the user supplies a reference DXF or corrected CAD for PDF-interpretation calibration (NOT a specifically requested direct audit of an already created AI DXF):
@@ -45,6 +45,6 @@ If the user's objective is to evaluate **the AI's already-exported DXF** against
 
 - **REFERENCE_METADATA_NONBLOCKING:** `$INSUNITS` metadata alone never fails physical geometry once actual numeric units are proved from source/user/reference scale. Production exports still use mm metadata.
 - EXACT printed PDF inputs never receive a comparison tolerance. Only absolute differences strictly <0.01 mm caused by internal precision/rounding in an already-correct DERIVED result can pass an arithmetic-only comparison with a reference DXF. Exactly 0.01 fails. This never waives feature/datum/topology/bend/manufacturing checks.
-- **Reference DXF Comparison Check:** when a reference is active, compare feature coordinates and topology against it only after independent PDF interpretation. First apply the approved material-table automatic Laser R rule for eligible corners (`DRAWING_READING.md` §2.4); do not exclude matching DXF-only R0.5/R2 simply because the PDF omitted the callout. Only explicitly approved downstream shop-only differences may be excluded.
+- **Reference DXF Comparison Check:** when a reference is active, compare feature coordinates and topology against it only after independent PDF interpretation. First apply the approved material-table automatic Laser R rule for eligible corners (`MATERIAL_RULES.md`, `python tools/lookup.py laser-r`); do not exclude matching DXF-only R0.5/R2 simply because the PDF omitted the callout. Only explicitly approved downstream shop-only differences may be excluded.
 - Exact coincident duplicates in a user-approved sample are normalized for physical comparison and reported `REFERENCE_ANOMALY`; never promote duplicate entity count into feature quantity.
 - If a sample/reference is introduced after production, output/audit reporting must preserve the frozen source-only status (`SOURCE_ONLY_SNAPSHOT`).
