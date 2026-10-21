@@ -36,17 +36,11 @@ Authoritative rule: `../core/DATUM_DIMENSION.md` §4.2.6. Interpret witness orig
 
 Authoritative rule: `../../../references/BEND_DATUM_MAPPING.md` §4.2.7; execute that proved local-face → global-flat coordinate transformation before any unfold output.
 
-**V4.32 physical edge datum identity:** if the local datum is edge-based, retain the actual edge identity through the transform, e.g. `FACE_2.BEND_EDGE` or `FACE_2.FREE_EDGE`. Rotation/reflection may change coordinate direction but may not silently swap bend/free edge identity.
+Physical edge identity (`FACE_2.BEND_EDGE` vs `FACE_2.FREE_EDGE`) survives the transform: §4.2.7.1 there.
 
 #### 4.2.8 Bend Sequence / Face Order Is Non-Commutative
 
-Apply `../../../references/BEND_DATUM_MAPPING.md` §4.2.8 for the canonical face-order rule. Additional bend-specific hard gates follow:
-
-- Determine the ordered face sequence from the visible formed topology, bend callouts, section/detail views, and proven witness-line connectivity before calculating bend-line coordinates.
-- Lock the physical attachment edge for every face transition under V4.32; correct face order with the wrong attached edge is still FAIL.
-- Do not validate bend order merely because `sum(OD) - sum(Nobi)` matches the overall blank length.
-- Double bend lines MUST be positioned from the ordered sequence in §4.7 and MUST exist only over material regions that actually cross that bend. For U-shaped, legged, stepped, or cut-away parts, split/trim bend lines around voids; never draw a bend line continuously through empty space.
-- If two face orders or two physical attachment edges remain plausible after explicit trace exhaustion, draw the best-supported candidate in Magenta and name the alternative in the FLAG (`REVIEW_PREVIEW_POLICY.md` §3); status REVIEW, never an unflagged arbitrary choice.
+Apply `../../../references/BEND_DATUM_MAPPING.md` §4.2.8 (face order from formed topology, callouts and witnesses; a closing `sum(OD) - sum(Nobi)` never proves order; bend lines only over material; competing orders drawn per `REVIEW_PREVIEW_POLICY.md` §3). Bend-specific addition: lock the physical attachment edge for every face transition (V4.32); a correct face order with the wrong attached edge is still FAIL.
 
 ### 4.6 ID-to-OD Conversion for Non-90° Bends
 When dimensions are given as Inside Dimensions (ID), convert to Outside Dimensions (OD). Compute with `python tools/lookup.py idod --t <t> --angle <A>` (rounds the offset first; ≤85° is routed to §4.6.2):

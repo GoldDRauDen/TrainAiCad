@@ -220,3 +220,16 @@ When the actual Thickness (`t`) or Bend Length (`L`) does **not** exactly match 
 
 **Handwritten/J mismatch audit:** Existing Rule 1 always draws with scoped legible N_hand, including bends marked J. Only if the approved table supplies a genuinely compatible N_table for the SAME material, thickness, bend length, angle and applicable surface state, record both and retain HANDWRITTEN_NOBI_DIFFERS_FROM_TABLE only as a nonblocking audit note if prescribed values differ. Do not borrow a 90° table row for a 165° bend; if the table has no match, never replace a proved handwritten Nobi with an OD fallback.
 
+## Moved 2026-10-21 — MATERIAL_RULES regression examples (now executable in tests/test_lookup.py)
+
+#### Regression examples (user-approved)
+
+- SS t9: hole threshold t/2 = 4.5. M4 pilot Ø3.3 and M5 pilot Ø4.2 => POINT ByLayer with no capacity FLAG. M6 pilot Ø5.0 => CIRCLE if no PIERCING, assuming verified M6 and coordinates.
+- SS t9 outside corner ≤90° with no explicit PDF R/C => R2 added (e.g. `055955`). SS t≤3.2 outside ≤90° => R0.5 added.
+- SUS t15–16 => minimum cut hole Ø10, independent of the unconditional POINT rule for Ø < t/2.
+- AL t5 => minimum cut hole 0.8t = Ø4. Ø3 with no PIERCING => POINT ByLayer with no capacity FLAG, although Ø3 is not < t/2.
+- SS t19+ => laser R3 only on outer-perimeter corners, including concave corners of that same perimeter, excluding interior holes/slots; ignore unexplained `※3` notation, not the R3 value.
+- L09 SUS430 t6: SS Nobi, SUS/他 Laser R0.5, SUS/他 inherited min hole t/2, 白ピアス 〇 as capacity only.
+- L10 Cu/Brass t6: R0.5 at eligible outside corner; t>6 NO automatic Laser R; at 5<t<6 use next-higher t6 row with R0.5.
+
+
