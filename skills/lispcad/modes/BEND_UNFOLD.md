@@ -46,7 +46,7 @@ Apply `../../../references/BEND_DATUM_MAPPING.md` §4.2.8 for the canonical face
 - Lock the physical attachment edge for every face transition under V4.32; correct face order with the wrong attached edge is still FAIL.
 - Do not validate bend order merely because `sum(OD) - sum(Nobi)` matches the overall blank length.
 - Double bend lines MUST be positioned from the ordered sequence in §4.7 and MUST exist only over material regions that actually cross that bend. For U-shaped, legged, stepped, or cut-away parts, split/trim bend lines around voids; never draw a bend line continuously through empty space.
-- If two face orders or two physical attachment edges remain equally plausible after explicit trace exhaustion, STOP and ask the user. Magenta is not permission to choose an arbitrary bend order/edge.
+- If two face orders or two physical attachment edges remain plausible after explicit trace exhaustion, draw the best-supported candidate in Magenta and name the alternative in the FLAG (`REVIEW_PREVIEW_POLICY.md` §3); status REVIEW, never an unflagged arbitrary choice.
 
 ### 4.6 ID-to-OD Conversion for Non-90° Bends
 When dimensions are given as Inside Dimensions (ID), convert to Outside Dimensions (OD). Compute with `python tools/lookup.py idod --t <t> --angle <A>` (rounds the offset first; ≤85° is routed to §4.6.2):

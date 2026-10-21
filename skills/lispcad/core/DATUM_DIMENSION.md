@@ -18,10 +18,12 @@ When dimension conflicts occur, strictly follow this hierarchy (higher overrides
 7. Implied DXF Geometry
 8. Visual Estimation
 
+For `PDF_DATA_RAW`, supplied customer DATA is the geometry authority (`DATA_RAW_TO_MANUFACTURING_CONTRACT.md`) and the PDF governs meaning, witnesses, revisions and Nobi; item 7 covers only geometry implied by a non-authoritative or reference DXF.
+
 ### 4.2 Datum Lock & Extension Line Integrity *(expanded V3.1 — anti-error safeguard)*
 - To prevent feature displacement errors (such as misassociating extension lines across parallel dimension chains), notch/cutout/hole positions ($X$, $Y$) MUST be calculated strictly from the actual datum edge or datum feature proven by the dimension extension lines.
 - **Never** add or subtract adjacent flange widths, hole-edge offsets, neighboring dimension values, or bounding-box offsets unless the drawing shows that they belong to one continuous dimension string.
-- Every critical feature coordinate MUST be traceable as an explicit expression from a proven datum, e.g. `Y = 0 + 10 + 35 = 45`. If no valid trace exists, apply Section 4.4 instead of inferring the coordinate.
+- Every critical feature coordinate MUST be traceable as an explicit expression from a proven datum, e.g. `Y = 0 + 10 + 35 = 45`. If no valid trace exists, apply §4.4 instead of inferring the coordinate.
 
 #### 4.2.1 Dimension-String Classification — MUST classify before arithmetic
 Before using any dimension numerically, classify it as one of the following:
@@ -106,13 +108,12 @@ $$X_{\text{mid}} = X_{\text{nominal}} + \frac{\text{Tolerance}_{\text{upper}} + 
 - **Example**: A dimension specified as $50.0^{+0.2}_{+0.1}\text{ mm}$ is computed as:
   $$X_{\text{mid}} = 50.0 + \frac{0.2 + 0.1}{2} = 50.15\text{ mm}$$
 - **Symmetric Tolerances** ($\pm 0.1\text{ mm}$): Mid-tolerance equals nominal value.
-- **Reference Dimensions** (参考 / marked as reference, no tolerance band): Do NOT apply mid-tolerance adjustment — use nominal value as-is (see Section 6, term "Reference").
+- **Reference Dimensions** (参考 / marked as reference, no tolerance band): Do NOT apply mid-tolerance adjustment — use nominal value as-is.
 
 ### 4.4 Ambiguous, Unclear, or Missing Dimension Handling
 - **Flag only after explicit-trace exhaustion**: A crowded/overlapping print is not automatically ambiguous. Before flagging, zoom/re-read the witness lines and test all explicit dimension paths, endpoint identities, feature diameters, feature counts, projection relationships, and overall closure. If the PDF contains a unique trace, use it; do not use Magenta as an escape from difficult dimension parsing.
-- **Magenta is not permission to invent topology**: Use estimated/Magenta geometry only when the entity identity and contour/feature topology are already certain but a numeric dimension remains unreadable/ambiguous. If multiple topologies, feature types, bend orders, or physical attachment edges are possible, STOP and ask the user rather than fabricating a bounding rectangle, generic slot, or arbitrary flange order/edge.
+- **Magenta is not permission to invent topology**: Use estimated/Magenta geometry only when the entity identity and contour/feature topology are already certain but a numeric dimension remains unreadable/ambiguous. If multiple topologies, feature types, bend orders, or physical attachment edges remain possible, follow `references/REVIEW_PREVIEW_POLICY.md` §0/§3: draw the best source-supported candidate in Magenta, name the alternative in the FLAG and continue the job; never a bounding rectangle, generic slot or unflagged arbitrary order/edge.
 - **Integer Value Enforcement applies only to estimated/assumed values**: Any truly estimated dimension MUST be rounded to the nearest integer (e.g., `256` or `258`, never `256.4`). Explicit dimensions and deterministic formula results (for example `182.70`, `159.26`, or a Nobi-derived bend coordinate) MUST retain their calculated precision and MUST NOT be rounded to an integer merely because another part of the same feature/part is flagged.
 - **Known/unknown separation**: Flagging an unresolved feature does not authorize changing dimensions that are already proven. Keep all proven edges, lengths, hole sizes, and coordinates exact; isolate only the unresolved quantity/entity.
 - **No bounding-box substitution**: A known overall width/height may be reported as a bounding extent, but MUST NOT be emitted as a closed rectangular outline unless the contour trace proves that all four rectangle edges actually exist.
-- **Color Code 6 (Magenta)**: Assign DXF Group `(62 . 6)` to any line, circle, or polyline whose size/position was estimated or ambiguous.
-- **Adjacent Text Annotation**: Add a `TEXT` entity on DXF Group `(62 . 6)` immediately adjacent to the ambiguous feature (e.g., `"(ESTIMATED GEOMETRY - CHECK DRAWING)"` or `"(M6 OR M8)"`).
+- **Magenta + Vietnamese note**: estimated/ambiguous geometry is color `(62 . 6)` with an adjacent Magenta `TEXT` in Vietnamese, e.g. `Kích thước ước lượng - kiểm tra bản vẽ` or `M6 hoặc M8?` (`REVIEW_PREVIEW_POLICY.md` §6).

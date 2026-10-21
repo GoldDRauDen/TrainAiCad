@@ -84,8 +84,8 @@ includes the stepped/notched flange rules that were formerly unreachable.
 The resolver now produces a per-code, **mandatory L0–L3** stage plan:
 L0 bootstrap; L1 source inspection and feature census; L2 routed geometry;
 L3 full validation/canonical/export/read-back. All stages must execute before
-PASS. Inherited V4.26 physical curve decoding, V4.31 completeness and V4.33
-holistic/reference-firewall requirements remain loaded before census.
+PASS. Physical-curve decoding, canonical completeness and the reference
+firewall load before census; the holistic engineering challenge runs at L3.
 
 Read initial stages first; read later rule files just before their execution.
 This optimizes **initial context**, not necessarily cumulative whole-job tokens.

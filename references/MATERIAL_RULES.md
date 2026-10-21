@@ -13,7 +13,7 @@ Automatic R3 applies only to corners on the **OUTER material perimeter contour**
 | Scoped corner | Decision |
 |---|---|
 | Eligible outer corner, no explicit source corner instruction | Apply automatic R3 |
-| Explicit customer sharp/pin-corner instruction conflicts with automatic R3 | FLAG and obtain customer confirmation; no silent override either way |
+| Explicit customer sharp/pin-corner instruction conflicts with automatic R3 | Draw the explicit customer corner, FLAG and obtain customer confirmation (REVIEW); no silent override either way |
 | Explicit proved R/C, without the sharp/pin conflict above | Preserve the explicit family/value/scope under CHAMFER_RADIUS; do not silently convert C to R |
 | Inner hole, slot or void contour | No automatic R3 from this outer-perimeter rule |
 

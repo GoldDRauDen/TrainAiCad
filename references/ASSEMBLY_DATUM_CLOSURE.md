@@ -1,6 +1,6 @@
 # Cross-part assembly datum closure (loaded when multi_code_or_assembly is not NO)
 
-Moved verbatim from `DATUM_DIMENSION.md` §4.2.2b.
+Moved verbatim from `DATUM_DIMENSION.md` (former section 4.2.2b).
 
 #### 4.2.2b Cross-part Assembly Datum Closure (approved 2026-10-13)
 

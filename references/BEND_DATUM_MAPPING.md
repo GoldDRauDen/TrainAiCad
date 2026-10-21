@@ -37,4 +37,4 @@ The total flat length equation may be numerically unchanged when two flange leng
 - Determine the ordered face sequence from the visible formed topology, bend callouts, section/detail views, and proven witness-line connectivity before calculating bend-line coordinates.
 - Do not validate bend order merely because `sum(OD) - sum(Nobi)` matches the overall blank length.
 - Double bend lines MUST be positioned from the ordered sequence in Section 4.7 and MUST exist only over material regions that actually cross that bend. For U-shaped, legged, stepped, or cut-away parts, split/trim bend lines around voids; never draw a bend line continuously through empty space.
-- If two face orders remain equally plausible after explicit trace exhaustion, STOP and ask the user. Magenta is not permission to choose an arbitrary bend order.
+- If two face orders remain plausible after explicit trace exhaustion, draw the best-supported candidate in Magenta and name the alternative in the FLAG (`REVIEW_PREVIEW_POLICY.md` §3); status REVIEW, never an unflagged arbitrary choice.
