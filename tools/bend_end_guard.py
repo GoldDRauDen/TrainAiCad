@@ -103,7 +103,7 @@ def _relief_members_proved(site, relief, entities):
 
 def _slit_construction_proved(site, part, edges, relief, entities, bends):
     """Rebuild the existing connected slit rule from proved canonical-flat edges."""
-    from slit_geometry import connected_slit, lead_end_by_offset, lead_val, slit_dir_from_bend
+    from slit_geometry import LeadValueUnproved, connected_slit, lead_end_by_offset, lead_val, slit_dir_from_bend
     try:
         witness = site.get("slit_construction", {})
         if not witness.get("evidence_ref") or witness.get("bend_id") not in site["bend_ids"]:
@@ -149,6 +149,8 @@ def _slit_construction_proved(site, part, edges, relief, entities, bends):
         arc, wanted = arcs[0], expected["arc"]
         return (close(arc["center"], wanted["center"]) and abs(_number(arc["radius"])-wanted["radius"]) <= TOL and
                 all(abs((_number(arc[key])-wanted[key]+180) % 360-180) <= TOL for key in ("start_angle", "end_angle")))
+    except LeadValueUnproved:
+        raise  # surfaced as its own FLAG code (LEAD_VALUE_UNPROVED:...), not as a generic construction mismatch
     except (ValueError, TypeError, KeyError, StopIteration):
         return False
 

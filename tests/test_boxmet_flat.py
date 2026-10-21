@@ -158,3 +158,10 @@ def test_invalid_inputs_rejected(bad):
     args.update(bad)
     with pytest.raises(BoxMetError):
         box_flat(**args)
+
+
+def test_boxmet_flags_unproved_lead():
+    import pytest as _pytest
+    from boxmet_flat import BoxMetError as _Err, box_geometry as _bg
+    with _pytest.raises(_Err, match="LEAD_VALUE_UNPROVED"):
+        _bg(400, 300, 80, 80, 80, 80, 19, "SS400", 30)

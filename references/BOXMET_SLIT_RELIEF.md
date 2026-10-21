@@ -114,7 +114,7 @@ python tools/export_canonical_dxf.py job.json outdir        # only DXF writer; a
 ```
 
 - Geometry is a port of `GoldDRauDen/BoxMetFlatV3` (`Boxmetcommand.cs`) and equals `references/dxf/MM.dxf` (`regression/boxmet/MM_L200_W150_H30_T1.5_N2.54.json`), except that the two long outside dashed lines are interrupted by `T` at both ends (real bend-edge length, `BEND_EDGE_RELIEF_90.md` section 2).
-- N is an INPUT (handwritten > customer > table); BoxMet's own `NobiLookup` is not used. Outer R comes from `MATERIAL_RULES.md` (no approved row -> corners stay sharp and are recorded as SHARP with reason). Lead is `slit_geometry.lead_val` (SS and t<=3.2 -> 3, else 6); BoxMet's `SS and T<6 -> 3` differs for SS 3.2<t<6.
+- N is an INPUT (handwritten > customer > table); BoxMet's own `NobiLookup` is not used. Outer R comes from `MATERIAL_RULES.md` (no approved row -> corners stay sharp and are recorded as SHARP with reason). Lead is `slit_geometry.lead_val`, read from `references/LEAD_TABLE.yaml` (workbook column G: SS t<=3.2 -> 3, t4-9 -> 6, t10-16 -> 10; SUS/他/AL <=8 -> 6, 9-16(18 AL) -> 10; Cu/Brass <=6 -> 6). Hook rows (t>=19) and thicknesses between rows are FLAGGED (`LEAD_VALUE_UNPROVED`, `BoxMetError`), never guessed. BoxMet's own `SS and T<6 -> 3` is NOT used: the table gives SS t4-5 -> 6.
 - Retreat per corner follows `BEND_EDGE_RELIEF_90.md` section 9 (depth first, longer bend edge on ties). For equal flange heights this is exactly the BoxMet L>=W rule.
 - A drawing that shows the box corners rounded/chamfered without a callout is refused (`BOXMET_CORNER_DRAWN_SHAPE_NOT_SHARP_FLAG`); the generator never rounds such a corner on its own.
 - Holes are given in the flat frame with their own evidence (`--hole X Y DIA EVIDENCE`).

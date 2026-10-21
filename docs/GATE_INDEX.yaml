@@ -306,6 +306,10 @@ review_candidates:
   files:
   - references/KEGAKI_FOOTPRINT_FROM_PDF.md
   - references/WELD_SITE_KEGAKI_CLOSURE.md
+- id: LEAD_VALUE_UNPROVED
+  files:
+  - references/BOXMET_SLIT_RELIEF.md
+  - skills/lispcad/features/SLIT_RELIEF.md
 reviewed_non_gates:
 - ASSEMBLY_DATUM_GRAPH
 - BEND_EDGE

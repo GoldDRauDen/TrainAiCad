@@ -16,3 +16,7 @@ Nguồn: DXF mẫu của người dùng cho 061247 và 061248 (bóc tách từng
 
 ## Quy tắc đã đưa vào repo
 `references/BEND_EDGE_RELIEF_90.md` mục 9, `tools/corner_retreat.py`, `tools/bend_end_guard.py` (witness `corner_retreat`); đã bỏ cơ chế `CROSSING_BEND` vì trùng với slit theo bậc. Ngưỡng độ sâu 0.1 mm. Không lùi được cả hai cánh (chưa gặp) -> ghép như thường và FLAG cục bộ.
+
+## 055958 xác nhận (2026-10-21) và bảng vòi cột G
+- 055958 là góc hộp cùng chiều bình thường: hai cánh OD 55 (phẳng 45.32 = 55 − 9.68, t5) bằng độ sâu → cánh có cạnh uốn dài hơn (cánh trái) lùi t (570 → 565), S = −t, slit 5.2 từ x = 204.208 đến 209.408, vòi 6 (bảng cột G, t4–5 → 6), đầu vòi (198.208, 571) trên phân giác 45°. `connected_slit` tái hiện đúng DXF mẫu của người dùng (tests/test_lead_table.py).
+- Vòi lấy từ `references/LEAD_TABLE.yaml` (một lần chốt: người dùng duyệt 2026-10-21). t ≥ 19 (hàng móc) và t nằm giữa các hàng bảng → FLAG `LEAD_VALUE_UNPROVED`, không tự vẽ; người dùng: t lớn nhất thực tế là 16.
