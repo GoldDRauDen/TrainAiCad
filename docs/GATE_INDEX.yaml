@@ -283,16 +283,29 @@ gates:
   files:
   - AI_ENTRYPOINT.md
   - references/CAD_CUSTOMER_POLICY.md
+  - references/KEGAKI_FOOTPRINT_FROM_PDF.md
   - references/PART_IDENTITY_GRAPH.md
   - references/WELD_SITE_KEGAKI_CLOSURE.md
   - skills/lispcad/core/CROSS_FEATURE_VALIDATION.md
   - skills/lispcad/features/KEGAKI.md
   - skills/lispcad/router/FEATURE_CENSUS.md
 review_candidates:
+- id: CHAIN_CENSUS_EMPTY
+  files:
+  - references/KEGAKI_FOOTPRINT_FROM_PDF.md
+  - references/WELD_SITE_KEGAKI_CLOSURE.md
 - id: CROSSING_BEND
   files:
   - references/BEND_EDGE_RELIEF_90.md
   - skills/lispcad/features/SLIT_RELIEF.md
+- id: KEGAKI_DUPLICATE_SEGMENT
+  files:
+  - references/KEGAKI_FOOTPRINT_FROM_PDF.md
+  - references/WELD_SITE_KEGAKI_CLOSURE.md
+- id: KEGAKI_ON_CONTOUR
+  files:
+  - references/KEGAKI_FOOTPRINT_FROM_PDF.md
+  - references/WELD_SITE_KEGAKI_CLOSURE.md
 reviewed_non_gates:
 - ASSEMBLY_DATUM_GRAPH
 - BEND_EDGE

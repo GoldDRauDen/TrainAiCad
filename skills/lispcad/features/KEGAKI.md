@@ -11,6 +11,10 @@ a scoped FLAG rather than emitting a fabricated RED production line.
 The source/canonical weld-site gate independently checks this requirement.
 Other customers retain the V4.27 source-cue and locating-function scope.
 
+Footprint derivation, host choice, the single-line case (`t_host − k`) and the
+drawing form (RED LINEs only, no line on the part contour, union outline with no
+duplicated segment) are in ../../../references/KEGAKI_FOOTPRINT_FROM_PDF.md.
+
 
 **V4.20 approved; V4.27 weld-cue scope approved.**
 

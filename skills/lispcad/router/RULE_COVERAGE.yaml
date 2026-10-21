@@ -47,6 +47,7 @@ release_coverage:
       - regression/tools/check_521007_07_v433.py
       - tests/test_v433_holistic_reference_guards.py
       - tests/test_weld_kegaki_guard.py
+      - tests/test_kegaki_footprint.py
   V4.32:
     active:
       - AI_ENTRYPOINT.md
