@@ -63,6 +63,6 @@ python -m pytest tests/ -q
 
 ## V4.35 input additions
 
-- Optional per-part boolean `dx_label` (default false): `true` only when the part is drawn from its inner (back) face. A 対称 mirror-image part is drawn mirrored directly and keeps `false`. The face that carries the KEGAKI weld marks is the outer face: a part whose KEGAKI is on the drawn face is an outer-face drawing and keeps `false`. Only the combined file draws the 20 mm `dx` label; individual CUT files never carry labels.
+- Optional per-part boolean `dx_label` (default false): `true` only when the part is drawn from its inner (back) face. A 対称 mirror-image part is drawn mirrored directly and keeps `false`. The face that carries the KEGAKI weld marks is the outer face: a part whose KEGAKI is on the drawn face is an outer-face drawing and keeps `false`. KEGAKI on the BACK face of the drawn view means an inner-face drawing: `dx_label: true` (label only, no flip/mirror). Only the combined file draws the 20 mm `dx` label; individual CUT files never carry labels.
 - LWPOLYLINE stays a valid canonical input type. Outlines, cutouts and slots are written as LINE/ARC pieces (`<entity_id>:S0001` ...), so the saved combined file has no LWPOLYLINE.
 - Composite default gap is 150 mm (`COMPOSITE_GAP_MM`), measured from an outline bottom to the next cluster's label top. Command default is `--gap-mm 150`; anything below 150 fails.

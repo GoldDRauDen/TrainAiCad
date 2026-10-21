@@ -1,5 +1,9 @@
 # LISPCAD Mode — Bend / Unfold
 
+## Canonical flat frame = orientation of the primary (plan) view
+
+Build the canonical flat in the orientation of the source's primary/plan view (521021-20 26-062288: length along Y, hole end at the bottom, flange/slotted end at the top), not a convenient rotation. Composite output stays source-readable; only an explicitly requested individual cut is pose-normalised.
+
 ## Attachment and formed-profile OD before unfold
 
 For every BEND, MULTI_FACE or unresolved bend candidate, execute `../../../references/FACE_GRAPH_UNFOLD_PROTOCOL.md` and `../../../references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md` before production unfold. They own BEND_ATTACHMENT_EDGE_LOCKED, both physical shared edges, valid source evidence and the forbidden NEAREST_VIEW_EDGE shortcut. Apply `../../../references/FORMED_PROFILE_OD_MEASUREMENT.md` when formed geometry must establish OD_actual; a MEASUREMENT_CONSTRUCTION_VIEW is not CUT.

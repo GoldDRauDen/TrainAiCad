@@ -50,6 +50,9 @@ Every dimension endpoint/witness line must be tagged by the **actual geometry it
 - Example pattern: if one horizontal dimension is from a step to the **outer edge** and an adjacent dimension is between two **hole centers**, do not subtract both from the same right-side X coordinate.
 - Record the endpoint identity in the datum trace whenever a crowded drawing contains multiple nearby extension lines.
 
+#### 4.2.4.0 Each hole family has its OWN dimension string
+Trace each family (2-M8 vs 4-M5) through the extension lines through ITS axes and name the printed label on every witness step; never copy one family's end offset to another (521021-20: M8 200+15 -> X 15; M5 204+13 -> X 13, not 15).
+
 #### 4.2.4.1 V4.32 Radius/notch depth endpoint semantics
 
 For an edge-open notch or recess containing an arc/radius, classify whether a printed dimension terminates on the **physical deepest contour point**, the arc center, a tangent point, or another explicit witness node before converting it to geometry.

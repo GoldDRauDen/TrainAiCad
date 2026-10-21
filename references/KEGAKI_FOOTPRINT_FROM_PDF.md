@@ -32,6 +32,12 @@ record `host_not_laser` in the census. If the host cannot be proved → FLAG.
   makes up the difference).
 - Helpers and tests: `tools/kegaki_footprint.py`, `tests/test_kegaki_footprint.py`.
 
+## 2b. Child standing on two faces of a bent host (521021-20)
+- A thin strip in a plan view of an assembly (rib seen edge-on, 6 mm wide) is the child's FOOTPRINT, never a slit/cutout of the host. A cutout needs its own callout or dimensions on the host; do not infer one from a strip.
+- When a rib stands on both the flange and the web of a bent host and its foot is adjacent to the bend with NO chamfer at the foot, the two contact zones are adjacent: draw ONE union outline that runs continuously across the bend line (closed rectangle, 4 red LINEs when no side lies on the contour).
+- If the rib foot is chamfered, the contact zone is cut by the chamfer: do not apply this; follow the chamfer geometry or FLAG.
+- Flat position of a web-face point = line1 + v, with v measured along the web from the OUTER plane of the flange (flange thickness included). Example 521021-20 (t9, line1 84.38): rib 150 on the web, v = 9 + 150 = 159 -> 84.38 + 159 = 243.38. The flange contact starts at (inner flange length 90) - (rib base 65) = 25 from the flange end.
+
 ## 3. Single line
 When the other boundary of the contact zone coincides with the part contour,
 only the inner boundary is drawn, at `t_host − k` from the welded edge, where k
@@ -69,3 +75,13 @@ marks in the first run of 521021-03.
 | 062024 | LINE y=4, x 0..22 |
 | 062027 | 10 LINE union (tube + 2 ribs) |
 | 062028 / 062029 | none |
+
+## 8. Worked values (521021-20, KH851, plan-view frame, origin = part bbox min)
+| Code | KEGAKI |
+|---|---|
+| 062288 (t9, bent, 314.38 x 75, flange end at top) | closed rectangle across the bend: x 34.5..40.5 (6 wide, centred), flat from flange end 25 .. 243.38; no cutout |
+| 062289 | none (rib C, child) |
+| 062291 | none (child of 062292) |
+| 062292 (dx) | 2 LINEs y=22 and y=28, full width 22 (child centred on the 50 length) |
+| 062293 (dx) | 2 LINEs x=30 and x=70, full depth 90 (tube 40, host_not_laser) |
+| 062294 / 062295 | 2 LINEs x=95 and x=135, full depth 75 / 25 (tube 40 centred by 95+40+95) |

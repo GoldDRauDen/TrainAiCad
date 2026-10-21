@@ -46,3 +46,6 @@ RIB KEGAKI is the contact/position footprint on the MAIN part after forming, not
 RIB-part cancellation and main-part KEGAKI cancellation are independent decisions; do not delete the mark without its own source/revision scope.
 
 Audit KEGAKI independently for count, host face, datum/transform, continuity/segmentation, Red property and fold-back locating function.
+
+## Footprint strip is not a cutout
+A narrow strip in an assembly view (rib/child seen edge-on) is the child's contact footprint on the host. Never turn it into a host SLIT/CUTOUT without a callout or its own dimensions; see `references/KEGAKI_FOOTPRINT_FROM_PDF.md` §2b for a child standing on both faces of a bent host (one union outline across the bend when there is no chamfer at the foot).
