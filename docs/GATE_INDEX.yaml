@@ -310,6 +310,11 @@ review_candidates:
   files:
   - references/BOXMET_SLIT_RELIEF.md
   - skills/lispcad/features/SLIT_RELIEF.md
+- id: SPLIT_FLANGE_10MM
+  files:
+  - references/AIKOKU_646_NOBI.md
+  - references/NOBI_TABLES.md
+  - skills/lispcad/modes/BEND_UNFOLD.md
 reviewed_non_gates:
 - ASSEMBLY_DATUM_GRAPH
 - BEND_EDGE

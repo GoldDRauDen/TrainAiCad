@@ -24,7 +24,7 @@ Close all G1–G7 graph/attachment/witness/ownership/order/sign/domain/constrain
 
 **INSIDE_VIEW assembled before proved reflection:** When source views prove they show inner faces, identify each face's datum, view direction and fold order. Apply the existing ID→OD, handwritten/table Nobi and local-face-to-flat rules, assemble the complete proved inside-face flat, and ONLY THEN reflect the assembled geometry when the intended target blank requires the proved axis. Compare hole center, actual M/Ø family and count IN THE SAME final frame; a left/right appearance in unmatched frames is not a hole error. Never mirror every bent part by default. User-approved 018297 is the regression for a false M3/Ø7 swap conclusion.
 
-**Handwritten/table audit:** a legible scoped handwritten Nobi always draws, including bends marked J; record a differing compatible table value (same material, t, L, angle, surface) only as nonblocking `HANDWRITTEN_NOBI_DIFFERS_FROM_TABLE`.
+**Handwritten/table audit:** a legible scoped handwritten Nobi (`N_hand`) always draws, including bends marked J; record a differing compatible table value (same material, t, L, angle, surface) only as nonblocking `HANDWRITTEN_NOBI_DIFFERS_FROM_TABLE`.
 
 **Exact printed inputs versus strictly <0.01 mm DERIVED comparison:** Continue rounding each calculated ID→OD offset to 0.01 before adding it to the actual printed ID and deducting the real Nobi. Read printed dimensions EXACTLY; the <0.01 mm threshold applies only to a representation/rounding difference when auditing ALREADY CORRECT derived quantities against a reference. Exactly 0.01 is not below threshold, and a wrong source input, datum, topology, feature class, or bend order fails regardless. Approved 018300: (797+0.26)+(24+0.26)-0.37=821.15 mm; 262+61.5-3.68=319.82 mm. Its previously measured reference bbox ~821.153 differs ~0.003 mm only in derived arithmetic.
 
@@ -78,7 +78,7 @@ When the **proved included bend angle is ≤85° (85° inclusive)**, this approv
 
 Approved executable regression: `../../../regression/tools/check_acute_bend_lt85.py`; proof assets: `../../../regression/assets/acute_bend_lt85/`.
 
-### 4.7 Nobi lookup and missing-Nobi fallback (approved 2026-10-21)
+### 4.7 Nobi lookup and missing-Nobi fallback
 
 Per bend run `python tools/lookup.py nobi --material <printed grade> --t <t> --L <bend length> --angle <included angle> [--surface "#1"] [--handwritten <N>] [--no-j] [--customer <numeric code>]`. It applies the order below and returns either `nobi` or `action: SPLIT_FLANGE_10MM` with the Vietnamese FLAG text. Without Python apply the same order to `references/NOBI_TABLES.md` by hand.
 
