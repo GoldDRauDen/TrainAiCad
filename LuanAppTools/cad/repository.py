@@ -111,6 +111,7 @@ class PinnedRepository:
                 approved = name in (
                     "AI_BOOTSTRAP.md",
                     "AI_ENTRYPOINT.md",
+                    "JOB_CARD.md",
                     "templates/CAD_OUTPUT_TEMPLATE.dxf",
                 ) or name.startswith(("references/", "skills/lispcad/", "tools/"))
                 forbidden = name.startswith(
@@ -168,6 +169,7 @@ class PinnedRepository:
         r = self.router
         paths = [
             "AI_BOOTSTRAP.md",
+            *(["JOB_CARD.md"] if "JOB_CARD.md" in self.hashes else []),
             "AI_ENTRYPOINT.md",
             "skills/lispcad/router/FEATURE_CENSUS.md",
             "skills/lispcad/router/ROUTER.yaml",
