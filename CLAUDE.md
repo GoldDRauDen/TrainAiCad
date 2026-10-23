@@ -87,7 +87,8 @@ skills/lispcad/modes/      phẳng / uốn-trải
 skills/lispcad/features/   lỗ, ren, slot, KEGAKI, slit, rib, vát/bo...
 skills/lispcad/topology/   L / U / bậc / nhiều mặt
 references/                vật liệu, Nobi, lead, nguồn DATA, face graph...
-tools/                     lookup, pdf_views, resolve_rules, export_canonical_dxf, guard
+tools/                     lookup, pdf_views, resolve_rules, export_canonical_dxf, guard; run_job/build_canonical (phẳng)
+examples/                  spec mẫu cho tools/run_job.py (examples/flat_minimal.yaml)
 templates/                 CAD_OUTPUT_TEMPLATE.dxf
 regression/, tests/        bằng chứng đã duyệt + kiểm thử (không phải nguồn kích thước)
 docs/                      chỉ mục gate, lịch sử rule, quy trình bài học

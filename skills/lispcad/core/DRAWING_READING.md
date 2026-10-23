@@ -24,7 +24,7 @@ For a merged multi-part DXF, use only a user-declared or source-proved code-to-c
 1. `python tools/pdf_views.py info <pdf>`: page count, rotation, `VECTOR` vs `SCANNED_IMAGE`.
 2. `render --page N --out pN.png` (10×10 grid A1–J10): orientation, views, title block, where each code/view sits. Ignore administrative title-block text unless it resolves identity or a production conflict.
 3. Vector page: `text --page N --dims [--cells C3:E5]` gives the exact printed strings (dimensions, `n-Ø`, `M`, `R`, `C`, `t`) with their cells. Take values from this text, never retype them from the image; OCR swaps (`B/8`, `O/0`, `S/5`, `Ø/O`, `M6/MG`) cannot occur there. Scanned page: read each value from a 600-dpi `crop` twice (two different crops or zooms); OCR output is only a candidate, and plausibility or a standard table never silently corrects an ambiguous glyph.
-4. `crop --cells ... --dpi 600` every region whose witness lines, leaders, arrows or handwriting decide meaning; the image decides which geometry a value belongs to, the text decides the value.
+4. `crop --cells ... --dpi 600` every region whose witness lines, leaders, arrows or handwriting decide meaning; the image decides which geometry a value belongs to, the text decides the value. Two same-axis dimensions whose extension lines start close together (70/65, a slope or step): crop ≥900 dpi (`pdf_views.py pairs` on vector pages) and record which edge each line touches; after building, `tools/overlay_check.py` with ≥3 anchors must stay ≤1 mm.
 5. Fill the dimension ledger (`JOB_CARD.md` item 2) before any arithmetic; every used value cites its crop/cell. A printed value with no ledger row is not used; a ledger row with no witness endpoints is FLAG.
 
 ## Manufacturing interpretation

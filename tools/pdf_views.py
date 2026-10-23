@@ -6,6 +6,7 @@ renders and high-resolution crops. Requires PyMuPDF (`pip install pymupdf`).
     python tools/pdf_views.py render drawing.pdf --page 1 --out p1.png          # 10x10 grid A1..J10
     python tools/pdf_views.py crop drawing.pdf --page 1 --cells C3:E5 --out c.png  # zoomed crop (default 600 dpi)
     python tools/pdf_views.py text drawing.pdf --page 1 [--cells C3:E5] [--dims]
+    python tools/pdf_views.py pairs drawing.pdf --page 1 [--dist 25] [--out-dir crops/]   # close same-axis dims
 
 Why: CAD-exported PDFs usually keep dimension text as vector text. ``text``
 returns the exact printed string and its position, which removes OCR swaps
@@ -122,6 +123,42 @@ def text(path: str, page_no: int, cells: str | None = None, dims_only: bool = Fa
     return {"file": path, "page": page_no, "cells": cells, "count": len(spans), "spans": spans}
 
 
+def pairs(path: str, page_no: int, dist_pt: float = 25.0, out_dir: str | None = None, dpi: int = 900) -> dict:
+    """Dimension values of the same direction whose labels sit close together (e.g. 70 / 65).
+
+    Such pairs are where witness lines are most easily swapped: crop each one at >=900 dpi and
+    decide which edge every extension line touches before drawing (DRAWING_READING.md).
+    """
+    _need()
+    page = fitz.open(path)[page_no - 1]
+    if not page.get_text("words"):
+        return {"file": path, "page": page_no, "kind": "SCANNED_IMAGE", "pairs": [],
+                "note": "no vector text: crop every close same-axis dimension pair by hand at >=900 dpi"}
+    spans = [s for s in text(path, page_no, None, True)["spans"] if re.search(r"\d", s["text"])]
+    found = []
+    for i, a in enumerate(spans):
+        for b in spans[i + 1:]:
+            if a["angle"] != b["angle"]:
+                continue
+            ca = ((a["bbox_pt"][0] + a["bbox_pt"][2]) / 2, (a["bbox_pt"][1] + a["bbox_pt"][3]) / 2)
+            cb = ((b["bbox_pt"][0] + b["bbox_pt"][2]) / 2, (b["bbox_pt"][1] + b["bbox_pt"][3]) / 2)
+            d = ((ca[0] - cb[0]) ** 2 + (ca[1] - cb[1]) ** 2) ** 0.5
+            if d <= dist_pt:
+                box = [min(a["bbox_pt"][0], b["bbox_pt"][0]) - 30, min(a["bbox_pt"][1], b["bbox_pt"][1]) - 30,
+                       max(a["bbox_pt"][2], b["bbox_pt"][2]) + 30, max(a["bbox_pt"][3], b["bbox_pt"][3]) + 30]
+                rec = {"values": [a["text"], b["text"]], "cells": [a["cell"], b["cell"]], "angle": a["angle"],
+                       "distance_pt": round(d, 1), "crop_bbox_pt": [round(v, 1) for v in box]}
+                if out_dir:
+                    from pathlib import Path as _P
+                    _P(out_dir).mkdir(parents=True, exist_ok=True)
+                    out = str(_P(out_dir) / f"pair_p{page_no}_{len(found) + 1}.png")
+                    clip = fitz.Rect(*box) * page.derotation_matrix
+                    page.get_pixmap(dpi=dpi, clip=clip).save(out)
+                    rec["out"] = out
+                found.append(rec)
+    return {"file": path, "page": page_no, "kind": "VECTOR", "pairs": found}
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -144,6 +181,12 @@ def main(argv=None) -> int:
     t.add_argument("--page", type=int, default=1)
     t.add_argument("--cells")
     t.add_argument("--dims", action="store_true", help="only spans that look like dimensions/callouts")
+    q = sub.add_parser("pairs")
+    q.add_argument("pdf")
+    q.add_argument("--page", type=int, default=1)
+    q.add_argument("--dist", type=float, default=25.0, help="max label-center distance in pt")
+    q.add_argument("--out-dir")
+    q.add_argument("--dpi", type=int, default=900)
     a = ap.parse_args(argv)
     if a.cmd == "info":
         res = info(a.pdf)
@@ -151,6 +194,8 @@ def main(argv=None) -> int:
         res = render(a.pdf, a.page, a.out, a.dpi, not a.no_grid)
     elif a.cmd == "crop":
         res = crop(a.pdf, a.page, a.cells, a.out, a.dpi)
+    elif a.cmd == "pairs":
+        res = pairs(a.pdf, a.page, a.dist, a.out_dir, a.dpi)
     else:
         res = text(a.pdf, a.page, a.cells, a.dims)
     print(json.dumps(res, ensure_ascii=False, indent=2))
