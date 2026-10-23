@@ -67,7 +67,7 @@ For an edge-open notch or recess containing an arc/radius, classify whether a pr
 #### 4.2.5 Contour Topology First — Dimensions Assign Coordinates, They Do Not Invent the Shape
 Before solving numerical coordinates, trace the visible manufacturing boundary as an ordered topology: outer corners, protrusions, recesses, steps, notches, vertical/horizontal segments, chamfers, and radii.
 
-- An overall width/height gives the bounding extent only. It does **not** imply that the part is a full rectangle over that entire extent.
+- An overall width/height gives the bounding extent only; it does **not** imply a full rectangle over that extent.
 - First establish which contour segments actually exist and how they connect; only then assign coordinates from dimensions.
 - A local step can make the maximum width exist only over part of the height. Do not extend that maximum-width edge through a region where the drawing visibly steps inward.
 - If the visible outline and the assumed rectangular base disagree, the visible outline wins subject to explicit dimensions/callouts.

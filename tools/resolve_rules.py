@@ -251,10 +251,29 @@ def census_template(root: Path = ROOT) -> dict:
     }
 
 
+def write_bundle(result: dict, target: Path, repo_root: Path = ROOT) -> dict:
+    """All routed rule files of this plan, stage order, each once, in ONE file (one read instead of many).
+
+    The bundle is a read-only copy: the routed files stay the authority, and a stage is still
+    started by re-reading JOB_CARD.md.
+    """
+    seen, parts = [], []
+    for stage in result["stage_order"]:
+        for rel in result["stage_plans"][stage]["rule_paths"]:
+            if rel in seen:
+                continue
+            seen.append(rel)
+            parts.append(f"\n\n===== {rel} ({stage}) =====\n\n" + (repo_root / rel).read_text(encoding="utf-8"))
+    text = "".join(parts).lstrip()
+    target.write_text(text, encoding="utf-8")
+    return {"path": str(target), "files": seen, "bytes": len(text.encode("utf-8"))}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("census", type=Path, nargs="?", help="Complete Feature Census JSON")
     parser.add_argument("--repo-root", type=Path, default=ROOT)
+    parser.add_argument("--bundle", type=Path, help="also write every routed rule file of this plan into one file")
     parser.add_argument("--template", action="store_true",
                         help="print a census skeleton with every family UNKNOWN; set NO only with evidence")
     args = parser.parse_args()
@@ -266,6 +285,8 @@ def main() -> int:
     try:
         census = json.loads(args.census.read_text(encoding="utf-8"))
         result = resolve_rules(census, args.repo_root)
+        if args.bundle:
+            result["bundle"] = write_bundle(result, args.bundle, args.repo_root)
     except (ValueError, OSError, KeyError, yaml.YAMLError) as exc:
         print(f"ROUTING_COVERAGE_GAP: {exc}", file=sys.stderr)
         return 2

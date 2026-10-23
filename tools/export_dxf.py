@@ -602,7 +602,8 @@ def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=F
                        "entity_count": rec["entity_count"]})
         cursor = bottom - gap_mm - LABEL_RESERVE_MM
     if review:
-        label(REVIEW_BANNER, (0, stack_height + 12), color=6)
+        # above the first code label (baseline +10, height 10) so the two never overlap
+        label(REVIEW_BANNER, (0, stack_height + LABEL_RESERVE_MM + 10), color=6)
     filename = f"{jid}_ALL_REVIEW_ONLY.dxf" if review else f"{jid}_ALL.dxf"
     target = out / filename
     write_and_audit(merged, target, len(expected_geometry) + annotation_count)

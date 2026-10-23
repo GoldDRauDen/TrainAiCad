@@ -1,0 +1,1059 @@
+{
+ "canonical_contract": "TrainAiCad-CANONICAL-V4.34",
+ "job_id": "EXAMPLE-FLAT",
+ "parts": [
+  {
+   "code": "26-000001",
+   "material": "SPCC",
+   "thickness_mm": 1.6,
+   "status": "PASS",
+   "flags": [],
+   "entities": [
+    {
+     "entity_id": "E_26-000001_OUT",
+     "type": "LWPOLYLINE",
+     "role": "outer",
+     "closed": true,
+     "vertices": [
+      [
+       0.0,
+       0.5,
+       0.414213562373
+      ],
+      [
+       0.5,
+       0.0,
+       0
+      ],
+      [
+       144.0,
+       0.0,
+       0
+      ],
+      [
+       145.0,
+       1.0,
+       0
+      ],
+      [
+       145.0,
+       15.0,
+       -1.0
+      ],
+      [
+       155.0,
+       15.0,
+       0
+      ],
+      [
+       155.0,
+       1.0,
+       0
+      ],
+      [
+       156.0,
+       0.0,
+       0
+      ],
+      [
+       295.0,
+       0.0,
+       0.414213562373
+      ],
+      [
+       300.0,
+       5.0,
+       0
+      ],
+      [
+       300.0,
+       95.0,
+       0.414213562373
+      ],
+      [
+       295.0,
+       100.0,
+       0
+      ],
+      [
+       3.0,
+       100.0,
+       0
+      ],
+      [
+       0.0,
+       97.0,
+       0
+      ]
+     ]
+    },
+    {
+     "entity_id": "E_26-000001_H1",
+     "type": "CIRCLE",
+     "role": "hole",
+     "center": [
+      20.0,
+      50.0
+     ],
+     "radius": 3.3
+    },
+    {
+     "entity_id": "E_26-000001_H2",
+     "type": "CIRCLE",
+     "role": "hole",
+     "center": [
+      260.0,
+      50.0
+     ],
+     "radius": 3.3
+    },
+    {
+     "entity_id": "E_26-000001_S1",
+     "type": "LWPOLYLINE",
+     "role": "slot",
+     "closed": true,
+     "vertices": [
+      [
+       94.0,
+       74.0,
+       0
+      ],
+      [
+       106.0,
+       74.0,
+       -1
+      ],
+      [
+       106.0,
+       66.0,
+       0
+      ],
+      [
+       94.0,
+       66.0,
+       -1
+      ]
+     ]
+    }
+   ],
+   "source_groups": [
+    {
+     "group_id": "26-000001_G_OUTER",
+     "family": "OUTER",
+     "status": "PROVED",
+     "source_quantity": 1,
+     "evidence": "closed outer profile",
+     "members": [
+      {
+       "member_id": "26-000001_OUTER",
+       "status": "PROVED"
+      }
+     ]
+    },
+    {
+     "group_id": "26-000001_G_U_NOTCH",
+     "family": "OPEN_NOTCH",
+     "status": "PROVED",
+     "source_quantity": 1,
+     "evidence": "p1 U10 depth 15 (R=W/2)",
+     "members": [
+      {
+       "member_id": "26-000001_U_NOTCH1",
+       "status": "PROVED"
+      }
+     ]
+    },
+    {
+     "group_id": "26-000001_G_C1",
+     "family": "CHAMFER_FILLET",
+     "status": "PROVED",
+     "source_quantity": 2,
+     "evidence": "p1 C1",
+     "members": [
+      {
+       "member_id": "26-000001_C1_1",
+       "status": "PROVED"
+      },
+      {
+       "member_id": "26-000001_C1_2",
+       "status": "PROVED"
+      }
+     ]
+    },
+    {
+     "group_id": "26-000001_G_R5",
+     "family": "CHAMFER_FILLET",
+     "status": "PROVED",
+     "source_quantity": 2,
+     "evidence": "p1 R5-2",
+     "members": [
+      {
+       "member_id": "26-000001_R5_1",
+       "status": "PROVED"
+      },
+      {
+       "member_id": "26-000001_R5_2",
+       "status": "PROVED"
+      }
+     ]
+    },
+    {
+     "group_id": "26-000001_G_C3",
+     "family": "CHAMFER_FILLET",
+     "status": "PROVED",
+     "source_quantity": 1,
+     "evidence": "p1 C3",
+     "members": [
+      {
+       "member_id": "26-000001_C3_1",
+       "status": "PROVED"
+      }
+     ]
+    },
+    {
+     "group_id": "26-000001_G_H66",
+     "family": "HOLE",
+     "status": "PROVED",
+     "source_quantity": 2,
+     "evidence": "p1 2-Ø6.6",
+     "members": [
+      {
+       "member_id": "26-000001_H1",
+       "status": "PROVED"
+      },
+      {
+       "member_id": "26-000001_H2",
+       "status": "PROVED"
+      }
+     ]
+    },
+    {
+     "group_id": "26-000001_G_SLOT",
+     "family": "SLOT",
+     "status": "PROVED",
+     "source_quantity": 1,
+     "evidence": "p1 slot 8x20",
+     "members": [
+      {
+       "member_id": "26-000001_S1",
+       "status": "PROVED"
+      }
+     ]
+    }
+   ],
+   "canonical_members": [
+    {
+     "canonical_member_id": "CM_26-000001_OUTER",
+     "origin": "SOURCE",
+     "source_member_id": "26-000001_OUTER",
+     "group_id": "26-000001_G_OUTER",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000001_OUT"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000001_U_NOTCH1",
+     "origin": "SOURCE",
+     "source_member_id": "26-000001_U_NOTCH1",
+     "group_id": "26-000001_G_U_NOTCH",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000001_OUT"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000001_AR1",
+     "origin": "DERIVED_RULE",
+     "status": "PROVED",
+     "controlling_rule": "MATERIAL_AUTO_R",
+     "source_member_ids": [
+      "26-000001_OUTER"
+     ],
+     "entity_ids": [
+      "E_26-000001_OUT"
+     ],
+     "laser_r": "R0.5",
+     "excel_row": 4
+    },
+    {
+     "canonical_member_id": "CM_26-000001_C1_1",
+     "origin": "SOURCE",
+     "source_member_id": "26-000001_C1_1",
+     "group_id": "26-000001_G_C1",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000001_OUT"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000001_C1_2",
+     "origin": "SOURCE",
+     "source_member_id": "26-000001_C1_2",
+     "group_id": "26-000001_G_C1",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000001_OUT"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000001_R5_1",
+     "origin": "SOURCE",
+     "source_member_id": "26-000001_R5_1",
+     "group_id": "26-000001_G_R5",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000001_OUT"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000001_R5_2",
+     "origin": "SOURCE",
+     "source_member_id": "26-000001_R5_2",
+     "group_id": "26-000001_G_R5",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000001_OUT"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000001_C3_1",
+     "origin": "SOURCE",
+     "source_member_id": "26-000001_C3_1",
+     "group_id": "26-000001_G_C3",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000001_OUT"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000001_H1",
+     "origin": "SOURCE",
+     "source_member_id": "26-000001_H1",
+     "group_id": "26-000001_G_H66",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000001_H1"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000001_H2",
+     "origin": "SOURCE",
+     "source_member_id": "26-000001_H2",
+     "group_id": "26-000001_G_H66",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000001_H2"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000001_S1",
+     "origin": "SOURCE",
+     "source_member_id": "26-000001_S1",
+     "group_id": "26-000001_G_SLOT",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000001_S1"
+     ]
+    }
+   ],
+   "corner_inventory": [
+    {
+     "corner_id": "A1",
+     "point": [
+      0.0,
+      0.0
+     ],
+     "drawn_shape": "SHARP",
+     "decision": "AUTO_R",
+     "canonical_member_id": "CM_26-000001_AR1",
+     "evidence_ref": "góc ngoài 90.00° vẽ sắc, không callout R/C"
+    },
+    {
+     "corner_id": "K2",
+     "point": [
+      145.0,
+      0.0
+     ],
+     "drawn_shape": "CHAMFERED",
+     "decision": "CALLED",
+     "canonical_member_id": "CM_26-000001_C1_1",
+     "evidence_ref": "p1 C1"
+    },
+    {
+     "corner_id": "K5",
+     "point": [
+      155.0,
+      0.0
+     ],
+     "drawn_shape": "CHAMFERED",
+     "decision": "CALLED",
+     "canonical_member_id": "CM_26-000001_C1_2",
+     "evidence_ref": "p1 C1"
+    },
+    {
+     "corner_id": "K6",
+     "point": [
+      300.0,
+      0.0
+     ],
+     "drawn_shape": "ROUNDED",
+     "decision": "CALLED",
+     "canonical_member_id": "CM_26-000001_R5_1",
+     "evidence_ref": "p1 R5-2"
+    },
+    {
+     "corner_id": "K7",
+     "point": [
+      300.0,
+      100.0
+     ],
+     "drawn_shape": "ROUNDED",
+     "decision": "CALLED",
+     "canonical_member_id": "CM_26-000001_R5_2",
+     "evidence_ref": "p1 R5-2"
+    },
+    {
+     "corner_id": "K8",
+     "point": [
+      0.0,
+      100.0
+     ],
+     "drawn_shape": "CHAMFERED",
+     "decision": "CALLED",
+     "canonical_member_id": "CM_26-000001_C3_1",
+     "evidence_ref": "p1 C3"
+    }
+   ],
+   "laser_r_lookup": {
+    "laser_r": "R0.5",
+    "group": "SS",
+    "excel_row": 4
+   },
+   "envelope_mm": [
+    300.0,
+    100.0
+   ],
+   "witness_required_feature_ids": [
+    "26-000001_H1",
+    "26-000001_H2",
+    "26-000001_S1"
+   ],
+   "feature_witness_graph": {
+    "nodes": {
+     "26-000001_H1_X_D": "OUTER_EDGE",
+     "26-000001_H1_X_0": "HOLE_CENTER",
+     "26-000001_H1_Y_D": "OUTER_EDGE",
+     "26-000001_H1_Y_0": "HOLE_CENTER",
+     "26-000001_H2_X_D": "OUTER_EDGE",
+     "26-000001_H2_X_0": "HOLE_CENTER",
+     "26-000001_H2_X_1": "HOLE_CENTER",
+     "26-000001_H2_Y_D": "OUTER_EDGE",
+     "26-000001_H2_Y_0": "HOLE_CENTER",
+     "26-000001_S1_X_D": "OUTER_EDGE",
+     "26-000001_S1_X_0": "SLOT_MIDPOINT",
+     "26-000001_S1_Y_D": "OUTER_EDGE",
+     "26-000001_S1_Y_0": "SLOT_MIDPOINT"
+    },
+    "edges": [
+     {
+      "from_node": "26-000001_H1_X_D",
+      "to_node": "26-000001_H1_X_0",
+      "axis": "X",
+      "kind": "LOCAL",
+      "value_mm": 20.0,
+      "proof": {
+       "pdf_page": 1,
+       "evidence_ref": "p1 dim 20",
+       "endpoint_verified": true,
+       "from_type": "OUTER_EDGE",
+       "to_type": "HOLE_CENTER"
+      }
+     },
+     {
+      "from_node": "26-000001_H1_Y_D",
+      "to_node": "26-000001_H1_Y_0",
+      "axis": "Y",
+      "kind": "LOCAL",
+      "value_mm": 50.0,
+      "proof": {
+       "pdf_page": 1,
+       "evidence_ref": "p1 dim 50",
+       "endpoint_verified": true,
+       "from_type": "OUTER_EDGE",
+       "to_type": "HOLE_CENTER"
+      }
+     },
+     {
+      "from_node": "26-000001_H2_X_D",
+      "to_node": "26-000001_H2_X_0",
+      "axis": "X",
+      "kind": "LOCAL",
+      "value_mm": 20.0,
+      "proof": {
+       "pdf_page": 1,
+       "evidence_ref": "p1 dim 20",
+       "endpoint_verified": true,
+       "from_type": "OUTER_EDGE",
+       "to_type": "HOLE_CENTER"
+      }
+     },
+     {
+      "from_node": "26-000001_H2_X_0",
+      "to_node": "26-000001_H2_X_1",
+      "axis": "X",
+      "kind": "CHAIN",
+      "value_mm": 240.0,
+      "proof": {
+       "pdf_page": 1,
+       "evidence_ref": "p1 dim 240",
+       "endpoint_verified": true,
+       "from_type": "HOLE_CENTER",
+       "to_type": "HOLE_CENTER"
+      }
+     },
+     {
+      "from_node": "26-000001_H2_Y_D",
+      "to_node": "26-000001_H2_Y_0",
+      "axis": "Y",
+      "kind": "LOCAL",
+      "value_mm": 50.0,
+      "proof": {
+       "pdf_page": 1,
+       "evidence_ref": "p1 dim 50",
+       "endpoint_verified": true,
+       "from_type": "OUTER_EDGE",
+       "to_type": "HOLE_CENTER"
+      }
+     },
+     {
+      "from_node": "26-000001_S1_X_D",
+      "to_node": "26-000001_S1_X_0",
+      "axis": "X",
+      "kind": "LOCAL",
+      "value_mm": 100.0,
+      "proof": {
+       "pdf_page": 1,
+       "evidence_ref": "p1 dim 100 to slot center",
+       "endpoint_verified": true,
+       "from_type": "OUTER_EDGE",
+       "to_type": "SLOT_MIDPOINT"
+      }
+     },
+     {
+      "from_node": "26-000001_S1_Y_D",
+      "to_node": "26-000001_S1_Y_0",
+      "axis": "Y",
+      "kind": "LOCAL",
+      "value_mm": 70.0,
+      "proof": {
+       "pdf_page": 1,
+       "evidence_ref": "p1 dim 70",
+       "endpoint_verified": true,
+       "from_type": "OUTER_EDGE",
+       "to_type": "SLOT_MIDPOINT"
+      }
+     }
+    ],
+    "targets": [
+     {
+      "feature_id": "26-000001_H1",
+      "datum_node": "26-000001_H1_X_D",
+      "feature_node": "26-000001_H1_X_0",
+      "axis": "X",
+      "coordinate_mm": 20.0,
+      "datum_coordinate_mm": 0.0,
+      "datum_entity_id": "E_26-000001_OUT",
+      "entity_id": "E_26-000001_H1"
+     },
+     {
+      "feature_id": "26-000001_H1",
+      "datum_node": "26-000001_H1_Y_D",
+      "feature_node": "26-000001_H1_Y_0",
+      "axis": "Y",
+      "coordinate_mm": 50.0,
+      "datum_coordinate_mm": 0.0,
+      "datum_entity_id": "E_26-000001_OUT",
+      "entity_id": "E_26-000001_H1"
+     },
+     {
+      "feature_id": "26-000001_H2",
+      "datum_node": "26-000001_H2_X_D",
+      "feature_node": "26-000001_H2_X_1",
+      "axis": "X",
+      "coordinate_mm": 260.0,
+      "datum_coordinate_mm": 0.0,
+      "datum_entity_id": "E_26-000001_OUT",
+      "entity_id": "E_26-000001_H2"
+     },
+     {
+      "feature_id": "26-000001_H2",
+      "datum_node": "26-000001_H2_Y_D",
+      "feature_node": "26-000001_H2_Y_0",
+      "axis": "Y",
+      "coordinate_mm": 50.0,
+      "datum_coordinate_mm": 0.0,
+      "datum_entity_id": "E_26-000001_OUT",
+      "entity_id": "E_26-000001_H2"
+     },
+     {
+      "feature_id": "26-000001_S1",
+      "datum_node": "26-000001_S1_X_D",
+      "feature_node": "26-000001_S1_X_0",
+      "axis": "X",
+      "coordinate_mm": 100.0,
+      "datum_coordinate_mm": 0.0,
+      "datum_entity_id": "E_26-000001_OUT",
+      "entity_id": "E_26-000001_S1"
+     },
+     {
+      "feature_id": "26-000001_S1",
+      "datum_node": "26-000001_S1_Y_D",
+      "feature_node": "26-000001_S1_Y_0",
+      "axis": "Y",
+      "coordinate_mm": 70.0,
+      "datum_coordinate_mm": 0.0,
+      "datum_entity_id": "E_26-000001_OUT",
+      "entity_id": "E_26-000001_S1"
+     }
+    ]
+   },
+   "slot_anchor_records": [
+    {
+     "slot_id": "26-000001_S1",
+     "entity_id": "E_26-000001_S1",
+     "source_pdf_page": 1,
+     "evidence_ref": "p1 slot 8x20",
+     "witness_verified": true,
+     "anchor_point": [
+      100.0,
+      70.0
+     ],
+     "anchor_type": "SLOT_MIDPOINT",
+     "axis_unit": [
+      1.0,
+      0.0
+     ],
+     "width_mm": 8.0,
+     "center_distance_mm": 12.0,
+     "overall_length_mm": 20.0,
+     "canonical_midpoint": [
+      100.0,
+      70.0
+     ]
+    }
+   ],
+   "checks": {
+    "contour_topology": "PASS",
+    "datum": "PASS",
+    "feature_count": "PASS",
+    "unfold": "N/A",
+    "containment": "PASS",
+    "bend_domain": "N/A",
+    "material_rules": "PASS",
+    "slot_semantics": "PASS"
+   }
+  },
+  {
+   "code": "26-000002",
+   "material": "A5052",
+   "thickness_mm": 3.0,
+   "status": "PASS",
+   "flags": [],
+   "entities": [
+    {
+     "entity_id": "E_26-000002_OUT",
+     "type": "LWPOLYLINE",
+     "role": "outer",
+     "closed": true,
+     "vertices": [
+      [
+       1200.0,
+       59.5,
+       0.414213562373
+      ],
+      [
+       1199.5,
+       60.0,
+       0
+      ],
+      [
+       0.5,
+       60.0,
+       0.414213562373
+      ],
+      [
+       0.0,
+       59.5,
+       0
+      ],
+      [
+       0.0,
+       0.5,
+       0.414213562373
+      ],
+      [
+       0.5,
+       0.0,
+       0
+      ],
+      [
+       90.0,
+       0.0,
+       0
+      ],
+      [
+       100.0,
+       10.0,
+       0
+      ],
+      [
+       110.0,
+       0.0,
+       0
+      ],
+      [
+       290.0,
+       0.0,
+       0
+      ],
+      [
+       300.0,
+       10.0,
+       0
+      ],
+      [
+       310.0,
+       0.0,
+       0
+      ],
+      [
+       490.0,
+       0.0,
+       0
+      ],
+      [
+       500.0,
+       10.0,
+       0
+      ],
+      [
+       510.0,
+       0.0,
+       0
+      ],
+      [
+       690.0,
+       0.0,
+       0
+      ],
+      [
+       700.0,
+       10.0,
+       0
+      ],
+      [
+       710.0,
+       0.0,
+       0
+      ],
+      [
+       890.0,
+       0.0,
+       0
+      ],
+      [
+       900.0,
+       10.0,
+       0
+      ],
+      [
+       910.0,
+       0.0,
+       0
+      ],
+      [
+       1199.5,
+       0.0,
+       0.414213562373
+      ],
+      [
+       1200.0,
+       0.5,
+       0
+      ]
+     ]
+    },
+    {
+     "entity_id": "E_26-000002_MK1P",
+     "type": "POINT",
+     "role": "mark",
+     "point": [
+      30.5,
+      60.0
+     ]
+    },
+    {
+     "entity_id": "E_26-000002_MK1T",
+     "type": "TEXT",
+     "role": "mark",
+     "text": "J",
+     "height": 10.0,
+     "insert": [
+      30.5,
+      60.0
+     ]
+    },
+    {
+     "entity_id": "E_26-000002_MK2P",
+     "type": "POINT",
+     "role": "mark",
+     "point": [
+      1169.5,
+      60.0
+     ]
+    },
+    {
+     "entity_id": "E_26-000002_MK2T",
+     "type": "TEXT",
+     "role": "mark",
+     "text": "LJ",
+     "height": 10.0,
+     "insert": [
+      1169.5,
+      60.0
+     ]
+    }
+   ],
+   "source_groups": [
+    {
+     "group_id": "26-000002_G_OUTER",
+     "family": "OUTER",
+     "status": "PROVED",
+     "source_quantity": 1,
+     "evidence": "closed outer profile",
+     "members": [
+      {
+       "member_id": "26-000002_OUTER",
+       "status": "PROVED"
+      }
+     ]
+    },
+    {
+     "group_id": "26-000002_G_V_NOTCH",
+     "family": "V_NOTCH",
+     "status": "PROVED",
+     "source_quantity": 5,
+     "evidence": "p2 5-90° depth 10, pitch 200",
+     "members": [
+      {
+       "member_id": "26-000002_V_NOTCH1",
+       "status": "PROVED"
+      },
+      {
+       "member_id": "26-000002_V_NOTCH2",
+       "status": "PROVED"
+      },
+      {
+       "member_id": "26-000002_V_NOTCH3",
+       "status": "PROVED"
+      },
+      {
+       "member_id": "26-000002_V_NOTCH4",
+       "status": "PROVED"
+      },
+      {
+       "member_id": "26-000002_V_NOTCH5",
+       "status": "PROVED"
+      }
+     ]
+    }
+   ],
+   "canonical_members": [
+    {
+     "canonical_member_id": "CM_26-000002_OUTER",
+     "origin": "SOURCE",
+     "source_member_id": "26-000002_OUTER",
+     "group_id": "26-000002_G_OUTER",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000002_OUT"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000002_V_NOTCH1",
+     "origin": "SOURCE",
+     "source_member_id": "26-000002_V_NOTCH1",
+     "group_id": "26-000002_G_V_NOTCH",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000002_OUT"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000002_V_NOTCH2",
+     "origin": "SOURCE",
+     "source_member_id": "26-000002_V_NOTCH2",
+     "group_id": "26-000002_G_V_NOTCH",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000002_OUT"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000002_V_NOTCH3",
+     "origin": "SOURCE",
+     "source_member_id": "26-000002_V_NOTCH3",
+     "group_id": "26-000002_G_V_NOTCH",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000002_OUT"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000002_V_NOTCH4",
+     "origin": "SOURCE",
+     "source_member_id": "26-000002_V_NOTCH4",
+     "group_id": "26-000002_G_V_NOTCH",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000002_OUT"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000002_V_NOTCH5",
+     "origin": "SOURCE",
+     "source_member_id": "26-000002_V_NOTCH5",
+     "group_id": "26-000002_G_V_NOTCH",
+     "status": "PROVED",
+     "entity_ids": [
+      "E_26-000002_OUT"
+     ]
+    },
+    {
+     "canonical_member_id": "CM_26-000002_AR1",
+     "origin": "DERIVED_RULE",
+     "status": "PROVED",
+     "controlling_rule": "MATERIAL_AUTO_R",
+     "source_member_ids": [
+      "26-000002_OUTER"
+     ],
+     "entity_ids": [
+      "E_26-000002_OUT"
+     ],
+     "laser_r": "R0.5",
+     "excel_row": 19
+    },
+    {
+     "canonical_member_id": "CM_26-000002_AR2",
+     "origin": "DERIVED_RULE",
+     "status": "PROVED",
+     "controlling_rule": "MATERIAL_AUTO_R",
+     "source_member_ids": [
+      "26-000002_OUTER"
+     ],
+     "entity_ids": [
+      "E_26-000002_OUT"
+     ],
+     "laser_r": "R0.5",
+     "excel_row": 19
+    },
+    {
+     "canonical_member_id": "CM_26-000002_AR3",
+     "origin": "DERIVED_RULE",
+     "status": "PROVED",
+     "controlling_rule": "MATERIAL_AUTO_R",
+     "source_member_ids": [
+      "26-000002_OUTER"
+     ],
+     "entity_ids": [
+      "E_26-000002_OUT"
+     ],
+     "laser_r": "R0.5",
+     "excel_row": 19
+    },
+    {
+     "canonical_member_id": "CM_26-000002_AR4",
+     "origin": "DERIVED_RULE",
+     "status": "PROVED",
+     "controlling_rule": "MATERIAL_AUTO_R",
+     "source_member_ids": [
+      "26-000002_OUTER"
+     ],
+     "entity_ids": [
+      "E_26-000002_OUT"
+     ],
+     "laser_r": "R0.5",
+     "excel_row": 19
+    }
+   ],
+   "corner_inventory": [
+    {
+     "corner_id": "A1",
+     "point": [
+      1200.0,
+      60.0
+     ],
+     "drawn_shape": "SHARP",
+     "decision": "AUTO_R",
+     "canonical_member_id": "CM_26-000002_AR1",
+     "evidence_ref": "góc ngoài 90.00° vẽ sắc, không callout R/C"
+    },
+    {
+     "corner_id": "A2",
+     "point": [
+      0.0,
+      60.0
+     ],
+     "drawn_shape": "SHARP",
+     "decision": "AUTO_R",
+     "canonical_member_id": "CM_26-000002_AR2",
+     "evidence_ref": "góc ngoài 90.00° vẽ sắc, không callout R/C"
+    },
+    {
+     "corner_id": "A3",
+     "point": [
+      0.0,
+      0.0
+     ],
+     "drawn_shape": "SHARP",
+     "decision": "AUTO_R",
+     "canonical_member_id": "CM_26-000002_AR3",
+     "evidence_ref": "góc ngoài 90.00° vẽ sắc, không callout R/C"
+    },
+    {
+     "corner_id": "A4",
+     "point": [
+      1200.0,
+      0.0
+     ],
+     "drawn_shape": "SHARP",
+     "decision": "AUTO_R",
+     "canonical_member_id": "CM_26-000002_AR4",
+     "evidence_ref": "góc ngoài 90.00° vẽ sắc, không callout R/C"
+    }
+   ],
+   "laser_r_lookup": {
+    "laser_r": "R0.5",
+    "group": "AL",
+    "excel_row": 19
+   },
+   "envelope_mm": [
+    1200.0,
+    60.0
+   ],
+   "canonical_rotation_deg": 180,
+   "canonical_rotation_reason": "J/LJ trên cạnh dài thẳng (cạnh max-Y gốc có rãnh/nghiêng)",
+   "checks": {
+    "contour_topology": "PASS",
+    "datum": "PASS",
+    "feature_count": "PASS",
+    "unfold": "N/A",
+    "containment": "PASS",
+    "bend_domain": "N/A",
+    "material_rules": "PASS",
+    "slot_semantics": "N/A"
+   }
+  }
+ ]
+}

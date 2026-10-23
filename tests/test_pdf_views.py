@@ -61,3 +61,26 @@ def test_rotated_page_cells_match_render(tmp_path):
     span = pdf_views.text(str(path), 1)["spans"][0]
     assert span["text"] == "R5" and span["cell"] == "J1"
     assert [s["text"] for s in pdf_views.text(str(path), 1, cells="J1:J2")["spans"]] == ["R5"]
+
+
+def test_pairs_flags_close_same_axis_dimensions(tmp_path):
+    doc = fitz.open()
+    page = doc.new_page(width=842, height=595)
+    page.insert_text((60, 300), "70", fontsize=10)
+    page.insert_text((80, 300), "65", fontsize=10)    # 20 pt away, same direction: must be cropped
+    page.insert_text((400, 300), "1720", fontsize=10)
+    path = tmp_path / "p.pdf"
+    doc.save(path)
+    res = pdf_views.pairs(str(path), 1, 25.0, str(tmp_path / "crops"), dpi=150)
+    assert res["kind"] == "VECTOR"
+    assert [sorted(p["values"]) for p in res["pairs"]] == [["65", "70"]]
+    assert Path(res["pairs"][0]["out"]).exists()
+
+
+def test_pairs_on_scan_returns_manual_note(tmp_path):
+    doc = fitz.open()
+    doc.new_page(width=200, height=200)
+    path = tmp_path / "s.pdf"
+    doc.save(path)
+    res = pdf_views.pairs(str(path), 1)
+    assert res["pairs"] == [] and res["kind"] == "SCANNED_IMAGE"

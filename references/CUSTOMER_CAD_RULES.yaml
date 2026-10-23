@@ -456,7 +456,7 @@
         "For this customer's explicitly one-sided Nobi, multiply by two for the proved physical bend.",
         "Source-specific AL A5052 t5 Nobi=7.72 mm is customer-only, not a global AL default.",
         "When explicitly instructed to add bend SLIT, position at the proved Nobi-center; no auto Nobi-center SLIT without instruction. Bend-end relief (BEND_END_OFFSET_90 S<=0, BOXMET, R=t) is a separate mechanism and is not blocked by this note.",
-        "For SUS respect source front-side label."
+        "For SUS respect the source front-side label when one is printed; no printed label is not a FLAG."
       ],
       "source": "J318"
     },

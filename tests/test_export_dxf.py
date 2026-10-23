@@ -184,6 +184,9 @@ def test_one_review_only_with_user_authorized_unknown_diameter_and_source_views(
     assert "043796 VIEW FRONT" in meta and "043796 VIEW SIDE" in meta
     assert export_dxf.REVIEW_BANNER == "CHỈ XEM XÉT - KHÔNG CẮT - CÒN MÃ CHƯA GIẢI QUYẾT"
     assert export_dxf.REVIEW_BANNER in meta
+    texts = {e.dxf.text: e for e in doc.modelspace() if e.dxf.layer == "AI_META"}
+    first_label_top = texts["043791"].dxf.insert.y + export_dxf.CODE_LABEL_HEIGHT_MM
+    assert texts[export_dxf.REVIEW_BANNER].dxf.insert.y > first_label_top  # banner never overlaps a code label
     geometry = [e for e in doc.modelspace() if e.dxf.layer == "0"]
     assert any(e.dxftype() == "CIRCLE" and e.dxf.get("color", 256) == 6 for e in geometry)
     # 4 outline LINE (a) + 4 outline LINE (b) + 2 source-view LINE (c); bends are DASHED
