@@ -78,6 +78,7 @@ mode_routes:
       - references/FACE_CREATION_BEND_EVIDENCE.md
       - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
       - references/FORMED_PROFILE_OD_MEASUREMENT.md
+      - references/WELD_TO_BEND_OUTER_INTERSECTION_OD.md
       - references/ORTHO_PROJECTION_OD_SEPARATION.md
       - references/BEND_EDGE_RELIEF_90.md
       - references/BEND_DATUM_MAPPING.md
@@ -89,6 +90,7 @@ mode_routes:
       - references/FACE_CREATION_BEND_EVIDENCE.md
       - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
       - references/FORMED_PROFILE_OD_MEASUREMENT.md
+      - references/WELD_TO_BEND_OUTER_INTERSECTION_OD.md
       - references/ORTHO_PROJECTION_OD_SEPARATION.md
       - references/BEND_EDGE_RELIEF_90.md
       - references/BEND_DATUM_MAPPING.md
@@ -101,6 +103,7 @@ mode_routes:
       - references/FACE_CREATION_BEND_EVIDENCE.md
       - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
       - references/FORMED_PROFILE_OD_MEASUREMENT.md
+      - references/WELD_TO_BEND_OUTER_INTERSECTION_OD.md
       - references/ORTHO_PROJECTION_OD_SEPARATION.md
       - references/BEND_EDGE_RELIEF_90.md
       - references/BEND_DATUM_MAPPING.md
