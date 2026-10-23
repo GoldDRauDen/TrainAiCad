@@ -60,24 +60,32 @@ def part_paths(part):
 
 
 def overlay(job, code, image, anchors, out, width=3):
-    from PIL import Image, ImageDraw
+    """Draw with PyMuPDF (already a repo requirement): 1 pt = 1 px on a page the size of the crop."""
+    from pdf_views import fitz
+    if fitz is None:
+        raise SystemExit("PyMuPDF missing: pip install pymupdf")
     part = next((p for p in job["parts"] if p["code"] == code), None)
     if part is None:
         raise SystemExit(f"code {code} not in job")
     a, b, residual = fit(anchors)
-    img = Image.open(image).convert("RGB")
-    draw = ImageDraw.Draw(img)
+    pix = fitz.Pixmap(str(image))
+    doc = fitz.open()
+    page = doc.new_page(width=pix.width, height=pix.height)
+    page.insert_image(page.rect, filename=str(image))
+    shape = page.new_shape()
 
     def px(p):
         w = a * complex(*p) + b
-        return (w.real, -w.imag)
+        return fitz.Point(w.real, -w.imag)
     for path in part_paths(part):
         pts = [px(p) for p in path]
-        draw.line(pts + pts[:1], fill=(230, 0, 0), width=width)
-    for z, w in anchors:
-        q = (w.real, -w.imag)
-        draw.ellipse([q[0] - 8, q[1] - 8, q[0] + 8, q[1] + 8], outline=(0, 120, 255), width=3)
-    img.save(out)
+        shape.draw_polyline(pts + pts[:1])
+    shape.finish(color=(0.9, 0, 0), width=width, closePath=False)
+    for _z, w in anchors:
+        shape.draw_circle(fitz.Point(w.real, -w.imag), 8)
+    shape.finish(color=(0, 0.47, 1), width=3)
+    shape.commit()
+    page.get_pixmap(dpi=72).save(str(out))
     return {"code": code, "out": str(out), "scale_px_per_mm": round(abs(a), 4),
             "rotation_deg": round(math.degrees(math.atan2(a.imag, a.real)), 3),
             "residual_mm": [round(r, 3) for r in residual], "max_residual_mm": round(max(residual), 3)}

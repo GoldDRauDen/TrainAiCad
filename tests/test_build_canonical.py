@@ -129,14 +129,21 @@ def test_flagged_corner_makes_magenta_preview_without_auto_r():
 
 
 def test_overlay_fit_reports_residual(tmp_path):
-    from PIL import Image
+    from pdf_views import fitz
+    if fitz is None:
+        pytest.skip("PyMuPDF not installed")
     img = tmp_path / "c.png"
-    Image.new("RGB", (400, 200), "white").save(img)
+    pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 400, 200), False)
+    pix.set_rect(pix.irect, (255, 255, 255))
+    pix.save(str(img))
     job = bc.build_job(spec())
     # scale 1 px/mm, y down, origin at (50, 150): exact anchors -> zero residual
     anchors = [overlay_check.parse_anchor(t) for t in ("0,0=50,150", "300,0=350,150", "300,100=350,50")]
     res = overlay_check.overlay(job, "26-000001", img, anchors, tmp_path / "o.png")
     assert res["max_residual_mm"] < 1e-9 and abs(res["scale_px_per_mm"] - 1) < 1e-9
+    drawn = fitz.Pixmap(str(tmp_path / "o.png"))
+    assert (drawn.width, drawn.height) == (400, 200)
+    assert drawn.pixel(100, 150)[0] > 150 and drawn.pixel(100, 150)[1] < 100   # red outline on the bottom edge (x=50 mm)
     off = [overlay_check.parse_anchor(t) for t in ("0,0=50,150", "300,0=350,150", "300,100=350,45")]
     assert overlay_check.overlay(job, "26-000001", img, off, tmp_path / "o2.png")["max_residual_mm"] > 1
 
