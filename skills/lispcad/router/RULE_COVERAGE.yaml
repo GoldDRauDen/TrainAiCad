@@ -54,6 +54,7 @@ release_coverage:
       - AI_ENTRYPOINT.md
       - references/BEND_ATTACHMENT_EDGE_OWNERSHIP.md
       - references/FORMED_PROFILE_OD_MEASUREMENT.md
+      - references/WELD_TO_BEND_OUTER_INTERSECTION_OD.md
       - references/ORTHO_PROJECTION_OD_SEPARATION.md
       - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
       - skills/lispcad/modes/BEND_UNFOLD.md

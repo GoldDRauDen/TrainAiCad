@@ -258,6 +258,7 @@ gates:
   - references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md
   - references/FACE_GRAPH_UNFOLD_PROTOCOL.md
   - references/FORMED_PROFILE_OD_MEASUREMENT.md
+  - references/WELD_TO_BEND_OUTER_INTERSECTION_OD.md
   - skills/lispcad/core/VALIDATION.md
   - skills/lispcad/modes/BEND_UNFOLD.md
 - id: TOPOLOGY_LOCKED
