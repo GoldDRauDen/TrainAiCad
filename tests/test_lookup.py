@@ -142,3 +142,25 @@ def test_tooling_lists_dies_for_the_material_family():
     dies = {d["v_die"]: d for d in lookup.tooling("SUS304", 3)["dies"]}
     assert dies["V40"]["L_min"] == 28.4 and dies["V40"]["Z_min"] == 29.6
     assert lookup.tooling("SPCC", 12)["dies"] == [{"v_die": "V80", "L_min": 57.0, "Z_min": None}]
+
+
+@pytest.mark.parametrize("S,decision,depth", [(-2, "SLIT", 2.2), (0, "SLIT", 2.2), (1, "NO_SLIT", None),
+                                              (1.5, "NO_SLIT", None), (2, "NO_SLIT", None)])
+def test_slit_matrix_t2(S, decision, depth):
+    res = lookup.slit("SPCC", 2, S)
+    assert res["decision"] == decision and res.get("depth_from_actual_edge") == depth
+    if S == -2:
+        assert res["depth_from_reference"] == 4.2
+
+
+def test_slit_over_90_and_unproved_step():
+    assert lookup.slit("SUS304", 3.2, angle=130)["depth"] == 2.4513
+    assert lookup.slit("SPCC", 2)["status"] == "FLAG"
+
+
+def test_retreat_and_kegaki_wrappers():
+    assert lookup.retreat(20, 30)["retreat"] == "A"
+    assert lookup.kegaki(6, slant_delta=3.5)["width"] == pytest.approx(6.946, abs=1e-3)
+    assert lookup.kegaki(6, tilt=12)["width"] == pytest.approx(6.134, abs=1e-3)
+    assert lookup.kegaki(6, edge=35, offset=5)["contact_length"] == 30
+    assert lookup.kegaki(6, host_t=6, k=4)["single_line_offset"] == 2

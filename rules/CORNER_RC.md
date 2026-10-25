@@ -2,7 +2,7 @@
 
 Triggers: `R5`, `C2`, `n-R`, `n×m-R`, `面取り`, `角R`, `指示無き角部…`, rounded/chamfered corners, customer "sharp corner / ピン角" notes.
 
-## 1. Every corner gets one ledger row (`tools/corner_ledger.py`)
+## 1. Every corner gets one ledger row (`tools/ledger.py`)
 `CALLED` (explicit R/C) · `AUTO_R` (shop Laser R) · `SHARP` (reason) · `FLAG`. Per corner, authority: revision/red correction → explicit PDF R/C (with its quantity) → customer corner rule → shop Laser R. A PDF R/C at one corner never stops auto R at other eligible corners.
 
 ## 2. Explicit R/C

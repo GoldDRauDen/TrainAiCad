@@ -29,7 +29,7 @@ Job family 646 (not customer 646) expects DATA: absent → `DATA_REQUIRED_MISSIN
 Record every production note (printed, handwritten, revision): `text | scope code | target/leader | candidate family | qty | value | resolution` with resolution `ROUTED | CANCELLED | IRRELEVANT_TO_MANUFACTURING | UNRESOLVED`.
 - Note proves family + scope → family YES. Plausible family, unresolved scope/qty/value/location → UNKNOWN. NO only after the note is resolved elsewhere.
 - `スリット` / `SLIT` → SLIT_RELIEF (custom slit, `SLIT_RELIEF.md` §1). `スリット 8` is that drawing's value, not a rule.
-- A general note for uncalled corners (「指示無き角部はC0.5程度の面取り」) is the shop Laser R → AUTO_R, not a FLAG (`CORNER_RC.md`).
+- A general note for uncalled corners → `CORNER_RC.md` §2 (AUTO_R, not a FLAG).
 
 ## 4. Source groups (one per callout/leader)
 `group_id | family | callout | qty | leader scope | view | host face | X witnesses | Y witnesses | datum | evidence status`.

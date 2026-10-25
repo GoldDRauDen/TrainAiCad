@@ -2,7 +2,6 @@
 
 The reader must inventory sites and prove edge identities/directions from source.
 This guard remeasures those declared witnesses; it does not discover PDF sites.
-Legacy jobs without this inventory retain their original contract.
 """
 from __future__ import annotations
 
@@ -106,16 +105,14 @@ OUTLINE_RELIEF_TOL = 1e-4  # LWPOLYLINE vertices are stored rounded to 1e-6 mm
 
 def _arc_of_segment(p, q, bulge):
     """(centre, radius) of the polyline arc segment p->q, or None for a straight segment."""
-    if abs(bulge) <= 1e-12:
+    from geom import GeometryError, bulge_circle
+    if abs(bulge) <= 1e-12 or math.dist(p, q) <= TOL:
         return None
-    chord = math.dist(p, q)
-    if chord <= TOL:
+    try:
+        cx, cy, radius, _ = bulge_circle(p, q, bulge)
+    except GeometryError:
         return None
-    theta = 4 * math.atan(bulge)
-    radius = chord / (2 * math.sin(abs(theta) / 2))
-    h = radius * math.cos(abs(theta) / 2) * (1 if bulge > 0 else -1)
-    ux, uy = (q[0] - p[0]) / chord, (q[1] - p[1]) / chord
-    return ((p[0] + q[0]) / 2 - uy * h, (p[1] + q[1]) / 2 + ux * h), radius
+    return (cx, cy), radius
 
 
 def _outline_relief_proved(site, relief, entities, thickness):

@@ -94,7 +94,7 @@ A `BEND_END_OFFSET_90` site at a same-direction box corner may carry `corner_ret
   "no_auto_r_reason": "SHARP decision only"}]
 ```
 
-A corner DRAWN rounded/chamfered without a callout must be `FLAG` (never `AUTO_R`); `AUTO_R` needs `drawn_shape: SHARP`. `python tools/corner_ledger.py job.json` prints one Vietnamese row per corner and per bend end.
+A corner DRAWN rounded/chamfered without a callout must be `FLAG` (never `AUTO_R`); `AUTO_R` needs `drawn_shape: SHARP`. `python tools/ledger.py job.json` prints one Vietnamese row per corner and per bend end.
 
-Census closure: `tools/bend_end_guard.py` also derives, from the part's own `face_graph` and bend lines, every pair of perpendicular bends that share a face and whose bend zones touch (distance <= max Nobi); each such pair must own a declared `bend_end_junctions` site (`BEND_END_CORNER_SITE_MISSING`, or `BEND_END_SITE_CENSUS_MISMATCH` for a PASS part with no inventory at all). `python tools/corner_ledger.py job.json --draft` prints a `corner_inventory` skeleton (all FLAG / UNKNOWN) so no corner is skipped.
+Census closure: `tools/bend_end_guard.py` also derives, from the part's own `face_graph` and bend lines, every pair of perpendicular bends that share a face and whose bend zones touch (distance <= max Nobi); each such pair must own a declared `bend_end_junctions` site (`BEND_END_CORNER_SITE_MISSING`, or `BEND_END_SITE_CENSUS_MISMATCH` for a PASS part with no inventory at all). `python tools/ledger.py job.json --draft` prints a `corner_inventory` skeleton (all FLAG / UNKNOWN) so no corner is skipped.
 

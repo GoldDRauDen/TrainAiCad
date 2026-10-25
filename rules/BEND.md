@@ -40,7 +40,7 @@ Prove `FACE_A.edge_i ⟷ BEND ⟷ FACE_B.edge_j` for every bend. Valid: formed/p
 - Face order is non-commutative: an equal Σ does not prove order. Prove it from formed topology/callouts/witnesses.
 - Canonical flat frame = orientation of the primary/plan view (521021-20: length along Y, hole end at the bottom).
 - Inside views: assemble the proved inside-face flat first, reflect only when the target blank needs it; compare holes in the same final frame (018297).
-- Stacked plates (B stated to sit on A): printed dims are assembled; offset A's contour by tA as an UNSAVED reference; B's bend/flange derive from it; B's edge facing A retreats tA.
+- Stacked plates (B sits on A): `MULTI_PART.md` §3.
 
 ## 6. Nobi (`python tools/lookup.py nobi --material <printed> --t <t> --L <bend edge length> --angle <A> [--surface "#1"] [--handwritten N] [--no-j] [--customer <code>]`)
 Your inputs: the printed material/surface (SUS 2B unless `#1` is printed), t, L = the locked physical shared edge (never a bbox), the angle, a legible handwritten Nobi scoped to that bend (it wins at any angle, J or not), whether J is printed, the customer. The tool picks the table (KH646 its own) and returns the value or `SPLIT_FLANGE_10MM` + `flag_vi` (non-90° without handwriting, no J, t/L not tabulated, `Confirm`).

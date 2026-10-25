@@ -30,7 +30,7 @@ NEXT = {
     "L0": "L1: read rules/READ_SOURCE.md + rules/CENSUS.md, inspect the source, fill census_<code>.json, run `job.py census <code>`",
     "L1": "L2: read the L2 cards from `job.py census`, build the ledger and spec/canonical part",
     "L2": "L3: read rules/VALIDATE.md + rules/OUTPUT.md, run the checks and export",
-    "L3": "Report: rules/OUTPUT.md §10",
+    "L3": "Report: rules/OUTPUT.md §8",
     "DONE": "nothing left for this code",
 }
 

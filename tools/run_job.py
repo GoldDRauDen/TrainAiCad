@@ -7,7 +7,7 @@
 * builds the canonical job with tools/build_canonical.py (spec: tools/BUILD_CANONICAL_SPEC.md);
 * exports with tools/export_canonical_dxf.py (all saved-file gates, XDATA read-back);
 * reopens the saved DXF and checks per code: closed outline chain, hole count, entity count;
-* prints the rules/OUTPUT.md section-10 table (Vietnamese) with every FLAG and the run time.
+* prints the rules/OUTPUT.md §8 table (Vietnamese) with every FLAG and the run time.
 
 OUT receives only the DXF deliverable; job.json and report.md go to WORKDIR (default: the job's .work/ dir).
 """
@@ -28,6 +28,7 @@ from build_canonical import BuildError, build_from_files, summary  # noqa: E402
 from canonical_contract import CanonicalContractError  # noqa: E402
 from export_canonical_dxf import export_canonical_job  # noqa: E402
 import job as job_state  # noqa: E402
+import ledger  # noqa: E402
 
 
 def default_work(job_id: str) -> Path:
@@ -148,6 +149,9 @@ def main(argv=None):
     verify = verify_saved(a.out_dir / manifest["filename"], job, manifest)
     text = report(job, manifest, verify, time.monotonic() - t0)
     (work / f"{job['job_id']}_report.md").write_text(text + "\n", encoding="utf-8")
+    for part in job["parts"]:  # the spec is the ledger: one readable file per code
+        (work / f"ledger_{part['code']}.md").write_text(ledger.render(part["code"], ledger.ledger(part), part),
+                                                         encoding="utf-8")
     print(text)
     return 0
 
