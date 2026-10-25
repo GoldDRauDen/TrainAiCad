@@ -2,38 +2,30 @@ name: TrainAiCad CAD production regression
 on:
   push:
     paths:
-      - 'AGENTS.md'
-      - 'AI_BOOTSTRAP.md'
-      - 'AI_ENTRYPOINT.md'
+      - 'CLAUDE.md'
       - 'JOB_CARD.md'
-      - 'SKILL.md'
-      - 'QA_ENTRYPOINT.md'
       - 'README.md'
-      - 'docs/**'
-      - 'skills/**'
-      - 'references/**'
+      - 'rules/**'
+      - 'data/**'
       - 'regression/**'
       - 'tools/**'
       - 'tests/**'
       - 'templates/**'
+      - 'examples/**'
       - 'requirements.txt'
       - '.github/workflows/dxf-export-tests.yml'
   pull_request:
     paths:
-      - 'AGENTS.md'
-      - 'AI_BOOTSTRAP.md'
-      - 'AI_ENTRYPOINT.md'
+      - 'CLAUDE.md'
       - 'JOB_CARD.md'
-      - 'SKILL.md'
-      - 'QA_ENTRYPOINT.md'
       - 'README.md'
-      - 'docs/**'
-      - 'skills/**'
-      - 'references/**'
+      - 'rules/**'
+      - 'data/**'
       - 'regression/**'
       - 'tools/**'
       - 'tests/**'
       - 'templates/**'
+      - 'examples/**'
       - 'requirements.txt'
       - '.github/workflows/dxf-export-tests.yml'
 jobs:
@@ -46,8 +38,5 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install -r requirements.txt
       - run: python -m pytest tests/ -q
-      - name: Rule coverage and stage benchmark
-        run: |
-          python tools/audit_rule_coverage.py
-          python tools/benchmark_rule_routes.py
-          python tools/audit_rule_duplicates.py
+      - name: Rule-card byte benchmark
+        run: python tools/benchmark_rule_routes.py

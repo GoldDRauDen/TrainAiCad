@@ -10,7 +10,7 @@ This tool derives the rest deterministically and runs the checks it reports as P
 * typed witness graph for every hole/slot (center derived from the chain when ``at`` is omitted);
 * closed CCW, non-self-intersecting outline, full containment, envelope match;
 * J/LJ marks on the long straight edge: when the max-Y edge is notched/sloped and the
-  min-Y edge is straight, the whole part is rotated 180 deg (CAD_OUTPUT.md J/LJ line).
+  min-Y edge is straight, the whole part is rotated 180 deg (rules/OUTPUT.md J/LJ line).
 
 Spec format and an example: tools/BUILD_CANONICAL_SPEC.md, examples/flat_minimal.yaml.
 Never writes DXF; export with tools/export_canonical_dxf.py (or tools/run_job.py).
@@ -313,7 +313,7 @@ def build_part(spec):
     t = _num(spec.get("t"), f"{code}.t")
     page = int(spec.get("page", 1))
     if spec.get("bends"):
-        fail(f"{code}: bends are outside build_canonical (FLAT only); use the BEND_UNFOLD route")
+        fail(f"{code}: bends are outside build_canonical (FLAT only); use rules/BEND.md + export_canonical_dxf.py")
     auto_r, laser = laser_r_mm(material, t)
     corners, patterns = expand_outline(spec.get("outline") or fail(f"{code}: outline required"), where)
     verts, decisions = build_outline(corners, auto_r, where)
@@ -414,7 +414,7 @@ def build_part(spec):
         hl = lookup.hole(material, t, dia)
         if hl.get("status") != "OK" or hl.get("entity") != "CIRCLE":
             fail(f"{code}: hole {hid} Ø{dia:g}: lookup says {hl.get('entity') or hl.get('flag_vi')} - "
-                 "declare it as a POINT feature by hand (HOLES_TAPS.md)")
+                 "declare it as a POINT feature by hand (rules/HOLE_TAP.md)")
         eid = f"E_{p}_{hid}"
         ents.append({"entity_id": eid, "type": "CIRCLE", "role": "hole", "center": [_r6(center[0]), _r6(center[1])],
                      "radius": dia / 2})
@@ -573,7 +573,7 @@ def _rotate_180(part):
 
 
 def _add_jlj_marks(part):
-    """Same formula as export_dxf.jlj_marks_check (CAD_OUTPUT.md J/LJ line)."""
+    """Same formula as export_dxf.jlj_marks_check (rules/OUTPUT.md J/LJ line)."""
     x0, y0, x1, y1 = _blank(part)
     length, width = x1 - x0, y1 - y0
     if not (width <= 100 + 1e-6 and length >= 1000 - 1e-6):

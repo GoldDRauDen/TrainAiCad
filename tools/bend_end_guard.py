@@ -156,7 +156,7 @@ def _slit_construction_proved(site, part, edges, relief, entities, bends):
 
 
 def _check_corner_retreat(site, claimed, thickness):
-    """Same-direction box corner: depth-first retreat choice (references/BEND_EDGE_RELIEF_90.md section 9)."""
+    """Same-direction box corner: depth-first retreat choice (rules/SLIT_RELIEF.md section 5)."""
     from corner_retreat import retreat_violation
     witness = site["corner_retreat"]
     error = retreat_violation(witness) if isinstance(witness, dict) else "BEND_END_CORNER_RETREAT_UNPROVED"

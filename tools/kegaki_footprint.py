@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""KEGAKI contact-footprint helpers (see references/KEGAKI_FOOTPRINT_FROM_PDF.md).
+"""KEGAKI contact-footprint helpers (see rules/KEGAKI.md section 3).
 
 Pure geometry on numbers read from the SOURCE views. Nothing here reads a
 sample/reference DXF and nothing invents a dimension: every input must be a

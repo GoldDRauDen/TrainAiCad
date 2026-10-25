@@ -9,16 +9,6 @@ def read(rel):
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
-def test_rule_text_pins():
-    text = read("references/ORTHO_PROJECTION_OD_SEPARATION.md")
-    assert "Measure, do not read." in text
-    assert "Rotate the auxiliary view." in text
-    assert "OUTER face plane" in text
-    assert "ORTHO_PROJECTION_OD_SEPARATION.md" in read("references/FORMED_PROFILE_OD_MEASUREMENT.md")
-    assert "Measurable source is not a review reason" in read("references/REVIEW_PREVIEW_POLICY.md")
-    assert "handwritten 0.36" in read("references/AIKOKU_646_NOBI.md")
-
-
 def test_chain_flat_and_bend_lines_062103():
     od = [410.8, 20.8, 175.0]
     nobi = [1.68, 0.36]

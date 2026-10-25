@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 from boxmet_flat import BoxMetError, box_flat, laser_r
 from slit_geometry import connected_slit
 
-REF = json.loads((ROOT / "regression/boxmet/MM_L200_W150_H30_T1.5_N2.54.json").read_text(encoding="utf-8"))
+REF = json.loads((ROOT / "regression/fixtures/boxmet_MM_L200_W150_H30_T1.5_N2.54.json").read_text(encoding="utf-8"))
 r5 = lambda p: (round(p[0], 5), round(p[1], 5))
 key = lambda a, b: tuple(sorted((r5(a), r5(b))))
 

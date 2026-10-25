@@ -296,7 +296,7 @@ def validate_canonical_job(job: dict) -> dict:
 
             # A green POINT is a manufacturing piercing instruction, not a
             # display choice. It needs the scoped English stamp required by
-            # HOLES_TAPS.md, linked to its source member and physical entity.
+            # rules/HOLE_TAP.md, linked to its source member and physical entity.
             groups_by_id = {g["group_id"]: g for g in part["source_groups"]}
             member_families = {
                 member["source_member_id"]: groups_by_id[member["group_id"]]["family"].upper()

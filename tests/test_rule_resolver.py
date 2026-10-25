@@ -1,81 +1,91 @@
-"""Fail-closed deterministic routing and authority regression tests."""
+"""Census -> rule cards: fail-closed routing (rules/ROUTER.yaml via tools/resolve_rules.py)."""
 from copy import deepcopy
-import importlib.util
+import sys
 from pathlib import Path
 
 import pytest
 import yaml
 
-
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("resolve_rules", ROOT / "tools/resolve_rules.py")
-assert SPEC and SPEC.loader
-mod = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(mod)
+sys.path.insert(0, str(ROOT / "tools"))
+import resolve_rules as mod  # noqa: E402
+
 ROUTER = yaml.safe_load((ROOT / mod.ROUTER).read_text(encoding="utf-8"))
+ALWAYS = ["JOB_CARD.md", "rules/READ_SOURCE.md", "rules/CENSUS.md", "rules/DATUM.md",
+          "rules/CORNER_RC.md", "rules/VALIDATE.md", "rules/OUTPUT.md"]
 
 
-def census(source="PDF_ONLY", mode="FLAT_NO_BEND"):
-    return {
-        "source_mode": source,
-        "part_mode": mode,
-        "features": {key: {"state": "NO"} for key in ROUTER["feature_routes"]},
-    }
+def census(source="PDF_ONLY", mode="FLAT_NO_BEND", **extra):
+    c = {"source_mode": source, "part_mode": mode, "reference_present": "NO",
+         "multi_code_or_assembly": "NO",
+         "features": {key: {"state": "NO"} for key in ROUTER["feature_routes"]}}
+    c.update(extra)
+    return c
 
 
-def test_minimal_flat_route_does_not_load_history_or_regressions():
+def test_minimal_flat_reads_only_the_always_cards():
     result = mod.resolve_rules(census())
-    paths = result["rule_paths"]
-    assert paths.count("skills/lispcad/core/VALIDATION.md") == 1
-    assert "skills/lispcad/modes/FLAT_NO_BEND.md" in paths
-    assert not any(p.startswith(mod.FORBIDDEN) for p in paths)
+    assert result["rule_paths"] == ALWAYS
     assert result["release"] == ROUTER["release"]
 
 
-def test_tap_dependencies_and_unknown_bend_are_not_dropped():
+def test_cards_are_staged():
+    plans = mod.resolve_rules(census())["stage_plans"]
+    assert plans["L1_SOURCE_CENSUS"]["rule_paths"] == ["rules/READ_SOURCE.md", "rules/CENSUS.md"]
+    assert plans["L2_GEOMETRY"]["rule_paths"] == ["rules/DATUM.md", "rules/CORNER_RC.md"]
+    assert plans["L3_VALIDATE_EXPORT_QA"]["rule_paths"] == ["rules/VALIDATE.md", "rules/OUTPUT.md"]
+
+
+def test_unknown_mode_loads_bend_and_relief_once():
     x = census("PDF_DATA_RAW", "UNKNOWN")
     x["features"]["TAP"]["state"] = "YES"
-    x["features"]["NOBI"]["state"] = "UNKNOWN"
-    output = mod.resolve_rules(x)
-    paths = output["rule_paths"]
-    assert "references/THREAD_PILOT_TABLE.md" in paths
-    assert "references/DATA_RAW_TO_MANUFACTURING_CONTRACT.md" in paths
-    assert "skills/lispcad/modes/BEND_UNFOLD.md" in paths
-    assert "HOLE" in output["loaded_feature_routes"]
-    assert paths.count("skills/lispcad/features/HOLES_TAPS.md") == 1
-
-
-def test_revision_route_is_a_rule_not_specific_regression_geometry():
-    x = census()
-    x["features"]["REVISION_CANCELLATION"]["state"] = "YES"
+    x["features"]["SLIT_RELIEF"]["state"] = "UNKNOWN"
     paths = mod.resolve_rules(x)["rule_paths"]
-    assert "skills/lispcad/features/REVISION_CANCELLATION.md" in paths
-    assert "regression/datum/520709-07_APPROVED.md" not in paths
+    for card in ("rules/BEND.md", "rules/SLIT_RELIEF.md", "rules/HOLE_TAP.md", "rules/DATA_DXF.md"):
+        assert paths.count(card) == 1
 
 
-def test_incomplete_census_is_not_silently_interpreted_as_no():
+def test_unknown_feature_and_unproven_context_load_their_cards():
+    x = census()
+    x["features"]["CURVED_SLOT"]["state"] = "UNKNOWN"
+    del x["reference_present"], x["multi_code_or_assembly"]
+    paths = mod.resolve_rules(x)["rule_paths"]
+    assert {"rules/SLOT.md", "rules/REFERENCE.md", "rules/MULTI_PART.md"} <= set(paths)
+
+
+def test_dependencies_pull_in_the_bend_card():
+    x = census()
+    x["features"]["ACUTE_BEND_LT85"]["state"] = "YES"
+    x["features"]["BOXMET"]["state"] = "YES"
+    paths = mod.resolve_rules(x)["rule_paths"]
+    assert {"rules/BEND.md", "rules/BEND_ACUTE.md", "rules/SLIT_RELIEF.md"} <= set(paths)
+
+
+def test_incomplete_census_is_not_silently_no():
     x = census()
     del x["features"]["TAP"]
     with pytest.raises(mod.ResolutionError, match="missing"):
         mod.resolve_rules(x)
 
 
-def test_unknown_feature_always_loads_route():
-    x = census()
-    x["features"]["CURVED_SLOT"]["state"] = "UNKNOWN"
-    assert "skills/lispcad/features/CURVED_SLOT.md" in mod.resolve_rules(x)["rule_paths"]
-
-
-def test_no_runtime_route_can_select_historical_or_regression_file():
+def test_no_route_may_select_regression_or_tests():
     router = deepcopy(ROUTER)
-    router["feature_routes"]["HOLE"]["load"] = ["regression/datum/520709-07_APPROVED.md"]
+    router["feature_routes"]["HOLE"]["load"] = ["regression/lessons/READ_SOURCE/520709-07_APPROVED.md"]
     x = census()
     x["features"]["HOLE"]["state"] = "YES"
     with pytest.raises(mod.ResolutionError, match="Forbidden"):
         mod.resolve_rules(x, router=router)
 
 
-def test_catalog_cannot_claim_portable_as_production_authority():
-    catalog = yaml.safe_load((ROOT / "regression/error_catalog/ERROR_INDEX.yaml").read_text(encoding="utf-8"))
-    assert catalog["active_production_skill"] == "AI_ENTRYPOINT.md"
-    assert "repo-direct" in catalog["authority"]["priority"][1]
+def test_template_starts_everything_unknown():
+    t = mod.census_template()
+    assert set(t["features"]) == set(ROUTER["feature_routes"])
+    assert all(v["state"] == "UNKNOWN" for v in t["features"].values())
+
+
+def test_bundle_is_one_file_with_every_card(tmp_path):
+    plan = mod.resolve_rules(census())
+    res = mod.write_bundle(plan, tmp_path / "rules.md")
+    assert res["files"] == plan["rule_paths"]
+    text = (tmp_path / "rules.md").read_text(encoding="utf-8")
+    assert all(f"===== {rel} (" in text for rel in plan["rule_paths"])

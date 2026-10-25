@@ -5,7 +5,7 @@ Port of GoldDRauDen/BoxMetFlatV3 (boxvip/Boxmetcommand.cs) with the user-approve
 
 * R (outer corner radius) and lead come from the repo (material table / slit_geometry.lead_val), not from
   BoxMet's own literal ``SS`` test.  Nobi N is an INPUT (handwritten > customer > table is resolved by the
-  reader, see references/NOBI_TABLES.md); this tool never looks N up.
+  reader, see data/nobi_tables.md); this tool never looks N up.
 * Retreat choice per corner = tools/corner_retreat.py (depth first, longer bend edge on ties).  For equal flange
   heights this is exactly BoxMet: L >= W -> Bottom/Top retreat by T, otherwise Left/Right retreat.  With unequal
   heights the SHALLOWER flange retreats at each corner (no khuyet_t).
@@ -37,7 +37,7 @@ class BoxMetError(ValueError):
 
 
 def laser_r(material, T):
-    """Outer corner Laser R from references/MATERIAL_RULES.md rows 4-6, 10-11, 18-19 (None = no approved row)."""
+    """Outer corner Laser R from data/material_rules.md rows 4-6, 10-11, 18-19 (None = no approved row)."""
     from material_resolver import MaterialResolveError, resolve_material
     try:
         group = resolve_material(material)["material_family"]

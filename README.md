@@ -1,139 +1,15 @@
 # TrainAiCad
 
-TrainAiCad is a user-approved sheet-metal CAD production rule repository. It is **not an automatic training store** and historical files are not production authority.
+User-approved sheet-metal CAD production rules and tools: PDF / image / customer DXF DATA → canonical geometry JSON → verified DXF. Built to run locally with Claude Code: the AI reads the drawing and decides; deterministic tools do the tables, arithmetic, geometry checks and DXF export.
 
-For any AI/agent starting a CAD job, **START HERE: [SKILL.md](SKILL.md)**, then the one-page [JOB_CARD.md](JOB_CARD.md) (re-read at every stage). Claude web Projects: [PROJECT_INSTRUCTIONS_CLAUDE_WEB.md](PROJECT_INSTRUCTIONS_CLAUDE_WEB.md).
-It is the single human/AI-facing workflow entry point; `AI_BOOTSTRAP.md`,
-`AI_ENTRYPOINT.md`, and routed modules remain the actual production authority.
-
-A concise request such as `E2E` or `Read TrainAiCad and do E2E` means: bootstrap from the current repo, read the current `AI_ENTRYPOINT.md` + Router, then execute the repo-direct production flow to its executable limit.
-
-The agent must actually have access to this repo and the required source/CAD tools; otherwise it must report the concrete blocker rather than pretend the repo was read.
-
-For ChatGPT Web Projects, use the concise pointer template in `PROJECT_INSTRUCTIONS_GPT_WEB.md`; do not copy the engineering rules into Project Instructions.
-
-## Optional Windows application
-
-[LuanAppTools](LuanAppTools/README.md) provides a local Vietnamese dashboard for LAN jobs, Claude orchestration, DXF review and output history. Start with `LuanAppTools/start.cmd`. Every result still requires human inspection; the standalone CAD workflow remains available.
-
-## Connect to another AI
-
-Attach this repository (or a checkout that the AI can actually read), then say:
-`Read SKILL.md from TrainAiCad and perform E2E on the supplied CAD source.`
-The AI must have image/PDF inspection and code/file execution tools to create
-and verify DXF; text-only AI cannot produce production CAD merely by reading rules.
-
-To create a **single, generated portable document** containing the current
-E2E process and all Router-approved modules, without maintaining a second
-independent source of rules:
+- Start a job: open the repo in Claude Code and say `E2E` with the source files → [JOB_CARD.md](JOB_CARD.md).
+- Rules: [rules/](rules/) (one short card per topic; [rules/CENSUS.md](rules/CENSUS.md) maps drawing keywords to cards).
+- Tables: [data/](data/) (read by `tools/lookup.py`, never by eye).
+- Maintenance and approval flow: [CLAUDE.md](CLAUDE.md).
 
 ```sh
-python tools/build_rule_bundle.py --output ../TrainAiCad_E2E_RULEPACK.md
+pip install -r requirements.txt
+python -m pytest tests -q
 ```
 
-The generated document is a point-in-time, read-only artifact. Source modules
-and the pinned repository revision remain authoritative for CAD production.
-See `SKILL.md` for the full stage contract.
-
-## Architecture
-
-```text
-AI_BOOTSTRAP
-    |
-    +-- AI_ENTRYPOINT
-            |
-            +-- skills/lispcad/core/        always-on small rule set
-            +-- skills/lispcad/router/
-            |     FEATURE_CENSUS.md         what is present?
-            |     ROUTER.yaml               what must be loaded?
-            |     RULE_COVERAGE.yaml        where approved release rules live
-            |
-            +-- skills/lispcad/modes/       flat / bend-unfold
-            +-- skills/lispcad/features/    hole, tap, slot, kegaki, slit, rib...
-            +-- skills/lispcad/topology/    L / U / stepped / multi-face profiles
-            +-- references/                 material, Nobi, source/DATA, FACE_GRAPH...
-            +-- regression/                 approved tests/evidence (not universal rules)
-            +-- docs/history/SNAPSHOT_MANIFEST.json   pinned, sha256-verified archive of retired
-                                            portable/ and versions/ snapshots; never production input
-```
-
-## Canonical E2E artifacts
-
-Normal `python tools/export_canonical_dxf.py job.json OUT/` first checks
-source-to-canonical members and composite XDATA read-back, then writes:
-
-```text
-OUT/
-  parts_dxf/<slip-no>.dxf           ONLY on explicit request (--individual-dxf); PASS only; named by slip work no. (e.g. 26-056522); LINE/ARC/CIRCLE cut geometry
-  <JOB>_ALL.dxf                       when all PASS
-  <JOB>_ALL_REVIEW_ONLY.dxf           otherwise (all codes + warnings)
-```
-
-Individual DXFs are generated analytically from the canonical members and
-reopened with XDATA/geometry checks; they contain no text, bend, marking,
-points or polyline. The existing lower-level `tools/export_dxf.py` remains
-only a compatibility packager. Semantic PDF/source correctness still requires
-actual independent engineering QA.
-
-## Staged, coverage-checked deterministic routing
-
-Active engineering authority is still the Router and its approved modules.
-`tools/audit_rule_coverage.py` rejects an active `core/`, `features/`,
-`modes/`, `topology/` or `references/` file without a live route; this
-includes the stepped/notched flange rules that were formerly unreachable.
-The resolver now produces a per-code, **mandatory L0–L3** stage plan:
-L0 bootstrap; L1 source inspection and feature census; L2 routed geometry;
-L3 full validation/canonical/export/read-back. All stages must execute before
-PASS. Physical-curve decoding, canonical completeness and the reference
-firewall load before census; the holistic engineering challenge runs at L3.
-
-Read initial stages first; read later rule files just before their execution.
-This optimizes **initial context**, not necessarily cumulative whole-job tokens.
-If a feature becomes YES/UNKNOWN after source reinspection, rerun the resolver.
-Never change an unproved UNKNOWN into NO to save tokens.
-
-Generated scoped RAG index, single-file portable rulepack and benchmark:
-
-```sh
-python tools/audit_rule_coverage.py
-python tools/build_rule_index.py --output ../RAG_INDEX.yaml
-python tools/build_rule_bundle.py --output ../TrainAiCad_E2E_RULEPACK.md
-python tools/benchmark_rule_routes.py
-```
-
-`RAG_INDEX.yaml` is an on-demand derivative of Router; it is **not**
-another manually maintained source of production authority. Regression
-documents and history remain evidence, not live rule context; experimental
-MCP stays isolated. Exact duplicate-paragraph analysis is available via
-`python tools/audit_rule_duplicates.py`, but never auto-deletes formulas.
-
-## Deterministic rule retrieval
-
-After inspecting the source and completing `FEATURE_CENSUS.md`, an executor with Python
-can resolve exactly which modules to read:
-
-```sh
-python tools/resolve_rules.py path/to/feature_census.json
-```
-
-The JSON census must provide `source_mode`, `part_mode`, and every
-`ROUTER.yaml` feature with `YES`, `NO`, or `UNKNOWN`. Missing features are
-errors (not silently treated as `NO`). The resolver never searches historical
-snapshots, portable skills, or regression documents for production rules.
-See `docs/RULE_BRAIN.md`. The AI still has to inspect the actual source,
-perform geometry interpretation, apply mandatory gates, and verify saved DXF.
-
-Retired `portable/` and `versions/` snapshots are pinned in
-`docs/history/SNAPSHOT_MANIFEST.json` at commit `173c098` and read through
-`tools/snapshot_manifest.py`. Several version regression tests read them from that
-commit, so the commit must stay reachable on the remote; do not rewrite or prune it.
-
-## Important
-
-- `UNKNOWN` is not `NO`.
-- Do not look for retired snapshots (`versions/**`, former `portable/`) for normal production; they are pinned in `docs/history/SNAPSHOT_MANIFEST.json`.
-- Do not read the full portable skill unless diagnosing a router coverage gap or explicitly auditing portability.
-- New engineering lessons require direct user approval before production promotion.
-- Production CAD is repo-direct by default.
-
-The active release number and load order belong only in `AI_ENTRYPOINT.md` and router files, not in this README.
+[LuanAppTools](LuanAppTools/README.md) is an optional Windows dashboard (not yet updated to the V5 layout). Every DXF still needs human inspection.

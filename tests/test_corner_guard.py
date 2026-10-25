@@ -11,7 +11,7 @@ from corner_guard import corner_errors, outer_sharp_corners
 from corner_ledger import ledger, main, render
 from holistic_engineering_guard import canonical_job_anomalies
 
-FIXTURE = ROOT / "regression/bend/521017-17_061099_positive_step.json"
+FIXTURE = ROOT / "regression/fixtures/521017-17_061099_positive_step.json"
 
 
 def square_part(**extra):

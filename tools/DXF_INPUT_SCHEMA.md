@@ -1,7 +1,7 @@
 # TrainAiCad lower-level V4.9 DXF serializer (compatibility only)
 
 **Production E2E** uses `tools/export_canonical_dxf.py` and
-`tools/CANONICAL_INPUT_SCHEMA_V431.md`, not this lower-level CLI directly.
+`tools/CANONICAL_INPUT_SCHEMA_V434.md`, not this lower-level CLI directly.
 After canonical source/member validation, it writes one
 and, only when explicitly requested (`--individual-dxf`), PASS-only individual
 `parts_dxf/<slip-no>.dxf` (slip work no., e.g. `26-056522`; no JSON output) with LINE/ARC/CIRCLE CUT primitives and one

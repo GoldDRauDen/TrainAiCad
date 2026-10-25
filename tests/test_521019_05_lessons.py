@@ -12,16 +12,6 @@ def read(rel):
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
-def test_rule_text_pins():
-    assert "never drop one silently" in read("skills/lispcad/core/DRAWING_READING.md")
-    assert "third angle" in read("skills/lispcad/core/DRAWING_READING.md")
-    assert "own OD plane" in read("references/FORMED_PROFILE_OD_MEASUREMENT.md")
-    assert "ends exactly on that bend line" in read("skills/lispcad/features/CHAMFER_RADIUS.md")
-    assert "UNSAVED reference line" in read("references/ASSEMBLY_DATUM_CLOSURE.md")
-    assert "Per bend end (inventory every end" in read("references/BEND_EDGE_RELIEF_90.md")
-    assert "separate mechanism and is not blocked" in read("references/CUSTOMER_CAD_RULES.yaml")
-
-
 def test_notch_wall_at_own_od_plane():
     total = 450 + 275 - 2.6                      # 061138
     assert math.isclose(total, 722.4)

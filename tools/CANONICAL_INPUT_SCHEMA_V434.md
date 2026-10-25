@@ -3,7 +3,7 @@
 New jobs use `"canonical_contract": "TrainAiCad-CANONICAL-V4.34"`. Previously approved `TrainAiCad-CANONICAL-V4.31` jobs remain valid without converting saved ledgers. All V4.31 source-member ownership, exact XDATA Entity IDs, cut-contour rules, closure and review-only filename rules remain mandatory.
 
 ## Materials, surface and grain
-The grade belongs in `material` exactly as printed; normalize using `references/MATERIAL_ALIASES.yaml`, whose source rows are the user's Book1.xlsx `一覧表2026.07.30!A28:E48`. `HL` is a finish, not a new material family. Include optional part grain:
+The grade belongs in `material` exactly as printed; normalize using `data/material_aliases.yaml`, whose source rows are the user's Book1.xlsx `一覧表2026.07.30!A28:E48`. `HL` is a finish, not a new material family. Include optional part grain:
 ```json
 "grain": {"is_hl": true, "direction_xy": [0,1], "evidence_ref": "PDF page 2/detail A/arrow"}
 ```

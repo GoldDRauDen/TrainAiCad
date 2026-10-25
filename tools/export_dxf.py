@@ -40,7 +40,7 @@ DX_LABEL_CLEARANCE_MM = 23.0
 FLAG_LABEL_CLEARANCE_MM = 49.0
 FLAG_LABEL_HEIGHT_MM = 15.0
 FLAG_LINE_PITCH_MM = 25.0       # one horizontal FLAG line per flag, stacked top to bottom
-REVIEW_BANNER = "CHỈ XEM XÉT - KHÔNG CẮT - CÒN MÃ CHƯA GIẢI QUYẾT"  # all DXF notes are Vietnamese (AGENTS.md §6)
+REVIEW_BANNER = "CHỈ XEM XÉT - KHÔNG CẮT - CÒN MÃ CHƯA GIẢI QUYẾT"  # all DXF notes are Vietnamese (JOB_CARD.md item 10)
 PIECE_SEPARATOR = ":S"            # canonical entity piece id: <entity_id>:S0001
 
 
