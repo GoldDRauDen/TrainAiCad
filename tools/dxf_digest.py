@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Digest of a customer DXF DATA sheet: every primitive gets an id and exactly one home. Nothing is altered or dropped.
 
+    python tools/dxf_digest.py file.dxf                       # summary: views top-to-bottom, holes by Ø, arc radii, colours
     python tools/dxf_digest.py data.dxf --out digest.json [--png views.png] [--profile auto|catia|generic] [--noise-mm 5]
+
+The one DXF reader of the repo: customer DATA sheets, samples, and QA targets (an AI composite DXF gives one view per
+part, top-to-bottom).
 
 * Decodes like rules/DATA_DXF.md §1 (bulge start vertex, closed last->first, INSERT transforms); numbers are copied
   from the file (9 decimals), never rounded to a drawing value.
@@ -171,6 +175,8 @@ def _read(path):
                 rec["center"], rec["radius"] = _xy(piece.dxf.center), _n(piece.dxf.radius)
                 rec["start_angle"], rec["end_angle"] = _n(piece.dxf.start_angle), _n(piece.dxf.end_angle)
                 rec["start"], rec["end"] = _xy(piece.start_point), _xy(piece.end_point)
+                if src in ("LWPOLYLINE", "POLYLINE"):
+                    rec["bulge_decoded"] = True
             elif pt == "CIRCLE":
                 rec["center"], rec["radius"] = _xy(piece.dxf.center), _n(piece.dxf.radius)
             else:
@@ -403,22 +409,32 @@ def _png(d, out):
     fig.savefig(out)
 
 
+def summary(d: dict) -> dict:
+    keys = ("id", "kind", "size", "bbox", "holes_by_dia", "arc_radii", "colors", "linetypes")
+    layers = Counter(p["layer"] for p in d["pieces"])
+    return {"file": d["source"]["file"], "insunits": d["source"]["insunits"], "profile": d["profile"],
+            "ledger": d["ledger"], "layers": dict(sorted(layers.items())),
+            "annotations": dict(Counter(a["type"] for a in d["annotations"])),
+            "views_top_to_bottom": [{k: v[k] for k in keys if k in v} | {"pieces": len(v["piece_ids"])}
+                                    for v in d["views"]],
+            "tap_pair_candidates": len(d["tap_pair_candidates"]), "warnings": d["warnings"][:5],
+            "note": d["source"]["note"] + " ELLIPSE/SPLINE stay UNKNOWN (FLAG), never simplified."}
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("dxf")
-    ap.add_argument("--out", required=True, help="digest JSON to write")
+    ap.add_argument("--out", help="digest JSON to write (needed by tools/dxf_assemble.py)")
     ap.add_argument("--png", help="optional overview image, coloured by home (needs matplotlib)")
     ap.add_argument("--profile", default="auto", choices=["auto", "catia", "generic"])
     ap.add_argument("--noise-mm", type=float, default=None, help="LINE-only groups smaller than this go to B_NOISE")
     a = ap.parse_args(argv)
     d = digest(a.dxf, a.profile, a.noise_mm)
-    Path(a.out).write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+    if a.out:
+        Path(a.out).write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
     if a.png:
         _png(d, a.png)
-    summary = {"profile": d["profile"], "ledger": d["ledger"],
-               "views": [{k: v[k] for k in ("id", "kind", "size") if k in v} | {"pieces": len(v["piece_ids"])} for v in d["views"]],
-               "tap_pair_candidates": len(d["tap_pair_candidates"]), "warnings": d["warnings"][:5]}
-    print(json.dumps(summary, ensure_ascii=False, indent=1))
+    print(json.dumps(summary(d), ensure_ascii=False, indent=1))
     return 0 if d["ledger"]["homeless"] == 0 else 1
 
 

@@ -35,7 +35,7 @@ MIRROR = [[W - x, y, 0] for x, y, _ in L_SHAPE][::-1]
 
 
 def labels(tmp_path, parts):
-    job = {"canonical_contract": "TrainAiCad-CANONICAL-V4.31", "job_id": "QA_DX", "parts": parts}
+    job = {"canonical_contract": "TrainAiCad-CANONICAL-V4.34", "job_id": "QA_DX", "parts": parts}
     export_canonical_job(job, tmp_path, require_slip_codes=False)
     doc = ezdxf.readfile(tmp_path / "QA_DX_ALL.dxf")
     return [e.dxf.text for e in doc.modelspace() if e.dxf.layer == "AI_META"]

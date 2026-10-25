@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from canonical_contract import CanonicalContractError  # noqa: E402
 from export_canonical_dxf import export_canonical_job  # noqa: E402
+from witness_fixture import add_witnesses  # noqa: E402
 from holistic_engineering_guard import canonical_job_anomalies  # noqa: E402
 
 CHECKS = dict.fromkeys((
@@ -114,11 +115,11 @@ def _part(code):
 
 
 def _job():
-    return {
-        "canonical_contract": "TrainAiCad-CANONICAL-V4.31",
+    return add_witnesses({
+        "canonical_contract": "TrainAiCad-CANONICAL-V4.34",
         "job_id": "HD1_SEMANTIC_FIXTURE",
         "parts": [_part(code) for code in (*BENDS, *MARKS)],
-    }
+    })
 
 
 def test_hd1_approved_semantic_members_and_dxf_readback(tmp_path):

@@ -13,7 +13,7 @@ A sample may verify or teach; it never supplies a missing source fact.
 - Apply the shop Laser R before comparing: matching DXF-only R0.5/R2 is expected.
 
 ## 3. Direct audit of an existing AI DXF
-Compare the two DXFs first (`tools/dxf_census.py` on both gives parts top-to-bottom; proved code clusters, proved units, layout translation removed): outer/inner boundaries, each hole family (type, Ø, qty, coordinates), R/C, flat extent, each bend pair and its clipping. ARC+LINE ≡ exact bulged polyline. Report MATCH / PARTIAL / DIFF per code, protect MATCHed parts, then use the PDF to explain each error.
+Compare the two DXFs first (`tools/dxf_digest.py` on both gives parts top-to-bottom; proved code clusters, proved units, layout translation removed): outer/inner boundaries, each hole family (type, Ø, qty, coordinates), R/C, flat extent, each bend pair and its clipping. ARC+LINE ≡ exact bulged polyline. Report MATCH / PARTIAL / DIFF per code, protect MATCHed parts, then use the PDF to explain each error.
 
 ## 4. Numbers
 - Sample `$INSUNITS` is metadata: verify units against PDF dimensions (520315-18_ss.dxf says inch but is mm — never ×25.4). Output always mm.

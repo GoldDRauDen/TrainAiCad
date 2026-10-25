@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from canonical_contract import CanonicalContractError, validate_canonical_job  # noqa: E402
 from export_canonical_dxf import export_canonical_job  # noqa: E402
+from witness_fixture import add_witnesses  # noqa: E402
 
 CHECKS = dict.fromkeys((
     "contour_topology", "datum", "feature_count", "unfold",
@@ -159,11 +160,11 @@ def part_057873():
 
 
 def build_job():
-    return {
-        "canonical_contract": "TrainAiCad-CANONICAL-V4.31",
+    return add_witnesses({
+        "canonical_contract": "TrainAiCad-CANONICAL-V4.34",
         "job_id": "521005-05-V431",
         "parts": [part_057862(), part_057864(), part_057873()],
-    }
+    })
 
 
 def xdata_entity_id(ent):

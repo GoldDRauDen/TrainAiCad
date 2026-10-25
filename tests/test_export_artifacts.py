@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from canonical_contract import CanonicalContractError, validate_canonical_job  # noqa: E402
 from export_canonical_dxf import export_canonical_job  # noqa: E402
+from witness_fixture import add_witnesses  # noqa: E402
 from export_job_artifacts import _arc_from_bulge  # noqa: E402
 
 
@@ -112,10 +113,10 @@ def review_part(code):
 
 
 def job(parts):
-    return {
-        "canonical_contract": "TrainAiCad-CANONICAL-V4.31",
+    return add_witnesses({
+        "canonical_contract": "TrainAiCad-CANONICAL-V4.34",
         "job_id": "TESTJOB", "parts": parts,
-    }
+    })
 
 
 def _xdata(ent):
@@ -170,6 +171,7 @@ def test_status_downgrade_removes_stale_pass_cut(tmp_path):
     src = job([part("A"), part("B", bent=False)])
     export_canonical_job(src, tmp_path, individual_dxf=True)
     src["parts"][1] = review_part("B")
+    add_witnesses(src)
     result = export_canonical_job(src, tmp_path, individual_dxf=True)
     assert result["filename"] == "TESTJOB_ALL_REVIEW_ONLY.dxf"
     assert not (tmp_path / "parts_dxf/B.dxf").exists()

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import math
 
+from geom import GeometryError, bulge_circle, bulge_points
+
 
 class ContainmentError(ValueError):
     pass
@@ -24,23 +26,16 @@ def _loop(vertices, tolerance=0.005):
             if i < len(points)-1:
                 out.append((x1, y1))
             continue
-        theta = 4 * math.atan(bulge)
-        chord = math.hypot(x1-x0, y1-y0)
-        if chord <= 0 or abs(theta) >= 2 * math.pi - 1e-10:
-            raise ContainmentError("CONTAINMENT_ARC_UNVERIFIABLE")
-        radius = chord / (2 * abs(math.sin(theta / 2)))
-        coefficient = (1 - bulge * bulge) / (4 * bulge)
-        cx = (x0+x1)/2 - (y1-y0)*coefficient
-        cy = (y0+y1)/2 + (x1-x0)*coefficient
+        try:
+            cx, cy, radius, theta = bulge_circle((x0, y0), (x1, y1), bulge)
+        except GeometryError:
+            raise ContainmentError("CONTAINMENT_ARC_UNVERIFIABLE") from None
         sagitta = min(tolerance, radius * 0.1)
         max_step = 2 * math.acos(max(-1.0, min(1.0, 1 - sagitta/radius)))
         count = max(1, math.ceil(abs(theta) / max(max_step, 1e-4)))
         if count > 20000:
             raise ContainmentError("CONTAINMENT_ARC_TOO_COMPLEX")
-        start = math.atan2(y0-cy, x0-cx)
-        out.extend((cx + radius*math.cos(start + theta*k/count),
-                    cy + radius*math.sin(start + theta*k/count))
-                   for k in range(1, count))
+        out.extend(bulge_points((x0, y0), (x1, y1), bulge, count))
         if i < len(points)-1:
             out.append((x1, y1))
     return out

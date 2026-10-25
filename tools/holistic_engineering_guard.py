@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""V4.33 holistic engineering challenge helpers.
+"""Holistic engineering challenge helpers.
 
 This checker consumes semantic records produced by the source solver. It does not
 infer CAD geometry from counts; it detects contradictions that require the solver
@@ -151,7 +151,7 @@ def job_anomalies(job: Dict[str, Any]) -> List[str]:
     return sorted(set(out))
 
 
-# Source-to-canonical checks used by the normal V4.31 production exporter.
+# Source-to-canonical checks used by the production exporter.
 # These check actual ledger relationships, not caller-supplied success booleans.
 # Full source extraction still happens upstream; no DXF can prove that an
 # omitted PDF note was read in the first place.
@@ -231,7 +231,7 @@ def canonical_job_anomalies(job: Dict[str, Any]) -> List[str]:
         out.extend(f"{code}:{error}" for error in bend_end_errors(part))
         from corner_guard import corner_errors
         out.extend(f"{code}:{error}" for error in corner_errors(part))
-        if job.get("canonical_contract") == "TrainAiCad-CANONICAL-V4.34" and part.get("status") == "PASS":
+        if part.get("status") == "PASS":
             from geometry_containment import part_containment_errors
             out.extend(f"{code}:{error}" for error in part_containment_errors(part))
         from dimension_witness import WitnessError, validate_part_witnesses

@@ -1,6 +1,12 @@
-# TrainAiCad Canonical Input Schema — V4.34 (compatible V4.31 reader)
+# Canonical job JSON (`"canonical_contract": "TrainAiCad-CANONICAL-V4.34"`)
 
-New jobs use `"canonical_contract": "TrainAiCad-CANONICAL-V4.34"`. Previously approved `TrainAiCad-CANONICAL-V4.31` jobs remain valid without converting saved ledgers. All V4.31 source-member ownership, exact XDATA Entity IDs, cut-contour rules, closure and review-only filename rules remain mandatory.
+Read only when a part cannot be written as a `tools/build_canonical.py` spec. `tools/export_canonical_dxf.py` is the only writer; every gate below runs there.
+
+## Job, part and entities
+Job: `{"canonical_contract": ..., "job_id": "<注番>", "customer_code": "851"|null, "parts": [...]}` in page-1 order (top to bottom in the composite). Part: slip `code`, `material` as printed, `thickness_mm`, `status: PASS|PREVIEW|VIEWS_ONLY|REVIEW`, `entities`, `source_groups`, `canonical_members`, eight `checks` (`contour_topology`, `datum`, `feature_count`, `unfold`, `containment`, `bend_domain`, `material_rules`, `slot_semantics`: PASS only when executed, else N/A/FLAGGED), optional `flags` (Vietnamese) and `dx_label` (true only when drawn from the inner face).
+- **PASS:** one closed CCW `outer`, no flags. **PREVIEW:** `preview_reason: "numeric_only_known_topology"`, flags, a Magenta (6) estimated entity and an adjacent Magenta `TEXT` (`role: "estimated_note"`). **VIEWS_ONLY:** `preview_reason: "separate_source_views"`, flags, every non-TEXT entity carries a `view_id`, views ≥10 mm apart.
+- Entities on Layer 0 with a unique `entity_id`: LWPOLYLINE `[[x,y,bulge],...]` (`outer` CCW; `cutout`/`slot` CW), CIRCLE (`hole`, effective cut radius), POINT (`ordinary_point` ByLayer; `through_piercing` Green 3), LINE/ARC (`kegaki` Red 1, `bend` DASHED pairs, Green `slit`/`relief`). Labels on `AI_META` are generated, never supplied. LWPOLYLINE is saved as LINE/ARC pieces (`<entity_id>:S0001`...).
+- Each manufacturing callout is a `source_group` (`group_id`, `family`, `status` PROVED/FLAGGED/CANCELED, `qty`, `members`); each active member maps to exactly one `canonical_member` (`origin: SOURCE` + `source_member_id`, or `DERIVED_RULE` + `controlling_rule`) owning its `entity_ids`.
 
 ## Materials, surface and grain
 The grade belongs in `material` exactly as printed; normalize using `data/material_aliases.yaml`, whose source rows are the user's Book1.xlsx `一覧表2026.07.30!A28:E48`. `HL` is a finish, not a new material family. Include optional part grain:
@@ -34,7 +40,7 @@ All proved source HOLE/SLOT members must be declared in `witness_required_featur
   ]
 }
 ```
-The example illustrates only X; real V4.34 PASS demands Y too, with its own proven axis path. `coordinate_mm` is signed RELATIVE to the physical datum node; `datum_coordinate_mm` is that datum's coordinate in the canonical part-local frame, and `datum_entity_id` identifies its canonical physical geometry. The validator adds these values before comparing against the feature's canonical `CIRCLE.center` or `POINT.point`. The feature entity must belong to the source member named by `feature_id`; a valid dimension chain linked to a different member is rejected. Readers must supply actual PDF crop/view identity for independent QA.
+The example illustrates only X; a PASS demands Y too, with its own proven axis path. `coordinate_mm` is signed RELATIVE to the physical datum node; `datum_coordinate_mm` is that datum's coordinate in the canonical part-local frame, and `datum_entity_id` identifies its canonical physical geometry. The validator adds these values before comparing against the feature's canonical `CIRCLE.center` or `POINT.point`. The feature entity must belong to the source member named by `feature_id`; a valid dimension chain linked to a different member is rejected. Readers must supply actual PDF crop/view identity for independent QA.
 
 ## Slot anchor witness
 Each proved SLOT member requires a `slot_anchor_records` entry with `slot_id`, `entity_id`, `source_pdf_page`, `evidence_ref`, `witness_verified`, `anchor_point` (actual dimension target), `anchor_type` (SLOT_MIDPOINT/ARC_CENTER_1/ARC_CENTER_2/OUTER_TIP_1/OUTER_TIP_2), `axis_unit` (signed part-local vector), `width_mm`, `center_distance_mm`, `overall_length_mm`, `canonical_midpoint`. Code verifies the two semicircle bulges and compares their actual radii/centers and midpoint against the record; matching only a vertex-average midpoint is insufficient. Unknown anchor type => local FLAG/REVIEW, not a guessed center.
@@ -48,7 +54,7 @@ If a PASS part has proved `BEND` source members, include `face_graph.faces` and 
 
 ## Bend-end junction evidence
 
-For applicable bend ends, declare per-part `source_bend_end_site_ids` and matching `bend_end_junctions` (one record per site), plus `bend_end_source_edges` keyed by edge ID. The reader must discover all sites and inspect their PDF/DATA witnesses; the guard measures declared evidence, not unprovided drawings. Older jobs without these fields retain compatibility. An explicitly empty inventory has no applicable sites.
+For applicable bend ends, declare per-part `source_bend_end_site_ids` and matching `bend_end_junctions` (one record per site), plus `bend_end_source_edges` keyed by edge ID. The reader must discover all sites and inspect their PDF/DATA witnesses; the guard measures declared evidence, not unprovided drawings. An explicitly empty inventory has no applicable sites.
 
 - Each source edge: `physical_edge_id`, common `frame_id`, `type:"LINE"`, `start:[x,y]`, `end:[x,y]`, and `proof:{source_pdf_page:...,evidence_ref:...,endpoint_verified:true}`; DATA may use `source_ref` instead of `source_pdf_page`. Coordinates are source-grounded in that physical frame, not distances between Nobi lines.
 - Each proved site: `site_id`, `status:"PROVED"`, two existing `bend_ids`, `frame_id`, `flush_edge_id`, `web_edge_id`, unit `positive_axis`, `positive_axis_evidence_ref`, `included_angle_deg`, `S_mm`, `mechanism:"BEND_END_OFFSET_90"`, `decision:"NO_RELIEF"|"SLIT"`, `relief_member_ids:[]`. S is remeasured from both edges; numeric witness tolerance is1e-7mm, not a manufacturing step threshold. A positive S needs NO_RELIEF and no scoped relief geometry; nonpositive S needs SLIT with physical canonical owners.
@@ -58,7 +64,7 @@ For applicable bend ends, declare per-part `source_bend_end_site_ids` and matchi
 - An unresolved site stays in the inventory with `status:"FLAGGED"`, `decision:"FLAGGED"` and no proved relief geometry; it cannot enter a PASS part or erase another proved face/feature. Use the existing local preview policy rather than fabricating a slit or downgrading a defensible whole flat to VIEWS_ONLY.
 
 ## Export
-Single PASS cut: rotate+translate the serialized cut copy only, preserving ARC radii/bulges converted to separate ARC, cut roles and XDATA provenance. Without HL orient bbox X>=Y; with **proved** HL align its physical grain to X. Composite remains in canonical source-readable orientation and is the default sole output, without JSON deliverables. Individual PASS cuts require explicit user request (`--individual-dxf`); `--composite-only` is a legacy no-op. Never mix downstream orientation into source witness arithmetic. All downstream semantic and saved-file gates remain in force.
+Single PASS cut: rotate+translate the serialized cut copy only, preserving ARC radii/bulges converted to separate ARC, cut roles and XDATA provenance. Without HL orient bbox X>=Y; with **proved** HL align its physical grain to X. Composite remains in canonical source-readable orientation and is the default sole output, without JSON deliverables. Individual PASS cuts require explicit user request (`--individual-dxf`). Never mix downstream orientation into source witness arithmetic. All downstream semantic and saved-file gates remain in force.
 
 ## Negative gates
 - `WITNESS_REQUIRED_FEATURE_MISSING`, `WITNESS_GRAPH_MISSING`

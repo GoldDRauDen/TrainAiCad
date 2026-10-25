@@ -13,7 +13,7 @@ from pathlib import Path
 import ezdxf
 
 from canonical_contract import CanonicalContractError
-from export_dxf import entity_signature, new_doc, safe_name
+from export_dxf import arc_from_bulge as _arc_from_bulge, entity_signature, new_doc, safe_name
 from cut_orientation import orient_cut_doc
 from ezdxf.math import Matrix44
 
@@ -48,34 +48,6 @@ def _endpoints(entity):
                       c.y + r * math.sin(math.radians(angle)))
                      for angle in angles)
     fail(f"Cannot derive segment endpoints from {typ}")
-
-
-def _arc_from_bulge(start, end, bulge):
-    """Analytic bulge -> CCW ARC. Negative bulges reverse DXF ARC orientation."""
-    x0, y0 = (float(start[0]), float(start[1]))
-    x1, y1 = (float(end[0]), float(end[1]))
-    b = float(bulge)
-    dx, dy = x1 - x0, y1 - y0
-    chord = math.hypot(dx, dy)
-    if not math.isfinite(b) or abs(b) < 1e-14 or chord <= 0:
-        fail("Degenerate or non-finite bulge/segment")
-    theta = 4 * math.atan(b)
-    if abs(theta) >= 2 * math.pi - 1e-10:
-        fail("Bulge too close to full circle; cannot represent as ARC")
-    radius = chord / (2 * abs(math.sin(theta / 2)))
-    coefficient = (1 - b * b) / (4 * b)
-    cx = (x0 + x1) / 2 - dy * coefficient
-    cy = (y0 + y1) / 2 + dx * coefficient
-    if any(not math.isfinite(v) for v in (radius, cx, cy)) or radius <= 0:
-        fail("Invalid bulge-derived circle")
-    # DXF ARC is always counter-clockwise: reverse endpoints for a CW bulge.
-    u, v = ((x0, y0), (x1, y1)) if b > 0 else ((x1, y1), (x0, y0))
-    sa = math.degrees(math.atan2(u[1] - cy, u[0] - cx)) % 360
-    ea = math.degrees(math.atan2(v[1] - cy, v[0] - cx)) % 360
-    sweep = (ea - sa) % 360
-    if not math.isclose(sweep, abs(math.degrees(theta)), abs_tol=1e-6):
-        fail("Bulge sweep mismatch; rejected instead of faceting the curve")
-    return (cx, cy), radius, sa, ea
 
 
 def _decompose_polyline(modelspace, entity):
@@ -239,7 +211,7 @@ def export_part_artifacts(job, output_dir, composite_only=False):
     """Persist validated independent PASS CUT DXFs, one per PASS code, ONLY on explicit request
     (``composite_only=False``); the default E2E path passes composite_only=True and writes none.
 
-    No per-code JSON is written (V4.35 output contract). The DXF file name is the
+    No per-code JSON is written (output contract). The DXF file name is the
     part code exactly as printed on the delivery slip (作業No, e.g. ``26-056522``).
     This is intentionally downstream of validate_canonical_job and successful
     composite canonical XDATA read-back. A review part has no individual DXF.

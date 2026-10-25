@@ -51,7 +51,7 @@ def model(code="A", width=12, height=40, material="SS", grain=None):
     return part
 
 
-def job(part, version="TrainAiCad-CANONICAL-V4.31"):
+def job(part, version="TrainAiCad-CANONICAL-V4.34"):
     return {"canonical_contract": version, "job_id": "QA_V434", "parts": [part]}
 
 
@@ -121,7 +121,7 @@ def test_059761_to_059764_slot_midpoint_is_not_end_arc_center():
     assert slot_midpoint([0,32], "OUTER_TIP_1", [0,1], 6.6, 7.5) == (0,39.05)
 
 
-def test_v434_blocks_missing_hole_witness_while_v431_works():
+def test_hole_without_witness_is_blocked():
     part = model()
     hole = {"entity_id":"E_HOLE", "type":"CIRCLE", "role":"hole",
             "center":[10,20], "radius":3.3}
@@ -132,10 +132,9 @@ def test_v434_blocks_missing_hole_witness_while_v431_works():
         "source_member_id":"M_HOLE", "group_id":"G_M_HOLE",
         "status":"PROVED", "entity_ids":["E_HOLE"],
     })
-    validate_canonical_job(job(part))
     with pytest.raises(CanonicalContractError, match="WITNESS_REQUIRED_FEATURE_MISSING"):
-        validate_canonical_job(job(part, "TrainAiCad-CANONICAL-V4.34"))
-    # A real source witness and X/Y coordinates are mandatory for V4.34 HOLE.
+        validate_canonical_job(job(part))
+    # A real source witness and X/Y coordinates are mandatory for a HOLE.
     part["witness_required_feature_ids"] = ["M_HOLE"]
     part["feature_witness_graph"] = chain()
     with pytest.raises(CanonicalContractError, match="WITNESS_CANONICAL_ENTITY_LINK_MISSING"):
@@ -312,9 +311,9 @@ def test_witness_offsets_are_added_to_the_linked_physical_datum():
                for e in canonical_job_anomalies(job(part, "TrainAiCad-CANONICAL-V4.34")))
 
 
-def test_composite_only_preserves_json_and_no_parts(tmp_path):
+def test_default_export_keeps_json_and_writes_no_parts(tmp_path):
     part = model()
-    result = export_canonical_job(job(part), tmp_path, composite_only=True)
+    result = export_canonical_job(job(part), tmp_path)
     assert result["filename"] == "QA_V434_ALL.dxf"
     assert not (tmp_path/"geometry_json").exists()
     assert not list((tmp_path/"parts_dxf").glob("*.dxf"))

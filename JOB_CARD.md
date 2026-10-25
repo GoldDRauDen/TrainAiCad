@@ -32,8 +32,7 @@ One code at a time; keep proved work per code (a failure never forces redoing a 
 python tools/job.py init <JOB> --codes 26-061247 26-061248 [--source x.pdf] [--customer 843]   # then: status | set | census
 python tools/pdf_views.py info|render|text|crop|pairs drawing.pdf --page 1 [--dims] [--cells C3:E5] [--dpi 600] --out x.png
 python tools/resolve_rules.py census.json [--bundle rules.md]  # cards per stage + customer notes (job.py census wraps it)
-python tools/dxf_census.py data.dxf [--out decoded.json]       # customer DATA / sample: decoded arcs, parts, holes by Ø
-python tools/dxf_digest.py data.dxf --out digest.json [--png v.png]   # DATA sheet: ids + views + buckets; then dxf_assemble.py digest.json plan.json --out a.json
+python tools/dxf_digest.py file.dxf [--out digest.json] [--png v.png]   # any DXF: views top-to-bottom, holes by Ø, R; ids for dxf_assemble.py digest.json plan.json --out a.json
 python tools/lookup.py nobi --material SPCC --t 1.6 --L 900 [--angle 135] [--surface "#1"] [--handwritten 0.36] [--no-j] [--customer 646]
 python tools/lookup.py laser-r --material SS400 --t 9 [--customer 768]
 python tools/lookup.py hole --material SS400 --t 9 --dia 4.2 [--piercing] [--through] [--customer 859]

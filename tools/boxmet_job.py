@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Canonical V4.34 job for a four-flange BOXMET box from L, W, H1..H4, T, material, N (+ optional holes).
+"""Canonical job for a four-flange BOXMET box from L, W, H1..H4, T, material, N (+ optional holes).
 
 Usage:
     python tools/boxmet_job.py --code 26-000001 --L 200 --W 150 --H 30 30 30 30 --T 1.5 --material SS --N 2.54 \
@@ -22,6 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from boxmet_flat import BoxMetError, box_flat  # noqa: E402
+from canonical_contract import CONTRACT  # noqa: E402
 
 BULGE90 = math.tan(math.pi / 8)
 R6 = lambda v: round(float(v), 6)
@@ -206,7 +207,7 @@ def build_job(code, L, W, heights, T, material, N, holes=(), drawn_corners="SHAR
         "flat_equations": {"X": {"ordered_od_mm": [H4, L, H2], "deductions_mm": [N, N], "result_mm": R6(L + H2 + H4 - 2 * N)},
                            "Y": {"ordered_od_mm": [H1, W, H3], "deductions_mm": [N, N], "result_mm": R6(W + H1 + H3 - 2 * N)}},
         "dx_label": False}
-    return {"canonical_contract": "TrainAiCad-CANONICAL-V4.34", "job_id": job_id or str(code),
+    return {"canonical_contract": CONTRACT, "job_id": job_id or str(code),
             "source_mode": "PDF_ONLY", "reference_present": False, "parts": [part]}
 
 

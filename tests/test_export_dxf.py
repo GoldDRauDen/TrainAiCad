@@ -1,4 +1,4 @@
-"""Structural V4.9 single-composite and explicit legacy-dual tests; not real PDF regression."""
+"""Structural single-composite serializer tests; not real PDF regression."""
 import copy
 import json
 import sys
@@ -30,61 +30,26 @@ def part(code, size=(30, 20)):
             ]}
 
 
-def test_two_part_dxf_and_manifest(tmp_path):
-    job = {"job_id": "520924-19", "parts": [part("000001"), part("000002", (40, 15))]}
-    manifest = export_job(job, tmp_path, mode="dual")
-    assert [p["code"] for p in manifest["parts"]] == ["000001", "000002"]
-    assert len(manifest["combined"]["PASS"]["parts"]) == 2
-    assert manifest["combined"]["PASS"]["parts"][0]["combined_bbox_mm"][1] >= 25
-    assert manifest["combined"]["PASS"]["parts"][1]["combined_bbox_mm"][3] == 15
-    # V4.35: outline LWPOLYLINE (4 segments) is written as 4 LINE pieces: 9 per part.
-    for filename, count in [("520924-19_000001.dxf", 9), ("520924-19_000002.dxf", 9), ("520924-19_ALL.dxf", 18)]:
-        doc = ezdxf.readfile(tmp_path / filename)
-        assert len(list(doc.modelspace())) == count
-        assert doc.header["$INSUNITS"] == 4
-        assert all(e.dxf.layer == "0" for e in doc.modelspace())
-    assert (tmp_path / "520924-19_MANIFEST.json").is_file()
-    assert json.loads((tmp_path / "520924-19_MANIFEST.json").read_text(encoding="utf-8"))["contract"] == "TrainAiCad-DXF-V4.7"
-    assert not any(e.dxftype() == "LWPOLYLINE" for e in ezdxf.readfile(tmp_path / "520924-19_ALL.dxf").modelspace())
-
-
-def test_preview_is_isolated_from_production(tmp_path):
-    good = part("000001")
-    review = part("000002")
-    review.update(status="PREVIEW", flags=["unreadable numeric X"], preview_reason="numeric_only_known_topology")
-    review["entities"].append({"type": "POINT", "role": "estimated", "color": 6, "point": [15, 15]})
-    review["entities"].append({"type": "TEXT", "role": "estimated_note", "color": 6, "insert": [15, 16], "text": "ESTIMATED - CHECK DRAWING"})
-    manifest = export_job({"job_id": "JOB", "parts": [good, review]}, tmp_path, mode="dual")
-    assert (tmp_path / "JOB_ALL.dxf").is_file()
-    assert (tmp_path / "JOB_PREVIEW_ALL.dxf").is_file()
-    assert [p["code"] for p in manifest["combined"]["PASS"]["parts"]] == ["000001"]
-    assert [p["code"] for p in manifest["combined"]["PREVIEW"]["parts"]] == ["000002"]
-    with pytest.raises(ValueError):
-        bad = copy.deepcopy(review)
-        bad["entities"] = bad["entities"][:-1]
-        export_job({"job_id": "JOB", "parts": [bad]}, tmp_path, mode="dual")
-
-
 def test_rejects_unvalidated_or_wrong_layers(tmp_path):
     good = part("000001")
     del good["checks"]["datum"]
     with pytest.raises(ValueError, match="eight upstream"):
-        export_job({"job_id": "JOB", "parts": [good]}, tmp_path, mode="dual")
+        export_job({"job_id": "JOB", "parts": [good]}, tmp_path)
     good = part("000001")
     good["entities"][1]["layer"] = "HOLES"
     with pytest.raises(ValueError, match="Layer 0"):
-        export_job({"job_id": "JOB", "parts": [good]}, tmp_path, mode="dual")
+        export_job({"job_id": "JOB", "parts": [good]}, tmp_path)
 
 
 def test_rejects_magenta_and_wrong_point_semantics(tmp_path):
     good = part("000001")
     good["entities"][2]["color"] = 3
     with pytest.raises(ValueError, match="ordinary POINT"):
-        export_job({"job_id": "JOB", "parts": [good]}, tmp_path, mode="dual")
+        export_job({"job_id": "JOB", "parts": [good]}, tmp_path)
     good = part("000001")
     good["entities"][1]["color"] = 6
     with pytest.raises(ValueError, match="Magenta"):
-        export_job({"job_id": "JOB", "parts": [good]}, tmp_path, mode="dual")
+        export_job({"job_id": "JOB", "parts": [good]}, tmp_path)
 
 
 def test_stadium_bulges_and_three_primitives_one_approved_style_relief(tmp_path):
@@ -104,10 +69,10 @@ def test_stadium_bulges_and_three_primitives_one_approved_style_relief(tmp_path)
         {"type": "LINE", "role": "relief", "color": 3,
          "start": [25.5, 2.5], "end": [26, 2.5]},
     ])
-    manifest = export_job({"job_id": "SYNTHETIC", "parts": [sample]}, tmp_path, mode="dual")
-    doc = ezdxf.readfile(tmp_path / "SYNTHETIC_000003.dxf")
-    msp = doc.modelspace()
-    # V4.35: no LWPOLYLINE survives; the stadium slot is 2 straight LINE + 2 semicircle ARC pieces.
+    manifest = export_job({"job_id": "SYNTHETIC", "parts": [sample]}, tmp_path)
+    doc = ezdxf.readfile(tmp_path / "SYNTHETIC_ALL.dxf")
+    msp = [e for e in doc.modelspace() if e.dxf.layer == "0"]
+    # no LWPOLYLINE survives; the stadium slot is 2 straight LINE + 2 semicircle ARC pieces.
     assert not any(e.dxftype() == "LWPOLYLINE" for e in msp)
     slot_lines = [e for e in msp if e.dxftype() == "LINE" and e.dxf.color == 256 and round(e.dxf.start.x - e.dxf.end.x, 6) in (10.0, -10.0)]
     slot_arcs = [e for e in msp if e.dxftype() == "ARC" and round(e.dxf.radius, 6) == 2.25]
@@ -116,15 +81,14 @@ def test_stadium_bulges_and_three_primitives_one_approved_style_relief(tmp_path)
                  - min(e.dxf.start.x if e.dxftype() == "LINE" else e.dxf.center.x - 2.25 for e in slot_lines + slot_arcs), 6) == 14.5
     assert len([e for e in msp if e.dxftype() == "ARC" and e.dxf.color == 3]) == 1
     assert len([e for e in msp if e.dxftype() == "LINE" and e.dxf.color == 3]) == 2
-    # part: 9 pieces, slot: 4, relief: 3 -> 16 written entities
-    assert manifest["parts"][0]["entity_count"] == 16
-    assert len(list(ezdxf.readfile(tmp_path / "SYNTHETIC_ALL.dxf").modelspace())) == 16
+    # part: 9 pieces, slot: 4, relief: 3 -> 16 written entities on Layer 0
+    assert len(msp) == 16 and len(manifest["entity_map"]) == 16
 
 
 def test_default_one_combined_with_exact_code_labels(tmp_path):
     job = {"job_id": "ONE", "parts": [part("043791"), part("043792", (40, 15))]}
     manifest = export_job(job, tmp_path)
-    assert manifest["contract"] == "TrainAiCad-DXF-V4.9"
+    assert manifest["contract"] == "TrainAiCad-DXF"
     assert manifest["filename"] == "ONE_ALL.dxf"
     assert sorted(p.name for p in tmp_path.iterdir()) == ["ONE_ALL.dxf"]
     doc = ezdxf.readfile(tmp_path / "ONE_ALL.dxf")
@@ -228,32 +192,32 @@ def test_jlj_marks_required_for_narrow_long_blank_only(tmp_path):
     # L=1012, Oy=99.5 -> 1 J + 1 LJ at x=30 and L-30, on the top edge.
     long_part = part("000001", (1012, 99.5))
     with pytest.raises(Exception, match="J/LJ_MARKS_MISSING_OR_WRONG"):
-        export_job({"job_id": "J", "parts": [long_part]}, tmp_path, mode="single")
+        export_job({"job_id": "J", "parts": [long_part]}, tmp_path)
     _marks(long_part, [30, 982], 99.5)
-    export_job({"job_id": "J", "parts": [long_part]}, tmp_path, mode="single")
+    export_job({"job_id": "J", "parts": [long_part]}, tmp_path)
     doc = ezdxf.readfile(next(tmp_path.glob("J_ALL*.dxf")))
     assert sorted(e.dxf.text for e in doc.modelspace() if e.dxftype() == "TEXT"
                   and e.dxf.text in ("J", "LJ")) == ["J", "LJ"]
     # 2 J + LJ above 1500; wrong spacing fails.
     p2 = part("000002", (1600, 80))
     _marks(p2, [30, 800, 1570], 80)
-    export_job({"job_id": "J2", "parts": [p2]}, tmp_path, mode="single")
+    export_job({"job_id": "J2", "parts": [p2]}, tmp_path)
     p3 = part("000003", (1600, 80))
     _marks(p3, [30, 700, 1570], 80)
     with pytest.raises(Exception, match="J/LJ_MARKS_MISSING_OR_WRONG"):
-        export_job({"job_id": "J3", "parts": [p3]}, tmp_path, mode="single")
+        export_job({"job_id": "J3", "parts": [p3]}, tmp_path)
 
 
 def test_jlj_marks_forbidden_below_threshold_and_undefined_above_2500(tmp_path):
     short = part("000001", (990, 99.5))  # Ox<1000: no marks
-    export_job({"job_id": "J4", "parts": [short]}, tmp_path, mode="single")
+    export_job({"job_id": "J4", "parts": [short]}, tmp_path)
     _marks(short, [30, 960], 99.5)
     with pytest.raises(Exception, match="only for blank"):
-        export_job({"job_id": "J4", "parts": [short]}, tmp_path, mode="single")
+        export_job({"job_id": "J4", "parts": [short]}, tmp_path)
     wide = part("000002", (1200, 120))  # Oy>100: no marks
     _marks(wide, [30, 1170], 120)
     with pytest.raises(Exception, match="only for blank"):
-        export_job({"job_id": "J5", "parts": [wide]}, tmp_path, mode="single")
+        export_job({"job_id": "J5", "parts": [wide]}, tmp_path)
     huge = part("000003", (2600, 50))
     with pytest.raises(Exception, match="undefined"):
-        export_job({"job_id": "J6", "parts": [huge]}, tmp_path, mode="single")
+        export_job({"job_id": "J6", "parts": [huge]}, tmp_path)

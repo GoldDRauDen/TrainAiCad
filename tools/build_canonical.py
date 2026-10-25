@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compact FLAT or single-axis BENT part spec -> complete TrainAiCad-CANONICAL-V4.34 job.json.
+"""Compact FLAT or single-axis BENT part spec -> complete canonical job.json (tools/canonical_contract.py).
 
 The reader states only what the drawing says: outline corners with their R/C callouts,
 repeated notch patterns, holes/slots with their dimension chains, and the overall envelope.
@@ -31,8 +31,8 @@ import lookup  # noqa: E402
 from dimension_witness import validate_graph  # noqa: E402
 from export_dxf import (CHECKS, JLJ_INSET_MM, signed_poly_area)  # noqa: E402
 from geometry_containment import _intersects, _loop, part_containment_errors  # noqa: E402
+from canonical_contract import CONTRACT  # noqa: E402
 
-CONTRACT = "TrainAiCad-CANONICAL-V4.34"
 EPS = 1e-9
 ANGLE_TOL_DEG = 1e-6
 

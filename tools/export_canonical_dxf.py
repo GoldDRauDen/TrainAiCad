@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""V4.31 normal production entrypoint: canonical completeness -> DXF -> XDATA read-back."""
+"""The only DXF writer for a job: canonical completeness -> DXF -> XDATA read-back."""
 from __future__ import annotations
 import sys
 
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import ezdxf
 
-from canonical_contract import CONTRACT, CanonicalContractError, validate_canonical_job
+from canonical_contract import CanonicalContractError, validate_canonical_job
 from export_dxf import COMPOSITE_GAP_MM, entity_signature, export_job, source_entity_id
 from export_job_artifacts import export_part_artifacts
 from holistic_engineering_guard import canonical_job_anomalies
@@ -48,7 +48,7 @@ def _stamp_and_verify(job: dict, manifest: dict, output_dir: Path, validation: d
     if APPID not in doc.appids:
         doc.appids.new(APPID)
     geometry = [e for e in doc.modelspace() if e.dxf.layer == "0"]
-    # V4.35: one canonical entity may become several LINE/ARC pieces; the exporter
+    # One canonical entity may become several LINE/ARC pieces; the exporter
     # reports the ordered piece ids and this check requires every piece to be stamped.
     expected_ids = manifest["entity_map"]
     if len(geometry) != len(expected_ids):
@@ -67,11 +67,11 @@ def _stamp_and_verify(job: dict, manifest: dict, output_dir: Path, validation: d
     loaded = ezdxf.readfile(target)
     audit = loaded.audit()
     if audit.has_errors:
-        fail(f"V4.31 saved-DXF audit failed: {target.name}")
+        fail(f"saved-DXF audit failed: {target.name}")
     saved = [e for e in loaded.modelspace() if e.dxf.layer == "0"]
     after = [entity_signature(e) for e in saved]
     if after != before:
-        fail("V4.31 XDATA stamping changed canonical geometry")
+        fail("XDATA stamping changed canonical geometry")
 
     read_ids = []
     for ent in saved:
@@ -101,7 +101,7 @@ def _stamp_and_verify(job: dict, manifest: dict, output_dir: Path, validation: d
 
 
 def export_canonical_job(job: dict, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=False,
-                         composite_only=False, require_slip_codes=False, individual_dxf=False) -> dict:
+                         require_slip_codes=False, individual_dxf=False) -> dict:
     """Validate full member ledger, serialize single composite, stamp/read back entity IDs.
 
     ``require_slip_codes`` (always on in the CLI) enforces <YY>-<serial> slip work numbers.
@@ -116,9 +116,9 @@ def export_canonical_job(job: dict, output_dir, gap_mm=COMPOSITE_GAP_MM, write_m
         fail("SOURCE_SEMANTIC_GUARD_FAIL: " + "; ".join(source_anomalies))
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    manifest = export_job(job, out, gap_mm=gap_mm, mode="single", write_manifest=False)
+    manifest = export_job(job, out, gap_mm=gap_mm, write_manifest=False)
     manifest = _stamp_and_verify(job, manifest, out, validation)
-    manifest["artifacts"] = export_part_artifacts(job, out, composite_only=composite_only or not individual_dxf)
+    manifest["artifacts"] = export_part_artifacts(job, out, composite_only=not individual_dxf)
     # Avoid stale production composites after PASS -> REVIEW (or reverse).
     obsolete = (f"{manifest['job_id']}_ALL.dxf"
                 if manifest["status"] == "REVIEW_ONLY"
@@ -132,12 +132,11 @@ def export_canonical_job(job: dict, output_dir, gap_mm=COMPOSITE_GAP_MM, write_m
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="V4.31 canonical-member-complete single composite DXF")
+    ap = argparse.ArgumentParser(description="canonical-member-complete single composite DXF")
     ap.add_argument("input_json", type=Path)
     ap.add_argument("output_dir", type=Path)
     ap.add_argument("--gap-mm", type=float, default=COMPOSITE_GAP_MM)
     ap.add_argument("--write-manifest", action="store_true")
-    ap.add_argument("--composite-only", action="store_true", help="legacy no-op: combined DXF only is already the default")
     ap.add_argument("--individual-dxf", action="store_true",
                     help="ONLY when the user explicitly requests it: also write parts_dxf/<slip code>.dxf per PASS code")
     ap.add_argument("--allow-nonslip-codes", action="store_true",
@@ -145,7 +144,7 @@ def main() -> None:
     args = ap.parse_args()
     job = json.loads(args.input_json.read_text(encoding="utf-8"))
     manifest = export_canonical_job(job, args.output_dir, args.gap_mm, args.write_manifest,
-                                    composite_only=args.composite_only, individual_dxf=args.individual_dxf,
+                                    individual_dxf=args.individual_dxf,
                                     require_slip_codes=not args.allow_nonslip_codes)
     print(json.dumps({
         "job_id": manifest["job_id"],

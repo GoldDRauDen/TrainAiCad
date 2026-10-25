@@ -196,3 +196,39 @@ def test_png_overview_is_optional_and_written_when_matplotlib_exists(tmp_path):
     png = tmp_path / "v.png"
     assert dxf_digest.main([_sheet(tmp_path), "--out", str(tmp_path / "d.json"), "--png", str(png)]) == 0
     assert png.stat().st_size > 1000
+
+
+def _composite(tmp_path):
+    """Two stacked parts as an AI composite / QA target: bulged corners, holes, a red mark, a label."""
+    q = math.tan(math.radians(90) / 4)
+    doc = ezdxf.new("R2010")
+    msp = doc.modelspace()
+    msp.add_lwpolyline([(0, 300, 0), (97, 300, q), (100, 303, 0), (100, 350, 0), (0, 350, 0)], format="xyb", close=True)
+    msp.add_circle((20, 325), 3.3)
+    msp.add_circle((80, 325), 3.3)
+    msp.add_line((40, 310), (60, 310), dxfattribs={"color": 1})
+    msp.add_lwpolyline([(0, 0, 0), (60, 0, 0), (60, 40, 0), (1, 40, q), (0, 39, 0)], format="xyb", close=True)
+    msp.add_text("26-000001", dxfattribs={"insert": (0, 360)})
+    path = tmp_path / "composite.dxf"
+    doc.saveas(path)
+    return str(path)
+
+
+def test_summary_lists_parts_top_to_bottom_with_holes_radii_and_colours(tmp_path):
+    s = dxf_digest.summary(dxf_digest.digest(_composite(tmp_path)))
+    top, bottom = [v for v in s["views_top_to_bottom"] if v["id"].startswith("V")]
+    assert top["size"] == [100.0, 50.0] and top["holes_by_dia"] == {"Ø6.6": 2} and top["arc_radii"] == {"R3": 1}
+    assert top["colors"]["1"] == 1
+    assert bottom["size"] == [60.0, 40.0] and bottom["arc_radii"] == {"R1": 1}
+    assert s["annotations"] == {"TEXT": 1}
+
+
+def test_polyline_bulges_are_marked_as_decoded_arcs(tmp_path):
+    d = dxf_digest.digest(_composite(tmp_path))
+    arcs = [p for p in d["pieces"] if p["type"] == "ARC"]
+    assert len(arcs) == 2 and all(p.get("bulge_decoded") for p in arcs)
+
+
+def test_cli_without_out_prints_the_summary_only(tmp_path, capsys):
+    assert dxf_digest.main([_composite(tmp_path)]) == 0
+    assert "views_top_to_bottom" in capsys.readouterr().out

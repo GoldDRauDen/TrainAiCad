@@ -154,3 +154,12 @@ def test_run_job_cli_writes_only_dxf_to_out(tmp_path):
     assert sorted(p.name for p in out.iterdir()) == ["EXAMPLE-FLAT_ALL.dxf"]
     report = (work / "EXAMPLE-FLAT_report.md").read_text(encoding="utf-8")
     assert "| 26-000002 |" in report and "xoay 180°" in report
+
+
+def test_run_job_default_work_dir_is_outside_the_spec_folder(tmp_path, monkeypatch):
+    monkeypatch.setattr(run_job.job_state, "WORK_ROOT", tmp_path / ".work")
+    monkeypatch.setattr(run_job.job_state, "CURRENT", tmp_path / ".work" / "CURRENT")
+    before = sorted(p.name for p in EXAMPLE.parent.iterdir())
+    assert run_job.main([str(EXAMPLE), str(tmp_path / "OUT")]) == 0
+    assert sorted(p.name for p in EXAMPLE.parent.iterdir()) == before
+    assert (tmp_path / ".work" / "EXAMPLE-FLAT" / "EXAMPLE-FLAT_report.md").is_file()

@@ -12,4 +12,4 @@ pip install -r requirements.txt
 python -m pytest tests -q
 ```
 
-[LuanAppTools](LuanAppTools/README.md) is an optional Windows dashboard (not yet updated to the V5 layout). Every DXF still needs human inspection.
+The optional Windows dashboard LuanAppTools now lives in its own repository. Every DXF still needs human inspection.
