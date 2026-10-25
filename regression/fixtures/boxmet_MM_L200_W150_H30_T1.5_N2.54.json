@@ -1,0 +1,478 @@
+{
+ "source": "GoldDRauDen/BoxMetFlatV3 references/dxf/MM.dxf (user-designated geometry reference for the BOXMET tool, 2026-10-20)",
+ "params": {
+  "L": 200,
+  "W": 150,
+  "H": [
+   30,
+   30,
+   30,
+   30
+  ],
+  "T": 1.5,
+  "material": "SS",
+  "N": 2.54,
+  "frame": "translated so the flat bbox starts at (0,0)"
+ },
+ "note": "MM.dxf draws the two long outside dashed lines full length; boxmet_flat follows the current BoxMetFlatV3 code and BEND_EDGE_LENGTH_LOCK and interrupts them by T at both ends. Everything else (cut lines, slits, arcs, inner Nobi rectangle, side dashed lines) is identical.",
+ "lines": [
+  {
+   "start": [
+    27.46,
+    27.46
+   ],
+   "end": [
+    227.46,
+    27.46
+   ],
+   "color": 256,
+   "dashed": true
+  },
+  {
+   "start": [
+    227.46,
+    27.46
+   ],
+   "end": [
+    227.46,
+    177.46
+   ],
+   "color": 256,
+   "dashed": true
+  },
+  {
+   "start": [
+    227.46,
+    177.46
+   ],
+   "end": [
+    27.46,
+    177.46
+   ],
+   "color": 256,
+   "dashed": true
+  },
+  {
+   "start": [
+    27.46,
+    177.46
+   ],
+   "end": [
+    27.46,
+    27.46
+   ],
+   "color": 256,
+   "dashed": true
+  },
+  {
+   "start": [
+    30.0,
+    30.0
+   ],
+   "end": [
+    224.92,
+    30.0
+   ],
+   "color": 256,
+   "dashed": true
+  },
+  {
+   "start": [
+    224.92,
+    30.0
+   ],
+   "end": [
+    224.92,
+    174.92
+   ],
+   "color": 256,
+   "dashed": true
+  },
+  {
+   "start": [
+    224.92,
+    174.92
+   ],
+   "end": [
+    30.0,
+    174.92
+   ],
+   "color": 256,
+   "dashed": true
+  },
+  {
+   "start": [
+    30.0,
+    174.92
+   ],
+   "end": [
+    30.0,
+    30.0
+   ],
+   "color": 256,
+   "dashed": true
+  },
+  {
+   "start": [
+    28.96,
+    27.667107
+   ],
+   "end": [
+    28.96,
+    29.16
+   ],
+   "color": 3,
+   "dashed": false
+  },
+  {
+   "start": [
+    28.813553,
+    27.313553
+   ],
+   "end": [
+    25.96,
+    24.46
+   ],
+   "color": 3,
+   "dashed": false
+  },
+  {
+   "start": [
+    225.96,
+    27.667107
+   ],
+   "end": [
+    225.96,
+    29.16
+   ],
+   "color": 3,
+   "dashed": false
+  },
+  {
+   "start": [
+    226.106447,
+    27.313553
+   ],
+   "end": [
+    228.96,
+    24.46
+   ],
+   "color": 3,
+   "dashed": false
+  },
+  {
+   "start": [
+    225.96,
+    177.252893
+   ],
+   "end": [
+    225.96,
+    175.76
+   ],
+   "color": 3,
+   "dashed": false
+  },
+  {
+   "start": [
+    226.106447,
+    177.606447
+   ],
+   "end": [
+    228.96,
+    180.46
+   ],
+   "color": 3,
+   "dashed": false
+  },
+  {
+   "start": [
+    28.96,
+    177.252893
+   ],
+   "end": [
+    28.96,
+    175.76
+   ],
+   "color": 3,
+   "dashed": false
+  },
+  {
+   "start": [
+    28.813553,
+    177.606447
+   ],
+   "end": [
+    25.96,
+    180.46
+   ],
+   "color": 3,
+   "dashed": false
+  },
+  {
+   "start": [
+    254.42,
+    177.46
+   ],
+   "end": [
+    225.96,
+    177.46
+   ],
+   "color": 256,
+   "dashed": false
+  },
+  {
+   "start": [
+    225.96,
+    177.46
+   ],
+   "end": [
+    225.96,
+    204.42
+   ],
+   "color": 256,
+   "dashed": false
+  },
+  {
+   "start": [
+    225.46,
+    204.92
+   ],
+   "end": [
+    29.46,
+    204.92
+   ],
+   "color": 256,
+   "dashed": false
+  },
+  {
+   "start": [
+    28.96,
+    204.42
+   ],
+   "end": [
+    28.96,
+    177.46
+   ],
+   "color": 256,
+   "dashed": false
+  },
+  {
+   "start": [
+    28.96,
+    177.46
+   ],
+   "end": [
+    0.5,
+    177.46
+   ],
+   "color": 256,
+   "dashed": false
+  },
+  {
+   "start": [
+    0.0,
+    176.96
+   ],
+   "end": [
+    0.0,
+    27.96
+   ],
+   "color": 256,
+   "dashed": false
+  },
+  {
+   "start": [
+    0.5,
+    27.46
+   ],
+   "end": [
+    28.96,
+    27.46
+   ],
+   "color": 256,
+   "dashed": false
+  },
+  {
+   "start": [
+    28.96,
+    27.46
+   ],
+   "end": [
+    28.96,
+    0.5
+   ],
+   "color": 256,
+   "dashed": false
+  },
+  {
+   "start": [
+    29.46,
+    0.0
+   ],
+   "end": [
+    225.46,
+    0.0
+   ],
+   "color": 256,
+   "dashed": false
+  },
+  {
+   "start": [
+    225.96,
+    0.5
+   ],
+   "end": [
+    225.96,
+    27.46
+   ],
+   "color": 256,
+   "dashed": false
+  },
+  {
+   "start": [
+    225.96,
+    27.46
+   ],
+   "end": [
+    254.42,
+    27.46
+   ],
+   "color": 256,
+   "dashed": false
+  },
+  {
+   "start": [
+    254.92,
+    27.96
+   ],
+   "end": [
+    254.92,
+    176.96
+   ],
+   "color": 256,
+   "dashed": false
+  }
+ ],
+ "arcs": [
+  {
+   "center": [
+    28.46,
+    27.667107
+   ],
+   "radius": 0.5,
+   "start_angle": 315.0,
+   "end_angle": 0.0,
+   "color": 3
+  },
+  {
+   "center": [
+    226.46,
+    27.667107
+   ],
+   "radius": 0.5,
+   "start_angle": 180.0,
+   "end_angle": 225.0,
+   "color": 3
+  },
+  {
+   "center": [
+    226.46,
+    177.252893
+   ],
+   "radius": 0.5,
+   "start_angle": 135.0,
+   "end_angle": 180.0,
+   "color": 3
+  },
+  {
+   "center": [
+    28.46,
+    177.252893
+   ],
+   "radius": 0.5,
+   "start_angle": 0.0,
+   "end_angle": 45.0,
+   "color": 3
+  },
+  {
+   "center": [
+    254.42,
+    176.96
+   ],
+   "radius": 0.5,
+   "start_angle": 0.0,
+   "end_angle": 90.0,
+   "color": 256
+  },
+  {
+   "center": [
+    225.46,
+    204.42
+   ],
+   "radius": 0.5,
+   "start_angle": 0.0,
+   "end_angle": 90.0,
+   "color": 256
+  },
+  {
+   "center": [
+    29.46,
+    204.42
+   ],
+   "radius": 0.5,
+   "start_angle": 90.0,
+   "end_angle": 180.0,
+   "color": 256
+  },
+  {
+   "center": [
+    0.5,
+    176.96
+   ],
+   "radius": 0.5,
+   "start_angle": 90.0,
+   "end_angle": 180.0,
+   "color": 256
+  },
+  {
+   "center": [
+    0.5,
+    27.96
+   ],
+   "radius": 0.5,
+   "start_angle": 180.0,
+   "end_angle": 270.0,
+   "color": 256
+  },
+  {
+   "center": [
+    29.46,
+    0.5
+   ],
+   "radius": 0.5,
+   "start_angle": 180.0,
+   "end_angle": 270.0,
+   "color": 256
+  },
+  {
+   "center": [
+    225.46,
+    0.5
+   ],
+   "radius": 0.5,
+   "start_angle": 270.0,
+   "end_angle": 0.0,
+   "color": 256
+  },
+  {
+   "center": [
+    254.42,
+    27.96
+   ],
+   "radius": 0.5,
+   "start_angle": 270.0,
+   "end_angle": 0.0,
+   "color": 256
+  }
+ ]
+}

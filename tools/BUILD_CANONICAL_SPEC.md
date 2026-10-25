@@ -1,0 +1,56 @@
+# build_canonical spec (FLAT and single-axis BENT parts)
+
+`python tools/run_job.py spec.yaml OUT/` = `build_canonical.py` → `export_canonical_dxf.py` → reopen/verify → report table.
+Examples: `examples/flat_minimal.yaml` (its generated `examples/flat_minimal.job.json` is kept in sync by a test), `examples/bend_minimal.yaml`.
+
+Job level: `job_id`, optional `customer_code` (numeric, JOB STATISTICS) — its corner/hole policy from `data/customers.yaml` is applied to every part (e.g. KH768 sharp outside corners, KH712 C5, KH859 t≥19 corners FLAG).
+
+## Part
+| key | meaning |
+|---|---|
+| `code` | slip work number verbatim (`26-062931`) |
+| `material`, `t` | as printed; Laser R and hole POINT/CIRCLE come from `tools/lookup.py` |
+| `page` | PDF page cited by every witness edge |
+| `envelope: [Ox, Oy]` | overall drawing/slip size; the nominal outline bbox must match (±0.5, `envelope_tol`) |
+| `outline` | corners **counter-clockwise**; items below |
+| `holes`, `slots` | features with their dimension chains |
+| `flags` | Vietnamese FLAG lines → status PREVIEW, outline Magenta (only for a real unknown, `rules/OUTPUT.md` §5) |
+| `jlj_edge` | `auto` (default) / `top` / `bottom` |
+
+## Outline items
+- `[x, y]` — AUTO: Laser R on a convex corner ≤90° (`MATERIAL_AUTO_R`, corner row AUTO_R); other corners stay sharp.
+- `[x, y, {R: 3, group: R3, qty: 3, ev: "p2 R3-3"}]` / `{C: 10, ...}` — called R/C. One `group` per callout; `qty` is checked (`GROUP_COUNT_CLOSURE`).
+- `[x, y, {SHARP: "lý do"}]` — sharp by the drawing; `[x, y, {FLAG: "nội dung"}]` — unresolved corner (FLAG, no auto R).
+- `{vnotch: {start, pitch, count | x: [...], level, depth, angle: 90, inward: -1|1, axis: X|Y, qty, ev}}` — repeated V notches; list them in outline order. A mouth on an explicit corner merges with it.
+- `{unotch: {at: [[x,y],...], inward: [ux,uy], width, depth, mouth: {C: 1, ev}, qty, ev}}` — open U notch; `depth` = mouth → semicircle center, R = width/2; the mouth R/C applies to every notch of the entry.
+
+## Holes / slots
+`{id, d, group, qty, ev, wx: [[value, TO_TYPE, "evidence", KIND?], ...], wy: [...], datum_x: 0, datum_y: 0, at?}` — the chain starts at the outer edge at `datum_x/datum_y`; the center is the sum (an `at` given is checked). Node types: `OUTER_EDGE`, `HOLE_CENTER`, `SLOT_MIDPOINT`, … (`tools/dimension_witness.py`). Slot: `{id, w, cd, axis: [1,0], ev, wx, wy}` → stadium, anchor `SLOT_MIDPOINT`.
+
+Hole keys for POINT: `piercing: true` (PIERCING scoped to this family by its leader) → ByLayer POINT; `piercing: true, through: true, stamp: "<scoped text quoting PIERCING + THROUGH HOLE>"` → Green POINT + `piercing_authorizations` (rules/HOLE_TAP.md §2). A hole with `d < t/2` or below the workbook minimum becomes a ByLayer POINT by itself. `d` is still given (witness chain); a Magenta/unknown lookup result is refused (draw by hand + FLAG).
+
+## Cut-outs (rectangular opening, optional R corners)
+`cutouts: [{id, rect: [x0, y0, x1, y1] | face, from, u: [a, b], v: [c, d], R: 10, group, qty, ev}]` → one CW closed contour (4 tangent arcs when `R>0`), family `CUTOUT` (`qty` closes per `group`). `face/u/v` maps like a hole on a bent face (`u` along the face from its datum, `v` across from the flat edge). Refused: outside the material (CONTAINMENT), `R` > half the short side, overlapping a bend zone (bend lines must stop at the void: build by hand).
+
+## What the tool proves (checks it sets PASS)
+contour_topology (closed, CCW, no self-intersection), datum (envelope + every witness chain), feature_count (group closure), containment (full boundary), material_rules (lookup). unfold/bend_domain N/A; slot_semantics PASS only with slots.
+J/LJ: on the long straight edge (`rules/OUTPUT.md` §4); if the max-Y edge is notched/sloped and the min-Y edge is straight the part is rotated 180° (`canonical_rotation_deg`).
+Check the shape against the drawing with `tools/overlay_check.py` (≥3 anchors, residual ≤1 mm).
+
+## Bent part: `bend:` block (L / U / Z / hat / multi-bend chain along ONE axis)
+```yaml
+bend:
+  axis: X                 # the face chain runs along flat X (bend lines vertical); Y = along flat Y
+  width: 40               # proved width of every face (Nobi L and outline: auto); per-bend `L` overrides
+  width_ev: "p6 web 40"   # needed for outline: auto (full-width rectangle)
+  faces:                  # unfold order from the flat origin; od = proved outside length (rules/BEND.md §4)
+    - {id: F1, od: 50, ev: "50 to the outer face"}
+    - {id: F2, od: 64, ev: "62 + t"}
+  bends:                  # one per face pair
+    - {id: B1, angle: 90, sign: 1, nobi: 3.68, ev: "bend callout"}   # nobi only when handwritten; else table
+```
+- Nobi per bend from `lookup.nobi` (handwritten > 90° J table); a missing Nobi refuses with `SPLIT_FLANGE_10MM` (draw by hand).
+- The tool derives line1/line2, the flat length, `face_graph`, `per_bend_witness_ledger`, the `BEND` groups and the DASHED lines clipped to the outline (one member per material interval).
+- `outline: auto` = full-width rectangle; otherwise list the flat outline, where a point may be face-relative: `{face: F2, u: 10, v: 0, from: start|end, R: 2}`. Face start = the previous bend's line1 (the previous face's outer plane), face end = the next bend's line2; the first/last face are measured from their free edge.
+- Holes/slots on a face: `{..., face: F3, from: start|end, wu: [[30, HOLE_CENTER, "ev"]], wv: [[10, HOLE_CENTER, "ev"]]}` (`wu` along the face, `wv` across from the flat edge v=0).
+- Refused (build that part as canonical JSON by hand): an outline corner inside a bend zone (bend-end junction, decide S: `rules/SLIT_RELIEF.md` §3), a hole/slot overlapping a bend zone, bends on two axes (box), non-90° without handwritten Nobi.

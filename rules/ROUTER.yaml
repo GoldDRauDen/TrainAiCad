@@ -1,0 +1,94 @@
+# Census -> rule cards. tools/resolve_rules.py reads this; UNKNOWN loads like YES.
+schema_version: 2
+release: V5.0
+authority: ROUTING_ONLY
+production_mode: repo_direct
+unknown_policy: LOAD_ROUTE
+
+# L1: always, plus a conditional card unless its census value is a PROVEN "NO".
+default_load:
+  - rules/READ_SOURCE.md
+  - rules/CENSUS.md
+conditional_default_load:
+  - path: rules/MULTI_PART.md
+    skip_when: {multi_code_or_assembly: "NO"}
+  - path: rules/REFERENCE.md
+    skip_when: {reference_present: "NO"}
+
+stage_routes:
+  L0_BOOTSTRAP:
+    load: []
+  L1_SOURCE_CENSUS:
+    load: []
+  L2_GEOMETRY:
+    load:
+      - rules/DATUM.md
+      - rules/CORNER_RC.md
+  L3_VALIDATE_EXPORT_QA:
+    load:
+      - rules/VALIDATE.md
+      - rules/OUTPUT.md
+
+source_routes:
+  PDF_ONLY:
+    load: []
+  PDF_DATA_RAW:
+    load:
+      - rules/DATA_DXF.md
+  TRAIN_REFERENCE:
+    load:
+      - rules/DATA_DXF.md
+      - rules/REFERENCE.md
+  DIRECT_EXISTING_DXF_AUDIT:
+    load:
+      - rules/DATA_DXF.md
+      - rules/REFERENCE.md
+
+mode_routes:
+  FLAT_NO_BEND:
+    load: []
+  BEND:
+    load:
+      - rules/BEND.md
+      - rules/SLIT_RELIEF.md
+  MULTI_FACE:
+    load:
+      - rules/BEND.md
+      - rules/SLIT_RELIEF.md
+  UNKNOWN:
+    load:
+      - rules/BEND.md
+      - rules/SLIT_RELIEF.md
+
+feature_routes:
+  HOLE:
+    load: [rules/HOLE_TAP.md]
+  TAP:
+    load: [rules/HOLE_TAP.md]
+  PIASU:
+    load: [rules/HOLE_TAP.md]
+  SLOT_STRAIGHT:
+    load: [rules/SLOT.md]
+  CURVED_SLOT:
+    load: [rules/SLOT.md]
+  KEGAKI:
+    load: [rules/KEGAKI.md]
+  RIB:
+    load: [rules/KEGAKI.md]
+  FORMING_FEATURES:
+    load: [rules/KEGAKI.md]
+  SLIT_RELIEF:
+    load: [rules/SLIT_RELIEF.md]
+  ACUTE_BEND_LT85:
+    depends_on: [BEND]
+    load: [rules/BEND_ACUTE.md]
+  BOXMET:
+    depends_on: [BEND, SLIT_RELIEF]
+    load: [rules/SLIT_RELIEF.md]
+
+dependency_aliases:
+  BEND:
+    route_group: mode_routes
+    route_id: BEND
+
+customer_rule_catalog: data/customers.yaml

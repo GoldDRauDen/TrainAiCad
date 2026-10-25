@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+
+# LuanAppTools local operational data and frontend builds
+LuanAppTools/.venv/
+LuanAppTools/.data/
+LuanAppTools/runtime/
+LuanAppTools/frontend/dist/
+LuanAppTools/frontend/.vite/
+LuanAppTools/*.sqlite3
+LuanAppTools/*.sqlite3-shm
+LuanAppTools/*.sqlite3-wal
+LuanAppTools/.env
+LuanAppTools/screenshots/
+LuanAppTools/frontend/coverage/
+LuanAppTools/frontend/test-results/
+
+# job work files (tools/job.py)
+.work/
+.claude/settings.local.json

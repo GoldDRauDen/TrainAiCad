@@ -1,0 +1,37 @@
+# Minimal FLAT job spec for tools/build_canonical.py / tools/run_job.py (synthetic, not a customer job).
+# Coordinates: part-local mm, outline counter-clockwise (material on the left). Corner without options = AUTO
+# (Laser R from tools/lookup.py when convex <=90 deg, else sharp). Spec: tools/BUILD_CANONICAL_SPEC.md
+job_id: EXAMPLE-FLAT
+parts:
+  - code: 26-000001            # delivery-slip work number, verbatim
+    material: SPCC
+    t: 1.6
+    page: 1                    # PDF page cited by every witness
+    envelope: [300, 100]       # overall size from the drawing / slip: checked against the outline
+    outline:
+      - [0, 0]                                         # AUTO -> Laser R
+      - unotch: {at: [150, 0], inward: [0, 1], width: 10, depth: 15, ev: "p1 U10 depth 15 (R=W/2)",
+                 mouth: {C: 1, group: C1, ev: "p1 C1"}}
+      - [300, 0, {R: 5, group: R5, qty: 2, ev: "p1 R5-2"}]
+      - [300, 100, {R: 5, group: R5, ev: "p1 R5-2"}]
+      - [0, 100, {C: 3, ev: "p1 C3"}]
+    holes:                     # center = datum + sum of the chain; 'at' optional (checked when given)
+      - {id: H1, d: 6.6, group: H66, qty: 2, ev: "p1 2-Ø6.6",
+         wx: [[20, HOLE_CENTER, "p1 dim 20"]], wy: [[50, HOLE_CENTER, "p1 dim 50"]]}
+      - {id: H2, d: 6.6, group: H66, at: [260, 50],
+         wx: [[20, HOLE_CENTER, "p1 dim 20"], [240, HOLE_CENTER, "p1 dim 240"]], wy: [[50, HOLE_CENTER, "p1 dim 50"]]}
+    slots:
+      - {id: S1, w: 8, cd: 12, axis: [1, 0], ev: "p1 slot 8x20",
+         wx: [[100, SLOT_MIDPOINT, "p1 dim 100 to slot center"]], wy: [[70, SLOT_MIDPOINT, "p1 dim 70"]]}
+  - code: 26-000002            # long strip: J/LJ go on the straight long edge (auto 180 deg rotation)
+    material: A5052
+    t: 3
+    page: 2
+    envelope: [1200, 60]
+    outline:
+      - [0, 0]
+      - [1200, 0]
+      - [1200, 60]
+      - vnotch: {start: 1100, pitch: -200, count: 5, level: 60, depth: 10, angle: 90, inward: -1, qty: 5,
+                 ev: "p2 5-90° depth 10, pitch 200"}
+      - [0, 60]

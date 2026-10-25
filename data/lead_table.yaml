@@ -1,0 +1,38 @@
+# Slit lead value (vòi dẫn, LeadVal = offset of BOTH meeting edges toward the void) by material group and thickness.
+# Source: user-approved Book1.xlsx / 一覧表2026.07.30 column G (外周ピアス 長); user confirmed 2026-10-21 that column G is the
+# LeadVal source.  Samples that prove the mapping: 055958 (t5 -> 6) and the 3 / 6 values of earlier jobs.
+# Intervals follow the sheet: B = Min, C = Max; a blank Min after another row starts just above the previous Max
+# (min_open: true); a blank Max runs up to (not including) the next row's Min.
+# Thickness outside every row (a gap, e.g. SS 3.2 < t < 4) is NOT interpolated: lead_val raises LEAD_VALUE_UNPROVED (local FLAG).
+# shape HOOK (曲, SS/SUS/AL t >= 19) is the hook pierce (10 | R3 | 7); user 2026-10-21: t > 16 does not occur, FLAG, never draw it.
+# CU_BRASS 5 < t < 6 uses the t6 row (approved L10); t > 6 has no row.  OTHER (他) uses the SUS/他 rows (same as laser R routing).
+version: 1
+source: "Book1.xlsx!一覧表2026.07.30!G4:G26"
+groups:
+  SS:
+    - {row: 4,  t_min: 0,  min_open: true,  t_max: 3.2, lead: 3,  shape: STRAIGHT, cell: G4}
+    - {row: 5,  t_min: 4,  t_max: 5,  lead: 6,  shape: STRAIGHT, cell: G5}
+    - {row: 6,  t_min: 6,  t_max: 9,  lead: 6,  shape: STRAIGHT, cell: G6}
+    - {row: 7,  t_min: 10, t_max: 12, lead: 10, shape: STRAIGHT, cell: G7}
+    - {row: 8,  t_min: 16, t_max: 16, lead: 10, shape: STRAIGHT, cell: G8}
+    - {row: 9,  t_min: 19, t_max: null, lead: 7, shape: HOOK, hook_radius: 3, cell: G9}
+  SUS:
+    - {row: 10, t_min: 0,  min_open: true,  t_max: 5,  lead: 6,  shape: STRAIGHT, cell: G10}
+    - {row: 11, t_min: 6,  t_max: 6,  lead: 6,  shape: STRAIGHT, cell: G11}
+    - {row: 12, t_min: 7,  t_max: 8,  lead: 6,  shape: STRAIGHT, cell: G12}
+    - {row: 13, t_min: 9,  t_max: 12, lead: 10, shape: STRAIGHT, cell: G13}
+    - {row: 14, t_min: 14, t_max: 14, lead: 10, shape: STRAIGHT, cell: G14}
+    - {row: 15, t_min: 15, t_max: 16, lead: 10, shape: STRAIGHT, cell: G15}
+    - {row: 16, t_min: 19, t_max: 19, lead: 7,  shape: HOOK, hook_radius: 3, cell: G16}
+    - {row: 17, t_min: 20, t_max: null, lead: 7, shape: HOOK, hook_radius: 3, cell: G17}
+  AL:
+    - {row: 18, t_min: 0,   min_open: true, t_max: 0.5, lead: 6,  shape: STRAIGHT, cell: G18}
+    - {row: 19, t_min: 0.5, min_open: true, t_max: 6,   lead: 6,  shape: STRAIGHT, cell: G19}
+    - {row: 20, t_min: 7,  t_max: 8,  lead: 6,  shape: STRAIGHT, cell: G20}
+    - {row: 21, t_min: 9,  t_max: 12, t_max_open: true, lead: 10, shape: STRAIGHT, cell: G21}
+    - {row: 22, t_min: 12, t_max: 16, t_max_open: true, lead: 10, shape: STRAIGHT, cell: G22}
+    - {row: 23, t_min: 16, t_max: 19, t_max_open: true, lead: 10, shape: STRAIGHT, cell: G23}
+    - {row: 24, t_min: 19, t_max: null, lead: 7, shape: HOOK, hook_radius: 3, cell: G24}
+  CU_BRASS:
+    - {row: 25, t_min: 0, min_open: true, t_max: 5, lead: 6, shape: STRAIGHT, cell: G25}
+    - {row: 26, t_min: 5, min_open: true, t_max: 6, lead: 6, shape: STRAIGHT, cell: G26, note: "5<t<6 uses the t6 row (approved L10)"}
