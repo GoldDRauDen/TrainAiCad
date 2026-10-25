@@ -1,6 +1,6 @@
 # build_canonical spec (FLAT and single-axis BENT parts)
 
-`python tools/run_job.py spec.yaml OUT/` = `build_canonical.py` → `export_canonical_dxf.py` → reopen/verify → report table.
+`python tools/run_job.py spec_A.yaml spec_B.yaml [box.job.json] OUT/` = `build_canonical.py` → `export_canonical_dxf.py` → reopen/verify → report table. One file per code is fine: files merge in the given (page-1) order; canonical job JSON (`tools/boxmet_job.py`, hand parts) joins as-is; `job_id` / `customer_code` must agree.
 Examples: `examples/flat_minimal.yaml` (its generated `examples/flat_minimal.job.json` is kept in sync by a test), `examples/bend_minimal.yaml`.
 
 Job level: `job_id`, optional `customer_code` (numeric, JOB STATISTICS) — its corner/hole policy from `data/customers.yaml` is applied to every part (e.g. KH768 sharp outside corners, KH712 C5, KH859 t≥19 corners FLAG).
@@ -49,8 +49,8 @@ bend:
   bends:                  # one per face pair
     - {id: B1, angle: 90, sign: 1, nobi: 3.68, ev: "bend callout"}   # nobi only when handwritten; else table
 ```
-- Nobi per bend from `lookup.nobi` (handwritten > 90° J table); a missing Nobi refuses with `SPLIT_FLANGE_10MM` (draw by hand).
+- Nobi per bend from `lookup.nobi` (handwritten > 90° J table). A bend with no Nobi (`SPLIT_FLANGE_10MM`) is split: the body (largest ΣOD) and each other segment are built at their ODs, the segment drawn Magenta 10 mm away, no line pair, FLAG + PREVIEW. Needs `outline: auto`; every hole/slot/cut-out on a split part names its `face`.
 - The tool derives line1/line2, the flat length, `face_graph`, `per_bend_witness_ledger`, the `BEND` groups and the DASHED lines clipped to the outline (one member per material interval).
 - `outline: auto` = full-width rectangle; otherwise list the flat outline, where a point may be face-relative: `{face: F2, u: 10, v: 0, from: start|end, R: 2}`. Face start = the previous bend's line1 (the previous face's outer plane), face end = the next bend's line2; the first/last face are measured from their free edge.
 - Holes/slots on a face: `{..., face: F3, from: start|end, wu: [[30, HOLE_CENTER, "ev"]], wv: [[10, HOLE_CENTER, "ev"]]}` (`wu` along the face, `wv` across from the flat edge v=0).
-- Refused (build that part as canonical JSON by hand): an outline corner inside a bend zone (bend-end junction, decide S: `rules/SLIT_RELIEF.md` §3), a hole/slot overlapping a bend zone, bends on two axes (box), non-90° without handwritten Nobi.
+- Refused (build that part as canonical JSON by hand): an outline corner inside a bend zone (bend-end junction, decide S: `rules/SLIT_RELIEF.md` §3), a hole/slot overlapping a bend zone, bends on two axes (box), a split flange with a shaped outline.

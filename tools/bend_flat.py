@@ -11,7 +11,8 @@ and (when printed) handwritten Nobi. This module derives the rest (rules/BEND.md
 * bend lines clipped to the real material (outline ∩ line), one member per material interval;
 * ``face_graph`` and ``per_bend_witness_ledger`` records for the canonical guards.
 
-Refuses (with the reason) what is not automated yet: a missing Nobi (SPLIT_FLANGE_10MM), an outline that
+A bend without a Nobi source is split (``split_plan``): build_canonical draws each segment at its OD and the
+flange 10 mm away (SPLIT_FLANGE_10MM, rules/BEND.md §6). Refuses (with the reason) an outline that
 changes inside a bend zone (bend-end junction: decide S by hand, rules/SLIT_RELIEF.md §3), unequal clipping
 of the two lines of one bend.
 """
@@ -38,7 +39,9 @@ def unfold_chain(bend: dict, material: str, t: float, customer, code: str) -> di
     if axis not in ("X", "Y"):
         _fail(f"{code}: bend.axis must be X or Y (the direction the face chain runs in the flat)")
     faces = bend.get("faces") or _fail(f"{code}: bend.faces required (ordered from the flat origin)")
-    bends = bend.get("bends") or _fail(f"{code}: bend.bends required")
+    bends = bend.get("bends")
+    if bends is None or (not bends and len(faces) != 1):
+        _fail(f"{code}: bend.bends required")
     if len(bends) != len(faces) - 1:
         _fail(f"{code}: {len(faces)} faces need {len(faces) - 1} bends, got {len(bends)}")
     fids = []
@@ -64,11 +67,9 @@ def unfold_chain(bend: dict, material: str, t: float, customer, code: str) -> di
         L = b.get("L", width)
         if not isinstance(L, (int, float)) or L <= 0:
             _fail(f"{code}: bend {bid} needs L (physical bend-edge length) or bend.width")
-        res = lookup.nobi(material, t, float(L), angle, b.get("surface"), b.get("nobi"),
-                          bool(b.get("j", True)), customer)
+        res = _nobi(b, L, material, t, customer)
         if res.get("status") != "OK":
-            _fail(f"{code}: bend {bid}: {res.get('action')} — {res.get('flag_vi')} "
-                  "(draw the split flange by hand: rules/BEND.md §6)")
+            _fail(f"{code}: bend {bid}: {res.get('action')} — {res.get('flag_vi')}")
         out_bends.append({"id": bid, "angle": angle, "sign": sign, "nobi": float(res["nobi"]),
                           "nobi_source": res.get("source"), "nobi_row": res.get("row"), "ev": b["ev"],
                           "L": float(L), "faces": (fids[k], fids[k + 1])})
@@ -82,6 +83,34 @@ def unfold_chain(bend: dict, material: str, t: float, customer, code: str) -> di
                       "first": i == 0, "last": i == len(faces) - 1}
                 for i, (fid, f, s, e) in enumerate(zip(fids, faces, starts, ends))}
     return {"axis": axis, "faces": face_rec, "order": fids, "bends": out_bends, "total": total}
+
+
+def _nobi(b: dict, L, material: str, t: float, customer):
+    return lookup.nobi(material, t, float(L), float(b.get("angle", 90)), b.get("surface"), b.get("nobi"),
+                       bool(b.get("j", True)), customer)
+
+
+def split_plan(bend: dict, material: str, t: float, customer, code: str):
+    """None when every bend has a Nobi; else the segments between SPLIT_FLANGE_10MM bends.
+
+    Each segment: {faces, bends, split_after: {bend, flag_vi, reason} | None}."""
+    faces, bends = bend.get("faces") or [], bend.get("bends") or []
+    if len(bends) != len(faces) - 1:
+        return None  # unfold_chain reports the shape error
+    segs, cur_f, cur_b, split = [], [faces[0]] if faces else [], [], False
+    for k, b in enumerate(bends):
+        res = _nobi(b, b.get("L", bend.get("width")) or 1.0, material, t, customer)
+        if res.get("status") != "OK" and res.get("action") == lookup.SPLIT_FLANGE:
+            split = True
+            segs.append({"faces": cur_f, "bends": cur_b,
+                         "split_after": {"bend": str(b.get("id") or f"B{k + 1}"), "reason": res.get("reason"),
+                                         "flag_vi": res.get("flag_vi")}})
+            cur_f, cur_b = [faces[k + 1]], []
+        else:
+            cur_b.append(b)
+            cur_f.append(faces[k + 1])
+    segs.append({"faces": cur_f, "bends": cur_b, "split_after": None})
+    return segs if split else None
 
 
 def face_datum(chain: dict, face: str, frm: str, code: str):

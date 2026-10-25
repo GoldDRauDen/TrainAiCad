@@ -207,8 +207,11 @@ def build_job(code, L, W, heights, T, material, N, holes=(), drawn_corners="SHAR
         "flat_equations": {"X": {"ordered_od_mm": [H4, L, H2], "deductions_mm": [N, N], "result_mm": R6(L + H2 + H4 - 2 * N)},
                            "Y": {"ordered_od_mm": [H1, W, H3], "deductions_mm": [N, N], "result_mm": R6(W + H1 + H3 - 2 * N)}},
         "dx_label": False}
-    return {"canonical_contract": CONTRACT, "job_id": job_id or str(code),
-            "source_mode": "PDF_ONLY", "reference_present": False, "parts": [part]}
+    job = {"canonical_contract": CONTRACT, "job_id": job_id or str(code),
+           "source_mode": "PDF_ONLY", "reference_present": False, "parts": [part]}
+    if customer is not None:
+        job["customer_code"] = str(customer)
+    return job
 
 
 def _main(argv=None):
@@ -222,10 +225,13 @@ def _main(argv=None):
     ap.add_argument("--N", type=float, required=True)
     ap.add_argument("--hole", nargs=4, action="append", metavar=("X", "Y", "DIA", "EVIDENCE"), default=[])
     ap.add_argument("--drawn-corners", default="SHARP", choices=["SHARP", "ROUNDED", "CHAMFERED", "UNKNOWN"])
+    ap.add_argument("--job-id", help="slip order number (注番) when the box joins a multi-code job")
+    ap.add_argument("--customer", help="numeric JOB STATISTICS code")
     ap.add_argument("--out", required=True)
     a = ap.parse_args(argv)
     holes = [(float(x), float(y), float(d), ev) for x, y, d, ev in a.hole]
-    job = build_job(a.code, a.L, a.W, tuple(a.H), a.T, a.material, a.N, holes, a.drawn_corners)
+    job = build_job(a.code, a.L, a.W, tuple(a.H), a.T, a.material, a.N, holes, a.drawn_corners,
+                    customer=a.customer, job_id=a.job_id)
     Path(a.out).write_text(json.dumps(job, indent=1, ensure_ascii=False), encoding="utf-8")
     return 0
 

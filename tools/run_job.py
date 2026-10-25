@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""One command for a FLAT job: spec -> job.json -> canonical DXF -> reopen + verify -> report.
+"""One command per job: specs (+ hand canonical JSON) -> job.json -> canonical DXF -> reopen + verify -> report.
 
-    python tools/run_job.py spec.yaml OUT/ [--work WORKDIR] [--individual-dxf]
+    python tools/run_job.py spec_26-061247.yaml spec_26-061248.yaml box.job.json OUT/ [--work WORKDIR] [--individual-dxf]
+    (files in page-1 order; the last argument is the output folder)
 
 * builds the canonical job with tools/build_canonical.py (spec: tools/BUILD_CANONICAL_SPEC.md);
 * exports with tools/export_canonical_dxf.py (all saved-file gates, XDATA read-back);
@@ -23,7 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ezdxf  # noqa: E402
 
-from build_canonical import BuildError, build_job, load_spec, summary  # noqa: E402
+from build_canonical import BuildError, build_from_files, summary  # noqa: E402
 from canonical_contract import CanonicalContractError  # noqa: E402
 from export_canonical_dxf import export_canonical_job  # noqa: E402
 import job as job_state  # noqa: E402
@@ -55,23 +56,27 @@ def verify_saved(path, job, manifest):
     if len(geo) != len(ids):
         raise SystemExit(f"VERIFY_FAIL entity count saved={len(geo)} expected={len(ids)}")
     rows = {}
+    base = [i.split(":S")[0] for i in ids]
     for part in job["parts"]:
         code = part["code"]
-        outer = f"E_{code}_OUT:"
-        pieces = [e for e, i in zip(geo, ids) if i.startswith(outer) and e.dxftype() in ("LINE", "ARC")]
-        deg = Counter()
-        for e in pieces:
-            for p in _ends(e):
-                deg[(round(p[0], 4), round(p[1], 4))] += 1
-        holes = sum(1 for e, i in zip(geo, ids) if i.startswith(f"E_{code}_") and e.dxftype() == "CIRCLE")
+        own = {e["entity_id"] for e in part["entities"]}
+        mine = [(e, b) for e, b in zip(geo, base) if b in own]
+        closed = True
+        for loop in (e["entity_id"] for e in part["entities"] if e.get("role") in ("outer", "split_flange")):
+            deg = Counter()
+            for e, b in mine:
+                if b == loop and e.dxftype() in ("LINE", "ARC"):
+                    for p in _ends(e):
+                        deg[(round(p[0], 4), round(p[1], 4))] += 1
+            closed = closed and bool(deg) and all(v == 2 for v in deg.values())
+        pieces = sum(1 for e, b in mine if any(b == x["entity_id"] and x.get("role") == "outer" for x in part["entities"]))
+        holes = sum(1 for e, _ in mine if e.dxftype() == "CIRCLE")
         want = sum(1 for e in part["entities"] if e["type"] == "CIRCLE")
-        bends = sum(1 for e, i in zip(geo, ids) if i.startswith(f"E_{code}_") and e.dxftype() == "LINE"
-                    and e.dxf.get("linetype", "").upper() == "DASHED")
+        bends = sum(1 for e, _ in mine if e.dxftype() == "LINE" and e.dxf.get("linetype", "").upper() == "DASHED")
         want_b = sum(1 for e in part["entities"] if e.get("role") == "bend")
-        closed = bool(pieces) and all(v == 2 for v in deg.values())
         if not closed or holes != want or bends != want_b:
             raise SystemExit(f"VERIFY_FAIL {code}: closed={closed} holes={holes}/{want} bend lines={bends}/{want_b}")
-        rows[code] = {"outline_pieces": len(pieces), "closed": closed, "holes": holes, "bend_lines": bends}
+        rows[code] = {"outline_pieces": pieces, "closed": closed, "holes": holes, "bend_lines": bends}
     return {"audit_errors": doc.audit().has_errors, "parts": rows}
 
 
@@ -82,11 +87,13 @@ def report(job, manifest, verify, seconds):
         p = parts[row["code"]]
         notes = []
         if row["auto_r"]:
-            notes.append(f"Laser R tự động ×{row['auto_r']} ({p['laser_r_lookup']['laser_r']})")
+            notes.append(f"Laser R tự động ×{row['auto_r']} ({p.get('laser_r_lookup', {}).get('laser_r', '?')})")
         if row["called"]:
             notes.append(f"R/C theo callout ×{row['called']}")
         if row["holes"]:
             notes.append(f"lỗ ×{row['holes']}")
+        if p.get("split_flange"):
+            notes.append("tách bích 10 mm: " + ", ".join(s["bend"] for s in p["split_flange"]))
         if p.get("unfold"):
             bs = p["unfold"]["bends"]
             notes.append("uốn ×{}: ".format(len(bs)) + ", ".join(
@@ -94,6 +101,10 @@ def report(job, manifest, verify, seconds):
                 for b in bs))
         if row["rotation_deg"]:
             notes.append("xoay 180° để J/LJ nằm trên cạnh thẳng")
+        if row["blank_mm"] is None:
+            lines.append(f"| {row['code']} | {p['material']} / {p['thickness_mm']:g} | - | {row['status']} | "
+                         f"{'; '.join(notes) or '-'} |")
+            continue
         blank = f"{row['blank_mm'][0]:g} × {row['blank_mm'][1]:g}"
         env = p.get("envelope_mm")
         if env and (abs(env[0] - row["blank_mm"][0]) > 0.01 or abs(env[1] - row["blank_mm"][1]) > 0.01):
@@ -110,15 +121,17 @@ def report(job, manifest, verify, seconds):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("spec", type=Path)
-    ap.add_argument("out_dir", type=Path)
+    ap.add_argument("paths", nargs="+", type=Path, help="spec/job files in page-1 order, then the output folder")
     ap.add_argument("--work", type=Path)
     ap.add_argument("--individual-dxf", action="store_true")
     ap.add_argument("--allow-nonslip-codes", action="store_true", help="synthetic/test jobs only")
     a = ap.parse_args(argv)
+    if len(a.paths) < 2:
+        ap.error("give at least one spec/job file and the output folder")
+    *inputs, a.out_dir = a.paths
     t0 = time.monotonic()
     try:
-        job = build_job(load_spec(a.spec))
+        job = build_from_files(inputs)
     except BuildError as exc:
         print(f"BUILD_FAIL: {exc}", file=sys.stderr)
         return 2

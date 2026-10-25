@@ -364,6 +364,10 @@ def build_part(spec, customer=None):
     page = int(spec.get("page", 1))
     if spec.get("bends"):
         fail(f"{code}: use a `bend:` block (faces + bends), see tools/BUILD_CANONICAL_SPEC.md")
+    if spec.get("bend"):
+        plan = bend_flat.split_plan(spec["bend"], material, t, customer, code)
+        if plan:
+            return _build_split(spec, plan, customer)
     chain = None
     try:
         if spec.get("bend"):
@@ -657,6 +661,140 @@ def build_part(spec, customer=None):
     return part
 
 
+# ------------------------------------------------------------------ SPLIT_FLANGE_10MM (rules/BEND.md §6)
+SPLIT_GAP_MM = 10.0
+_FEATURE_KEYS = ("holes", "slots", "cutouts")
+
+
+def _translate_part(part, dx, dy):
+    """Move every coordinate of a built (sub)part; per-bend ledgers stay in their own piece frame."""
+    def mv(pt):
+        return [_r6(pt[0] + dx), _r6(pt[1] + dy)]
+    for e in part["entities"]:
+        if e["type"] == "LWPOLYLINE":
+            e["vertices"] = [[_r6(v[0] + dx), _r6(v[1] + dy), v[2]] for v in e["vertices"]]
+        for k in ("center", "point", "start", "end", "insert"):
+            if k in e:
+                e[k] = mv(e[k])
+    for tg in part.get("feature_witness_graph", {}).get("targets", []):
+        tg["datum_coordinate_mm"] = _r6(tg["datum_coordinate_mm"] + (dx if tg["axis"] == "X" else dy))
+    for rec in part.get("slot_anchor_records", []):
+        rec["anchor_point"], rec["canonical_midpoint"] = mv(rec["anchor_point"]), mv(rec["canonical_midpoint"])
+    for row in part.get("corner_inventory", []):
+        if row.get("point") is not None:
+            row["point"] = mv(row["point"])
+    for face in part.get("face_graph", {}).get("faces", []):
+        face["local_origin"] = mv(face["local_origin"])
+
+
+def _face_ids(faces):
+    return [str(f.get("id") or f"F{k + 1}") for k, f in enumerate(faces)]
+
+
+def _build_split(spec, plan, customer):
+    """SPLIT_FLANGE_10MM: each segment between Nobi-less bends is built by build_part at its proved ODs.
+
+    The body (largest ΣOD) stays in place; every other segment becomes a Magenta closed piece placed 10 mm
+    away along the unfold axis, in unfold order. No bend line is drawn for a split bend; the part is PREVIEW."""
+    code = spec["code"]
+    bend = spec["bend"]
+    axis = str(bend.get("axis", "X")).upper()
+    if spec.get("outline") != "auto":
+        fail(f"{code}: SPLIT_FLANGE_10MM is automatic only with `outline: auto`; for a shaped outline build "
+             "the body and the split flange by hand (rules/BEND.md §6)")
+    all_ids = _face_ids(bend["faces"])
+    face_seg, k = {}, 0
+    for i, seg in enumerate(plan):
+        for _ in seg["faces"]:
+            face_seg[all_ids[k]] = i
+            k += 1
+    sizes = [sum(float(f["od"]) for f in seg["faces"]) for seg in plan]
+    body = max(range(len(plan)), key=lambda i: (sizes[i], -i))
+    subs = []
+    for i, seg in enumerate(plan):
+        sub = {key: v for key, v in spec.items() if key not in _FEATURE_KEYS + ("bend", "envelope", "flags")}
+        sub["code"] = code if i == body else f"{code}_SF{i + 1}"
+        sub["bend"] = {**{key: v for key, v in bend.items() if key not in ("faces", "bends")},
+                       "faces": seg["faces"], "bends": seg["bends"]}
+        for key in _FEATURE_KEYS:
+            items = []
+            for n, item in enumerate(spec.get(key) or []):
+                if "face" not in item:
+                    fail(f"{code}: {key}[{n}] needs `face` on a split part (each piece has its own frame)")
+                if item["face"] not in face_seg:
+                    fail(f"{code}: {key}[{n}] unknown face {item['face']}")
+                if face_seg[item["face"]] == i:
+                    items.append(dict(item))
+            if items:
+                sub[key] = items
+        if i == body and spec.get("flags"):
+            sub["flags"] = spec["flags"]
+        try:
+            ch = bend_flat.unfold_chain(sub["bend"], spec["material"], float(spec["t"]), customer, code)
+        except bend_flat.BendError as exc:
+            fail(str(exc))
+        sub["envelope"] = list(bend_flat.to_flat(ch, ch["total"], float(bend.get("width") or 0)))
+        subs.append((sub, ch["total"]))
+    built = [build_part(sub, customer) for sub, _ in subs]
+    part = built[body]
+    if part.get("canonical_rotation_deg"):
+        fail(f"{code}: the split body would need a 180° turn for J/LJ; set jlj_edge or build by hand")
+    starts, pos = [], 0.0
+    for _, length in subs:
+        starts.append(pos)
+        pos += length + SPLIT_GAP_MM
+    flags = list(part.get("flags", []))
+    for seg in plan:
+        if seg["split_after"]:
+            sp = seg["split_after"]
+            flags.append(f"{sp['bend']}: {sp['flag_vi']} (SPLIT_FLANGE_10MM)")
+    ents = part["entities"]
+    for i, sub_part in enumerate(built):
+        if i == body:
+            continue
+        shift = starts[i] - starts[body]
+        _translate_part(sub_part, *((shift, 0.0) if axis == "X" else (0.0, shift)))
+        for e in sub_part["entities"]:
+            if e.get("role") == "mark":
+                continue
+            if e.get("role") == "outer":
+                e.update(role="split_flange", color=6)
+            ents.append(e)
+        for g in sub_part["source_groups"]:
+            if g["family"] == "OUTER":
+                g["family"] = "SPLIT_FLANGE"
+                g["evidence"] = "SPLIT_FLANGE_10MM: " + ", ".join(_face_ids(plan[i]["faces"])) + " at their OD"
+            part["source_groups"].append(g)
+        part["canonical_members"] += sub_part["canonical_members"]
+        for row in sub_part.get("corner_inventory", []):
+            row["corner_id"] = f"SF{i + 1}_{row['corner_id']}"
+            part["corner_inventory"].append(row)
+        for key in ("witness_required_feature_ids", "slot_anchor_records", "piercing_authorizations",
+                    "per_bend_witness_ledger"):
+            if sub_part.get(key):
+                part.setdefault(key, []).extend(sub_part[key])
+        if sub_part.get("feature_witness_graph"):
+            g = part.setdefault("feature_witness_graph", {"nodes": {}, "edges": [], "targets": []})
+            g["nodes"].update(sub_part["feature_witness_graph"]["nodes"])
+            g["edges"] += sub_part["feature_witness_graph"]["edges"]
+            g["targets"] += sub_part["feature_witness_graph"]["targets"]
+        part["face_graph"]["faces"] += sub_part["face_graph"]["faces"]
+        part["face_graph"]["bends"] += sub_part["face_graph"]["bends"]
+        piece = next(e for e in sub_part["entities"] if e.get("role") == "split_flange")
+        xs, ys = [v[0] for v in piece["vertices"]], [v[1] for v in piece["vertices"]]
+        ents.append({"entity_id": f"E_{sub_part['code']}_NOTE", "type": "TEXT", "role": "estimated_note",
+                     "color": 6, "height": 5.0, "insert": [_r6(min(xs)), _r6(max(ys) + 6)],
+                     "text": "FLAG: bích tách 10 mm - chưa có Nobi"})
+    part["flags"] = list(dict.fromkeys(flags))
+    part["status"] = "PREVIEW"
+    part["preview_reason"] = "numeric_only_known_topology"
+    part["split_flange"] = [{"bend": seg["split_after"]["bend"], "reason": seg["split_after"]["reason"]}
+                            for seg in plan if seg["split_after"]]
+    if spec.get("envelope"):
+        part["envelope_mm"] = [float(v) for v in spec["envelope"]]
+    return part
+
+
 # ------------------------------------------------------------------ J/LJ orientation and marks
 def _outer(part):
     return part["entities"][0]
@@ -760,6 +898,39 @@ def build_job(spec):
     return job
 
 
+def build_from_files(paths):
+    """One job from several files in page-1 order: build specs (YAML/JSON) and hand-written canonical job
+    JSON (``canonical_contract`` set, e.g. tools/boxmet_job.py output) are merged part by part."""
+    job, seen = None, set()
+    for path in paths:
+        data = load_spec(path)
+        if not isinstance(data, dict):
+            fail(f"{path}: not a spec or canonical job")
+        if data.get("canonical_contract"):
+            if data["canonical_contract"] != CONTRACT:
+                fail(f"{path}: canonical_contract must be {CONTRACT}")
+            part_job = data
+        else:
+            part_job = build_job(data)
+        if job is None:
+            job = {"canonical_contract": CONTRACT, "job_id": str(part_job.get("job_id")), "parts": []}
+            if part_job.get("customer_code") is not None:
+                job["customer_code"] = str(part_job["customer_code"])
+        if str(part_job.get("job_id")) != job["job_id"]:
+            fail(f"{path}: job_id {part_job.get('job_id')} != {job['job_id']} (one job per DXF)")
+        cust = part_job.get("customer_code")
+        if (None if cust is None else str(cust)) != job.get("customer_code"):
+            fail(f"{path}: customer_code {cust} != {job.get('customer_code')} (set it in every file)")
+        for part in part_job["parts"]:
+            if part["code"] in seen:
+                fail(f"{path}: duplicate part code {part['code']}")
+            seen.add(part["code"])
+            job["parts"].append(part)
+    if job is None:
+        fail("no input files")
+    return job
+
+
 def load_spec(path):
     text = Path(path).read_text(encoding="utf-8")
     if str(path).endswith((".yaml", ".yml")):
@@ -773,21 +944,23 @@ def summary(job):
     for p in job["parts"]:
         inv = p.get("corner_inventory", [])
         count = lambda d: sum(r["decision"] == d for r in inv)  # noqa: E731
-        x0, y0, x1, y1 = _blank(p)
-        rows.append({"code": p["code"], "status": p["status"], "blank_mm": [round(x1 - x0, 3), round(y1 - y0, 3)],
+        has_outer = any(e.get("role") == "outer" for e in p["entities"][:1])
+        x0, y0, x1, y1 = _blank(p) if has_outer else (0, 0, 0, 0)
+        rows.append({"code": p["code"], "status": p["status"],
+                     "blank_mm": [round(x1 - x0, 3), round(y1 - y0, 3)] if has_outer else None,
                      "auto_r": count("AUTO_R"), "called": count("CALLED"), "sharp": count("SHARP"),
                      "flag": count("FLAG"), "holes": sum(e["role"] == "hole" for e in p["entities"]),
-                     "rotation_deg": p.get("canonical_rotation_deg", 0), "flags": p["flags"]})
+                     "rotation_deg": p.get("canonical_rotation_deg", 0), "flags": p.get("flags", [])})
     return rows
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("spec", type=Path)
+    ap.add_argument("specs", type=Path, nargs="+", help="spec / canonical job files in page-1 order")
     ap.add_argument("-o", "--out", type=Path, required=True, help="job.json to write")
     a = ap.parse_args(argv)
     try:
-        job = build_job(load_spec(a.spec))
+        job = build_from_files(a.specs)
     except BuildError as exc:
         print(f"BUILD_FAIL: {exc}", file=sys.stderr)
         return 2

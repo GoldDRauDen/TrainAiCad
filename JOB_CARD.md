@@ -40,9 +40,8 @@ python tools/lookup.py pilot --thread M8x1        # also: countersink --thread M
 python tools/lookup.py idod --t 3 --angle 165
 python tools/lookup.py unfold --od 410.8 20.8 175 --nobi 1.68 0.36
 python tools/acute_bend.py od --t 3 --angle 75 --rin 0.6 --inside 179.2 46.9
-python tools/run_job.py spec.yaml OUT/            # FLAT + one-axis BEND (L/U/Z): build -> export -> reopen -> report
-python tools/boxmet_job.py --code 26-XXXXXX --L 200 --W 150 --H 30 30 30 30 --T 1.5 --material SS --N 2.54 --out job.json
-python tools/export_canonical_dxf.py job.json OUT/
+python tools/run_job.py spec_A.yaml spec_B.yaml [box.job.json] OUT/   # whole job: build -> export -> reopen -> report
+python tools/boxmet_job.py --code 26-XXXXXX --L 200 --W 150 --H 30 30 30 30 --T 1.5 --material SS --N 2.54 --job-id <JOB> --out box.job.json
 python tools/pair_consistency.py job.json CODE_A CODE_B [--mirror x|y|none]
 python tools/overlay_check.py job.json CODE --image crop.png --anchor x,y=px,py (x3) --out ov.png
 ```

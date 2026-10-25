@@ -25,7 +25,7 @@ def test_card_commands_point_at_existing_tools():
     text = CARD.read_text(encoding="utf-8")
     tools = set(re.findall(r"python (tools/[a-z_]+\.py)", text))
     assert {"tools/lookup.py", "tools/pdf_views.py", "tools/pair_consistency.py",
-            "tools/resolve_rules.py", "tools/export_canonical_dxf.py"} <= tools
+            "tools/resolve_rules.py", "tools/run_job.py"} <= tools
     for rel in tools:
         assert (ROOT / rel).exists(), rel
 

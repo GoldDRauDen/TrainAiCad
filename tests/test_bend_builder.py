@@ -75,11 +75,12 @@ def test_y_axis_chain_puts_bend_lines_horizontal():
     assert part["envelope_mm"] == [40.0, 110.32]
 
 
-def test_missing_nobi_refuses_with_split_flange_instruction():
+def test_missing_nobi_on_the_only_bend_splits_into_two_pieces():
     ps = chain_part([30, 50], [None], angle=120)
     del ps["bend"]["bends"][0]["nobi"]
-    with pytest.raises(bc.BuildError, match="SPLIT_FLANGE_10MM"):
-        bc.build_part(ps)
+    part = bc.build_part(ps)
+    assert part["status"] == "PREVIEW" and not any(e["role"] == "bend" for e in part["entities"])
+    assert [e["role"] for e in part["entities"] if e["type"] == "LWPOLYLINE"] == ["outer", "split_flange"]
 
 
 def test_outline_change_inside_a_bend_zone_is_refused():
@@ -149,3 +150,35 @@ def test_split_bend_part_passes_the_export_guards(tmp_path):
     ps["outline"] = [[0, 0], [110.32, 0], [110.32, 40], [0, 40], [0, 25], [60, 25], [60, 15], [0, 15]]
     job = {"canonical_contract": bc.CONTRACT, "job_id": "T-SPLIT", "parts": [bc.build_part(ps)]}
     assert export_canonical_job(job, tmp_path)["status"] == "PASS"
+
+
+def test_missing_nobi_draws_the_split_flange_10mm_away(tmp_path):
+    # B2 at 120° without handwriting: no Nobi -> SPLIT_FLANGE_10MM (rules/BEND.md §6)
+    ps = chain_part([50, 64, 30], [3.68, None])
+    ps["bend"]["bends"][1]["angle"] = 120
+    ps["envelope"] = [50 + 64 - 3.68 + 30, 40]
+    ps["holes"] = [{"id": "H1", "d": 7, "group": "D7", "ev": "Ø7 on F3", "face": "F3", "from": "end",
+                    "wu": [[10, "HOLE_CENTER", "10 from the free edge"]], "wv": [[20, "HOLE_CENTER", "20"]]}]
+    part = bc.build_part(ps)
+    assert part["status"] == "PREVIEW" and part["split_flange"][0]["bend"] == "B2"
+    assert any("SPLIT_FLANGE_10MM" in f for f in part["flags"])
+    outer = next(e for e in part["entities"] if e["role"] == "outer")
+    piece = next(e for e in part["entities"] if e["role"] == "split_flange")
+    assert outer.get("color", 256) == 256 and piece["color"] == 6
+    xs = [v[0] for v in outer["vertices"]]
+    assert (min(xs), max(xs)) == (0, 110.32)      # body F1+F2 at OD with B1 Nobi
+    px = [v[0] for v in piece["vertices"]]
+    assert (min(px), max(px)) == (120.32, 150.32)  # F3 at its OD 30, 10 mm after the body
+    assert [round(e["start"][0], 2) for e in part["entities"] if e["role"] == "bend"] == [46.32, 50.0]
+    hole = next(e for e in part["entities"] if e["type"] == "CIRCLE")
+    assert hole["center"] == [140.32, 20.0]       # face-relative hole moves with its piece
+    manifest = export_canonical_job({"canonical_contract": bc.CONTRACT, "job_id": "T-SF", "parts": [part]}, tmp_path)
+    assert manifest["status"] == "REVIEW_ONLY"
+
+
+def test_split_flange_with_a_shaped_outline_is_refused_with_the_reason():
+    ps = chain_part([50, 64], [None])
+    ps["bend"]["bends"][0]["angle"] = 120
+    ps["outline"] = [[0, 0], [110, 0], [110, 40], [0, 40]]
+    with pytest.raises(bc.BuildError, match="outline: auto"):
+        bc.build_part(ps)
