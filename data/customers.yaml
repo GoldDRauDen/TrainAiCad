@@ -178,7 +178,8 @@
       "notes": [
         "Job-list numeric code 646 selects Aikoku bend table even when in-house bending.",
         "Default tooling per 646 table; R2 or alternate V only when explicitly instructed.",
-        "SLIT is laser-cut geometry; welding is downstream, never an added CUT."
+        "SLIT is laser-cut geometry; welding is downstream, never an added CUT.",
+        "DATA DXF is always a CATIA drawing sheet (exploded dimensions/text, per-view scale): run tools/dxf_digest.py, then tools/dxf_assemble.py; never retype DATA coordinates."
       ],
       "source": "顧客別情報一覧!B6,J6"
     },

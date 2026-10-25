@@ -5,6 +5,8 @@ DATA = physical geometry and provenance. PDF = code, material, t, view/face mean
 ## 1. Decode before anything
 Every POLYLINE/LWPOLYLINE segment uses its START vertex bulge: `b = 0` LINE; `b ≠ 0` ARC (`θ = 4·atan b`, `R = c(1+b²)/(4|b|)`); closed polylines include the last→first segment; INSERT/blocks via their transform. ezdxf `virtual_entities()` gives exact pieces. Equal X/Y vertex offsets with a bulge are an R, not a C (`|b| = 0.41421356` = quarter circle). Unsupported curve → UNKNOWN/FLAG, never flattened. Unaccounted bulge → no PASS. `python tools/dxf_census.py data.dxf [--out decoded.json]` decodes everything and lists parts top-to-bottom with holes by Ø, arc radii and colours.
 
+Customer DATA is usually a whole drawing sheet (frame, title block, several views, iso, exploded dimensions/text; KH646 is always a CATIA sheet). `python tools/dxf_digest.py data.dxf --out digest.json [--png v.png]` gives every primitive an id and one home (view / `B_*` bucket, nothing dropped); layer, colour and linetype are hints only. Pick views by id, prove scale/rotation/mirror per view, then `python tools/dxf_assemble.py digest.json plan.json --out assembled.json`: it copies the numbers, changes only layer/colour/linetype, demands a reason for every excluded piece, and re-checks the result against the source both ways. Never retype DATA coordinates.
+
 ## 2. Harvest and classify (RAW_DATA_SNAPSHOT, frozen)
 Every relevant primitive gets a role: `PHYSICAL_CUT_OR_FACE_EDGE`, `PHYSICAL_HOLE_SLOT_OR_FEATURE`, `BEND_SUPPORT`, `THICKNESS_REPRESENTATION`, `HIDDEN_OR_PROJECTION_ONLY`, `DIMENSION_HELPER_OR_CONSTRUCTION`, `DUPLICATE_COINCIDENT`. Thickness side lines prove faces, never CUT. Exclude title blocks/text/helpers only after classification. Prove the scale per page/view (a 1:2 view → ×2); assemble faces only by proved translation/rotation/reflection/uniform scale; Nobi moves faces, never rebuilds them.
 
@@ -21,4 +23,4 @@ Every relevant primitive gets a role: `PHYSICAL_CUT_OR_FACE_EDGE`, `PHYSICAL_HOL
 - Reference/audit only: normalise exact duplicate entities for counting, report `REFERENCE_ANOMALY`.
 
 ## Lessons
-`regression/lessons/DATA_DXF/` — 520930-03 (preservation), 521001-03 (census, bidirectional), 521001-13 (DATA tap / auto R), 521001-19 (bulge), 521001-20 (DATA first), 520928-20, 520930-10.
+`regression/lessons/DATA_DXF/` — 520930-03 (preservation), 521001-03 (census, bidirectional), 521001-13 (DATA tap / auto R), 521001-19 (bulge), 521001-20 (DATA first), 520928-20, 520930-10, 520702-08 (digest/assemble).
