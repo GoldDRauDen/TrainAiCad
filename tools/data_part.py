@@ -80,9 +80,11 @@ def to_spec(spec: dict, customer=None):
     ents = assembled.get("entities") or _fail(f"{code}: {path.name} has no entities")
     if not assembled.get("invariance", {}).get("ok"):
         _fail(f"{code}: {path.name} did not pass the dxf_assemble invariance check")
-    if spec.get("bend") or any(e.get("role") == "bend" for e in ents):
-        _fail(f"{code}: DATA bend lines / bend block are not automated yet: build the part as canonical JSON "
-              "(rules/DATA_DXF.md, rules/BEND.md)")
+    if any(e.get("role") == "bend" for e in ents):
+        _fail(f"{code}: DATA bend lines are not used: give the faces in a `bend:` block and the view of one face as "
+              "`data:` + `data_face:` (rules/DATA_DXF.md)")
+    if spec.get("bend") and not spec.get("data_face"):
+        _fail(f"{code}: a bent DATA part needs data_face: the face the DATA view shows (its features go on that face)")
     meaning = spec.get("members") or {}
     by_member: dict[str, list] = {}
     for e in ents:
@@ -94,12 +96,17 @@ def to_spec(spec: dict, customer=None):
     unknown = set(meaning) - set(by_member)
     if unknown:
         _fail(f"{code}: members {sorted(unknown)} are not in {path.name}")
-    out = {k: v for k, v in spec.items() if k not in ("data", "members", "corners", "envelope")}
+    out = {k: v for k, v in spec.items() if k not in ("data", "members", "corners", "envelope", "data_face", "data_v")}
     extra = {"changes": [], "flags": [], "data_file": path.name, "transform": assembled.get("transform"),
              "source_sha256": assembled.get("source", {}).get("sha256")}
 
-    # outline: DATA vertices (arcs kept as bulges) + per-vertex corner decisions
     outer = by_member[outers[0]][0]
+    xs, ys = [v[0] for v in outer["vertices"]], [v[1] for v in outer["vertices"]]
+    size = [max(xs) - min(xs), max(ys) - min(ys)]  # vertex extent = the builder's nominal envelope
+    if spec.get("data_face"):
+        return _face_view(spec, out, extra, by_member, meaning, outers[0], (min(xs), min(ys)), size, customer)
+
+    # outline: DATA vertices (arcs kept as bulges) + per-vertex corner decisions
     overrides = {}
     for c in spec.get("corners") or []:
         at = c.get("at") or _fail(f"{code}: corners[] needs at [x, y]")
@@ -116,8 +123,6 @@ def to_spec(spec: dict, customer=None):
     if set(overrides) - used:
         _fail(f"{code}: corners {sorted(set(overrides) - used)} are not DATA outline vertices")
     out["outline"] = items
-    xs, ys = [v[0] for v in outer["vertices"]], [v[1] for v in outer["vertices"]]
-    size = [max(xs) - min(xs), max(ys) - min(ys)]  # vertex extent = the builder's nominal envelope
     if spec.get("envelope"):
         for axis, (dv, pv) in enumerate(zip(size, spec["envelope"])):
             _, change, flag = gate(dv, pv, customer, f"bao {'XY'[axis]}")
@@ -126,11 +131,53 @@ def to_spec(spec: dict, customer=None):
             if flag:
                 extra["flags"].append(flag)
     out["envelope"] = [_r6(v) for v in size]
+    return _features(out, extra, by_member, meaning, outers[0], code, customer, (0.0, 0.0), "")
 
-    # features
+
+def _face_view(spec, out, extra, by_member, meaning, outer_id, origin, size, customer):
+    """DATA view of ONE face of a bent part: its features go onto that face of the `bend:` chain.
+
+    The view (after dxf_assemble: scale, rotation so the face runs along the chain axis) starts at the face's
+    start edge (the outer plane of the previous face, or the free edge) on the along axis and at the flat edge
+    v = data_v (default 0) across. Its length is gated against the face OD and its width against bend.width."""
+    import bend_flat
+    code, face = spec["code"], spec["data_face"]
+    if "chains" in spec["bend"]:
+        _fail(f"{code}: a DATA face view on a two-axis part: build by hand")
+    try:
+        ch = bend_flat.unfold_chain(spec["bend"], spec["material"], float(spec["t"]), customer, code)
+    except bend_flat.BendError as exc:
+        _fail(str(exc))
+    f = ch["faces"].get(face) or _fail(f"{code}: data_face {face} is not a face of the bend chain")
+    k = 0 if ch["axis"] == "X" else 1
+    along, across = size[k], size[1 - k]
+    for value, ref, what in ((along, f["od"], f"{face} OD"), (across, spec["bend"].get("width"), "bề rộng")):
+        if ref is None:
+            continue
+        _, change, flag = gate(value, ref, customer, f"DATA {what}")
+        if change:
+            _fail(f"{code}: PDF_PRIORITY on the {what} changes the DATA view: build by hand")
+        if flag:
+            extra["flags"].append(flag)
+    v0 = float(spec.get("data_v", 0.0))
+    shift = [0.0, 0.0]
+    shift[k] = f["start"] - origin[k]
+    shift[1 - k] = v0 - origin[1 - k]
+    out["outline"] = spec.get("outline") or _fail(f"{code}: a bent DATA part needs outline (usually auto)")
+    out["envelope"] = spec.get("envelope") or _fail(f"{code}: envelope required (overall flat size)")
+    extra["face_view"] = {"face": face, "shift": shift}
+    return _features(out, extra, by_member, meaning, outer_id, code, customer, tuple(shift), f" on {face}")
+
+
+def _features(out, extra, by_member, meaning, outer_id, code, customer, shift, where):
+    """Holes, slots, cut-outs and KEGAKI of the DATA members (moved by `shift`, a pure translation)."""
+    dx, dy = shift
+
+    def mv(pt):
+        return [pt[0] + dx, pt[1] + dy]
     holes, slots, cuts, marks = [], [], [], []
     for mid, es in by_member.items():
-        if mid == outers[0]:
+        if mid == outer_id:
             continue
         m = meaning.get(mid) or _fail(f"{code}: DATA member {mid} needs its PDF meaning in members.{mid} "
                                       "(ev, group/qty, thread/pdf_d/piercing)")
@@ -143,9 +190,9 @@ def to_spec(spec: dict, customer=None):
             _fail(f"{code}: member {mid} mixes roles")
         for k, e in enumerate(es, 1):
             fid = mid if len(es) == 1 else f"{mid}_{k}"
-            ref = ",".join(e.get("source_piece_ids", [])) or e["entity_id"]
+            ref = (",".join(e.get("source_piece_ids", [])) or e["entity_id"]) + where
             if role in ("hole", "ordinary_point"):
-                c = e["center"] if role == "hole" else e["point"]
+                c = mv(e["center"] if role == "hole" else e["point"])
                 h = {"id": fid, "group": group, "ev": ev, "datum_type": "REFERENCE_DATUM", "at": [_r6(c[0]), _r6(c[1])],
                      "wx": _ordinate(c[0], ref, "HOLE_CENTER"), "wy": _ordinate(c[1], ref, "HOLE_CENTER")}
                 for key in ("piercing", "through", "stamp"):
@@ -177,16 +224,16 @@ def to_spec(spec: dict, customer=None):
                     g = stadium_geometry(e["vertices"])
                 except SlotAnchorError:
                     _fail(f"{code}: DATA slot {mid} is not a stadium: draw it as a cut-out member")
-                mx, my = g["midpoint"]
+                mx, my = mv(g["midpoint"])
                 slots.append({"id": fid, "group": group, "ev": ev, "datum_type": "REFERENCE_DATUM",
                               "w": _r6(g["width_mm"]), "cd": _r6(g["center_distance_mm"]),
                               "axis": [g["axis_unit"][0], g["axis_unit"][1]],
                               "wx": _ordinate(mx, ref, "SLOT_MIDPOINT"), "wy": _ordinate(my, ref, "SLOT_MIDPOINT")})
             elif role == "cutout":
-                cuts.append({"id": fid, "group": group, "ev": ev, "vertices": e["vertices"]})
+                cuts.append({"id": fid, "group": group, "ev": ev,
+                             "vertices": [mv(v[:2]) + [v[2]] for v in e["vertices"]]})
             elif role == "kegaki":
-                marks.append({"id": fid, "group": group, "ev": ev,
-                              "lines": [[e["start"][0], e["start"][1], e["end"][0], e["end"][1]]]})
+                marks.append({"id": fid, "group": group, "ev": ev, "lines": [mv(e["start"]) + mv(e["end"])]})
             else:
                 _fail(f"{code}: DATA role {role} ({mid}) has no automatic route")
     for key, val in (("holes", holes), ("slots", slots), ("cutouts", cuts), ("kegaki", marks)):

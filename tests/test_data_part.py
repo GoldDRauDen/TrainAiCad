@@ -128,3 +128,55 @@ def test_member_without_pdf_meaning_and_qty_mismatch_are_refused(tmp_path):
 def test_gate_threshold_is_strict_at_the_tolerance():
     assert data_part.gate(9.1, 9.0, None, "Ø")[2]          # exactly 0.1 flags (rules/DATA_DXF.md §3)
     assert data_part.gate(9.09, 9.0, None, "Ø")[2] is None
+
+
+def _face_view(tmp_path):
+    """Plan view of the web of a U (KH646 style, drawn 1:3): 640 x 40 outline, 2 x Ø31, one M4 pair."""
+    doc = ezdxf.new("R2010")
+    msp = doc.modelspace()
+    msp.add_lwpolyline([(0, 0), (640 / 3, 0), (640 / 3, 40 / 3), (0, 40 / 3)], close=True)
+    for x in (58.5, 118.5):
+        msp.add_circle((x / 3, 20 / 3), 31 / 6)
+    msp.add_circle((28.5 / 3, 20 / 3), 3.242 / 6)
+    msp.add_circle((28.5 / 3, 20 / 3), 4 / 6)
+    path = tmp_path / "plan.dxf"
+    doc.saveas(path)
+    dg = dxf_digest.digest(str(path))
+    circles = {round(p["radius"] * 6, 3): [] for p in dg["pieces"] if p["type"] == "CIRCLE"}
+    for p in dg["pieces"]:
+        if p["type"] == "CIRCLE":
+            circles[round(p["radius"] * 6, 3)].append(p["id"])
+    plan = {"transform": {"scale": 3, "evidence": "SCALE 1/3"},
+            "members": [{"id": "OUT", "role": "outer", "pieces": [p["id"] for p in dg["pieces"] if p["type"] == "LINE"]},
+                        {"id": "H31", "role": "hole", "pieces": circles[31.0]},
+                        {"id": "M4", "role": "hole", "pieces": circles[3.242]}],
+            "excluded": [{"reason": "TAP_NOMINAL_RING", "pieces": circles[4.0]}]}
+    (tmp_path / "assembled.json").write_text(json.dumps(dxf_assemble.assemble(dg, plan)), encoding="utf-8")
+    part = {"code": "26-038384", "material": "SPCC", "t": 2.3, "page": 2, "envelope": [735.76, 40],
+            "bend": {"axis": "X", "width": 40, "width_ev": "plan 40",
+                     "faces": [{"id": "L1", "od": 52.5, "ev": "50.2 + t"}, {"id": "W", "od": 640, "ev": "640"},
+                               {"id": "L2", "od": 52.5, "ev": "50.2 + t"}],
+                     "bends": [{"id": "B1", "angle": 90, "sign": 1, "ev": "U"}, {"id": "B2", "angle": 90, "sign": 1, "ev": "U"}]},
+            "outline": "auto", "data": "assembled.json", "data_face": "W",
+            "members": {"H31": {"group": "D31", "qty": 2, "ev": "Ø31", "pdf_d": 31}, "M4": {"thread": "M4", "ev": "M4"}}}
+    path = tmp_path / "spec.yaml"
+    path.write_text(yaml.safe_dump({"job_id": "520702-08", "customer_code": "646", "parts": [part]},
+                                   allow_unicode=True), encoding="utf-8")
+    return path
+
+
+def test_kh646_face_view_puts_data_features_on_the_bent_face(tmp_path):
+    part = bc.build_from_files([_face_view(tmp_path)])["parts"][0]
+    assert part["status"] == "PASS" and [b["nobi"] for b in part["unfold"]["bends"]] == [4.62, 4.62]  # KH646 table
+    circles = sorted((round(e["center"][0], 3), round(e["radius"] * 2, 3)) for e in part["entities"] if e["type"] == "CIRCLE")
+    assert circles == [(76.38, 3.3), (106.38, 31.0), (166.38, 31.0)]   # web start = B1 line1 = 52.5 - 4.62
+    assert {c["rule"] for c in part["manufacturing_change_ledger"]} >= {"TAP_PILOT"}
+
+
+def test_face_view_longer_than_the_face_od_flags(tmp_path):
+    spec = _face_view(tmp_path)
+    data = yaml.safe_load(spec.read_text(encoding="utf-8"))
+    data["parts"][0]["bend"]["faces"][1]["od"] = 639.5
+    spec.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    part = bc.build_from_files([spec])["parts"][0]
+    assert any("DATA W OD" in f and "DATA_PDF_DIM_DIFF" in f for f in part["flags"])
