@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'CLAUDE.md'
+      - '.claude/**'
       - 'JOB_CARD.md'
       - 'README.md'
       - 'rules/**'
@@ -17,6 +18,7 @@ on:
   pull_request:
     paths:
       - 'CLAUDE.md'
+      - '.claude/**'
       - 'JOB_CARD.md'
       - 'README.md'
       - 'rules/**'

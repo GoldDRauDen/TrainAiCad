@@ -5,6 +5,7 @@
     python tools/job.py status [JOB|DIR]           # compact summary + next step (default: current job)
     python tools/job.py set CODE [--job JOB] [--stage L2] [--status PREVIEW] [--flag "..."] [--file spec=spec.yaml] [--note "..."]
     python tools/job.py census CODE [--job JOB]    # resolve_rules on census_<CODE>.json -> cards per stage
+    python tools/job.py hook                       # SessionStart (compact/resume) hook: status of an open job, else silent
 
 Work dir default: `.work/<JOB>/` in the repo (git-ignored); `.work/CURRENT` names the current job.
 Files per code: census_<code>.json, ledger_<code>.md, spec_<code>.yaml / job.json — written by you as you go.
@@ -149,6 +150,18 @@ def summary(job: str | None = None) -> str:
     return "\n".join(lines)
 
 
+def hook_text() -> str:
+    """Context for a resumed/compacted session: the open job's status, or nothing."""
+    try:
+        _, state = load(None)
+    except SystemExit:
+        return ""
+    if all(c["stage"] == "DONE" for c in state["codes"].values()):
+        return ""
+    return ("TrainAiCad: a CAD job is in progress. Continue from its files, not from memory:\n"
+            + summary(None))
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -171,7 +184,13 @@ def main(argv=None) -> int:
     c = sub.add_parser("census")
     c.add_argument("code")
     c.add_argument("--job")
+    sub.add_parser("hook")
     a = ap.parse_args(argv)
+    if a.cmd == "hook":
+        text = hook_text()
+        if text:
+            print(text)
+        return 0
     if a.cmd == "init":
         init(a.job, a.codes, a.source, a.customer, a.work)
         print(summary(a.work or a.job))

@@ -11,6 +11,7 @@ Bộ rule sản xuất CAD kim loại tấm đã được người dùng duyệt
 | Việc trong `LuanAppTools/` | App Windows | `LuanAppTools/README.md`, `LuanAppTools/HANDOFF.md` |
 
 ## 2. Job CAD
+Claude Code: skill `cad-e2e` / `cad-qa` (`.claude/skills/`) mở đúng cửa vào; hook trong `.claude/settings.json` tự in trạng thái job (`tools/job.py hook`) sau khi nén hoặc mở lại phiên.
 `JOB_CARD.md` là cửa vào duy nhất: 12 điều cấm quên, các bước, lệnh tool. `python tools/resolve_rules.py census.json` cho biết cần đọc thẻ nào ở bước nào — đọc thật nội dung thẻ, không đọc cả repo. Một job E2E không được sửa repo.
 
 ## 3. Bảo trì rule (chỉ khi user nói rõ `DUYỆT` hoặc `PUSH`)

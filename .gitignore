@@ -19,3 +19,4 @@ LuanAppTools/frontend/test-results/
 
 # job work files (tools/job.py)
 .work/
+.claude/settings.local.json
