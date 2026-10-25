@@ -149,7 +149,8 @@ def _outline_relief_proved(site, relief, entities, thickness):
 
 def _slit_construction_proved(site, part, edges, relief, entities, bends):
     """Rebuild the existing connected slit rule from proved canonical-flat edges."""
-    from slit_geometry import LeadValueUnproved, connected_slit, lead_end_by_offset, lead_val, slit_dir_from_bend
+    from slit_geometry import (LeadValueUnproved, connected_slit, lead_end_by_offset, lead_val, slit_dir_from_bend,
+                               slit_depth_from_reference)
     try:
         witness = site.get("slit_construction", {})
         if not witness.get("evidence_ref") or witness.get("bend_id") not in site["bend_ids"]:
@@ -179,7 +180,10 @@ def _slit_construction_proved(site, part, edges, relief, entities, bends):
             return False
         thickness = _number(part.get("thickness_mm"))
         lead = lead_end_by_offset(base, side_n, web_n, lead_val(part.get("material"), thickness))
-        expected = connected_slit(base, direction, (lead[0]-base[0], lead[1]-base[1]), thickness+0.2)
+        # From the corner B: T + 0.2 past the flange-side bend line = T + 0.2 - S (user samples HD t2: S 0 -> 2.2,
+        # S -2 -> 4.2); the lead and R0.5 sit at B.
+        depth = slit_depth_from_reference(_number(site.get("S_mm")), thickness)
+        expected = connected_slit(base, direction, (lead[0]-base[0], lead[1]-base[1]), depth)
         actual = [entities[eid] for m in relief for eid in m["entity_ids"]]
         lines, arcs = [e for e in actual if e["type"] == "LINE"], [e for e in actual if e["type"] == "ARC"]
         if len(lines) != 2 or len(arcs) != 1:
@@ -357,10 +361,12 @@ def bend_end_errors(part):
             if site.get("status") != "PROVED":
                 raise ValueError("BEND_END_STEP_UNRESOLVED")
             controlled = site.get("bend_ids")
-            if (not isinstance(controlled, list) or len(controlled) != 2 or
-                    any(not isinstance(b, str) or b not in bends for b in controlled) or len(set(controlled)) != 2):
-                raise ValueError("BEND_END_BEND_OWNERSHIP_UNPROVED")
             mechanism = site.get("mechanism")
+            wanted = (1, 2) if mechanism == "BEND_END_OFFSET_90" else (2,)  # a free bend end has one bend
+            if (not isinstance(controlled, list) or len(controlled) not in wanted or
+                    any(not isinstance(b, str) or b not in bends for b in controlled) or
+                    len(set(controlled)) != len(controlled)):
+                raise ValueError("BEND_END_BEND_OWNERSHIP_UNPROVED")
             if mechanism in SPECIAL_RULES:
                 if not (_relief_members_proved(site, relief, entities) or
                         mechanism == "OPPOSITE_FOLD_R_T" and

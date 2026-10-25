@@ -288,10 +288,9 @@ def test_source_step_is_pose_invariant_and_normal_unfold_survives_readback(tmp_p
 
 @pytest.mark.parametrize("step", [0, -2])
 def test_flush_and_recessed_sites_still_require_a_slit_and_correct_depth(tmp_path, step):
-    candidate = slit_case(step)
+    candidate = slit_case(step, depth=2.2 - step)  # from the corner B: T + 0.2 - S (HD sample: S -2 -> 4.2)
     part = candidate["parts"][0]
-    depth = slit_depth_from_actual_edge(step, 2)
-    assert depth == pytest.approx(2.2)
+    assert slit_depth_from_actual_edge(step, 2) == pytest.approx(2.2)
     manifest = export_canonical_job(candidate, tmp_path)
     saved = ezdxf.readfile(tmp_path / manifest["filename"])
     green = [e for e in saved.modelspace() if e.dxf.layer == "0" and e.dxf.get("color", 256) == 3]
@@ -345,3 +344,10 @@ def test_perpendicular_touching_bends_must_own_a_declared_site():
     part["source_bend_end_site_ids"] = part["source_bend_end_site_ids"][:1]
     errors = canonical_job_anomalies(candidate)
     assert any("BEND_END_CORNER_SITE_MISSING" in e for e in errors), errors
+
+
+def test_recessed_step_with_a_flush_length_slit_is_rejected(tmp_path):
+    # HD sample (SUS t2, S -2): the slit runs 4.2 from the corner B; 2.2 (the S = 0 length) is wrong
+    candidate = slit_case(-2, depth=2.2)
+    with pytest.raises(CanonicalContractError, match="BEND_END_SLIT_CONSTRUCTION_UNPROVED"):
+        export_canonical_job(candidate, tmp_path)

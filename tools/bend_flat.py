@@ -4,17 +4,14 @@
 The reader declares the faces in unfold order with their proved OD and each bend's angle, fold sign
 and (when printed) handwritten Nobi. This module derives the rest (rules/BEND.md):
 
-* Nobi per bend from ``lookup.nobi`` (handwritten > 90° J table > SPLIT_FLANGE_10MM refusal);
+* Nobi per bend from ``lookup.nobi`` (handwritten > 90° J table; none -> SPLIT_FLANGE_10MM, see split_plan);
 * bend double lines ``line1 = ΣOD₁..ₖ − ΣN₁..ₖ``, ``line2 = ΣOD₁..ₖ − ΣN₁..ₖ₋₁`` and the flat length;
 * face-relative points/holes ``{face, u, v, from: start|end}`` → flat coordinates
   (face start = previous bend's line1, face end = next bend's line2; first/last face from its free edge);
-* bend lines clipped to the real material (outline ∩ line), one member per material interval;
-* ``face_graph`` and ``per_bend_witness_ledger`` records for the canonical guards.
+* ``face_graph`` face records; bend lines, domains, bend-end junctions and two-axis corners: tools/bend_corner.py.
 
 A bend without a Nobi source is split (``split_plan``): build_canonical draws each segment at its OD and the
-flange 10 mm away (SPLIT_FLANGE_10MM, rules/BEND.md §6). Refuses (with the reason) an outline that
-changes inside a bend zone (bend-end junction: decide S by hand, rules/SLIT_RELIEF.md §3), unequal clipping
-of the two lines of one bend.
+flange 10 mm away (SPLIT_FLANGE_10MM, rules/BEND.md §6).
 """
 from __future__ import annotations
 
@@ -70,19 +67,23 @@ def unfold_chain(bend: dict, material: str, t: float, customer, code: str) -> di
         res = _nobi(b, L, material, t, customer)
         if res.get("status") != "OK":
             _fail(f"{code}: bend {bid}: {res.get('action')} — {res.get('flag_vi')}")
+        fold = b.get("fold")
+        if fold not in (None, "toward", "away"):
+            _fail(f"{code}: bend {bid} fold must be toward or away (the viewer of the flat)")
         out_bends.append({"id": bid, "angle": angle, "sign": sign, "nobi": float(res["nobi"]),
                           "nobi_source": res.get("source"), "nobi_row": res.get("row"), "ev": b["ev"],
-                          "L": float(L), "faces": (fids[k], fids[k + 1])})
+                          "L": float(L), "faces": (fids[k], fids[k + 1]), "fold": fold})
     un = lookup.unfold([float(f["od"]) for f in faces], [b["nobi"] for b in out_bends])
     total = float(un["flat_length"])
+    origin = float(bend.get("origin", 0.0))  # flat coordinate of the first face's free edge (two-axis parts)
     for b, line in zip(out_bends, un["bend_lines"]):
-        b["line1"], b["line2"] = float(line["line1"]), float(line["line2"])
-    starts = [0.0] + [b["line1"] for b in out_bends]
-    ends = [b["line2"] for b in out_bends] + [total]
+        b["line1"], b["line2"] = float(line["line1"]) + origin, float(line["line2"]) + origin
+    starts = [origin] + [b["line1"] for b in out_bends]
+    ends = [b["line2"] for b in out_bends] + [origin + total]
     face_rec = {fid: {"id": fid, "od": float(f["od"]), "ev": f["ev"], "start": s, "end": e,
                       "first": i == 0, "last": i == len(faces) - 1}
                 for i, (fid, f, s, e) in enumerate(zip(fids, faces, starts, ends))}
-    return {"axis": axis, "faces": face_rec, "order": fids, "bends": out_bends, "total": total}
+    return {"axis": axis, "faces": face_rec, "order": fids, "bends": out_bends, "total": total, "origin": origin}
 
 
 def _nobi(b: dict, L, material: str, t: float, customer):
@@ -187,57 +188,8 @@ def line_intervals(verts, chain: dict, pos: float):
     return [(hits[i], hits[i + 1]) for i in range(0, len(hits), 2) if hits[i + 1] - hits[i] > 1e-6]
 
 
-def check_bend_zones(verts, chain: dict, code: str):
-    """Refuse an outline that changes inside a bend zone (a bend-end junction needs S by hand)."""
-    for b in chain["bends"]:
-        for x, y, _ in verts:
-            along = x if chain["axis"] == "X" else y
-            if b["line1"] - ZONE_TOL <= along <= b["line2"] + ZONE_TOL:
-                _fail(f"{code}: bend {b['id']}: the outline has a corner at ({x:g}, {y:g}) inside the bend zone "
-                      f"{b['line1']:g}..{b['line2']:g} — bend-end junction: decide S and the relief by hand "
-                      "(rules/SLIT_RELIEF.md §3) and build the part as canonical JSON")
-
-
-def bend_records(verts, chain: dict, part_code: str, page: int):
-    """Entities, groups (name, ids, ev, owners), face_graph and ledger for every bend."""
-    p = part_code
-    entities, groups, graph_bends, ledger = [], [], [], []
-    total = chain["total"]
-    for b in chain["bends"]:
-        iv1 = line_intervals(verts, chain, b["line1"])
-        iv2 = line_intervals(verts, chain, b["line2"])
-        if not iv1 or len(iv1) != len(iv2) or any(abs(a[0] - c[0]) > 1e-6 or abs(a[1] - c[1]) > 1e-6
-                                                for a, c in zip(iv1, iv2)):
-            _fail(f"{p}: bend {b['id']}: the two bend lines cross different material ({iv1} vs {iv2}) — "
-                  "bend-end junction, build by hand")
-        ids, owners = [], []
-        for i, (v0, v1) in enumerate(iv1, 1):
-            mid = b["id"] if len(iv1) == 1 else f"{b['id']}_{i}"
-            lines = []
-            for n, pos in (("L1", b["line1"]), ("L2", b["line2"])):
-                eid = f"E_{p}_{mid}_{n}"
-                s, e = to_flat(chain, pos, v0), to_flat(chain, pos, v1)
-                entities.append({"entity_id": eid, "type": "LINE", "role": "bend", "linetype": "DASHED",
-                                 "start": [round(s[0], 6), round(s[1], 6)], "end": [round(e[0], 6), round(e[1], 6)]})
-                lines.append(eid)
-            ids.append(mid)
-            owners.append(lines)
-            fa, fb = b["faces"]
-            graph_bends.append({
-                "bend_id": f"{p}_{mid}", "source_member_ids": [f"{p}_{mid}"], "face_A": fa, "face_B": fb,
-                "face_A_shared_edge": f"{fa}.{b['id']}", "face_B_shared_edge": f"{fb}.{b['id']}",
-                "edge_orientation": f"bend lines {'x' if chain['axis'] == 'X' else 'y'} = const across the flat",
-                "attachment_source_evidence": b["ev"], "signed_angle_deg": b["sign"] * b["angle"],
-                "material_domain": {"entity_ids": lines,
-                                    "evidence_ref": f"outline ∩ bend line: {v0:g}..{v1:g}"}})
-            ledger.append({
-                "bend_id": f"{p}_{mid}", "source_group_id": f"{p}_G_{b['id']}", "ordered_faces": [fa, fb],
-                "od_actual_mm": [b["line2"], round(total - b["line2"] + b["nobi"], 6)], "nobi_mm": b["nobi"],
-                "flat_mm": total, "bend_pair_mm": [b["line1"], b["line2"]], "source_pdf_page": page,
-                "evidence_ref": f"Nobi {b['nobi']:g} {b['nobi_source']}"
-                                f"{' ' + b['nobi_row'] if b.get('nobi_row') else ''}; L {b['L']:g}; {b['ev']}",
-                "thickness_single_use": "each face OD as declared in faces[].ev (t counted once)"})
-        groups.append((b["id"], ids, b["ev"], owners))
+def face_records(chain: dict, page: int):
+    """face_graph face records of one chain (local origin/axes, edges, OD evidence, normal)."""
     faces, theta = [], 0.0
     for k, fid in enumerate(chain["order"]):
         f = chain["faces"][fid]
@@ -253,7 +205,7 @@ def bend_records(verts, chain: dict, part_code: str, page: int):
         if k < len(chain["bends"]):
             b = chain["bends"][k]
             theta += b["sign"] * (180.0 - b["angle"])
-    return entities, groups, {"faces": faces, "bends": graph_bends}, ledger
+    return faces
 
 
 def mirror_ledger(part: dict, total_along: float) -> None:
@@ -265,22 +217,3 @@ def mirror_ledger(part: dict, total_along: float) -> None:
         item["bend_pair_mm"] = [new1, new2]
         item["od_actual_mm"] = [new2, round(item["flat_mm"] - new2 + n, 6)]
         item["ordered_faces"] = item["ordered_faces"][::-1]
-
-
-def check_features_off_bend_zones(entities, chain: dict, code: str):
-    """A hole/slot/cut-out/POINT overlapping a bend zone would put the bend line through a void: refuse (draw by hand)."""
-    k = 0 if chain["axis"] == "X" else 1
-    for e in entities:
-        if e.get("role") not in ("hole", "slot", "cutout", "ordinary_point", "through_piercing"):
-            continue
-        if e["type"] == "CIRCLE":
-            lo, hi = e["center"][k] - e["radius"], e["center"][k] + e["radius"]
-        elif e["type"] == "POINT":
-            lo = hi = e["point"][k]
-        else:
-            vals = [pt[k] for pt in _poly(e["vertices"])]  # bulged caps included
-            lo, hi = min(vals), max(vals)
-        for b in chain["bends"]:
-            if lo < b["line2"] + ZONE_TOL and hi > b["line1"] - ZONE_TOL:
-                _fail(f"{code}: {e['entity_id']} overlaps bend {b['id']} zone {b['line1']:g}..{b['line2']:g} "
-                      "— the bend lines must stop at the void: build this part by hand")
