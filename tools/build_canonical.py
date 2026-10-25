@@ -319,6 +319,43 @@ def _chain(fid, axis, steps, datum, page, nodes, edges, start_type="OUTER_EDGE",
 
 
 # ------------------------------------------------------------------ part
+def _cutout_vertices(c, chain, where):
+    """Rectangular opening (optionally R-cornered) -> CW closed LWPOLYLINE vertices [x, y, bulge].
+
+    `rect: [x0, y0, x1, y1]` in flat coordinates, or `face/from/u/v` like a hole on a bent face.
+    """
+    if not c.get("ev"):
+        fail(f"{where}: cutout needs ev")
+    if "face" in c:
+        if chain is None:
+            fail(f"{where}: face needs a bend block")
+        try:
+            d, _, sgn, _ = bend_flat.face_datum(chain, c["face"], c.get("from"), where)
+        except bend_flat.BendError as exc:
+            fail(str(exc))
+        u0, u1 = (_num(x, where + ".u") for x in c["u"])
+        v0, v1 = (_num(x, where + ".v") for x in c["v"])
+        (a0, b0), (a1, b1) = bend_flat.to_flat(chain, d + sgn * u0, v0), bend_flat.to_flat(chain, d + sgn * u1, v1)
+        x0, y0, x1, y1 = min(a0, a1), min(b0, b1), max(a0, a1), max(b0, b1)
+    else:
+        rect = c.get("rect")
+        if not isinstance(rect, (list, tuple)) or len(rect) != 4:
+            fail(f"{where}: cutout needs rect [x0, y0, x1, y1] or face/u/v")
+        x0, y0, x1, y1 = (_num(v, where + ".rect") for v in rect)
+        if not (x0 < x1 and y0 < y1):
+            fail(f"{where}: rect needs x0<x1 and y0<y1, got {list(rect)}")
+    r = _num(c.get("R", 0), where + ".R")
+    if r < 0 or 2 * r > min(x1 - x0, y1 - y0) + EPS:
+        fail(f"{where}: R {r:g} larger than half of the {x1 - x0:g} x {y1 - y0:g} opening")
+    if r <= EPS:
+        pts = [[x0, y1, 0], [x1, y1, 0], [x1, y0, 0], [x0, y0, 0]]
+    else:
+        b = -math.tan(math.pi / 8)
+        pts = [[x0 + r, y1, 0], [x1 - r, y1, b], [x1, y1 - r, 0], [x1, y0 + r, b],
+               [x1 - r, y0, 0], [x0 + r, y0, b], [x0, y0 + r, 0], [x0, y1 - r, b]]
+    return [[_r6(x), _r6(y), round(g, 12) if g else 0] for x, y, g in pts]
+
+
 def build_part(spec, customer=None):
     code = str(spec.get("code") or fail("part: code required"))
     where = code
@@ -434,7 +471,7 @@ def build_part(spec, customer=None):
                               "evidence_ref": d["corner"]["ev"] or d["corner"]["flag"]})
 
     # holes and slots with witness chains (face-relative ones mapped onto the flat first)
-    nodes, edges, targets, required, slot_records = {}, [], [], [], []
+    nodes, edges, targets, required, slot_records, authorizations = {}, [], [], [], [], []
     start_types, datum_entities = {}, {}
     for kind in ("holes", "slots"):
         for i, h in enumerate(spec.get(kind) or []):
@@ -471,13 +508,26 @@ def build_part(spec, customer=None):
         if "at" in h and math.dist(_pt(h["at"], fid), center) > 1e-6:
             fail(f"{code}: DIMENSION_CHAIN_MISMATCH hole {hid}: at {h['at']} but chain gives {center}")
         dia = _num(h.get("d"), f"{fid}.d")
-        hl = lookup.hole(material, t, dia, customer=customer)
-        if hl.get("status") != "OK" or hl.get("entity") != "CIRCLE":
-            fail(f"{code}: hole {hid} Ø{dia:g}: lookup says {hl.get('entity') or hl.get('flag_vi')} - "
-                 "declare it as a POINT feature by hand (rules/HOLE_TAP.md)")
+        piercing, through, stamp = bool(h.get("piercing")), bool(h.get("through")), str(h.get("stamp") or "")
+        if through and not piercing:
+            fail(f"{code}: hole {hid}: through needs piercing (rules/HOLE_TAP.md §2)")
+        if through and not ("PIERCING" in stamp.upper() and "THROUGH HOLE" in stamp.upper()):
+            fail(f"{code}: hole {hid}: THROUGH_PIERCING_STAMP needs `stamp` quoting the scoped PIERCING + THROUGH HOLE text")
+        hl = lookup.hole(material, t, dia, piercing=piercing, through=through, customer=customer)
+        if hl.get("status") != "OK":
+            fail(f"{code}: hole {hid} Ø{dia:g}: {hl.get('flag_vi') or hl.get('entity')} - "
+                 "draw it by hand as a Magenta feature + FLAG (rules/HOLE_TAP.md §3)")
         eid = f"E_{p}_{hid}"
-        ents.append({"entity_id": eid, "type": "CIRCLE", "role": "hole", "center": [_r6(center[0]), _r6(center[1])],
-                     "radius": dia / 2})
+        at = [_r6(center[0]), _r6(center[1])]
+        if hl["entity"] == "POINT":
+            green = hl.get("color") == 3
+            ents.append({"entity_id": eid, "type": "POINT", "point": at,
+                         "role": "through_piercing" if green else "ordinary_point", **({"color": 3} if green else {})})
+            if green:
+                authorizations.append({"member_id": fid, "entity_id": eid, "source_pdf_page": page,
+                                       "evidence_ref": str(h.get("ev") or stamp), "stamp_text": stamp})
+        else:
+            ents.append({"entity_id": eid, "type": "CIRCLE", "role": "hole", "center": at, "radius": dia / 2})
         by_group.setdefault(h.get("group", f"D{dia:g}".replace(".", "_")), []).append((hid, eid, h))
         for axis, datum, node, total in (("X", dx0, nx, sx), ("Y", dy0, ny, sy)):
             targets.append({"feature_id": fid, "datum_node": f"{fid}_{axis}_D", "feature_node": node, "axis": axis,
@@ -525,6 +575,18 @@ def build_part(spec, customer=None):
         ev = next((it[2].get("ev") for it in items if it[2].get("ev")), name)
         add_group(name, "SLOT", [it[0] for it in items], ev, ["PROVED"] * len(items), [[it[1]] for it in items], qty)
 
+    cuts_by_group = {}
+    for i, c in enumerate(spec.get("cutouts") or []):
+        cid = str(c.get("id") or f"CUT{i + 1}")
+        eid = f"E_{p}_{cid}"
+        ents.append({"entity_id": eid, "type": "LWPOLYLINE", "role": "cutout", "closed": True,
+                     "vertices": _cutout_vertices(c, chain, f"{code}: cutout {cid}")})
+        cuts_by_group.setdefault(c.get("group", "CUTOUT"), []).append((cid, eid, c))
+    for name, items in cuts_by_group.items():
+        qty = next((it[2].get("qty") for it in items if it[2].get("qty") is not None), None)
+        ev = next((it[2].get("ev") for it in items if it[2].get("ev")), name)
+        add_group(name, "CUTOUT", [it[0] for it in items], ev, ["PROVED"] * len(items), [[it[1]] for it in items], qty)
+
     if chain is not None:
         try:
             bend_flat.check_features_off_bend_zones(ents, chain, code)
@@ -546,6 +608,8 @@ def build_part(spec, customer=None):
         validate_graph(part["feature_witness_graph"])
     if slot_records:
         part["slot_anchor_records"] = slot_records
+    if authorizations:
+        part["piercing_authorizations"] = authorizations
     if spec.get("dx_label"):
         part["dx_label"] = True
     if chain is not None:

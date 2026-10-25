@@ -27,6 +27,11 @@ Job level: `job_id`, optional `customer_code` (numeric, JOB STATISTICS) — its 
 ## Holes / slots
 `{id, d, group, qty, ev, wx: [[value, TO_TYPE, "evidence", KIND?], ...], wy: [...], datum_x: 0, datum_y: 0, at?}` — the chain starts at the outer edge at `datum_x/datum_y`; the center is the sum (an `at` given is checked). Node types: `OUTER_EDGE`, `HOLE_CENTER`, `SLOT_MIDPOINT`, … (`tools/dimension_witness.py`). Slot: `{id, w, cd, axis: [1,0], ev, wx, wy}` → stadium, anchor `SLOT_MIDPOINT`.
 
+Hole keys for POINT: `piercing: true` (PIERCING scoped to this family by its leader) → ByLayer POINT; `piercing: true, through: true, stamp: "<scoped text quoting PIERCING + THROUGH HOLE>"` → Green POINT + `piercing_authorizations` (rules/HOLE_TAP.md §2). A hole with `d < t/2` or below the workbook minimum becomes a ByLayer POINT by itself. `d` is still given (witness chain); a Magenta/unknown lookup result is refused (draw by hand + FLAG).
+
+## Cut-outs (rectangular opening, optional R corners)
+`cutouts: [{id, rect: [x0, y0, x1, y1] | face, from, u: [a, b], v: [c, d], R: 10, group, qty, ev}]` → one CW closed contour (4 tangent arcs when `R>0`), family `CUTOUT` (`qty` closes per `group`). `face/u/v` maps like a hole on a bent face (`u` along the face from its datum, `v` across from the flat edge). Refused: outside the material (CONTAINMENT), `R` > half the short side, overlapping a bend zone (bend lines must stop at the void: build by hand).
+
 ## What the tool proves (checks it sets PASS)
 contour_topology (closed, CCW, no self-intersection), datum (envelope + every witness chain), feature_count (group closure), containment (full boundary), material_rules (lookup). unfold/bend_domain N/A; slot_semantics PASS only with slots.
 J/LJ: on the long straight edge (`rules/OUTPUT.md` §4); if the max-Y edge is notched/sloped and the min-Y edge is straight the part is rotated 180° (`canonical_rotation_deg`).

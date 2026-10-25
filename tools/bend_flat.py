@@ -248,13 +248,15 @@ def mirror_ledger(part: dict, total_along: float) -> None:
 
 
 def check_features_off_bend_zones(entities, chain: dict, code: str):
-    """A hole/slot overlapping a bend zone would put the bend line through a void: refuse (draw by hand)."""
+    """A hole/slot/cut-out/POINT overlapping a bend zone would put the bend line through a void: refuse (draw by hand)."""
     k = 0 if chain["axis"] == "X" else 1
     for e in entities:
-        if e.get("role") not in ("hole", "slot"):
+        if e.get("role") not in ("hole", "slot", "cutout", "ordinary_point", "through_piercing"):
             continue
         if e["type"] == "CIRCLE":
             lo, hi = e["center"][k] - e["radius"], e["center"][k] + e["radius"]
+        elif e["type"] == "POINT":
+            lo = hi = e["point"][k]
         else:
             vals = [pt[k] for pt in _poly(e["vertices"])]  # bulged caps included
             lo, hi = min(vals), max(vals)
