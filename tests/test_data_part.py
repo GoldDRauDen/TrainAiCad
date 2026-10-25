@@ -180,3 +180,41 @@ def test_face_view_longer_than_the_face_od_flags(tmp_path):
     spec.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
     part = bc.build_from_files([spec])["parts"][0]
     assert any("DATA W OD" in f and "DATA_PDF_DIM_DIFF" in f for f in part["flags"])
+
+
+def test_one_view_two_kinds_of_faces_ears_and_web(tmp_path):
+    """KH646 26-038384 shape: U with ears turned out at the top; the plan view shows ears and web (1:3)."""
+    doc = ezdxf.new("R2010")
+    msp = doc.modelspace()
+    msp.add_lwpolyline([(0, 0), (640 / 3, 0), (640 / 3, 40 / 3), (0, 40 / 3)], close=True)
+    for x in (5, 635):
+        msp.add_circle((x / 3, 20 / 3), 5 / 6)
+    msp.add_circle((58.5 / 3, 20 / 3), 31 / 6)
+    path = tmp_path / "plan.dxf"
+    doc.saveas(path)
+    dg = dxf_digest.digest(str(path))
+    by_r = {}
+    for p in dg["pieces"]:
+        if p["type"] == "CIRCLE":
+            by_r.setdefault(round(p["radius"] * 6, 3), []).append(p["id"])
+    plan = {"transform": {"scale": 3, "evidence": "SCALE 1/3"},
+            "members": [{"id": "OUT", "role": "outer", "pieces": [p["id"] for p in dg["pieces"] if p["type"] == "LINE"]},
+                        {"id": "H5", "role": "hole", "pieces": by_r[5.0]}, {"id": "H31", "role": "hole", "pieces": by_r[31.0]}]}
+    (tmp_path / "assembled.json").write_text(json.dumps(dxf_assemble.assemble(dg, plan)), encoding="utf-8")
+    faces = [("E1", 14.3), ("L1", 54.8), ("W", 616), ("L2", 54.8), ("E2", 14.3)]
+    part = {"code": "26-038384", "material": "SPCC", "t": 2.3, "page": 2, "envelope": [735.72, 40],
+            "bend": {"axis": "X", "width": 40, "width_ev": "plan 40",
+                     "faces": [{"id": f, "od": od, "ev": "profile"} for f, od in faces],
+                     "bends": [{"id": f"B{i}", "angle": 90, "sign": 1, "ev": "profile"} for i in range(1, 5)]},
+            "outline": "auto", "data": "assembled.json",
+            "data_faces": [{"face": "E1", "from": "start", "at": 0, "to": 12},
+                           {"face": "W", "from": "start", "at": 12, "to": 628},
+                           {"face": "E2", "from": "end", "at": 640, "to": 628}],
+            "members": {"H5": {"group": "D5", "qty": 2, "ev": "2-Ø5 あける"}, "H31": {"group": "D31", "ev": "Ø31"}}}
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(yaml.safe_dump({"job_id": "520702-08", "customer_code": "646", "parts": [part]},
+                                   allow_unicode=True), encoding="utf-8")
+    p = bc.build_from_files([spec])["parts"][0]
+    assert p["status"] == "PASS" and p["unfold"]["flat_length_mm"] == pytest.approx(735.72)   # slip 735.72
+    xs = sorted(round(e["center"][0], 3) for e in p["entities"] if e["type"] == "CIRCLE")
+    assert xs == [5.0, 59.86 + 46.5, 730.72]   # ears from their free edges; web from the leg's outer plane (x 12)
