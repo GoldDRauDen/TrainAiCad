@@ -83,11 +83,21 @@ def test_missing_nobi_on_the_only_bend_splits_into_two_pieces():
     assert [e["role"] for e in part["entities"] if e["type"] == "LWPOLYLINE"] == ["outer", "split_flange"]
 
 
-def test_outline_change_inside_a_bend_zone_is_refused():
+def test_narrower_flange_with_the_web_edge_inside_the_zone_is_a_positive_step():
     ps = chain_part([50, 64], [3.68])
     ps["envelope"] = [110.32, 40]
-    ps["outline"] = [[0, 0], [110.32, 0], [110.32, 30], [48, 30], [48, 40], [0, 40]]  # local flange, wall in zone
-    with pytest.raises(bc.BuildError, match="bend-end junction"):
+    ps["outline"] = [[0, 0], [110.32, 0], [110.32, 30], [48, 30], [48, 40], [0, 40]]  # F2 30 wide, web edge x48
+    part = bc.build_part(ps)
+    site, = part["bend_end_junctions"]
+    assert site["S_mm"] == 2.0 and site["decision"] == "NO_RELIEF" and site["corner_B"] == [48.0, 30.0]
+    assert lines(part) == [([46.32, 0.0], [46.32, 30.0]), ([50.0, 0.0], [50.0, 30.0])]  # flange width only
+
+
+def test_outline_corner_inside_the_zone_and_domain_is_refused():
+    ps = chain_part([50, 64], [3.68])
+    ps["envelope"] = [110.32, 40]
+    ps["outline"] = [[0, 0], [110.32, 0], [110.32, 40], [48, 40], [48, 20], [47, 20], [47, 40], [0, 40]]
+    with pytest.raises(bc.BuildError, match="inside the bend zone"):
         bc.build_part(ps)
 
 
