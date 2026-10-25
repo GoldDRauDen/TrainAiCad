@@ -4,7 +4,7 @@ Triggers: `Ø`, `n-Ø`, `穴`, `キリ`, `M6`/`M8x1`, `タップ`, `ネジ`, `�
 
 ## 1. Effective cut diameter
 - Explicit drawing Ø; for a proved `M<n>` the pilot: `python tools/lookup.py pilot --thread M8` (coarse) / `--thread M8x1` (fine only when the pitch is printed). M4 3.3, M5 4.2, M6 5.0, M8 6.8. A nut symbol alone is not a tap. One M = exactly one pilot CUT/POINT; tap→pilot never changes quantity or datum. Keep table values (M2 Ø1.6, M12 Ø10.3, M38×1.5 Ø36.6); Ø1.7 / Ø8 only for a proved tool-breakage / outside-process instruction.
-- Countersink/counterbore (`皿`/`ザグリ`): only the through-hole/pilot is a laser cut, never the mouth Ø (`data/countersink.md`: M3 3.4, M4 4.5, M5 5.5, M6 6.6, M8 9.0). Reamer −0.1 only by explicit shop/customer instruction. Drill-machine reach 170 mm is a WARN.
+- Countersink/counterbore (`皿`/`ザグリ`): only the through-hole/pilot is a laser cut, never the mouth Ø (`python tools/lookup.py countersink --thread M6` → 6.6). Reamer −0.1 only by explicit shop/customer instruction. Drill-machine reach 170 mm is a WARN.
 - DATA tap: a concentric nominal ring = `THREAD_NOMINAL_REFERENCE` (non-cut); compare only it with M<n> (`Δ ≥ 0.1` → `DATA_PDF_DIM_DIFF`); raw pre-hole is provenance; output one pilot (PDF M6 + DATA Ø6 ring + raw Ø5.1 → one Ø5.0). Ring role ambiguous → FLAG, never choose by size.
 
 ## 2. POINT or CIRCLE (`python tools/lookup.py hole --material M --t T --dia D [--piercing] [--through] [--customer C]`), per feature family, first match

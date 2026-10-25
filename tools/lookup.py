@@ -12,6 +12,8 @@ module parses them, so editing a table there changes the lookup result here.
     python tools/lookup.py laser-r --material SS400 --t 9 [--customer 768]
     python tools/lookup.py hole --material SS400 --t 9 --dia 4.2
     python tools/lookup.py pilot --thread M8x1
+    python tools/lookup.py countersink --thread M6
+    python tools/lookup.py tooling --material SPCC --t 3
     python tools/lookup.py idod --t 3 --angle 165
     python tools/lookup.py unfold --od 410.8 20.8 175 --nobi 1.68 0.36
 
@@ -40,6 +42,8 @@ MATERIAL_MD = ROOT / "data" / "material_rules.md"
 PILOT_MD = ROOT / "data" / "thread_pilot.md"
 FINE_MD = ROOT / "data" / "thread_fine_pilot.md"
 CUSTOMERS = ROOT / "data" / "customers.yaml"
+COUNTERSINK_MD = ROOT / "data" / "countersink.md"
+TOOLING_MD = ROOT / "data" / "bend_tooling.md"
 
 SPLIT_FLANGE = "SPLIT_FLANGE_10MM"
 ANGLE_TOL = 0.5  # degrees; a bend is "90°" only within this tolerance
@@ -423,6 +427,30 @@ def pilot(thread: str) -> dict:
 
 
 # ------------------------------------------------------------ ID->OD, unfold
+def countersink(thread: str) -> dict:
+    """Through-hole / counterbore / 90° countersink mouth for M3–M8; only the through hole is a laser cut."""
+    m = re.match(r"^M?(\d+(?:\.\d+)?)", thread.strip().upper())
+    for cells in _rows(COUNTERSINK_MD.read_text(encoding="utf-8")):
+        if m and cells[0].upper() == f"M{m.group(1)}":
+            return {"status": "OK", "thread": cells[0], "through_hole": _num(cells[1]), "counterbore": _num(cells[2]),
+                    "countersink_mouth": _num(cells[3]), "cut": "through_hole only (mouth = machining)"}
+    return _flag("ASK", "COUNTERSINK_NOT_TABULATED", f"{thread}: không có trong bảng 皿ザグリ, xác nhận lỗ thông",
+                 thread=thread)
+
+
+def tooling(material: str, t: float) -> dict:
+    """V dies and minimum leg L / Z for a material family and thickness (WARN only, never resizes)."""
+    group = {"SS_SUS430_BRASS": "SS", "SUS": "SUS", "AL": "AL", "CU": "CU"}.get(_nobi_group(material), "SS")
+    rows = []
+    for cells in _rows(TOOLING_MD.read_text(encoding="utf-8")):
+        if cells[0].upper() == group and _num(cells[1]) is not None and abs(_num(cells[1]) - t) < EPS:
+            rows.append({"v_die": cells[2], "L_min": _num(cells[3]), "Z_min": _num(cells[4])})
+    if not rows:
+        return {"status": "OK", "group": group, "t": t, "dies": [], "note": "no tabulated die: no WARN possible"}
+    return {"status": "OK", "group": group, "t": t, "dies": rows,
+            "note": "WARN only when a proved leg is shorter than the selected die's L_min/Z_min"}
+
+
 def idod(t: float, angle: float) -> dict:
     out = {"t": t, "angle": angle}
     if angle <= 85 + EPS:
@@ -471,6 +499,11 @@ def main(argv=None) -> int:
     h.add_argument("--customer", help="numeric customer_code from job statistics")
     p = sub.add_parser("pilot")
     p.add_argument("--thread", required=True)
+    cs = sub.add_parser("countersink")
+    cs.add_argument("--thread", required=True, help="M3..M8")
+    tl = sub.add_parser("tooling")
+    tl.add_argument("--material", required=True)
+    tl.add_argument("--t", type=float, required=True)
     i = sub.add_parser("idod")
     i.add_argument("--t", type=float, required=True)
     i.add_argument("--angle", type=float, required=True)
@@ -486,6 +519,10 @@ def main(argv=None) -> int:
         res = hole(a.material, a.t, a.dia, a.piercing, a.through, a.customer)
     elif a.cmd == "pilot":
         res = pilot(a.thread)
+    elif a.cmd == "countersink":
+        res = countersink(a.thread)
+    elif a.cmd == "tooling":
+        res = tooling(a.material, a.t)
     elif a.cmd == "idod":
         res = idod(a.t, a.angle)
     else:

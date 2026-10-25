@@ -6,7 +6,7 @@ Never loaded by E2E. Intent unclear between creating and auditing → say so bef
 `ROLE = QA_AUDITOR`; the DXF is the `AUDIT_TARGET`, never evidence of itself. SELF_QA: freeze the exact saved file first, do not edit it during the audit. Default: READ → COMPARE → CHALLENGE → REPORT; no replacement DXF, no rule change, no push unless asked separately.
 
 ## 2. Sequence
-Read the source (PDF/image/DATA) → decode DATA curves (`DATA_DXF.md` §1) → map code ⟷ view ⟷ DATA cluster ⟷ target cluster → note/group/member expectation → census + `resolve_rules.py` → read the routed cards → expected state → decode the target → reverse diff per feature → holistic challenge (`VALIDATE.md` §5) → result.
+Read the source (PDF/image/DATA) → decode DATA curves (`DATA_DXF.md` §1) → map code ⟷ view ⟷ DATA cluster ⟷ target cluster → note/group/member expectation → census + `resolve_rules.py` → read the routed cards → expected state → decode the target (`tools/dxf_census.py`) → reverse diff per feature → holistic challenge (`VALIDATE.md` §5) → result.
 
 ## 3. Acceptance
 - With DATA: outside a rule-approved changed scope the target must reproduce DATA physically (endpoints, arcs, circles, decoded bulges); any unexplained drift is FAIL even below 0.1 mm.

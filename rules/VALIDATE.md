@@ -39,7 +39,7 @@ Hole/KEGAKI on a bent face moves with its face and keeps its physical edge ident
 HL (ヘアライン) with grain direction relative to the part unproved → `status=REVIEW`, `review_reason=HL_DIRECTION_UNPROVED`, full geometry, no individual PASS cut (Excel `横目` alone is not proof).
 
 ## 8. Feasibility = advisory only (never move geometry, never FLAG)
-Bridge/web ≥ t · adjacent piercings ≥ 10 mm · hole edge to bend ≥ 2t + R · bend die minimum L/Z (`data/bend_tooling.md`) → internal WARN. Real self-intersection, containment, hole capacity and unproved dimensions still FLAG.
+Bridge/web ≥ t · adjacent piercings ≥ 10 mm · hole edge to bend ≥ 2t + R · bend die minimum L/Z (`lookup.py tooling`) → internal WARN. Real self-intersection, containment, hole capacity and unproved dimensions still FLAG.
 
 ## 9. Report the checks
 One compact line when all pass, then every FAIL / FLAG / actionable WARN / question. No long PASS lists.

@@ -130,3 +130,15 @@ def test_cli_emits_json():
                           "--t", "2.5", "--L", "500"], capture_output=True, text=True, check=True).stdout
     data = json.loads(out)
     assert data["status"] == "FLAG" and data["action"] == "SPLIT_FLANGE_10MM"
+
+
+def test_countersink_through_hole_is_the_only_cut():
+    res = lookup.countersink("M6")
+    assert (res["through_hole"], res["counterbore"], res["countersink_mouth"]) == (6.6, 11.0, 12.5)
+    assert lookup.countersink("M10")["status"] == "FLAG"
+
+
+def test_tooling_lists_dies_for_the_material_family():
+    dies = {d["v_die"]: d for d in lookup.tooling("SUS304", 3)["dies"]}
+    assert dies["V40"]["L_min"] == 28.4 and dies["V40"]["Z_min"] == 29.6
+    assert lookup.tooling("SPCC", 12)["dies"] == [{"v_die": "V80", "L_min": 57.0, "Z_min": None}]
