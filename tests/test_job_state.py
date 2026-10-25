@@ -60,3 +60,11 @@ def test_status_warns_when_the_pinned_commit_moved(isolated, monkeypatch):
     job.init("J3", ["26-000003"], [], None, None)
     monkeypatch.setattr(job, "_head", lambda: "f" * 40)
     assert "WARNING: repo HEAD" in job.summary()
+
+
+def test_hook_is_silent_without_an_open_job_and_prints_it_otherwise(isolated):
+    assert job.hook_text() == ""
+    job.init("J4", ["26-000004"], [], None, None)
+    assert "26-000004: L0" in job.hook_text() and "Re-read JOB_CARD.md" in job.hook_text()
+    job.set_code(None, "26-000004", stage="DONE")
+    assert job.hook_text() == ""

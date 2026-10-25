@@ -1,0 +1,20 @@
+{
+  "env": {
+    "PYTHONUTF8": "1"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "compact|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/job.py\" hook",
+            "timeout": 20,
+            "statusMessage": "TrainAiCad: reloading job state"
+          }
+        ]
+      }
+    ]
+  }
+}
