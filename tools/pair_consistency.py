@@ -23,25 +23,15 @@ import json
 import math
 from pathlib import Path
 
+from geom import bulge_points
+
 TOL = 0.01  # mm
 
 
 def _bulge_points(p0, p1, bulge, n=24):
-    if abs(bulge) < 1e-12:
+    if abs(bulge) < 1e-12 or p0 == p1:
         return [p0]
-    (x0, y0), (x1, y1) = p0, p1
-    chord = math.hypot(x1 - x0, y1 - y0)
-    if chord == 0:
-        return [p0]
-    theta = 4 * math.atan(bulge)
-    r = chord / (2 * math.sin(theta / 2))
-    mx, my = (x0 + x1) / 2, (y0 + y1) / 2
-    d = r * math.cos(theta / 2)
-    ux, uy = (x1 - x0) / chord, (y1 - y0) / chord
-    cx, cy = mx - uy * d, my + ux * d
-    a0 = math.atan2(y0 - cy, x0 - cx)
-    rr = abs(r)
-    return [(cx + rr * math.cos(a0 + theta * i / n), cy + rr * math.sin(a0 + theta * i / n)) for i in range(n)]
+    return [p0] + bulge_points(p0, p1, bulge, n)
 
 
 def _poly_points(entity):

@@ -8,7 +8,6 @@ Bộ rule sản xuất CAD kim loại tấm đã được người dùng duyệt
 | `E2E`, `Đọc repo TrainAiCad làm E2E`, gửi PDF/ảnh/DXF DATA | Job CAD | `JOB_CARD.md` (đọc lại ở đầu mỗi bước L0–L3) |
 | `QA`, `QA file này`, `QA ngược DXF này` | Kiểm tra ngược DXF có sẵn | `rules/QA_REVERSE.md` |
 | Sửa rule / tool / test, bài học mới | Bảo trì repo | mục 3 |
-| Việc trong `LuanAppTools/` | App Windows | `LuanAppTools/README.md`, `LuanAppTools/HANDOFF.md` |
 
 ## 2. Job CAD
 Claude Code: skill `cad-e2e` / `cad-qa` (`.claude/skills/`) mở đúng cửa vào; hook trong `.claude/settings.json` tự in trạng thái job (`tools/job.py hook`) sau khi nén hoặc mở lại phiên.
@@ -39,5 +38,4 @@ examples/        spec mẫu cho tools/run_job.py
 templates/       CAD_OUTPUT_TEMPLATE.dxf
 regression/      bài học đã duyệt + fixture (không phải nguồn kích thước)
 tests/           kiểm thử
-LuanAppTools/    app Windows tùy chọn (chưa cập nhật theo cấu trúc V5)
 ```

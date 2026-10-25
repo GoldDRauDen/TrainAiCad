@@ -8,7 +8,7 @@
 * reopens the saved DXF and checks per code: closed outline chain, hole count, entity count;
 * prints the rules/OUTPUT.md section-10 table (Vietnamese) with every FLAG and the run time.
 
-OUT receives only the DXF deliverable; job.json and report.md go to WORKDIR (default: spec folder).
+OUT receives only the DXF deliverable; job.json and report.md go to WORKDIR (default: the job's .work/ dir).
 """
 from __future__ import annotations
 
@@ -26,6 +26,18 @@ import ezdxf  # noqa: E402
 from build_canonical import BuildError, build_job, load_spec, summary  # noqa: E402
 from canonical_contract import CanonicalContractError  # noqa: E402
 from export_canonical_dxf import export_canonical_job  # noqa: E402
+import job as job_state  # noqa: E402
+
+
+def default_work(job_id: str) -> Path:
+    """The current job's work dir when it is this job (tools/job.py), else .work/<job_id> (git-ignored)."""
+    try:
+        d = job_state.work_dir(None)
+        if json.loads((d / "job_state.json").read_text(encoding="utf-8")).get("job") == job_id:
+            return d
+    except (SystemExit, OSError, ValueError):
+        pass
+    return job_state.WORK_ROOT / job_id
 
 
 def _ends(e):
@@ -110,7 +122,7 @@ def main(argv=None):
     except BuildError as exc:
         print(f"BUILD_FAIL: {exc}", file=sys.stderr)
         return 2
-    work = a.work or a.spec.parent
+    work = a.work or default_work(job["job_id"])
     work.mkdir(parents=True, exist_ok=True)
     job_path = work / f"{job['job_id']}_job.json"
     job_path.write_text(json.dumps(job, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

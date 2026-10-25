@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""V4.33 source-only snapshot and post-reference provenance guard."""
+"""Source-only snapshot and post-reference provenance guard."""
 from __future__ import annotations
 import sys
 

@@ -20,6 +20,7 @@ from __future__ import annotations
 import math
 
 import lookup
+from geom import bulge_circle, bulge_points
 
 ZONE_TOL = 1e-6
 
@@ -134,21 +135,11 @@ def _poly(verts, seg_per_rad: float = 20.0):
     n = len(verts)
     for i in range(n):
         x0, y0, bulge = verts[i]
-        x1, y1 = verts[(i + 1) % n][:2]
         pts.append((x0, y0))
         if abs(bulge) > 1e-12:
-            theta = 4 * math.atan(bulge)
-            chord = math.hypot(x1 - x0, y1 - y0)
-            r = chord / (2 * math.sin(abs(theta) / 2))
-            mx, my = (x0 + x1) / 2, (y0 + y1) / 2
-            h = r * math.cos(abs(theta) / 2) * (1 if bulge > 0 else -1)
-            ux, uy = (x1 - x0) / chord, (y1 - y0) / chord
-            cx, cy = mx - uy * h, my + ux * h
-            a0 = math.atan2(y0 - cy, x0 - cx)
-            steps = max(4, int(abs(theta) * seg_per_rad))
-            for s in range(1, steps):
-                a = a0 + theta * s / steps
-                pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+            p1 = verts[(i + 1) % n][:2]
+            theta = bulge_circle((x0, y0), p1, bulge)[3]
+            pts += bulge_points((x0, y0), p1, bulge, max(4, int(abs(theta) * seg_per_rad)))
     return pts
 
 

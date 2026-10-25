@@ -32,6 +32,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from export_dxf import signed_poly_area  # noqa: E402
+from geom import bulge_circle  # noqa: E402
 
 REASONS = {
     "FRAME_OR_TITLE_BLOCK", "EXPLODED_TEXT_OR_DIM_NOISE", "DIMENSION_GRAPHIC", "VIEW_NOT_USED", "ISO_VIEW",
@@ -253,15 +254,8 @@ def _build(pieces, plan, tr, errors):
 # ---- independent decode of the output, compared with the source pieces (both directions) -------------------------
 
 def _arc_from_bulge(p0, p1, b):
-    chord = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
-    theta = 4 * math.atan(b)
-    r = chord / (2 * abs(math.sin(theta / 2)))
-    mx, my = (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2
-    h = r * math.cos(theta / 2)
-    ux, uy = (p1[0] - p0[0]) / chord, (p1[1] - p0[1]) / chord
-    sgn = 1 if b > 0 else -1
-    # centre lies to the left of p0->p1 for a ccw arc (b>0) when the arc is minor; sign of cos handles major arcs
-    return [mx - uy * h * sgn, my + ux * h * sgn], r, abs(theta)
+    cx, cy, r, theta = bulge_circle(p0, p1, b)
+    return [cx, cy], r, abs(theta)
 
 
 def _decode_out(ents):
