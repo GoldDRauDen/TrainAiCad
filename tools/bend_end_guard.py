@@ -101,6 +101,55 @@ def _relief_members_proved(site, relief, entities):
     return True
 
 
+OUTLINE_RELIEF_TOL = 1e-4  # LWPOLYLINE vertices are stored rounded to 1e-6 mm
+
+
+def _arc_of_segment(p, q, bulge):
+    """(centre, radius) of the polyline arc segment p->q, or None for a straight segment."""
+    if abs(bulge) <= 1e-12:
+        return None
+    chord = math.dist(p, q)
+    if chord <= TOL:
+        return None
+    theta = 4 * math.atan(bulge)
+    radius = chord / (2 * math.sin(abs(theta) / 2))
+    h = radius * math.cos(abs(theta) / 2) * (1 if bulge > 0 else -1)
+    ux, uy = (q[0] - p[0]) / chord, (q[1] - p[1]) / chord
+    return ((p[0] + q[0]) / 2 - uy * h, (p[1] + q[1]) / 2 + ux * h), radius
+
+
+def _outline_relief_proved(site, relief, entities, thickness):
+    """OPPOSITE_FOLD_R_T relief hole drawn INSIDE the outer contour (ByLayer arc of radius t, no Green entity).
+
+    The owning member declares ``outline_relief: {center, radius}`` and owns the outer LWPOLYLINE; the polyline
+    must really contain an arc segment of that centre and radius, and radius == t (R = t rule).
+    """
+    if not relief:
+        return False
+    try:
+        for member in relief:
+            geo, ids = member.get("outline_relief"), member.get("entity_ids") or []
+            if (member.get("status") != "PROVED" or member.get("origin") != "DERIVED_RULE" or
+                    member.get("controlling_rule") != "OPPOSITE_FOLD_R_T" or
+                    member.get("bend_end_site_id") != site["site_id"] or not isinstance(geo, dict) or len(ids) != 1):
+                return False
+            outer = entities.get(ids[0], {})
+            if outer.get("type") != "LWPOLYLINE" or outer.get("role") != "outer":
+                return False
+            center, radius = _point(geo.get("center")), _number(geo.get("radius"))
+            if abs(radius - thickness) > OUTLINE_RELIEF_TOL:
+                return False
+            verts = outer.get("vertices") or []
+            arcs = (_arc_of_segment(a[:2], verts[(i + 1) % len(verts)][:2], a[2] if len(a) > 2 else 0)
+                    for i, a in enumerate(verts))
+            if not any(arc and math.dist(arc[0], center) <= OUTLINE_RELIEF_TOL and
+                       abs(arc[1] - radius) <= OUTLINE_RELIEF_TOL for arc in arcs):
+                return False
+        return True
+    except (ValueError, TypeError, IndexError):
+        return False
+
+
 def _slit_construction_proved(site, part, edges, relief, entities, bends):
     """Rebuild the existing connected slit rule from proved canonical-flat edges."""
     from slit_geometry import LeadValueUnproved, connected_slit, lead_end_by_offset, lead_val, slit_dir_from_bend
@@ -316,7 +365,9 @@ def bend_end_errors(part):
                 raise ValueError("BEND_END_BEND_OWNERSHIP_UNPROVED")
             mechanism = site.get("mechanism")
             if mechanism in SPECIAL_RULES:
-                if not _relief_members_proved(site, relief, entities):
+                if not (_relief_members_proved(site, relief, entities) or
+                        mechanism == "OPPOSITE_FOLD_R_T" and
+                        _outline_relief_proved(site, relief, entities, _number(part.get("thickness_mm")))):
                     raise ValueError("BEND_END_RELIEF_MEMBER_UNPROVED")
                 error = _special_rule(site, part, edges, relief)
                 if error:
