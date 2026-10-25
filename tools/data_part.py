@@ -83,8 +83,8 @@ def to_spec(spec: dict, customer=None):
     if any(e.get("role") == "bend" for e in ents):
         _fail(f"{code}: DATA bend lines are not used: give the faces in a `bend:` block and the view of one face as "
               "`data:` + `data_face:` (rules/DATA_DXF.md)")
-    if spec.get("bend") and not spec.get("data_face"):
-        _fail(f"{code}: a bent DATA part needs data_face: the face the DATA view shows (its features go on that face)")
+    if spec.get("bend") and not (spec.get("data_face") or spec.get("data_faces")):
+        _fail(f"{code}: a bent DATA part needs data_face (or data_faces): which face(s) the DATA view shows")
     meaning = spec.get("members") or {}
     by_member: dict[str, list] = {}
     for e in ents:
@@ -96,14 +96,14 @@ def to_spec(spec: dict, customer=None):
     unknown = set(meaning) - set(by_member)
     if unknown:
         _fail(f"{code}: members {sorted(unknown)} are not in {path.name}")
-    out = {k: v for k, v in spec.items() if k not in ("data", "members", "corners", "envelope", "data_face", "data_v")}
+    out = {k: v for k, v in spec.items() if k not in ("data", "members", "corners", "envelope", "data_face", "data_faces", "data_v")}
     extra = {"changes": [], "flags": [], "data_file": path.name, "transform": assembled.get("transform"),
              "source_sha256": assembled.get("source", {}).get("sha256")}
 
     outer = by_member[outers[0]][0]
     xs, ys = [v[0] for v in outer["vertices"]], [v[1] for v in outer["vertices"]]
     size = [max(xs) - min(xs), max(ys) - min(ys)]  # vertex extent = the builder's nominal envelope
-    if spec.get("data_face"):
+    if spec.get("data_face") or spec.get("data_faces"):
         return _face_view(spec, out, extra, by_member, meaning, outers[0], (min(xs), min(ys)), size, customer)
 
     # outline: DATA vertices (arcs kept as bulges) + per-vertex corner decisions
@@ -131,50 +131,70 @@ def to_spec(spec: dict, customer=None):
             if flag:
                 extra["flags"].append(flag)
     out["envelope"] = [_r6(v) for v in size]
-    return _features(out, extra, by_member, meaning, outers[0], code, customer, (0.0, 0.0), "")
+    return _features(out, extra, by_member, meaning, outers[0], code, customer, lambda pts: ((0.0, 0.0), ""))
 
 
 def _face_view(spec, out, extra, by_member, meaning, outer_id, origin, size, customer):
-    """DATA view of ONE face of a bent part: its features go onto that face of the `bend:` chain.
+    """DATA view of faces of a one-axis bent part: each feature goes onto the face whose part of the view holds it.
 
-    The view (after dxf_assemble: scale, rotation so the face runs along the chain axis) starts at the face's
-    start edge (the outer plane of the previous face, or the free edge) on the along axis and at the flat edge
-    v = data_v (default 0) across. Its length is gated against the face OD and its width against bend.width."""
+    The view (after dxf_assemble: proved scale, rotated/mirrored so its along axis runs with the chain) gives, per
+    face, `at` = the view coordinate of that face's datum and `to` = the other end of its visible part:
+    `from: start` (datum = the face start: the previous face's outer plane, or the free edge of the first face) or
+    `from: end` (the next face's outer plane, or the free edge of the last face). Across, the view's lower edge is the
+    flat edge v = data_v (default 0). `data_face: W` alone = the whole view is face W from its start (its length is
+    gated against the OD); a middle face's span |to - at| is gated against its OD, the view width against bend.width."""
     import bend_flat
-    code, face = spec["code"], spec["data_face"]
+    code = spec["code"]
     if "chains" in spec["bend"]:
         _fail(f"{code}: a DATA face view on a two-axis part: build by hand")
     try:
         ch = bend_flat.unfold_chain(spec["bend"], spec["material"], float(spec["t"]), customer, code)
     except bend_flat.BendError as exc:
         _fail(str(exc))
-    f = ch["faces"].get(face) or _fail(f"{code}: data_face {face} is not a face of the bend chain")
     k = 0 if ch["axis"] == "X" else 1
     along, across = size[k], size[1 - k]
-    for value, ref, what in ((along, f["od"], f"{face} OD"), (across, spec["bend"].get("width"), "bề rộng")):
-        if ref is None:
-            continue
-        _, change, flag = gate(value, ref, customer, f"DATA {what}")
-        if change:
-            _fail(f"{code}: PDF_PRIORITY on the {what} changes the DATA view: build by hand")
+    entries = spec.get("data_faces")
+    if entries is None:
+        entries = [{"face": spec["data_face"], "from": "start", "at": origin[k], "to": origin[k] + along, "gate": True}]
+    ranges = []
+    for n, e in enumerate(entries):
+        face, frm = e.get("face"), str(e.get("from", "start"))
+        f = ch["faces"].get(face) or _fail(f"{code}: data_faces[{n}] face {face} is not a face of the bend chain")
+        at, to = float(e["at"]), float(e["to"])
+        if frm not in ("start", "end") or (to > at) != (frm == "start"):
+            _fail(f"{code}: data_faces[{n}] ({face}): from start runs to a larger view coordinate, from end to a smaller "
+                  "one (mirror the view in dxf_assemble if it runs against the chain)")
+        if e.get("gate") or not (f["first"] or f["last"]):
+            _, change, flag = gate(abs(to - at), f["od"], customer, f"DATA {face} OD")
+            if change:
+                _fail(f"{code}: PDF_PRIORITY on the {face} OD changes the DATA view: build by hand")
+            if flag:
+                extra["flags"].append(flag)
+        ranges.append((min(at, to), max(at, to), face, (f["start"] if frm == "start" else f["end"]) - at))
+    if spec["bend"].get("width") is not None:
+        _, change, flag = gate(across, spec["bend"]["width"], customer, "DATA bề rộng")
         if flag:
             extra["flags"].append(flag)
-    v0 = float(spec.get("data_v", 0.0))
-    shift = [0.0, 0.0]
-    shift[k] = f["start"] - origin[k]
-    shift[1 - k] = v0 - origin[1 - k]
+    dv = float(spec.get("data_v", 0.0)) - origin[1 - k]
+
+    def mapper(points):
+        a = [pt[k] for pt in points]
+        hit = [r for r in ranges if r[0] - 1e-6 <= min(a) and max(a) <= r[1] + 1e-6]
+        if len(hit) != 1:
+            _fail(f"{code}: DATA feature at {[round(v, 3) for v in points[0]]} is not inside exactly one data_faces "
+                  "range (on a bend, or a range missing)")
+        lo, hi, face, d_along = hit[0]
+        shift = [0.0, 0.0]
+        shift[k], shift[1 - k] = d_along, dv
+        return shift, f" on {face}"
     out["outline"] = spec.get("outline") or _fail(f"{code}: a bent DATA part needs outline (usually auto)")
     out["envelope"] = spec.get("envelope") or _fail(f"{code}: envelope required (overall flat size)")
-    extra["face_view"] = {"face": face, "shift": shift}
-    return _features(out, extra, by_member, meaning, outer_id, code, customer, tuple(shift), f" on {face}")
+    extra["face_view"] = {"faces": [{"face": r[2], "view_range": [r[0], r[1]], "shift_along": r[3]} for r in ranges]}
+    return _features(out, extra, by_member, meaning, outer_id, code, customer, mapper)
 
 
-def _features(out, extra, by_member, meaning, outer_id, code, customer, shift, where):
-    """Holes, slots, cut-outs and KEGAKI of the DATA members (moved by `shift`, a pure translation)."""
-    dx, dy = shift
-
-    def mv(pt):
-        return [pt[0] + dx, pt[1] + dy]
+def _features(out, extra, by_member, meaning, outer_id, code, customer, mapper):
+    """Holes, slots, cut-outs and KEGAKI of the DATA members; mapper(points) -> (translation, face note)."""
     holes, slots, cuts, marks = [], [], [], []
     for mid, es in by_member.items():
         if mid == outer_id:
@@ -190,6 +210,14 @@ def _features(out, extra, by_member, meaning, outer_id, code, customer, shift, w
             _fail(f"{code}: member {mid} mixes roles")
         for k, e in enumerate(es, 1):
             fid = mid if len(es) == 1 else f"{mid}_{k}"
+            pts = ([e["center"]] if "center" in e else [e["point"]] if "point" in e else
+                   [v[:2] for v in e["vertices"]] if "vertices" in e else [e["start"], e["end"]])
+            if role == "slot":
+                pts = [v[:2] for v in e["vertices"]]
+            (dx, dy), where = mapper(pts)
+
+            def mv(pt, dx=dx, dy=dy):
+                return [pt[0] + dx, pt[1] + dy]
             ref = (",".join(e.get("source_piece_ids", [])) or e["entity_id"]) + where
             if role in ("hole", "ordinary_point"):
                 c = mv(e["center"] if role == "hole" else e["point"])
