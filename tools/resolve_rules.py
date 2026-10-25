@@ -295,4 +295,6 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    for _stream in (sys.stdout, sys.stderr):
+        _stream.reconfigure(encoding="utf-8")  # Vietnamese FLAG text on a Windows console
     raise SystemExit(main())

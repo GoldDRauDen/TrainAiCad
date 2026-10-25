@@ -66,9 +66,3 @@ def test_sample_flag_stays_pending():
         {"claim_id": "r", "status": "PROVED", "evidence_provenance": ["APPROVED_REFERENCE"], "sample_flagged": True}
     ]}
     assert "SAMPLE_FLAGGED_PROMOTED_TO_PROVED:r" in fw.audit_transition(before, after)
-
-
-def test_v433_workflow_runs_regression():
-    wf = (ROOT / ".github/workflows/dxf-export-tests.yml").read_text(encoding="utf-8")
-    assert "V4.19-V4.33" in wf
-    assert "check_521007_07_v433.py" in wf

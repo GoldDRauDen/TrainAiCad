@@ -6,6 +6,7 @@ invent mating constraints, infer a contact from paper proximity, or authorize
 production CAD without face/flat transforms and independent source QA.
 """
 from __future__ import annotations
+import sys
 
 import argparse
 from collections import deque
@@ -174,4 +175,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    for _stream in (sys.stdout, sys.stderr):
+        _stream.reconfigure(encoding="utf-8")  # Vietnamese FLAG text on a Windows console
     main()

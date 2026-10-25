@@ -16,6 +16,7 @@ wrong: re-read both sources at the reported feature and correct the wrong one,
 or record why the pair legitimately differs. Exit code 1 on any mismatch.
 """
 from __future__ import annotations
+import sys
 
 import argparse
 import json
@@ -168,4 +169,6 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
+    for _stream in (sys.stdout, sys.stderr):
+        _stream.reconfigure(encoding="utf-8")  # Vietnamese FLAG text on a Windows console
     raise SystemExit(main())

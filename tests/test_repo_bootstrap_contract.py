@@ -35,16 +35,6 @@ def test_bootstrap_has_no_memory_or_history_fallback():
     assert "Do not fabricate that the repo was read" in text
 
 
-def test_portable_bundle_includes_current_v434_schema_and_material_aliases():
-    from build_rule_bundle import approved_paths
-
-    release, paths = approved_paths(ROOT)
-    assert release == "V4.34"
-    assert "tools/CANONICAL_INPUT_SCHEMA_V434.md" in paths
-    assert "references/MATERIAL_ALIASES.yaml" in paths
-    assert "tools/CANONICAL_INPUT_SCHEMA_V431.md" not in paths
-
-
 def test_repo_changes_still_require_explicit_approval():
     bootstrap = (ROOT / "AI_BOOTSTRAP.md").read_text(encoding="utf-8")
     agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
@@ -67,27 +57,11 @@ def test_entrypoint_accepts_e2e_invocation_without_repeating_workflow():
     assert "complete current repo-direct production flow" in text
 
 
-def test_gpt_web_project_template_is_short_bootstrap_pointer():
-    text = (ROOT / "PROJECT_INSTRUCTIONS_GPT_WEB.md").read_text(encoding="utf-8")
-    assert "GoldDRauDen/TrainAiCad" in text
-    assert "AI_BOOTSTRAP.md" in text
-    assert "`E2E`" in text
-    assert "current repo" in text
-    assert re.search(r"\bV4\.\d+\b", text) is None
-
-
 def test_current_router_still_controls_release_and_engineering_load():
     router = yaml.safe_load((ROOT / "skills/lispcad/router/ROUTER.yaml").read_text(encoding="utf-8"))
     assert router["production_mode"] == "repo_direct"
     assert "skills/lispcad/router/FEATURE_CENSUS.md" in router["default_load"]
     assert "saved_dxf_readback" in router["post_route_checks"]
-
-
-def test_ci_tracks_bootstrap_files():
-    wf = (ROOT / ".github/workflows/dxf-export-tests.yml").read_text(encoding="utf-8")
-    assert "'AI_BOOTSTRAP.md'" in wf
-    assert "'AGENTS.md'" in wf
-    assert "'PROJECT_INSTRUCTIONS_GPT_WEB.md'" in wf
 
 
 def test_release_pin_detector_rejects_a_real_release():

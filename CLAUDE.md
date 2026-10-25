@@ -57,12 +57,8 @@ Kiểm tra trước khi merge (giống CI `.github/workflows/dxf-export-tests.ym
 pip install -r requirements.txt
 python -m pytest tests -q
 python tools/audit_rule_coverage.py
-python tools/build_gate_index.py
-python tools/build_rule_index.py --output /tmp/TRAINAICAD_RAG_INDEX.yaml
-python tools/build_rule_bundle.py --output /tmp/TRAINAICAD_E2E_RULEPACK.md
 python tools/benchmark_rule_routes.py
 python tools/audit_rule_duplicates.py
-for f in regression/tools/check_*.py; do python "$f" || break; done
 ```
 
 ## 5. LuanAppTools

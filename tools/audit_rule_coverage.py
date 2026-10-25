@@ -94,7 +94,7 @@ def audit(root: Path = ROOT, router: dict | None = None) -> dict:
     missing_refs = []
     for release, info in coverage.get("release_coverage", {}).items():
         for kind in ("active", "regression"):
-            for p in info.get(kind, []):
+            for p in info.get(kind) or []:
                 if not (root / p).is_file():
                     missing_refs.append((release, kind, p))
     if missing_refs:
@@ -124,4 +124,6 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    for _stream in (sys.stdout, sys.stderr):
+        _stream.reconfigure(encoding="utf-8")  # Vietnamese FLAG text on a Windows console
     raise SystemExit(main())
