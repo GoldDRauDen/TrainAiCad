@@ -9,7 +9,7 @@ module parses them, so editing a table there changes the lookup result here.
     python tools/lookup.py nobi --material SUS304 --t 3 --L 2000 --surface "#1"
     python tools/lookup.py nobi --material SPCC --t 2.5 --L 500          # t not tabulated -> FLAG
     python tools/lookup.py nobi --material SPCC --t 1.6 --L 900 --angle 135   # -> split flange
-    python tools/lookup.py laser-r --material SS400 --t 9
+    python tools/lookup.py laser-r --material SS400 --t 9 [--customer 768]
     python tools/lookup.py hole --material SS400 --t 9 --dia 4.2
     python tools/lookup.py pilot --thread M8x1
     python tools/lookup.py idod --t 3 --angle 165
@@ -39,6 +39,7 @@ KH646_MD = ROOT / "data" / "nobi_kh646.md"
 MATERIAL_MD = ROOT / "data" / "material_rules.md"
 PILOT_MD = ROOT / "data" / "thread_pilot.md"
 FINE_MD = ROOT / "data" / "thread_fine_pilot.md"
+CUSTOMERS = ROOT / "data" / "customers.yaml"
 
 SPLIT_FLANGE = "SPLIT_FLANGE_10MM"
 ANGLE_TOL = 0.5  # degrees; a bend is "90°" only within this tolerance
@@ -280,8 +281,45 @@ def _material_row(group: str, t: float):
     return None, False
 
 
-def laser_r(material: str, t: float) -> dict:
+@lru_cache(maxsize=1)
+def _customers() -> dict:
+    import yaml
+    return yaml.safe_load(CUSTOMERS.read_text(encoding="utf-8")).get("customers", {})
+
+
+def customer_record(code) -> dict:
+    """Catalog record of a numeric JOB STATISTICS customer code ({} = general rules)."""
+    if code is None:
+        return {}
+    return _customers().get(str(int(str(code).strip())), {})
+
+
+def _customer_corner(code, t: float) -> dict | None:
+    pol = customer_record(code).get("corner_policy")
+    if not pol:
+        return None
+    rule = f"KH{int(str(code).strip())}"
+    if pol.get("confirm_from_t") is not None and t >= pol["confirm_from_t"] - EPS:
+        return _flag("ASK", "CUSTOMER_CORNER_CONFIRM",
+                     f"{rule}: góc ngoài khi t≥{pol['confirm_from_t']:g} cần xác nhận với khách", rule=rule)
+    value = pol["default"]
+    if pol.get("max_t") is not None and t > pol["max_t"] + EPS:
+        if pol.get("above_from_t") is not None and t < pol["above_from_t"] - EPS:
+            return _flag("ASK", "CUSTOMER_CORNER_GAP",
+                         f"{rule}: t={t:g} nằm giữa {pol['max_t']:g} và {pol['above_from_t']:g}, chưa rõ góc ngoài",
+                         rule=rule)
+        value = pol["above"]
+    return {"status": "OK", "laser_r": "NONE" if value == "SHARP" else value, "rule": rule,
+            "corner_class": "uncalled outside corner ≤90° (customer rule); drawn R/C still wins"}
+
+
+def laser_r(material: str, t: float, customer: str | None = None) -> dict:
+    """Automatic outside-corner treatment: customer corner rule first, else the shop workbook."""
     base = {"material": material, "t": t}
+    if customer is not None:
+        cust = _customer_corner(customer, t)
+        if cust is not None:
+            return {**cust, **base, "customer": str(customer)}
     try:
         group = _laser_group(material)
     except (MaterialResolveError, KeyError) as exc:
@@ -322,9 +360,15 @@ def _min_hole(group: str, t: float):
     return None, None, None
 
 
-def hole(material: str, t: float, dia: float, piercing: bool = False, through: bool = False) -> dict:
-    """POINT vs CIRCLE per rules/HOLE_TAP.md §2."""
+def hole(material: str, t: float, dia: float, piercing: bool = False, through: bool = False,
+         customer: str | None = None) -> dict:
+    """POINT vs CIRCLE per rules/HOLE_TAP.md §2 (customer hole_policy may require confirmation)."""
     base = {"material": material, "t": t, "dia": dia}
+    pol = customer_record(customer).get("hole_policy", {}) if customer is not None else {}
+    if not piercing and pol.get("below_half_t") == "CONFIRM" and dia < t / 2 - EPS:
+        code = int(str(customer).strip())
+        return _flag("MAGENTA_CIRCLE", "CUSTOMER_CONFIRM_BELOW_HALF_T",
+                     f"KH{code}: lỗ Ø{dia:g} < t/2 cần xác nhận với khách (vẽ tạm Magenta)", **base)
     if piercing and through:
         return {"status": "OK", "entity": "POINT", "color": 3, "reason": "PIERCING+THROUGH", **base}
     if piercing:
@@ -417,12 +461,14 @@ def main(argv=None) -> int:
     lr = sub.add_parser("laser-r")
     lr.add_argument("--material", required=True)
     lr.add_argument("--t", type=float, required=True)
+    lr.add_argument("--customer", help="numeric customer_code from job statistics")
     h = sub.add_parser("hole")
     h.add_argument("--material", required=True)
     h.add_argument("--t", type=float, required=True)
     h.add_argument("--dia", type=float, required=True, help="effective cut diameter (pilot Ø for M)")
     h.add_argument("--piercing", action="store_true")
     h.add_argument("--through", action="store_true")
+    h.add_argument("--customer", help="numeric customer_code from job statistics")
     p = sub.add_parser("pilot")
     p.add_argument("--thread", required=True)
     i = sub.add_parser("idod")
@@ -435,9 +481,9 @@ def main(argv=None) -> int:
     if a.cmd == "nobi":
         res = nobi(a.material, a.t, a.L, a.angle, a.surface, a.handwritten, not a.no_j, a.customer)
     elif a.cmd == "laser-r":
-        res = laser_r(a.material, a.t)
+        res = laser_r(a.material, a.t, a.customer)
     elif a.cmd == "hole":
-        res = hole(a.material, a.t, a.dia, a.piercing, a.through)
+        res = hole(a.material, a.t, a.dia, a.piercing, a.through, a.customer)
     elif a.cmd == "pilot":
         res = pilot(a.thread)
     elif a.cmd == "idod":

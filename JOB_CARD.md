@@ -34,7 +34,7 @@ python tools/resolve_rules.py --template > census.json      # every family UNKNO
 python tools/resolve_rules.py census.json [--bundle rules.md]  # cards per stage + customer notes
 python tools/lookup.py nobi --material SPCC --t 1.6 --L 900 [--angle 135] [--surface "#1"] [--handwritten 0.36] [--no-j] [--customer 646]
 python tools/lookup.py laser-r --material SS400 --t 9 [--customer 768]
-python tools/lookup.py hole --material SS400 --t 9 --dia 4.2 [--piercing] [--through]
+python tools/lookup.py hole --material SS400 --t 9 --dia 4.2 [--piercing] [--through] [--customer 859]
 python tools/lookup.py pilot --thread M8x1
 python tools/lookup.py idod --t 3 --angle 165
 python tools/lookup.py unfold --od 410.8 20.8 175 --nobi 1.68 0.36
