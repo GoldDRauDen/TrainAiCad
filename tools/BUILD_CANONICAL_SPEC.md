@@ -1,8 +1,7 @@
-# build_canonical spec (FLAT, no bends)
+# build_canonical spec (FLAT and single-axis BENT parts)
 
-`python tools/run_job.py spec.yaml OUT/` = `build_canonical.py` → `export_canonical_dxf.py` → reopen/verify → §11 table.
-Example: `examples/flat_minimal.yaml` (its generated `examples/flat_minimal.job.json` is kept in sync by a test).
-Bent parts follow `rules/BEND.md` (canonical JSON + `export_canonical_dxf.py`); this tool refuses `bends`.
+`python tools/run_job.py spec.yaml OUT/` = `build_canonical.py` → `export_canonical_dxf.py` → reopen/verify → report table.
+Examples: `examples/flat_minimal.yaml` (its generated `examples/flat_minimal.job.json` is kept in sync by a test), `examples/bend_minimal.yaml`.
 
 Job level: `job_id`, optional `customer_code` (numeric, JOB STATISTICS) — its corner/hole policy from `data/customers.yaml` is applied to every part (e.g. KH768 sharp outside corners, KH712 C5, KH859 t≥19 corners FLAG).
 
@@ -32,3 +31,21 @@ Job level: `job_id`, optional `customer_code` (numeric, JOB STATISTICS) — its 
 contour_topology (closed, CCW, no self-intersection), datum (envelope + every witness chain), feature_count (group closure), containment (full boundary), material_rules (lookup). unfold/bend_domain N/A; slot_semantics PASS only with slots.
 J/LJ: on the long straight edge (`rules/OUTPUT.md` §4); if the max-Y edge is notched/sloped and the min-Y edge is straight the part is rotated 180° (`canonical_rotation_deg`).
 Check the shape against the drawing with `tools/overlay_check.py` (≥3 anchors, residual ≤1 mm).
+
+## Bent part: `bend:` block (L / U / Z / hat / multi-bend chain along ONE axis)
+```yaml
+bend:
+  axis: X                 # the face chain runs along flat X (bend lines vertical); Y = along flat Y
+  width: 40               # proved width of every face (Nobi L and outline: auto); per-bend `L` overrides
+  width_ev: "p6 web 40"   # needed for outline: auto (full-width rectangle)
+  faces:                  # unfold order from the flat origin; od = proved outside length (rules/BEND.md §4)
+    - {id: F1, od: 50, ev: "50 to the outer face"}
+    - {id: F2, od: 64, ev: "62 + t"}
+  bends:                  # one per face pair
+    - {id: B1, angle: 90, sign: 1, nobi: 3.68, ev: "bend callout"}   # nobi only when handwritten; else table
+```
+- Nobi per bend from `lookup.nobi` (handwritten > 90° J table); a missing Nobi refuses with `SPLIT_FLANGE_10MM` (draw by hand).
+- The tool derives line1/line2, the flat length, `face_graph`, `per_bend_witness_ledger`, the `BEND` groups and the DASHED lines clipped to the outline (one member per material interval).
+- `outline: auto` = full-width rectangle; otherwise list the flat outline, where a point may be face-relative: `{face: F2, u: 10, v: 0, from: start|end, R: 2}`. Face start = the previous bend's line1 (the previous face's outer plane), face end = the next bend's line2; the first/last face are measured from their free edge.
+- Holes/slots on a face: `{..., face: F3, from: start|end, wu: [[30, HOLE_CENTER, "ev"]], wv: [[10, HOLE_CENTER, "ev"]]}` (`wu` along the face, `wv` across from the flat edge v=0).
+- Refused (build that part as canonical JSON by hand): an outline corner inside a bend zone (bend-end junction, decide S: `rules/SLIT_RELIEF.md` §3), a hole/slot overlapping a bend zone, bends on two axes (box), non-90° without handwritten Nobi.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compact FLAT part spec -> complete TrainAiCad-CANONICAL-V4.34 job.json (no bends).
+"""Compact FLAT or single-axis BENT part spec -> complete TrainAiCad-CANONICAL-V4.34 job.json.
 
 The reader states only what the drawing says: outline corners with their R/C callouts,
 repeated notch patterns, holes/slots with their dimension chains, and the overall envelope.
@@ -12,7 +12,8 @@ This tool derives the rest deterministically and runs the checks it reports as P
 * J/LJ marks on the long straight edge: when the max-Y edge is notched/sloped and the
   min-Y edge is straight, the whole part is rotated 180 deg (rules/OUTPUT.md J/LJ line).
 
-Spec format and an example: tools/BUILD_CANONICAL_SPEC.md, examples/flat_minimal.yaml.
+Bent parts (L/U/Z/multi-bend chain along one axis): tools/bend_flat.py, `bend:` block in the spec.
+Spec format and examples: tools/BUILD_CANONICAL_SPEC.md, examples/flat_minimal.yaml, examples/bend_minimal.yaml.
 Never writes DXF; export with tools/export_canonical_dxf.py (or tools/run_job.py).
 """
 from __future__ import annotations
@@ -25,6 +26,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import bend_flat  # noqa: E402
 import lookup  # noqa: E402
 from dimension_witness import validate_graph  # noqa: E402
 from export_dxf import (CHECKS, JLJ_INSET_MM, signed_poly_area)  # noqa: E402
@@ -324,10 +326,31 @@ def build_part(spec, customer=None):
     t = _num(spec.get("t"), f"{code}.t")
     page = int(spec.get("page", 1))
     if spec.get("bends"):
-        fail(f"{code}: bends are outside build_canonical (FLAT only); use rules/BEND.md + export_canonical_dxf.py")
+        fail(f"{code}: use a `bend:` block (faces + bends), see tools/BUILD_CANONICAL_SPEC.md")
+    chain = None
+    try:
+        if spec.get("bend"):
+            chain = bend_flat.unfold_chain(spec["bend"], material, t, customer, code)
+        outline = spec.get("outline") or fail(f"{code}: outline required")
+        if chain is not None:
+            outline = (bend_flat.auto_outline(spec["bend"], chain, code) if outline == "auto"
+                       else bend_flat.resolve_outline(outline, chain, code))
+    except bend_flat.BendError as exc:
+        fail(str(exc))
     auto, laser = auto_corner(material, t, customer)
-    corners, patterns = expand_outline(spec.get("outline") or fail(f"{code}: outline required"), where)
+    corners, patterns = expand_outline(outline, where)
     verts, decisions = build_outline(corners, auto, where)
+    b_ents, b_groups, bend_graph, bend_ledger = [], [], None, None
+    if chain is not None:
+        try:
+            bend_flat.check_bend_zones(verts, chain, code)
+            b_ents, b_groups, bend_graph, bend_ledger = bend_flat.bend_records(verts, chain, code, page)
+        except bend_flat.BendError as exc:
+            fail(str(exc))
+
+    def bend_line_entity(bid, which):
+        return next(e["entity_id"] for e in b_ents
+                    if e["entity_id"].startswith(f"E_{code}_{bid}") and e["entity_id"].endswith(f"_{which}"))
     if signed_poly_area(verts) <= 0 or _self_intersects(verts):
         fail(f"{code}: CONTOUR_TOPOLOGY outline is not a simple CCW loop")
     xs, ys = [c["at"][0] for c in corners], [c["at"][1] for c in corners]
@@ -410,15 +433,40 @@ def build_part(spec, customer=None):
                               "canonical_member_id": f"CM_{p}_{mid}",
                               "evidence_ref": d["corner"]["ev"] or d["corner"]["flag"]})
 
-    # holes and slots with witness chains
+    # holes and slots with witness chains (face-relative ones mapped onto the flat first)
     nodes, edges, targets, required, slot_records = {}, [], [], [], []
+    start_types, datum_entities = {}, {}
+    for kind in ("holes", "slots"):
+        for i, h in enumerate(spec.get(kind) or []):
+            if "face" not in h:
+                continue
+            if chain is None:
+                fail(f"{code}: {kind}[{i}] uses face but the part has no bend block")
+            try:
+                d, st, sgn, dline = bend_flat.face_datum(chain, h["face"], h.get("from"), code)
+            except bend_flat.BendError as exc:
+                fail(str(exc))
+            wu = h.get("wu") or fail(f"{code}: {kind}[{i}] needs wu (along the face from its datum)")
+            along = [[sgn * float(stp[0])] + list(stp[1:]) for stp in wu]
+            across = h.get("wv") or fail(f"{code}: {kind}[{i}] needs wv (across, from the flat edge)")
+            key = str(h.get("id") or (f"H{i + 1}" if kind == "holes" else f"SL{i + 1}"))
+            along_axis = chain["axis"]
+            if along_axis == "X":
+                h.update(wx=along, wy=across, datum_x=d, datum_y=float(h.get("datum_v", 0.0)))
+                start_types[(kind, key)] = (st, "OUTER_EDGE")
+            else:
+                h.update(wy=along, wx=across, datum_y=d, datum_x=float(h.get("datum_v", 0.0)))
+                start_types[(kind, key)] = ("OUTER_EDGE", st)
+            if dline:
+                datum_entities[(kind, key, along_axis)] = bend_line_entity(*dline)
     by_group = {}
     for i, h in enumerate(spec.get("holes") or []):
         hid = str(h.get("id") or f"H{i + 1}")
         fid = f"{p}_{hid}"
         dx0, dy0 = float(h.get("datum_x", 0.0)), float(h.get("datum_y", 0.0))
-        nx, sx = _chain(fid, "X", h.get("wx"), dx0, page, nodes, edges)
-        ny, sy = _chain(fid, "Y", h.get("wy"), dy0, page, nodes, edges)
+        stx, sty = start_types.get(("holes", hid), ("OUTER_EDGE", "OUTER_EDGE"))
+        nx, sx = _chain(fid, "X", h.get("wx"), dx0, page, nodes, edges, start_type=stx)
+        ny, sy = _chain(fid, "Y", h.get("wy"), dy0, page, nodes, edges, start_type=sty)
         center = (dx0 + sx, dy0 + sy)
         if "at" in h and math.dist(_pt(h["at"], fid), center) > 1e-6:
             fail(f"{code}: DIMENSION_CHAIN_MISMATCH hole {hid}: at {h['at']} but chain gives {center}")
@@ -433,8 +481,8 @@ def build_part(spec, customer=None):
         by_group.setdefault(h.get("group", f"D{dia:g}".replace(".", "_")), []).append((hid, eid, h))
         for axis, datum, node, total in (("X", dx0, nx, sx), ("Y", dy0, ny, sy)):
             targets.append({"feature_id": fid, "datum_node": f"{fid}_{axis}_D", "feature_node": node, "axis": axis,
-                            "coordinate_mm": total, "datum_coordinate_mm": datum, "datum_entity_id": eo,
-                            "entity_id": eid})
+                            "coordinate_mm": total, "datum_coordinate_mm": datum,
+                            "datum_entity_id": datum_entities.get(("holes", hid, axis), eo), "entity_id": eid})
         required.append(fid)
     for name, items in by_group.items():
         qty = next((it[2].get("qty") for it in items if it[2].get("qty") is not None), None)
@@ -446,8 +494,9 @@ def build_part(spec, customer=None):
         sid = str(s.get("id") or f"SL{i + 1}")
         fid = f"{p}_{sid}"
         dx0, dy0 = float(s.get("datum_x", 0.0)), float(s.get("datum_y", 0.0))
-        nx, sx = _chain(fid, "X", s.get("wx"), dx0, page, nodes, edges, end_type="SLOT_MIDPOINT")
-        ny, sy = _chain(fid, "Y", s.get("wy"), dy0, page, nodes, edges, end_type="SLOT_MIDPOINT")
+        stx, sty = start_types.get(("slots", sid), ("OUTER_EDGE", "OUTER_EDGE"))
+        nx, sx = _chain(fid, "X", s.get("wx"), dx0, page, nodes, edges, start_type=stx, end_type="SLOT_MIDPOINT")
+        ny, sy = _chain(fid, "Y", s.get("wy"), dy0, page, nodes, edges, start_type=sty, end_type="SLOT_MIDPOINT")
         mid = (dx0 + sx, dy0 + sy)
         u = _unit(_pt(s.get("axis", [1, 0]), fid + ".axis"))
         nrm = (-u[1], u[0])
@@ -468,13 +517,22 @@ def build_part(spec, customer=None):
         slots_by_group.setdefault(s.get("group", "SLOT"), []).append((sid, eid, s))
         for axis, datum, node, total in (("X", dx0, nx, sx), ("Y", dy0, ny, sy)):
             targets.append({"feature_id": fid, "datum_node": f"{fid}_{axis}_D", "feature_node": node, "axis": axis,
-                            "coordinate_mm": total, "datum_coordinate_mm": datum, "datum_entity_id": eo,
+                            "coordinate_mm": total, "datum_coordinate_mm": datum, "datum_entity_id": datum_entities.get(("slots", sid, axis), eo),
                             "entity_id": eid})
         required.append(fid)
     for name, items in slots_by_group.items():
         qty = next((it[2].get("qty") for it in items if it[2].get("qty") is not None), None)
         ev = next((it[2].get("ev") for it in items if it[2].get("ev")), name)
         add_group(name, "SLOT", [it[0] for it in items], ev, ["PROVED"] * len(items), [[it[1]] for it in items], qty)
+
+    if chain is not None:
+        try:
+            bend_flat.check_features_off_bend_zones(ents, chain, code)
+        except bend_flat.BendError as exc:
+            fail(str(exc))
+        ents.extend(b_ents)
+        for name, ids, ev, owners in b_groups:
+            add_group(name, "BEND", ids, ev, ["PROVED"] * len(ids), owners)
 
     status = "PREVIEW" if flags else "PASS"
     flags = list(dict.fromkeys(flags))  # one line per distinct FLAG
@@ -490,11 +548,25 @@ def build_part(spec, customer=None):
         part["slot_anchor_records"] = slot_records
     if spec.get("dx_label"):
         part["dx_label"] = True
+    if chain is not None:
+        part["face_graph"] = bend_graph
+        part["per_bend_witness_ledger"] = bend_ledger
+        part["unfold"] = {"axis": chain["axis"], "flat_length_mm": chain["total"],
+                          "faces": {f: {"od": r["od"], "start": r["start"], "end": r["end"]}
+                                    for f, r in chain["faces"].items()},
+                          "bends": [{k: b[k] for k in ("id", "angle", "sign", "nobi", "nobi_source", "line1", "line2")}
+                                    for b in chain["bends"]]}
+        part["source_bend_end_site_ids"] = []  # the outline never changes inside a bend zone (checked above)
+        part["bend_end_junctions"] = []
+        part["bend_end_source_edges"] = {}
 
     # orientation for J/LJ, then marks
     rot = _jlj_rotation(part, spec.get("jlj_edge", "auto"))
     if rot:
+        x0r, y0r, x1r, y1r = _blank(part)
         _rotate_180(part)
+        if chain is not None:
+            bend_flat.mirror_ledger(part, (x0r + x1r) if chain["axis"] == "X" else (y0r + y1r))
         part["canonical_rotation_deg"] = 180
         part["canonical_rotation_reason"] = "J/LJ trên cạnh dài thẳng (cạnh max-Y gốc có rãnh/nghiêng)"
     _add_jlj_marks(part)
@@ -505,6 +577,8 @@ def build_part(spec, customer=None):
     checks = {k: "N/A" for k in CHECKS}
     checks.update(contour_topology="PASS", datum="PASS", feature_count="PASS", containment="PASS",
                   material_rules="PASS")
+    if chain is not None:
+        checks.update(unfold="PASS", bend_domain="PASS")
     if slot_records:
         checks["slot_semantics"] = "PASS"
     part["checks"] = checks
@@ -567,6 +641,8 @@ def _rotate_180(part):
             e["center"] = f(e["center"])
         elif e["type"] == "POINT":
             e["point"] = f(e["point"])
+        elif e["type"] == "LINE":
+            e["start"], e["end"] = f(e["start"]), f(e["end"])
         elif e["type"] == "TEXT":
             e["insert"] = f(e["insert"])
     for row in part.get("corner_inventory", []):

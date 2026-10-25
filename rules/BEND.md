@@ -6,6 +6,8 @@ Triggers: `曲げ`, `ノビ`/`伸び`, `J`, `内R`, `外寸`, double dashed line
 `source views → witness graph → candidate faces → signed adjacency → attachment edge lock → OD_actual → constraint closure → unfold → feature transforms → bend-line clipping → fold-back → canonical`.
 Shape labels (L, U, Z, hat, box, joggle) only propose candidates; witnesses, projections, bend callouts and sections prove them. Two graphs still possible after source exhaustion → draw the best-supported in Magenta, name the other.
 
+**Tool first:** a chain along one axis (L, U, Z, hat, multi-bend) with full-width or simply notched faces → `bend:` block in the spec and `tools/run_job.py` (`tools/BUILD_CANONICAL_SPEC.md`): it looks up Nobi, places the line pairs, clips them to material, maps face-relative holes and writes the face graph + ledger. Box/two-axis parts, bend-end junctions and split flanges are still built by hand as canonical JSON.
+
 Records per part (keep in the ledger file):
 - FACE: id, view, local origin/axes, edges with stable ids, own dimensions.
 - BEND: face_A + shared edge, face_B + shared edge, free edges, fold sign, angle, Rin/t, Nobi source, material domain.
