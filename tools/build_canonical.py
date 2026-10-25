@@ -67,12 +67,17 @@ def _unit(v):
     return (v[0] / n, v[1] / n)
 
 
-def laser_r_mm(material, t):
-    res = lookup.laser_r(material, t)
+def auto_corner(material, t, customer=None):
+    """Automatic outside-corner treatment: None | ("R"|"C", size) | ("FLAG", vi) for a customer confirm."""
+    res = lookup.laser_r(material, t, customer)
     if res.get("status") != "OK":
+        if str(res.get("reason", "")).startswith("CUSTOMER_CORNER"):
+            return ("FLAG", res["flag_vi"]), res
         fail(f"LASER_R_LOOKUP_FLAG: {res.get('flag_vi') or res}")
-    m = re.fullmatch(r"R(\d+(?:\.\d+)?)", str(res.get("laser_r")))
-    return (float(m.group(1)) if m else None), res
+    if res.get("rule") and res.get("laser_r") == "NONE":
+        return ("SHARP", f"{res['rule']}: góc ngoài để nhọn theo quy định khách hàng"), res
+    m = re.fullmatch(r"([RC])(\d+(?:\.\d+)?)", str(res.get("laser_r")))
+    return ((m.group(1), float(m.group(2))) if m else None), res
 
 
 # ------------------------------------------------------------------ outline expansion
@@ -215,7 +220,7 @@ def _corner_geometry(prev, p, nxt):
     return a, b, alpha, cross
 
 
-def build_outline(corners, auto_r, where):
+def build_outline(corners, auto, where):
     """Return LWPOLYLINE vertices and per-corner decisions (convexity, angle, applied treatment)."""
     n = len(corners)
     area2 = sum(corners[i]["at"][0] * corners[(i + 1) % n]["at"][1] -
@@ -235,8 +240,14 @@ def build_outline(corners, auto_r, where):
         if c["flag"] and kind in ("AUTO", "SHARP"):
             kind, decision = "NONE", "FLAG"  # unresolved corner: keep the drawn sharp vertex, no automatic R
         elif kind == "AUTO":
-            if eligible and auto_r:
-                kind, size, decision = "R", auto_r, "AUTO_R"
+            if eligible and auto and auto[0] == "FLAG":
+                c = dict(c, flag=auto[1])
+                kind, decision = "NONE", "FLAG"
+            elif eligible and auto and auto[0] == "SHARP":
+                c = dict(c, reason=auto[1])
+                kind, decision = "SHARP", "SHARP"
+            elif eligible and auto:
+                (kind, size), decision = auto, "AUTO_R"
             elif eligible:
                 kind, decision = "SHARP", "SHARP"
                 c = dict(c, reason="bảng Laser R: không có R tự động cho vật liệu/độ dày này")
@@ -306,7 +317,7 @@ def _chain(fid, axis, steps, datum, page, nodes, edges, start_type="OUTER_EDGE",
 
 
 # ------------------------------------------------------------------ part
-def build_part(spec):
+def build_part(spec, customer=None):
     code = str(spec.get("code") or fail("part: code required"))
     where = code
     material = str(spec.get("material") or fail(f"{code}: material required"))
@@ -314,9 +325,9 @@ def build_part(spec):
     page = int(spec.get("page", 1))
     if spec.get("bends"):
         fail(f"{code}: bends are outside build_canonical (FLAT only); use rules/BEND.md + export_canonical_dxf.py")
-    auto_r, laser = laser_r_mm(material, t)
+    auto, laser = auto_corner(material, t, customer)
     corners, patterns = expand_outline(spec.get("outline") or fail(f"{code}: outline required"), where)
-    verts, decisions = build_outline(corners, auto_r, where)
+    verts, decisions = build_outline(corners, auto, where)
     if signed_poly_area(verts) <= 0 or _self_intersects(verts):
         fail(f"{code}: CONTOUR_TOPOLOGY outline is not a simple CCW loop")
     xs, ys = [c["at"][0] for c in corners], [c["at"][1] for c in corners]
@@ -365,7 +376,8 @@ def build_part(spec):
             mid = f"CM_{p}_AR{auto_k}"
             members.append({"canonical_member_id": mid, "origin": "DERIVED_RULE", "status": "PROVED",
                             "controlling_rule": "MATERIAL_AUTO_R", "source_member_ids": [f"{p}_OUTER"],
-                            "entity_ids": [eo], "laser_r": laser.get("laser_r"), "excel_row": laser.get("excel_row")})
+                            "entity_ids": [eo], "laser_r": laser.get("laser_r"), "excel_row": laser.get("excel_row"),
+                            **({"customer_rule": laser["rule"]} if laser.get("rule") else {})})
             inventory.append({"corner_id": f"A{auto_k}", "point": pt, "drawn_shape": "SHARP", "decision": "AUTO_R",
                               "canonical_member_id": mid,
                               "evidence_ref": f"góc ngoài {d['angle_deg']:.2f}° vẽ sắc, không callout R/C"})
@@ -411,7 +423,7 @@ def build_part(spec):
         if "at" in h and math.dist(_pt(h["at"], fid), center) > 1e-6:
             fail(f"{code}: DIMENSION_CHAIN_MISMATCH hole {hid}: at {h['at']} but chain gives {center}")
         dia = _num(h.get("d"), f"{fid}.d")
-        hl = lookup.hole(material, t, dia)
+        hl = lookup.hole(material, t, dia, customer=customer)
         if hl.get("status") != "OK" or hl.get("entity") != "CIRCLE":
             fail(f"{code}: hole {hid} Ø{dia:g}: lookup says {hl.get('entity') or hl.get('flag_vi')} - "
                  "declare it as a POINT feature by hand (rules/HOLE_TAP.md)")
@@ -465,9 +477,10 @@ def build_part(spec):
         add_group(name, "SLOT", [it[0] for it in items], ev, ["PROVED"] * len(items), [[it[1]] for it in items], qty)
 
     status = "PREVIEW" if flags else "PASS"
+    flags = list(dict.fromkeys(flags))  # one line per distinct FLAG
     part = {"code": code, "material": material, "thickness_mm": t, "status": status, "flags": flags,
             "entities": ents, "source_groups": groups, "canonical_members": members, "corner_inventory": inventory,
-            "laser_r_lookup": {k: laser.get(k) for k in ("laser_r", "group", "excel_row")},
+            "laser_r_lookup": {k: laser.get(k) for k in ("laser_r", "group", "excel_row", "rule")},
             "envelope_mm": [float(env[0]), float(env[1])]}
     if required:
         part["witness_required_feature_ids"] = required
@@ -601,7 +614,7 @@ def build_job(spec):
     if not isinstance(spec, dict) or not spec.get("parts"):
         fail("spec needs job_id and parts")
     job = {"canonical_contract": CONTRACT, "job_id": str(spec.get("job_id") or fail("job_id required")),
-           "parts": [build_part(ps) for ps in spec["parts"]]}
+           "parts": [build_part(ps, spec.get("customer_code")) for ps in spec["parts"]]}
     if spec.get("customer_code") is not None:
         job["customer_code"] = str(spec["customer_code"])
     return job
@@ -638,7 +651,7 @@ def main(argv=None):
     except BuildError as exc:
         print(f"BUILD_FAIL: {exc}", file=sys.stderr)
         return 2
-    a.out.write_text(json.dumps(job, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    a.out.write_text(json.dumps(job, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
     print(json.dumps(summary(job), ensure_ascii=False, indent=1))
     return 0
 

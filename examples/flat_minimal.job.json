@@ -428,7 +428,8 @@
    "laser_r_lookup": {
     "laser_r": "R0.5",
     "group": "SS",
-    "excel_row": 4
+    "excel_row": 4,
+    "rule": null
    },
    "envelope_mm": [
     300.0,
@@ -1036,7 +1037,8 @@
    "laser_r_lookup": {
     "laser_r": "R0.5",
     "group": "AL",
-    "excel_row": 19
+    "excel_row": 19,
+    "rule": null
    },
    "envelope_mm": [
     1200.0,

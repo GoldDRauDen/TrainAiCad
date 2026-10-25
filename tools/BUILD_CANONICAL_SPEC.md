@@ -4,6 +4,8 @@
 Example: `examples/flat_minimal.yaml` (its generated `examples/flat_minimal.job.json` is kept in sync by a test).
 Bent parts follow `rules/BEND.md` (canonical JSON + `export_canonical_dxf.py`); this tool refuses `bends`.
 
+Job level: `job_id`, optional `customer_code` (numeric, JOB STATISTICS) — its corner/hole policy from `data/customers.yaml` is applied to every part (e.g. KH768 sharp outside corners, KH712 C5, KH859 t≥19 corners FLAG).
+
 ## Part
 | key | meaning |
 |---|---|

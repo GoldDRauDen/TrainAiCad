@@ -24,7 +24,10 @@
       "notes": [
         "Uncalled exterior corners sharp; explicit instructions override."
       ],
-      "source": "J155"
+      "source": "J155",
+      "corner_policy": {
+        "default": "SHARP"
+      }
     },
     "344": {
       "notes": [
@@ -59,13 +62,19 @@
       "notes": [
         "Exterior corners remain sharp when uncalled; explicit customer R/C overrides."
       ],
-      "source": "J423"
+      "source": "J423",
+      "corner_policy": {
+        "default": "SHARP"
+      }
     },
     "425": {
       "notes": [
         "Unless explicitly instructed, outside corners remain sharp (pin角)."
       ],
-      "source": "J368"
+      "source": "J368",
+      "corner_policy": {
+        "default": "SHARP"
+      }
     },
     "433": {
       "notes": [
@@ -79,7 +88,10 @@
         "Uncalled exterior corners stay sharp.",
         "Differently colored DATA geometry may be KEGAKI; prove semantic role."
       ],
-      "source": "J59"
+      "source": "J59",
+      "corner_policy": {
+        "default": "SHARP"
+      }
     },
     "512": {
       "notes": [
@@ -213,7 +225,10 @@
         "Uncalled corner C5; masking and pierce are white piercing when so scoped.",
         "Order thickness may differ from drawing; use controlling order with provenance."
       ],
-      "source": "J8"
+      "source": "J8",
+      "corner_policy": {
+        "default": "C5"
+      }
     },
     "719": {
       "notes": [
@@ -233,7 +248,10 @@
         "Holes smaller than half sheet thickness can sometimes be physically cut but customer/source scope requires confirmation.",
         "SUS uncuttable tap pilot may need downstream NC advisory; do not write 'macro NG' as CUT geometry."
       ],
-      "source": "J114"
+      "source": "J114",
+      "hole_policy": {
+        "below_half_t": "CONFIRM"
+      }
     },
     "733": {
       "data_pdf_policy": "CONFIRM_CONFLICT",
@@ -293,21 +311,33 @@
       "notes": [
         "Uncalled outside corners use R3, including the specifically identified chamfered exterior regions; source explicit R/C still controls."
       ],
-      "source": "J289"
+      "source": "J289",
+      "corner_policy": {
+        "default": "R3"
+      }
     },
     "768": {
       "notes": [
         "Outside corners sharp unless explicitly called.",
         "All explicitly scoped PIERCING indications are through piercing."
       ],
-      "source": "J434"
+      "source": "J434",
+      "corner_policy": {
+        "default": "SHARP"
+      }
     },
     "775": {
       "notes": [
         "Exterior corners without explicit R: thickness <=4.5 mm uses R0.3; thickness >=5 mm remains sharp.",
         "NC microjoint instructions are deferred and must not become CAD contours."
       ],
-      "source": "J440"
+      "source": "J440",
+      "corner_policy": {
+        "default": "R0.3",
+        "max_t": 4.5,
+        "above": "SHARP",
+        "above_from_t": 5
+      }
     },
     "776": {
       "notes": [
@@ -321,7 +351,10 @@
       "notes": [
         "Uncalled exterior corners are sharp; extreme heat-risk corners may be R0.5 only if evidence proves applicability."
       ],
-      "source": "J52"
+      "source": "J52",
+      "corner_policy": {
+        "default": "SHARP"
+      }
     },
     "779": {
       "notes": [
@@ -329,7 +362,10 @@
         "Square-tube +1 mm hole needs explicit confirmation; do not globally expand.",
         "Uncalled outside R is sharp."
       ],
-      "source": "J169"
+      "source": "J169",
+      "corner_policy": {
+        "default": "SHARP"
+      }
     },
     "780": {
       "notes": [
@@ -356,7 +392,10 @@
       "notes": [
         "Uncalled exterior corners sharp; explicit instructions override."
       ],
-      "source": "J131"
+      "source": "J131",
+      "corner_policy": {
+        "default": "SHARP"
+      }
     },
     "792": {
       "notes": [
@@ -465,7 +504,10 @@
         "Below-half-thickness holes may exceptionally be cut only with case-specific confirmation.",
         "Close neighboring holes may form an R1 keyhole/daruma; missing external notebook details prevent automatic construction and require REVIEW."
       ],
-      "source": "J320"
+      "source": "J320",
+      "hole_policy": {
+        "below_half_t": "CONFIRM"
+      }
     },
     "851": {
       "notes": [
@@ -480,7 +522,14 @@
         "Exterior corners sharp by default; ≥19 mm case needs confirmation.",
         "Cutting below half thickness needs confirmation."
       ],
-      "source": "J68"
+      "source": "J68",
+      "corner_policy": {
+        "default": "SHARP",
+        "confirm_from_t": 19
+      },
+      "hole_policy": {
+        "below_half_t": "CONFIRM"
+      }
     },
     "875": {
       "notes": [
@@ -623,7 +672,10 @@
       "notes": [
         "Uncalled outside corners stay sharp (pin角), except explicitly specified corner features."
       ],
-      "source": "J340"
+      "source": "J340",
+      "corner_policy": {
+        "default": "SHARP"
+      }
     }
   },
   "source_workbook_sha256": "67851a40fc2fdde09f3ba0692cece5054ca9759d074134d8e16a1774cf7bbddb",
@@ -654,5 +706,9 @@
     ],
     "exclusion_reason": "Only administration, NC operations, historical company names, or non-operative vague checks; not laser-cut CAD geometry.",
     "strike_rule": "Rich-text and whole-cell strikethrough spans removed before curation. AS済 is sync metadata only."
+  },
+  "structured_fields": {
+    "corner_policy": "uncalled outside-corner treatment applied by tools/lookup.py laser-r --customer (SHARP | Rx | Cx; max_t/above/above_from_t; confirm_from_t -> FLAG). Drawn R/C always wins.",
+    "hole_policy": "below_half_t: CONFIRM -> a hole with d < t/2 is a Magenta CIRCLE + FLAG instead of a POINT (tools/lookup.py hole --customer)."
   }
 }
