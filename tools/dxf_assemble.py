@@ -221,7 +221,8 @@ def _build(pieces, plan, tr, errors):
             continue
         attrs = [{"layer": r["layer"], "color": r["color"], "linetype": r["linetype"]} for r in recs]
         src = [dict(t) for t in {tuple(sorted(a.items())) for a in attrs}]
-        base = {"layer": "0", "role": ENTITY_ROLE.get(role, role), "source_piece_ids": [r["id"] for r in recs],
+        base = {"layer": "0", "role": ENTITY_ROLE.get(role, role), "member_id": mid,
+                "source_piece_ids": [r["id"] for r in recs],
                 "source_attrs": sorted(src, key=lambda a: json.dumps(a, sort_keys=True))}
         if role in CHAIN_ROLES:
             order = _chain(recs, errors, f"member {mid}")

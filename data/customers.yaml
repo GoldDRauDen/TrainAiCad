@@ -80,6 +80,7 @@
       "notes": [
         "Only when numeric customer code 433 is identified, generic DATA/PDF same-parameter numeric conflict threshold is 1.0 mm; this does not waive hole/feature QA."
       ],
+      "data_pdf_tolerance_mm": 1.0,
       "source": "J280"
     },
     "473": {

@@ -326,6 +326,11 @@ def _cutout_vertices(c, chain, where):
     """
     if not c.get("ev"):
         fail(f"{where}: cutout needs ev")
+    if "vertices" in c:  # exact closed polygon, e.g. customer DATA (tools/data_part.py): kept as given
+        verts = [[_num(v[0], where), _num(v[1], where), _num(v[2] if len(v) > 2 else 0, where)] for v in c["vertices"]]
+        if len(verts) < 3 or signed_poly_area(verts) >= 0:
+            fail(f"{where}: cutout vertices must be a closed clockwise loop")
+        return [[_r6(x), _r6(y), g] for x, y, g in verts]
     if "face" in c:
         if chain is None:
             fail(f"{where}: face needs a bend block")
@@ -357,6 +362,14 @@ def _cutout_vertices(c, chain, where):
 
 
 def build_part(spec, customer=None):
+    if spec.get("data") is not None:
+        import data_part
+        try:
+            spec, extra = data_part.to_spec(spec, customer)
+        except data_part.DataPartError as exc:
+            fail(str(exc))
+        part = build_part(spec, customer)
+        return data_part.finish(part, extra)
     code = str(spec.get("code") or fail("part: code required"))
     where = code
     material = str(spec.get("material") or fail(f"{code}: material required"))
@@ -505,12 +518,17 @@ def build_part(spec, customer=None):
         hid = str(h.get("id") or f"H{i + 1}")
         fid = f"{p}_{hid}"
         dx0, dy0 = float(h.get("datum_x", 0.0)), float(h.get("datum_y", 0.0))
-        stx, sty = start_types.get(("holes", hid), ("OUTER_EDGE", "OUTER_EDGE"))
+        stx, sty = start_types.get(("holes", hid), (h.get("datum_type", "OUTER_EDGE"),) * 2)
         nx, sx = _chain(fid, "X", h.get("wx"), dx0, page, nodes, edges, start_type=stx)
         ny, sy = _chain(fid, "Y", h.get("wy"), dy0, page, nodes, edges, start_type=sty)
         center = (dx0 + sx, dy0 + sy)
         if "at" in h and math.dist(_pt(h["at"], fid), center) > 1e-6:
             fail(f"{code}: DIMENSION_CHAIN_MISMATCH hole {hid}: at {h['at']} but chain gives {center}")
+        if h.get("thread"):  # tap: the pilot from the table (rules/HOLE_TAP.md §1), quantity/datum unchanged
+            pl = lookup.pilot(str(h["thread"]))
+            if pl.get("status") != "OK":
+                fail(f"{code}: hole {hid}: {pl.get('flag_vi')}")
+            h["d"] = pl["pilot_dia"]
         dia = _num(h.get("d"), f"{fid}.d")
         piercing, through, stamp = bool(h.get("piercing")), bool(h.get("through")), str(h.get("stamp") or "")
         if through and not piercing:
@@ -548,7 +566,7 @@ def build_part(spec, customer=None):
         sid = str(s.get("id") or f"SL{i + 1}")
         fid = f"{p}_{sid}"
         dx0, dy0 = float(s.get("datum_x", 0.0)), float(s.get("datum_y", 0.0))
-        stx, sty = start_types.get(("slots", sid), ("OUTER_EDGE", "OUTER_EDGE"))
+        stx, sty = start_types.get(("slots", sid), (s.get("datum_type", "OUTER_EDGE"),) * 2)
         nx, sx = _chain(fid, "X", s.get("wx"), dx0, page, nodes, edges, start_type=stx, end_type="SLOT_MIDPOINT")
         ny, sy = _chain(fid, "Y", s.get("wy"), dy0, page, nodes, edges, start_type=sty, end_type="SLOT_MIDPOINT")
         mid = (dx0 + sx, dy0 + sy)
@@ -590,6 +608,25 @@ def build_part(spec, customer=None):
         qty = next((it[2].get("qty") for it in items if it[2].get("qty") is not None), None)
         ev = next((it[2].get("ev") for it in items if it[2].get("ev")), name)
         add_group(name, "CUTOUT", [it[0] for it in items], ev, ["PROVED"] * len(items), [[it[1]] for it in items], qty)
+
+    marks_by_group = {}
+    for i, k in enumerate(spec.get("kegaki") or []):
+        kid = str(k.get("id") or f"K{i + 1}")
+        lines = k.get("lines") or fail(f"{code}: kegaki {kid} needs lines [[x0, y0, x1, y1], ...]")
+        owned = []
+        for n, ln in enumerate(lines, 1):
+            if not isinstance(ln, (list, tuple)) or len(ln) != 4:
+                fail(f"{code}: kegaki {kid} line {n} must be [x0, y0, x1, y1]")
+            eid = f"E_{p}_{kid}" if len(lines) == 1 else f"E_{p}_{kid}_{n}"
+            ents.append({"entity_id": eid, "type": "LINE", "role": "kegaki", "color": 1,
+                         "start": [_r6(_num(ln[0], kid)), _r6(_num(ln[1], kid))],
+                         "end": [_r6(_num(ln[2], kid)), _r6(_num(ln[3], kid))]})
+            owned.append(eid)
+        marks_by_group.setdefault(k.get("group", "KEGAKI"), []).append((kid, owned, k))
+    for name, items in marks_by_group.items():
+        qty = next((it[2].get("qty") for it in items if it[2].get("qty") is not None), None)
+        ev = next((it[2].get("ev") for it in items if it[2].get("ev")), None) or fail(f"{code}: kegaki {name} needs ev")
+        add_group(name, "KEGAKI", [it[0] for it in items], ev, ["PROVED"] * len(items), [it[1] for it in items], qty)
 
     if chain is not None:
         try:
@@ -935,8 +972,14 @@ def load_spec(path):
     text = Path(path).read_text(encoding="utf-8")
     if str(path).endswith((".yaml", ".yml")):
         import yaml
-        return yaml.safe_load(text)
-    return json.loads(text)
+        data = yaml.safe_load(text)
+    else:
+        data = json.loads(text)
+    if isinstance(data, dict) and not data.get("canonical_contract"):
+        for part in data.get("parts") or []:  # a DATA path is relative to its spec file
+            if isinstance(part, dict) and isinstance(part.get("data"), str):
+                part["data"] = str((Path(path).parent / part["data"]).resolve())
+    return data
 
 
 def summary(job):
