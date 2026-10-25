@@ -210,3 +210,10 @@ def test_thread_key_gives_the_table_pilot_and_kegaki_lines_are_red():
     keg = [e for e in part["entities"] if e["role"] == "kegaki"]
     assert len(keg) == 1 and keg[0]["color"] == 1
     assert any(g["family"] == "KEGAKI" for g in part["source_groups"])
+
+
+def test_run_job_writes_one_ledger_per_code_from_the_spec(tmp_path):
+    out, work = tmp_path / "OUT", tmp_path / "work"
+    assert run_job.main([str(EXAMPLE), str(out), "--work", str(work)]) == 0
+    text = (work / "ledger_26-000001.md").read_text(encoding="utf-8")
+    assert "### Kích thước (nhân chứng)" in text and "p1 dim 240" in text and "### Góc" in text

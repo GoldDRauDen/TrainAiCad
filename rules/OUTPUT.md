@@ -12,18 +12,8 @@ Ledger contract: every manufacturing callout → `source_group` (id, family, sta
 - Individual cuts only with `--individual-dxf`: `parts_dxf/<slip-no>.dxf` for verified PASS codes, CUT only (LINE/ARC/CIRCLE; no POINT/BEND/KEGAKI/labels). Another code's REVIEW never suppresses a PASS cut.
 - **Code = 作業No on the delivery slip verbatim** (`26-056522`, never `056522`); slip vs barcode mismatch → slip wins, reported. Slip サイズ X/Y is a plausibility check only.
 
-## 3. Entities (all geometry on Layer 0; template `templates/CAD_OUTPUT_TEMPLATE.dxf`, mm)
-| Feature | Entity | Colour | Linetype |
-|---|---|---|---|
-| Outer/inner contour, slot | LINE/ARC pieces (from canonical LWPOLYLINE) | ByLayer | ByLayer |
-| Cut hole, tap pilot | CIRCLE | ByLayer | ByLayer |
-| PIERCING / capacity POINT | POINT | ByLayer | ByLayer |
-| PIERCING + English `THROUGH HOLE` stamp | POINT | 3 Green | ByLayer |
-| KEGAKI / formed mark | LINE/ARC | 1 Red | ByLayer |
-| Bend (double line, material only) | LINE ×2 | ByLayer | DASHED |
-| Proved Green slit/relief | LINE/ARC | 3 Green | ByLayer |
-| Review estimate + note | entity + TEXT | 6 Magenta | ByLayer |
-No DIMENSION entities, nothing on layer `DIM`. Code/status labels on non-plot `AI_META`. Customer DATA may be exploded with geometry unchanged.
+## 3. Entities
+All geometry on Layer 0 (template `templates/CAD_OUTPUT_TEMPLATE.dxf`, mm): cut contours ByLayer, holes CIRCLE, POINT ByLayer (Green 3 only for PIERCING + English `THROUGH HOLE`), KEGAKI Red 1, bend pairs DASHED, proved slit/relief Green 3, review estimate + note Magenta 6. The exporter enforces this legend (`tools/CANONICAL_SCHEMA.md`), writes no DIMENSION and generates the `AI_META` labels.
 
 ## 4. Canonical geometry
 - LWPOLYLINE `[[x,y,bulge],…]` closed, outer CCW, cut-outs CW, R/C baked as true tangent points/bulges, no faceting. CIRCLE for cut holes; real POINT (never a tiny circle).
@@ -45,16 +35,10 @@ No DIMENSION entities, nothing on layer `DIM`. Code/status labels on non-plot `A
 - Decide inner/outer by comparing section/lower views of sibling codes; never assume outer. A part drawn from its INNER face gets `dx_label: true` (label h20, 23 mm left of the outline, vertically centred; geometry unchanged); outer face → none.
 - 対称 partner: reuse the sibling geometry mirrored on the proved axis (flat plate along its length `x' = W − x`), `dx_label: false`.
 
-## 7. Composite layout
-Parts top-to-bottom in page-1 job order; code label 10 mm above the outline (h10, AI_META, once); ≥150 mm between clusters; FLAG lines h15, pitch 25, 49 mm right of the outline from its top. Source views of one code 10 mm apart.
+## 7. Layout and cut pose (the exporter does both)
+Parts top-to-bottom in page-1 order, ≥150 mm apart, labels on AI_META; source views of one code 10 mm apart. Individual PASS cuts (on request): bbox X ≥ Y, proved HL grain along X, never mirrored/scaled.
 
-## 8. Individual cut pose (requested PASS only)
-No HL: rotate 90° so bbox X ≥ Y. Proved HL: grain along X. No mirror/scale; inverse read-back of every LINE/ARC/CIRCLE/XDATA.
-
-## 9. Customer corner conflict
-Explicit customer corner vs automatic rule (e.g. SS t≥19 R3 vs customer sharp): draw the customer corner, FLAG, ask.
-
-## 10. Report (`<JOB>` chat report)
+## 8. Report (`<JOB>` chat report)
 1. Per-code table: slip code, material, t, proved flat extent, status. 2. Geometry-affecting corrections (handwritten Nobi, mid-tolerance, ID→OD, table R, split flanges). 3. One PASS line for executed checks. 4. EVERY FAIL/FLAG/WARN. 5. Questions for the customer. 6. Total time (short). Proposed rule lessons go here, never into the repo during a job.
 AutoLISP only on explicit request, generated from the same canonical entities.
 

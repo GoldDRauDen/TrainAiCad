@@ -473,6 +473,50 @@ def unfold(od: list[float], nobi_values: list[float]) -> dict:
     return {"status": "OK", "flat_length": r2(sum(od) - sum(nobi_values)), "bend_lines": lines}
 
 
+# ------------------------------------------------------------ slit / retreat / KEGAKI (rules/SLIT_RELIEF.md, KEGAKI.md)
+def slit(material: str, t: float, S: float | None = None, angle: float = 90.0) -> dict:
+    """Bend-end relief decision: 90° from the proved step S (SLIT_RELIEF §3), >90° depth t·sin θ (§4)."""
+    import slit_geometry as sg
+    base = {"material": material, "t": t, "angle": angle}
+    if abs(angle - 90.0) > ANGLE_TOL:
+        if not 90.0 < angle < 180.0:
+            return _flag("ASK", "ANGLE_OUT_OF_RANGE", f"Góc {angle:g}° không thuộc 90–180°", **base)
+        return {"status": "OK", "mechanism": "NON_90_RELIEF", "depth": round(sg.slit_depth_gt90(t, angle), 4), **base}
+    if S is None:
+        return _flag("FLAG", "S_UNPROVED", "Chưa chứng minh được bậc S ở đầu đường gấp: SLIT_RELIEF = UNKNOWN", **base)
+    depth = sg.slit_depth_from_actual_edge(S, t)
+    if depth is None:
+        return {"status": "OK", "mechanism": "BEND_END_OFFSET_90", "decision": "NO_SLIT", "S": S, **base}
+    try:
+        lead = sg.lead_val(material, t)
+    except sg.LeadValueUnproved as exc:
+        return _flag("FLAG", str(exc), "Chưa có giá trị lead cho vật liệu/độ dày này: không vẽ slit, FLAG", S=S, **base)
+    return {"status": "OK", "mechanism": "BEND_END_OFFSET_90", "decision": "SLIT", "S": S,
+            "depth_from_actual_edge": round(depth, 4),
+            "depth_from_reference": round(sg.slit_depth_from_reference(S, t), 4),
+            "lead": lead, "arc_R": 0.5, **base}
+
+
+def retreat(depth_a: float, depth_b: float, bend_len_a=None, bend_len_b=None) -> dict:
+    """Same-direction corner: which flange retreats by t (SLIT_RELIEF §5)."""
+    from corner_retreat import choose_retreat
+    return {"status": "OK", **choose_retreat(depth_a, depth_b, bend_len_a, bend_len_b)}
+
+
+def kegaki(t: float, slant_delta=None, tilt=None, edge=None, offset=None, host_t=None, k=None,
+           run=None, short=None) -> dict:
+    """Contact footprint numbers (rules/KEGAKI.md §3)."""
+    import kegaki_footprint as kf
+    out = {"status": "OK", "width": round(kf.contact_width(t, slant_delta=slant_delta, tilt_deg=tilt), 4)}
+    if run is not None and short:
+        out["slanted_edge_length"] = round(kf.slanted_edge_length(run, short[0], short[1]), 3)
+    if edge is not None:
+        out["contact_length"] = round(kf.contact_length(out.get("slanted_edge_length", edge), offset or 0.0), 4)
+    if host_t is not None and k is not None:
+        out["single_line_offset"] = round(kf.single_line_offset(host_t, k), 4)
+    return out
+
+
 # ------------------------------------------------------------------- CLI
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -510,8 +554,32 @@ def main(argv=None) -> int:
     u = sub.add_parser("unfold")
     u.add_argument("--od", type=float, nargs="+", required=True)
     u.add_argument("--nobi", type=float, nargs="*", default=[])
+    sl = sub.add_parser("slit", help="bend-end relief: 90° from the proved step S, >90° t·sin θ")
+    sl.add_argument("--material", required=True)
+    sl.add_argument("--t", type=float, required=True)
+    sl.add_argument("--S", type=float, help="proved signed step (+ protrudes, 0 flush, - recessed)")
+    sl.add_argument("--angle", type=float, default=90.0)
+    rt = sub.add_parser("retreat", help="same-direction corner: which flange retreats by t")
+    rt.add_argument("--depth", type=float, nargs=2, required=True, metavar=("A", "B"))
+    rt.add_argument("--bend-len", type=float, nargs=2, metavar=("A", "B"))
+    kg = sub.add_parser("kegaki", help="weld contact footprint numbers")
+    kg.add_argument("--t", type=float, required=True, help="child thickness")
+    kg.add_argument("--slant-delta", type=float)
+    kg.add_argument("--tilt", type=float, help="child tilt in degrees")
+    kg.add_argument("--edge", type=float, help="contact edge length")
+    kg.add_argument("--offset", type=float, help="printed offset along the contact edge")
+    kg.add_argument("--run", type=float, help="slanted edge run (with --short)")
+    kg.add_argument("--short", type=float, nargs=2, help="the two SHORTER alternate heights")
+    kg.add_argument("--host-t", type=float)
+    kg.add_argument("--k", type=float)
     a = ap.parse_args(argv)
-    if a.cmd == "nobi":
+    if a.cmd == "slit":
+        res = slit(a.material, a.t, a.S, a.angle)
+    elif a.cmd == "retreat":
+        res = retreat(*a.depth, *(a.bend_len or (None, None)))
+    elif a.cmd == "kegaki":
+        res = kegaki(a.t, a.slant_delta, a.tilt, a.edge, a.offset, a.host_t, a.k, a.run, a.short)
+    elif a.cmd == "nobi":
         res = nobi(a.material, a.t, a.L, a.angle, a.surface, a.handwritten, not a.no_j, a.customer)
     elif a.cmd == "laser-r":
         res = laser_r(a.material, a.t, a.customer)

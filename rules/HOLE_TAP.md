@@ -7,13 +7,8 @@ Triggers: `Ø`, `n-Ø`, `穴`, `キリ`, `M6`/`M8x1`, `タップ`, `ネジ`, `�
 - Countersink/counterbore (`皿`/`ザグリ`): only the through-hole/pilot is a laser cut, never the mouth Ø (`python tools/lookup.py countersink --thread M6` → 6.6). Reamer −0.1 only by explicit shop/customer instruction. Drill-machine reach 170 mm is a WARN.
 - DATA tap: a concentric nominal ring = `THREAD_NOMINAL_REFERENCE` (non-cut); compare only it with M<n> (`Δ ≥ 0.1` → `DATA_PDF_DIM_DIFF`); raw pre-hole is provenance; output one pilot (PDF M6 + DATA Ø6 ring + raw Ø5.1 → one Ø5.0). Ring role ambiguous → FLAG, never choose by size.
 
-## 2. POINT or CIRCLE (`python tools/lookup.py hole --material M --t T --dia D [--piercing] [--through] [--customer C]`), per feature family, first match
-1. PIERCING + the English `THROUGH HOLE` stamp on that family → POINT Green (62=3) = "piasu xanh". Japanese `通シ`/`貫通` and `M12通シ` do NOT qualify.
-2. PIERCING scoped by the leader to that family → POINT ByLayer, whatever `白ピアス 〇/×` says (that column is machine capability, not drawing intent).
-3. `d < t/2` (strict) → POINT ByLayer, no capacity FLAG.
-4. `d` below the workbook minimum for the material/t row → POINT ByLayer, no capacity FLAG. Otherwise CIRCLE ByLayer.
-5. Row/material unresolved and `d ≥ t/2` → provisional Magenta CIRCLE + FLAG.
-6. Customers 725 / 850 / 859: `d < t/2` without PIERCING → Magenta CIRCLE + FLAG for confirmation (tool applies it with `--customer`). Other customer piercing notes (through / white piercing, PUNCH, MARKING) are printed by `resolve_rules.py`; apply them only to the scoped feature.
+## 2. POINT or CIRCLE (spec hole keys, or `python tools/lookup.py hole --material M --t T --dia D [--piercing] [--through] [--customer C]`)
+You prove per feature family: the effective Ø, `PIERCING` scoped by its leader to that family, and the English `THROUGH HOLE` stamp on it (Japanese `通シ`/`貫通`, `M12通シ` do NOT qualify). The tool decides: PIERCING + THROUGH HOLE → Green POINT ("piasu xanh"); PIERCING → ByLayer POINT (whatever `白ピアス 〇/×` says: machine capability, not intent); `d < t/2` or below the workbook minimum → ByLayer POINT, no FLAG; customers 725 / 850 / 859 `d < t/2` without PIERCING → Magenta + FLAG; unresolved row → Magenta + FLAG; else CIRCLE. Other customer piercing notes (PUNCH, MARKING…) are printed by `resolve_rules.py`; apply them only to the scoped feature.
 - Trace PIERCING by its arrow/leader; a large label elsewhere is not blanket authority. SUS430 uses the SUS/他 rows for hole limits and 白ピアス (SS rows only for Nobi).
 - No circle or Ø/M text around a POINT; list converted POINTs (source Ø/M, centre, reason) in the report.
 

@@ -4,7 +4,7 @@ PDF / image / customer DXF DATA → canonical geometry JSON → verified DXF. `E
 
 ## 12 non-negotiables
 1. **Look yourself.** `tools/pdf_views.py`: grid render, vector `text --dims` for values, 600 dpi crops where witnesses/leaders decide. OCR, filenames, bbox, entity counts are hints, never proof.
-2. **Ledger before arithmetic.** Each used number: `code | view | value | from-node | to-node | datum | kind | crop`. Scanned values read twice. Write the ledger/spec of each code to its file as soon as it is read.
+2. **Ledger before arithmetic.** Each used number: `code | view | value | from-node | to-node | datum | kind | crop` — in the spec that is the witness step with its `ev`; `run_job.py` writes `ledger_<code>.md` from it. Scanned values read twice. Write the spec of each code to its file as soon as it is read.
 3. **UNKNOWN ≠ NO.** NO needs evidence; YES and UNKNOWN load their card (`rules/CENSUS.md`).
 4. **Tables by tool, never by eye:** `tools/lookup.py` (Nobi, Laser R, POINT/CIRCLE, pilot, ID→OD, unfold), `tools/acute_bend.py`, `tools/slit_geometry.py`.
 5. **Always draw, never stop.** Every code drawn; an uncertain item = best source-supported estimate in Magenta + Vietnamese `FLAG:` + status PREVIEW. FLAG only real unknowns. Questions go in the report after the DXF.
@@ -23,7 +23,7 @@ PDF / image / customer DXF DATA → canonical geometry JSON → verified DXF. `E
 | L1 | per code: inspect source, notes census, families YES/NO/UNKNOWN, `job.py census <code>` | `rules/READ_SOURCE.md`, `rules/CENSUS.md` + L1 cards it prints | `census_<code>.json`, `ledger_<code>.md` |
 | L2 | identity, datum, witnesses, faces/bends, lookups, canonical | L2 cards from the resolver | `spec_<code>.yaml` or `job.json` part |
 | L3 | validate, holistic challenge, pair check, export, read-back | `rules/VALIDATE.md`, `rules/OUTPUT.md` | `<JOB>_ALL.dxf` / `<JOB>_ALL_REVIEW_ONLY.dxf` |
-| Report | per-code table, corrections, every FLAG, customer questions, time | `rules/OUTPUT.md` §10 | chat |
+| Report | per-code table, corrections, every FLAG, customer questions, time | `rules/OUTPUT.md` §8 | chat |
 
 One code at a time; keep proved work per code (a failure never forces redoing a proved code). After every code/stage run `job.py set <code> --stage .. --status .. [--flag ..] [--file key=path]`; after a compaction run `job.py status` and continue from the files. A census change → rerun `job.py census`.
 

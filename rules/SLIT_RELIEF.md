@@ -18,21 +18,20 @@ Only from a printed/handwritten `スリット` / `SLIT`. Value, quantity, host e
   - `S = 0` (flush) → slit depth `T + 0.2` from the actual edge.
   - `S < 0` (recessed) → `T + 0.2` from the actual recessed edge (= `|S| + T + 0.2` from the reference).
   - S unproved → `SLIT_RELIEF = UNKNOWN` + local FLAG; never guess.
-  - t=2: S −2 → 2.2 (4.2 from reference); S 0 → 2.2; S +1, +1.5, +2 → none (`tools/slit_geometry.py`: `slit_depth_from_actual_edge(S, T)`).
+  - `python tools/lookup.py slit --material M --t T --S s` gives the decision, depth and lead (t=2: S −2 → 2.2, 4.2 from reference; S 0 → 2.2; S +1…+2 → none).
 - Fold sign changes and overlapping virtual-sharp dashed lines do not prove a physical crossing (521017-17).
-- **Shape:** one Green connected `LINE + ARC R0.5 + LINE` (1 feature, 3 entities). Base B = corner of web edge and flange side line; short ray perpendicular to the bend line, pointing inward (`slit_dir_from_bend`), length `T+0.2`; lead end P = intersection of both edges offset toward the void by `LeadVal` (`lead_end_by_offset`; at 90° a 45° ray of LeadVal per axis, void side away from the flange); tangent arc R0.5. `LeadVal = slit_geometry.lead_val(material, t)` from `data/lead_table.yaml`; hook rows (t≥19) or a t between rows → FLAG `LEAD_VALUE_UNPROVED`, nothing drawn. Construct with `slit_geometry.connected_slit(B, S, D, slit_len)`. Lead is CAD geometry, not NC lead-in. The bend pair only touches B; trim a bend line only on a real interior intersection.
+- **Shape:** one Green connected `LINE + ARC R0.5 + LINE` (1 feature, 3 entities). Base B = corner of web edge and flange side line; short ray perpendicular to the bend line, pointing inward (`slit_dir_from_bend`), length `T+0.2`; lead end P = intersection of both edges offset toward the void by `LeadVal` (`lead_end_by_offset`; at 90° a 45° ray of LeadVal per axis, void side away from the flange); tangent arc R0.5. LeadVal from `data/lead_table.yaml` (`lookup.py slit`); hook rows (t≥19) or a t between rows → FLAG `LEAD_VALUE_UNPROVED`, nothing drawn. The exporter's guard rebuilds the slit with `tools/slit_geometry.py` from the declared edges. Lead is CAD geometry, not NC lead-in. The bend pair only touches B; trim a bend line only on a real interior intersection.
 
 ## 4. >90° bend relief
-`90° < θ < 180°`: depth `D = t·sin θ` (`slit_geometry.slit_depth_gt90`; t3.2: 150° 1.6, 130° 2.4513, 110° 3.0070). Not t/2 in general. Exactly 90° uses §3.
+`90° < θ < 180°`: depth `D = t·sin θ` (`lookup.py slit --angle θ`; t3.2: 130° 2.4513). Not t/2 in general. Exactly 90° uses §3.
 
 ## 5. Two flanges at one corner
-- **Same fold direction** (collide by t): the SHALLOWER flange (depth = OD perpendicular to its own bend line, difference ≥0.1 mm) retreats its end by t; equal depth → either, prefer the longer bend edge. Retreated end `S = −t` → §3 slit; the other end `S = +t` → none. Never retreat the deeper flange (leaves a `khuyết_t` notch). `tools/corner_retreat.py choose_retreat`. Impossible retreat → assemble normally + FLAG.
+- **Same fold direction** (collide by t): the SHALLOWER flange (depth = OD perpendicular to its own bend line, difference ≥0.1 mm) retreats its end by t; equal depth → either, prefer the longer bend edge. Retreated end `S = −t` → §3 slit; the other end `S = +t` → none. Never retreat the deeper flange (leaves a `khuyết_t` notch). `python tools/lookup.py retreat --depth A B [--bend-len LA LB]`. Impossible retreat → assemble normally + FLAG.
 - **Opposite fold directions** with two outer edges that really intersect after closure and both outside dimensions fixed → fixed-outside `R = t` relief at the intersection (055962: t2 → R2). Different directions alone do not trigger it. Fold direction from all three views (solid = toward the viewer, dashed = away).
 
 ## 6. BOXMET (base rectangle L×W + four bent flanges meeting at the corners)
 - Not for ordinary L/U/Z, single flanges or non-crossing bends. Do not omit a required slit because the outline already closes.
-- L ≥ W: bottom/top flaps retreat t, slit bases `(t,0) (L−t,0) (L−t,W) (t,W)`; W > L: right/left retreat, bases `(L,t) (L,W−t) (0,W−t) (0,t)`. Local signs (+X right, +Y up), case A: BL S(0,+1) D(−Lv,−Lv); BR S(0,+1) D(+Lv,−Lv); TR S(0,−1) D(+Lv,+Lv); TL S(0,−1) D(−Lv,+Lv); case B: BR S(−1,0) D(+Lv,−Lv); TR S(−1,0) D(+Lv,+Lv); TL S(+1,0) D(−Lv,+Lv); BL S(+1,0) D(−Lv,−Lv). SlitLen `t+0.2`, R0.5, Green, Layer 0.
-- Generator: `python tools/boxmet_job.py --code 26-XXXXXX --L .. --W .. --H h1 h2 h3 h4 --T t --material M --N nobi --out job.json` then `export_canonical_dxf.py`. N is an input (handwritten > customer > table). Corners drawn rounded/chamfered without callout → refused (`BOXMET_CORNER_DRAWN_SHAPE_NOT_SHARP_FLAG`).
+- Generator (retreat side, slit bases and signs, t+0.2, R0.5, Green): `python tools/boxmet_job.py --code 26-XXXXXX --L .. --W .. --H h1 h2 h3 h4 --T t --material M --N nobi --job-id <JOB> --out box.job.json`, then into `run_job.py` with the other codes. N is an input (handwritten > customer > table). Corners drawn rounded/chamfered without callout → refused (`BOXMET_CORNER_DRAWN_SHAPE_NOT_SHARP_FLAG`).
 - Bend lines are interrupted only where the slit truly crosses their interior; endpoint contact keeps them continuous.
 
 ## 7. Check
