@@ -164,7 +164,7 @@ def test_non851_does_not_invent_weld_kegaki_for_self_locating_child():
 
 
 def test_router_blocks_kh851_kegaki_no_and_requires_census():
-    router = yaml.safe_load((ROOT / "skills/lispcad/router/ROUTER.yaml").read_text(encoding="utf-8"))
+    router = yaml.safe_load((ROOT / "rules/ROUTER.yaml").read_text(encoding="utf-8"))
     census = {
         "part_code": "059685", "customer_code": "851",
         "source_mode": "PDF_ONLY", "part_mode": "FLAT_NO_BEND",
@@ -184,7 +184,7 @@ def test_router_blocks_kh851_kegaki_no_and_requires_census():
     census["features"]["KEGAKI"]["state"] = "UNKNOWN"
     result = resolve_rules(census)
     assert "KEGAKI" in result["selected_features"]
-    assert "skills/lispcad/features/KEGAKI.md" in result["rule_paths"]
+    assert "rules/KEGAKI.md" in result["rule_paths"]
 
 
 def test_canonical_saved_dxf_marks_read_back_with_entity_ids(tmp_path):

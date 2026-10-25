@@ -1,4 +1,4 @@
-"""Lead value (vòi dẫn) from workbook column G via references/LEAD_TABLE.yaml (user-approved 2026-10-21)."""
+"""Lead value (vòi dẫn) from workbook column G via data/lead_table.yaml (user-approved 2026-10-21)."""
 import sys
 from pathlib import Path
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Deterministically resolve the approved TrainAiCad rule set from a complete census.
+"""Census -> the rule cards to read, per stage (rules/ROUTER.yaml), plus the customer's notes.
 
-Does not interpret source drawings, evaluate engineering evidence, or run CAD/QA.
+Does not interpret drawings or run CAD/QA: the census is your reading of the source.
 """
 from __future__ import annotations
 
@@ -15,19 +15,10 @@ import yaml
 from weld_kegaki_guard import WeldKegakiError, check_weld_site_census
 
 ROOT = Path(__file__).resolve().parents[1]
-ROUTER = "skills/lispcad/router/ROUTER.yaml"
-BOOTSTRAP = (
-    "JOB_CARD.md",
-    "AI_ENTRYPOINT.md",
-    "skills/lispcad/router/FEATURE_CENSUS.md",
-    ROUTER,
-)
-FORBIDDEN = (
-    "skills/lispcad/versions/",
-    "skills/lispcad/portable/",
-    "docs/history/",
-    "regression/",
-)
+ROUTER = "rules/ROUTER.yaml"
+BOOTSTRAP = ("JOB_CARD.md",)
+CATALOG = "data/customers.yaml"
+FORBIDDEN = ("regression/", "tests/")
 STATES = {"YES", "NO", "UNKNOWN"}
 
 
@@ -88,7 +79,7 @@ def resolve_rules(census: dict, root: Path = ROOT, router: dict | None = None) -
     else:
         customer_code = str(int(str(code_raw).strip()))
     catalog_path = router.get("customer_rule_catalog")
-    if catalog_path != "references/CUSTOMER_CAD_RULES.yaml":
+    if catalog_path != CATALOG:
         raise ResolutionError("Unapproved customer rule catalog path")
     catalog = yaml.safe_load((root / catalog_path).read_text(encoding="utf-8"))
     if not isinstance(catalog, dict) or catalog.get("scope") != "CAD_ONLY":
@@ -181,8 +172,6 @@ def resolve_rules(census: dict, root: Path = ROOT, router: dict | None = None) -
     current_stage = stages[2]
     add_group("stage_routes", current_stage)
     add_group("mode_routes", part_mode)
-    if customer_code in (router.get("customer_routes") or {}) and part_mode in ("BEND", "MULTI_FACE", "UNKNOWN"):
-        add_group("customer_routes", customer_code)
 
     visited: set[str] = set()
     aliases = router.get("dependency_aliases", {})
@@ -210,11 +199,9 @@ def resolve_rules(census: dict, root: Path = ROOT, router: dict | None = None) -
             selected.append(name)
             visit(name)
 
-    # A sample can coexist with PDF_ONLY or PDF_DATA_RAW. Unknown requires
-    # firewall preloading, not an unsafe assumption of no reference.
+    # A sample can coexist with PDF_ONLY or PDF_DATA_RAW; UNKNOWN keeps the
+    # reference card (conditional_default_load in L1).
     ref_presence = _state(census.get("reference_present", "UNKNOWN"), "reference_present")
-    if ref_presence != "NO":
-        add_path("references/REFERENCE_EXPOSURE_FIREWALL.md")
 
     current_stage = stages[3]
     add_group("stage_routes", current_stage)
@@ -233,14 +220,14 @@ def resolve_rules(census: dict, root: Path = ROOT, router: dict | None = None) -
         "stage_plans": stage_plans,
         "rule_paths": result,
         "new_bytes_total": sum(stage_plans[k]["new_bytes"] for k in stages),
-        "post_route_checks": list(router["post_route_checks"]),
-        "note": "Read mandatory stages in order and execute all gates; routing alone does not establish CAD PASS.",
+        "note": "Read each stage's cards when that stage starts (re-read JOB_CARD.md first); routing is not PASS.",
     }
 
 def census_template(root: Path = ROOT) -> dict:
     """Fail-safe census skeleton: every family UNKNOWN until evidence says NO."""
     router = yaml.safe_load((Path(root) / ROUTER).read_text(encoding="utf-8"))
     return {
+        "part_code": "SLIP_WORK_NO",
         "source_mode": "UNKNOWN_SET_ME",
         "part_mode": "UNKNOWN",
         "reference_present": "UNKNOWN",

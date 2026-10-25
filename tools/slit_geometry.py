@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bend-end slit decision (BEND_END_OFFSET_90) and BOXMET connected LINE+ARC+LINE construction.
 
-Pure geometry; no I/O. See references/BEND_EDGE_RELIEF_90.md and BOXMET_SLIT_RELIEF.md.
+Pure geometry; no I/O. See rules/SLIT_RELIEF.md.
 """
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ class LeadValueUnproved(ValueError):
 def _lead_rows(group):
     import yaml
     from pathlib import Path
-    cfg = yaml.safe_load((Path(__file__).resolve().parents[1] / "references" / "LEAD_TABLE.yaml").read_text(encoding="utf-8"))
+    cfg = yaml.safe_load((Path(__file__).resolve().parents[1] / "data" / "lead_table.yaml").read_text(encoding="utf-8"))
     return cfg["groups"].get(group)
 
 
@@ -71,7 +71,7 @@ def _in_row(row, t):
 
 
 def lead_val(material: str, T: float) -> float:
-    """Slit lead value (offset of both meeting edges) from references/LEAD_TABLE.yaml (workbook column G).
+    """Slit lead value (offset of both meeting edges) from data/lead_table.yaml (workbook column G).
 
     Raises LeadValueUnproved (code LEAD_VALUE_UNPROVED:...) for an unresolved material, a thickness that falls in a
     gap between rows, a missing row (e.g. Cu/Brass t>6) or the hook rows (t>=19): these are FLAGGED, not guessed.

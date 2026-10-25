@@ -127,7 +127,7 @@ def pairs(path: str, page_no: int, dist_pt: float = 25.0, out_dir: str | None = 
     """Dimension values of the same direction whose labels sit close together (e.g. 70 / 65).
 
     Such pairs are where witness lines are most easily swapped: crop each one at >=900 dpi and
-    decide which edge every extension line touches before drawing (DRAWING_READING.md).
+    decide which edge every extension line touches before drawing (rules/READ_SOURCE.md).
     """
     _need()
     page = fitz.open(path)[page_no - 1]

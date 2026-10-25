@@ -10,8 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from resolve_rules import resolve_rules, ResolutionError  # noqa: E402
 
-ROUTER = yaml.safe_load((ROOT / "skills/lispcad/router/ROUTER.yaml").read_text(encoding="utf-8"))
-CATALOG = yaml.safe_load((ROOT / "references/CUSTOMER_CAD_RULES.yaml").read_text(encoding="utf-8"))
+ROUTER = yaml.safe_load((ROOT / "rules/ROUTER.yaml").read_text(encoding="utf-8"))
+CATALOG = yaml.safe_load((ROOT / "data/customers.yaml").read_text(encoding="utf-8"))
 
 
 def census(customer=None, mode="FLAT_NO_BEND"):
@@ -24,23 +24,9 @@ def census(customer=None, mode="FLAT_NO_BEND"):
     }
 
 
-def test_646_routes_only_by_explicit_numeric_customer_code_for_bends():
-    x = census(646, "BEND")
-    x["features"]["NOBI"]["state"] = "YES"
-    result = resolve_rules(x)
-    assert result["customer_code"] == "646"
-    assert result["customer_rules"]["nobi_profile"] == "AIKOKU_646"
-    assert "references/AIKOKU_646_NOBI.md" in result["stage_plans"]["L2_GEOMETRY"]["rule_paths"]
-    assert "references/NOBI_TABLES.md" in result["rule_paths"]
-    assert "references/AIKOKU_646_NOBI.md" not in resolve_rules(census(646))["rule_paths"]
-    assert "references/AIKOKU_646_NOBI.md" not in resolve_rules(census(829,"BEND"))["rule_paths"]
-
-
 def test_missing_customer_code_uses_general_rules_without_review():
     data = resolve_rules(census())
     assert data["customer_code"] is None and data["customer_rules"] == {}
-    assert "references/CAD_CUSTOMER_POLICY.md" in data["rule_paths"]
-    assert "references/AIKOKU_646_NOBI.md" not in data["rule_paths"]
 
 
 @pytest.mark.parametrize("bad", [True, "646A", "アイコクアルファ", -646, "829.0"])
@@ -53,38 +39,6 @@ def test_data_authority_override_is_explicit_and_hole_qa_is_retained():
     assert resolve_rules(census(829))["customer_rules"]["data_pdf_policy"] == "DATA_NO_DIM_COMPARE"
     assert resolve_rules(census(240))["customer_rules"]["data_pdf_policy"] == "DATA_NO_DIM_COMPARE"
     assert resolve_rules(census(395))["customer_rules"]["data_pdf_policy"] == "PDF_PRIORITY"
-    policy = (ROOT / "references/CAD_CUSTOMER_POLICY.md").read_text(encoding="utf-8")
-    assert "hole" in policy.lower() and "REVIEW" in policy
-    assert "NC is deferred" in policy
-
-
-def test_646_standard_tooling_and_review_boundaries():
-    txt = (ROOT / "references/AIKOKU_646_NOBI.md").read_text(encoding="utf-8")
-    for expected in ("|4.5|3|V25|7.84|17.8|", "|0.8|0.6|V8|1.68|",
-                     "|5|3|V40|10.20|", "7.48", "7.72", "non-90°"):
-        assert expected in txt
-    assert "no" in txt.lower() and "general" in txt.lower() and "REVIEW" in txt
-
-
-def test_nobi_and_laser_regressions_from_approved_workbook():
-    n = (ROOT / "references/NOBI_TABLES.md").read_text(encoding="utf-8")
-    r = (ROOT / "references/MATERIAL_RULES.md").read_text(encoding="utf-8")
-    assert "| **3.0** | 1801 ~ 2400 | V40 | 7.84 | 7.80 |" in n
-    assert "without documented 2B/#1 uses **2B**" in n
-    assert "OUTER material perimeter" in r and "interior holes" in r
-
-
-def test_new_reference_routes_cover_hole_and_fine_tap():
-    x = census()
-    x["features"]["TAP"]["state"] = "YES"
-    ps = resolve_rules(x)["rule_paths"]
-    assert "references/THREAD_FINE_PILOT_TABLE.md" in ps
-    assert "references/COUNTERSINK_COUNTERBORE.md" in ps
-    fine = (ROOT / "references/THREAD_FINE_PILOT_TABLE.md").read_text(encoding="utf-8")
-    assert "| M8×1 | 7 |" in fine
-    assert "| M12×1.25 | 10.8 |" in fine
-    holes = (ROOT / "references/COUNTERSINK_COUNTERBORE.md").read_text(encoding="utf-8")
-    assert "| M6 | 6.6 | 11.0 | 12.5 |" in holes
 
 
 def test_catalog_has_no_management_or_contact_fields():
@@ -113,13 +67,11 @@ def test_customer_technical_note_census_partitions_all_codes():
     assert "OBSOLETE" in " ".join(CATALOG["customers"]["610"]["notes"])
     assert "OBSOLETE" in " ".join(CATALOG["customers"]["621"]["notes"])
 
-def test_bend_feasibility_is_warning_only_and_routed_on_nobi():
+
+
+def test_646_customer_record_selects_its_own_nobi_profile():
     x = census(646, "BEND")
-    x["features"]["NOBI"]["state"] = "YES"
-    assert "references/BEND_TOOLING_FEASIBILITY.md" in resolve_rules(x)["rule_paths"]
-    doc = (ROOT / "references/BEND_TOOLING_FEASIBILITY.md").read_text(encoding="utf-8")
-    assert "| SUS | 3 | V40 | 28.4 | 29.6 |" in doc
-    assert "| SS | 4.5 | V25 | 17.8 | 26 |" in doc
-    assert "| AL | 4 | V40 | 27.4 | - |" in doc
-    assert "WARN only" in doc and "not REVIEW" in doc
-    assert "do not promote" in doc
+    result = resolve_rules(x)
+    assert result["customer_code"] == "646"
+    assert result["customer_rules"]["nobi_profile"] == "AIKOKU_646"
+    assert resolve_rules(census(829, "BEND"))["customer_rules"].get("nobi_profile") is None

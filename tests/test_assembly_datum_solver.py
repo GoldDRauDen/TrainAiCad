@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-FIXTURE = ROOT / "regression/datum/521013-04_059636_assembly_graph.json"
+FIXTURE = ROOT / "regression/fixtures/521013-04_059636_assembly_graph.json"
 
 
 def solver():

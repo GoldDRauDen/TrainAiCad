@@ -34,11 +34,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from material_resolver import MaterialResolveError, resolve_material  # noqa: E402
 
-NOBI_MD = ROOT / "references" / "NOBI_TABLES.md"
-KH646_MD = ROOT / "references" / "AIKOKU_646_NOBI.md"
-MATERIAL_MD = ROOT / "references" / "MATERIAL_RULES.md"
-PILOT_MD = ROOT / "references" / "THREAD_PILOT_TABLE.md"
-FINE_MD = ROOT / "references" / "THREAD_FINE_PILOT_TABLE.md"
+NOBI_MD = ROOT / "data" / "nobi_tables.md"
+KH646_MD = ROOT / "data" / "nobi_kh646.md"
+MATERIAL_MD = ROOT / "data" / "material_rules.md"
+PILOT_MD = ROOT / "data" / "thread_pilot.md"
+FINE_MD = ROOT / "data" / "thread_fine_pilot.md"
 
 SPLIT_FLANGE = "SPLIT_FLANGE_10MM"
 ANGLE_TOL = 0.5  # degrees; a bend is "90°" only within this tolerance
@@ -50,7 +50,7 @@ class LookupError_(ValueError):
 
 
 def r2(value: float) -> float:
-    """Ordinary half-up rounding to 0.01 mm (BEND_UNFOLD.md ID->OD rule)."""
+    """Ordinary half-up rounding to 0.01 mm (rules/BEND.md ID->OD rule)."""
     return float(Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
 
@@ -80,7 +80,7 @@ def _bracket(cell: str, prev_hi: float):
 
 @lru_cache(maxsize=1)
 def nobi_tables() -> dict:
-    """Parse NOBI_TABLES.md into {group: [row,...]}."""
+    """Parse data/nobi_tables.md into {group: [row,...]}."""
     groups: dict[str, list] = {}
     current = None
     names = {"1.": "SS_SUS430_BRASS", "2.": "SUS", "3.": "AL", "4.": "CU"}
@@ -168,7 +168,7 @@ def _nobi_group(material: str) -> str:
 def nobi(material: str, t: float, L: float, angle: float = 90.0,
          surface: str | None = None, handwritten: float | None = None,
          j_symbol: bool = True, customer_code: str | None = None) -> dict:
-    """Nobi decision per BEND_UNFOLD.md §4.7 (approved 2026-10-21)."""
+    """Nobi decision per rules/BEND.md §6 (approved 2026-10-21)."""
     base = {"material": material, "t": t, "L": L, "angle": angle}
     if handwritten is not None:
         return {"status": "OK", "nobi": handwritten, "source": "HANDWRITTEN", **base}
@@ -257,7 +257,7 @@ def _laser_group(material: str) -> str:
 
 
 def _material_row(group: str, t: float):
-    """MATERIAL_RULES.md 'Approved lookup algorithm' steps 2–3."""
+    """Workbook row for t: containing range (narrowest), else next higher row; no interpolation."""
     rows = [r for r in material_rows() if r["group"] == group]
     spans = []
     prev_hi = 0.0
@@ -323,7 +323,7 @@ def _min_hole(group: str, t: float):
 
 
 def hole(material: str, t: float, dia: float, piercing: bool = False, through: bool = False) -> dict:
-    """POINT vs CIRCLE per MATERIAL_RULES.md step 6–7."""
+    """POINT vs CIRCLE per rules/HOLE_TAP.md §2."""
     base = {"material": material, "t": t, "dia": dia}
     if piercing and through:
         return {"status": "OK", "entity": "POINT", "color": 3, "reason": "PIERCING+THROUGH", **base}
@@ -383,7 +383,7 @@ def idod(t: float, angle: float) -> dict:
     out = {"t": t, "angle": angle}
     if angle <= 85 + EPS:
         out.update(status="FLAG", action="USE_ACUTE_BEND_LT85",
-                   reason="ACUTE_BEND_LT85", flag_vi="Góc ≤85°: dựng bán kính thật theo ACUTE_BEND_LT85_FROM_SOURCE")
+                   reason="ACUTE_BEND_LT85", flag_vi="Góc ≤85°: dựng bán kính thật theo rules/BEND_ACUTE.md (tools/acute_bend.py)")
         return out
     raw = t * math.tan(math.radians((180.0 - angle) / 2.0))
     out.update(status="OK", offset_raw=raw, offset=r2(raw), rule="OD = ID + offset (offset rounded 0.01 first)")

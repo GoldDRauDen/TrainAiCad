@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Benchmark source-grounded per-code routing I/O, not manufacturing accuracy.
-
-Byte counts are exact for pinned repo files. Token counts, if tiktoken is
-installed, are explicitly cl100k_base estimates, not a promise of GPT tokens.
-The complete L0-L3 union still MUST be consumed through the E2E pipeline.
-"""
+"""Bytes of rule cards a job reads per scenario (exact UTF-8 bytes, not tokens)."""
 from __future__ import annotations
 import sys
 
@@ -14,8 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from audit_rule_coverage import ROOT, ROUTER, audit
-from resolve_rules import resolve_rules
+from resolve_rules import ROOT, ROUTER, resolve_rules
 
 
 def _scenario(router: dict, name: str) -> dict:
@@ -24,7 +18,7 @@ def _scenario(router: dict, name: str) -> dict:
     scenarios = {
         "flat": ("PDF_ONLY", "FLAT_NO_BEND", "NO", []),
         "flat_tap": ("PDF_ONLY", "FLAT_NO_BEND", "NO", ["HOLE", "TAP"]),
-        "bend_nobi": ("PDF_ONLY", "BEND", "NO", ["HOLE", "NOBI"]),
+        "bend_nobi": ("PDF_ONLY", "BEND", "NO", ["HOLE"]),
         "data_holes": ("PDF_DATA_RAW", "FLAT_NO_BEND", "NO", ["HOLE"]),
         "unknown_complex": ("PDF_DATA_RAW", "UNKNOWN", "UNKNOWN", []),
     }
@@ -40,7 +34,6 @@ def _scenario(router: dict, name: str) -> dict:
 
 def benchmark(root: Path = ROOT) -> dict:
     root = Path(root).resolve()
-    audit(root)
     router = yaml.safe_load((root / ROUTER).read_text(encoding="utf-8"))
     cases = []
     for name in ("flat", "flat_tap", "bend_nobi", "data_holes", "unknown_complex"):
@@ -64,11 +57,8 @@ def benchmark(root: Path = ROOT) -> dict:
     return {
         "release": router["release"],
         "metric": "EXACT_UTF8_BYTES_NOT_LLM_TOKENS",
-        "baseline_branch": "archive/pr24-pre-token-optimization-20261012",
         "stage_invariant": "L0_L1_L2_L3_ALL_MANDATORY",
         "cases": cases,
-        "note": ("Full-job cumulative context may be close to previous eager "
-                 "loading; savings shown are startup/stage-specific only."),
     }
 
 

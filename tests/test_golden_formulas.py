@@ -74,7 +74,7 @@ def test_slit_depth_above_90_rejects_90():
 
 
 def test_acute_bend_fixture_reproduces_approved_od():
-    fixture = ROOT / "regression/assets/acute_bend_lt85/ACUTE_BEND_LT85_SOURCE_FIXTURE.dxf"
+    fixture = ROOT / "regression/fixtures/acute_bend_lt85/ACUTE_BEND_LT85_SOURCE_FIXTURE.dxf"
     r = acute_bend.solve_fixture(fixture)
     assert r["t"] == pytest.approx(3.0)
     assert r["angle_deg"] == pytest.approx(75.0)

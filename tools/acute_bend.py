@@ -2,12 +2,12 @@
 """Acute bend (included angle <=85 deg): outside-envelope OD from the real bend radius.
 
     python tools/acute_bend.py od --t 3 --angle 75 --rin 0.6 --inside 179.2 49.5
-    python tools/acute_bend.py fixture regression/assets/acute_bend_lt85/ACUTE_BEND_LT85_SOURCE_FIXTURE.dxf
+    python tools/acute_bend.py fixture regression/fixtures/acute_bend_lt85/ACUTE_BEND_LT85_SOURCE_FIXTURE.dxf
 
 `--inside a1 a2`: each face's inside-surface length from its free edge to the theoretical
 sharp inside corner. OD_i = a_i - Rin/tan(angle/2) + Rin + t (centre of the Rin arc, then the
 outside envelope; never the sharp intersection). Nobi is applied afterwards:
-L_flat = OD1 + OD2 - Nobi. Rule: references/ACUTE_BEND_LT85_FROM_SOURCE.md.
+L_flat = OD1 + OD2 - Nobi. Rule: rules/BEND_ACUTE.md.
 """
 from __future__ import annotations
 

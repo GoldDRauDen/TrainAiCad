@@ -15,7 +15,7 @@ from export_canonical_dxf import export_canonical_job
 from holistic_engineering_guard import canonical_job_anomalies
 from slit_geometry import connected_slit, slit_depth_from_actual_edge
 
-FIXTURE = ROOT / "regression/bend/521017-17_061099_positive_step.json"
+FIXTURE = ROOT / "regression/fixtures/521017-17_061099_positive_step.json"
 
 
 def job():

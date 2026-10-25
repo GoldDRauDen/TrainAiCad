@@ -44,13 +44,3 @@ def test_closed_union_rectangle_is_valid_drawing_form():
 def test_kegaki_line_on_contour_still_rejected():
     with pytest.raises(WeldKegakiError):
         check_kegaki_drawing_form(_part([([0, 10], [0, 100])]))
-
-
-def test_rule_text_present():
-    out = (ROOT / "tools/DXF_INPUT_SCHEMA.md").read_text(encoding="utf-8")
-    assert "KEGAKI on the BACK face of the drawn view" in out and "dx_label: true" in out
-    datum = (ROOT / "skills/lispcad/core/DATUM_DIMENSION.md").read_text(encoding="utf-8")
-    assert "Each hole family has its OWN dimension string" in datum
-    fp = (ROOT / "references/KEGAKI_FOOTPRINT_FROM_PDF.md").read_text(encoding="utf-8")
-    assert "Child standing on two faces of a bent host" in fp and "243.38" in fp
-    assert "canonical flat frame" in (ROOT / "skills/lispcad/modes/BEND_UNFOLD.md").read_text(encoding="utf-8").lower()

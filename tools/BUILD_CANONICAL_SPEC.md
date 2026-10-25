@@ -2,7 +2,7 @@
 
 `python tools/run_job.py spec.yaml OUT/` = `build_canonical.py` → `export_canonical_dxf.py` → reopen/verify → §11 table.
 Example: `examples/flat_minimal.yaml` (its generated `examples/flat_minimal.job.json` is kept in sync by a test).
-Bent parts stay on the BEND_UNFOLD route; this tool refuses `bends`.
+Bent parts follow `rules/BEND.md` (canonical JSON + `export_canonical_dxf.py`); this tool refuses `bends`.
 
 ## Part
 | key | meaning |
@@ -13,7 +13,7 @@ Bent parts stay on the BEND_UNFOLD route; this tool refuses `bends`.
 | `envelope: [Ox, Oy]` | overall drawing/slip size; the nominal outline bbox must match (±0.5, `envelope_tol`) |
 | `outline` | corners **counter-clockwise**; items below |
 | `holes`, `slots` | features with their dimension chains |
-| `flags` | Vietnamese FLAG lines → status PREVIEW, outline Magenta (only for a real unknown, `REVIEW_PREVIEW_POLICY.md`) |
+| `flags` | Vietnamese FLAG lines → status PREVIEW, outline Magenta (only for a real unknown, `rules/OUTPUT.md` §5) |
 | `jlj_edge` | `auto` (default) / `top` / `bottom` |
 
 ## Outline items
@@ -28,5 +28,5 @@ Bent parts stay on the BEND_UNFOLD route; this tool refuses `bends`.
 
 ## What the tool proves (checks it sets PASS)
 contour_topology (closed, CCW, no self-intersection), datum (envelope + every witness chain), feature_count (group closure), containment (full boundary), material_rules (lookup). unfold/bend_domain N/A; slot_semantics PASS only with slots.
-J/LJ: on the long straight edge (CAD_OUTPUT.md); if the max-Y edge is notched/sloped and the min-Y edge is straight the part is rotated 180° (`canonical_rotation_deg`).
+J/LJ: on the long straight edge (`rules/OUTPUT.md` §4); if the max-Y edge is notched/sloped and the min-Y edge is straight the part is rotated 180° (`canonical_rotation_deg`).
 Check the shape against the drawing with `tools/overlay_check.py` (≥3 anchors, residual ≤1 mm).

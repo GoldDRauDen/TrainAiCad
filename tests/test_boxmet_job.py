@@ -15,7 +15,7 @@ from canonical_contract import CanonicalContractError
 from export_canonical_dxf import export_canonical_job
 from holistic_engineering_guard import canonical_job_anomalies
 
-REF = json.loads((ROOT / "regression/boxmet/MM_L200_W150_H30_T1.5_N2.54.json").read_text(encoding="utf-8"))
+REF = json.loads((ROOT / "regression/fixtures/boxmet_MM_L200_W150_H30_T1.5_N2.54.json").read_text(encoding="utf-8"))
 r4 = lambda p: (round(p[0], 4), round(p[1], 4))
 
 

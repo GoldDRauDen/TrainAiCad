@@ -8,7 +8,7 @@ import re
 import unicodedata
 import yaml
 
-_SOURCE = Path(__file__).resolve().parents[1] / "references" / "MATERIAL_ALIASES.yaml"
+_SOURCE = Path(__file__).resolve().parents[1] / "data" / "material_aliases.yaml"
 _PROCESSES = {"LASER_R", "CUT_HOLE", "WHITE_PIERCING", "NOBI"}
 
 

@@ -6,7 +6,7 @@
 * builds the canonical job with tools/build_canonical.py (spec: tools/BUILD_CANONICAL_SPEC.md);
 * exports with tools/export_canonical_dxf.py (all saved-file gates, XDATA read-back);
 * reopens the saved DXF and checks per code: closed outline chain, hole count, entity count;
-* prints the CAD_OUTPUT.md section-11 table (Vietnamese) with every FLAG and the run time.
+* prints the rules/OUTPUT.md section-10 table (Vietnamese) with every FLAG and the run time.
 
 OUT receives only the DXF deliverable; job.json and report.md go to WORKDIR (default: spec folder).
 """

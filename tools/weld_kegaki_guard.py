@@ -143,7 +143,7 @@ def check_kegaki_drawing_form(part: dict) -> None:
     """KEGAKI LINEs: no duplicated/overlapping segment, none on the contour.
 
     A KEGAKI boundary that coincides with a part edge is not drawn, and
-    adjacent contact zones are drawn as one UNION outline (KEGAKI_FOOTPRINT_FROM_PDF).
+    adjacent contact zones are drawn as one UNION outline (rules/KEGAKI.md section 4).
     """
     code = part["code"]
     lines = [e for e in part.get("entities", [])

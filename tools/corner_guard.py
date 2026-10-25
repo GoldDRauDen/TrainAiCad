@@ -3,7 +3,7 @@
 User-approved 2026-10-20: a corner that the drawing shows with an R/C shape but that has no
 R/C callout is NOT silently rounded by the material table; it is FLAGGED locally (the flat
 keeps the drawn corner as preview geometry or no geometry) until the callout is resolved.
-Automatic material R (MATERIAL_AUTO_R, references/MATERIAL_RULES.md) applies only to corners the
+Automatic material R (MATERIAL_AUTO_R, data/material_rules.md) applies only to corners the
 drawing shows SHARP and that no callout covers.
 
 Inventory (optional for legacy jobs; REQUIRED as soon as any MATERIAL_AUTO_R member exists):
