@@ -1,24 +1,21 @@
 # DATA_DXF — customer DXF DATA (source class PDF_DATA_RAW; also any DXF used as evidence)
 
-DATA = physical geometry and provenance. PDF = code, material, t, view/face meaning, witnesses, scale, revisions, Nobi, manufacturing semantics. Never redraw existing DATA from PDF numbers, bbox or screenshots.
+DATA = physical geometry and provenance. PDF = code, material, t, view/face meaning, witnesses, scale, revisions, Nobi, manufacturing semantics. Never redraw or retype DATA from PDF numbers, bbox or screenshots.
 
-## 1. Decode before anything
-Every POLYLINE/LWPOLYLINE segment uses its START vertex bulge: `b = 0` LINE; `b ≠ 0` ARC (`θ = 4·atan b`, `R = c(1+b²)/(4|b|)`); closed polylines include the last→first segment; INSERT/blocks via their transform. ezdxf `virtual_entities()` gives exact pieces. Equal X/Y vertex offsets with a bulge are an R, not a C (`|b| = 0.41421356` = quarter circle). Unsupported curve → UNKNOWN/FLAG, never flattened. Unaccounted bulge → no PASS.
+## 1. Decode, pick, assemble (tools do the numbers)
+1. `python tools/dxf_digest.py data.dxf --out digest.json --png v.png`: every primitive decoded (bulge from the START vertex, closed last→first, INSERT transforms, ELLIPSE/SPLINE listed UNKNOWN, never flattened) with an id and one home (view / `B_*` bucket). Customer DATA is usually a whole sheet (frame, title block, views, iso, exploded text; KH646 is always a CATIA sheet). Layer/colour/linetype are hints only.
+2. You classify: which view is the part, which pieces are `PHYSICAL_CUT_OR_FACE_EDGE`, holes/slots/features, bend support, thickness lines (prove faces, never CUT), hidden/projection, dimension/construction, duplicates. Prove scale/rotation/mirror per view from the PDF (a 1:2 view → ×2).
+3. `python tools/dxf_assemble.py digest.json plan.json --out assembled.json`: copies the numbers, changes only layer/colour/linetype + your proved rigid transform, needs a reason for every excluded piece and re-checks the result against the source both ways.
+4. Flat part: a spec part with `data: assembled.json` + `members:` (the PDF meaning of each member: `ev`, `group`/`qty`, `thread`, `pdf_d`, `piercing`) → `tools/run_job.py` (`tools/BUILD_CANONICAL_SPEC.md` §DATA). The tool adds Laser R on sharp DATA corners, tap pilots, POINT/CIRCLE, the DATA/PDF gate and the `manufacturing_change_ledger`. Bent DATA parts are still canonical JSON by hand: Nobi moves faces, never rebuilds them.
 
-Customer DATA is usually a whole drawing sheet (frame, title block, several views, iso, exploded dimensions/text; KH646 is always a CATIA sheet). `python tools/dxf_digest.py data.dxf --out digest.json [--png v.png]` decodes everything and gives every primitive an id and one home (view / `B_*` bucket, nothing dropped); layer, colour and linetype are hints only. Pick views by id, prove scale/rotation/mirror per view, then `python tools/dxf_assemble.py digest.json plan.json --out assembled.json`: it copies the numbers, changes only layer/colour/linetype, demands a reason for every excluded piece, and re-checks the result against the source both ways. Never retype DATA coordinates.
+## 2. Same parameter, then change
+- Compare a PDF value with DATA only for the same physical parameter (code, group, face, both witnesses, inside/outside). General `Δ < 0.1` keeps DATA, `Δ ≥ 0.1` → `DATA_PDF_DIM_DIFF` (exactly 0.1 flags); the threshold and `data_pdf_policy` per customer are in `data/customers.yaml` and applied by the tool (`pdf_d`, `envelope`). A pass never snaps DATA to the PDF nominal. No policy waives hole count/type/M/Ø/position, topology, revisions or read-back.
+- Allowed changes only by a routed rule with proved scope (mid-tolerance, M pilot, explicit R/C, Laser R, Nobi placement), each a ledger row: member, old, new, rule, gate.
+- Taps: the concentric nominal ring is excluded as `TAP_NOMINAL_RING`; one pilot per tap (`HOLE_TAP.md` §1). Ring role ambiguous → FLAG, never choose by size.
 
-## 2. Harvest and classify (RAW_DATA_SNAPSHOT, frozen)
-Every relevant primitive gets a role: `PHYSICAL_CUT_OR_FACE_EDGE`, `PHYSICAL_HOLE_SLOT_OR_FEATURE`, `BEND_SUPPORT`, `THICKNESS_REPRESENTATION`, `HIDDEN_OR_PROJECTION_ONLY`, `DIMENSION_HELPER_OR_CONSTRUCTION`, `DUPLICATE_COINCIDENT`. Thickness side lines prove faces, never CUT. Exclude title blocks/text/helpers only after classification. Prove the scale per page/view (a 1:2 view → ×2); assemble faces only by proved translation/rotation/reflection/uniform scale; Nobi moves faces, never rebuilds them.
-
-## 3. Same parameter, then change
-- Compare a PDF value with DATA only for the same physical parameter. General: `Δ < 0.1` pass, `Δ ≥ 0.1` → `DATA_PDF_DIM_DIFF` (exactly 0.1 flags). KH433: 1.0 instead. A pass never snaps DATA to the PDF nominal; a fail preserves DATA + FLAG.
-- Customer policies (from `data/customers.yaml`): `DATA_NO_DIM_COMPARE` skips only the numeric gate; `PDF_PRIORITY` lets the PDF control the conflicting parameter; `CONFIRM_CONFLICT` → local REVIEW. None waives hole count/type/M/Ø/position, topology, revisions or read-back.
-- Allowed changes only by a routed rule with proved scope (mid-tolerance, M pilot, explicit R/C, Laser R, Nobi placement); each in a `MANUFACTURING_CHANGE_LEDGER` row: source members, host face, old value, gate status, rule, changed scope, new geometry.
-- Taps: nominal ring is non-cut, one pilot (`HOLE_TAP.md` §1). Sharp DATA corner + eligible Laser R → local tangent arc (`CORNER_RC.md` §3).
-
-## 4. Invariance and completeness
-- `UNTOUCHED_DATA_INVARIANCE_CHECK`: everything outside the changed scopes is physically identical after canonical AND saved-DXF read-back (endpoints, centres, radii, sweeps). The 0.1 threshold is not a redraw tolerance. LINE/ARC vs exact bulged polyline is equivalent; entity counts and OVERKILL prove nothing.
-- Both directions: every active physical source curve/family is in canonical (or logged/cancelled), and every manufacturing output maps to DATA or a logged change. Family closure: value, qty, host, source/canonical/serialized members.
+## 3. Invariance and completeness
+- Outside the changed scopes the result is physically identical to DATA after canonical AND saved-DXF read-back (`dxf_assemble` checks both directions; the 0.1 threshold is not a redraw tolerance). LINE/ARC vs exact bulged polyline is equivalent; entity counts and OVERKILL prove nothing.
+- Every active physical source curve/family is in canonical (or excluded with a reason), every output maps to DATA or a ledger row.
 - VIEWS_ONLY only after every DATA view/face/primitive was harvested and every face-graph candidate tried.
 - Reference/audit only: normalise exact duplicate entities for counting, report `REFERENCE_ANOMALY`.
 

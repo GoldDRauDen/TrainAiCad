@@ -46,7 +46,8 @@ def test_catalog_has_no_management_or_contact_fields():
     assert len(CATALOG["customers"]) >= 20
     for code, record in CATALOG["customers"].items():
         assert re.fullmatch(r"[0-9]+", code)
-        assert set(record) <= {"source", "notes", "data_pdf_policy", "nobi_profile", "corner_policy", "hole_policy"}
+        assert set(record) <= {"source", "notes", "data_pdf_policy", "nobi_profile", "corner_policy", "hole_policy",
+                               "data_pdf_tolerance_mm"}
         assert not any(k in record for k in ("name", "phone", "email", "staff", "contact"))
 
 def test_customer_technical_note_census_partitions_all_codes():

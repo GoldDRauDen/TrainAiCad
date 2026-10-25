@@ -195,3 +195,18 @@ def test_build_from_files_refuses_duplicates_and_mixed_jobs(tmp_path, second, ma
     b = _split_spec(tmp_path, second, job_id="J-MULTI" if second == "26-000101" else "J-OTHER")
     with pytest.raises(bc.BuildError, match=match):
         bc.build_from_files([a, b])
+
+
+def test_thread_key_gives_the_table_pilot_and_kegaki_lines_are_red():
+    s = spec()
+    p = s["parts"][0]
+    p["holes"][0] = dict(p["holes"][0], thread="M6", group="M6", qty=1)
+    p["holes"][1] = dict(p["holes"][1], ev="p1 Ø6.6", qty=1)
+    p["holes"][0].pop("d")
+    p["kegaki"] = [{"id": "K1", "ev": "p1 ケガキ", "lines": [[100, 20, 100, 40]]}]
+    part = bc.build_job(s)["parts"][0]
+    radii = sorted(e["radius"] for e in part["entities"] if e["type"] == "CIRCLE")
+    assert radii[0] == 2.5                                # M6 coarse pilot Ø5.0
+    keg = [e for e in part["entities"] if e["role"] == "kegaki"]
+    assert len(keg) == 1 and keg[0]["color"] == 1
+    assert any(g["family"] == "KEGAKI" for g in part["source_groups"])
