@@ -1,0 +1,28 @@
+# Minimal BENT job spec (single unfold axis) for tools/build_canonical.py / tools/run_job.py.
+# Synthetic, values from approved chains (521017-17 main chain 50 / 62+t / 120+t, Nobi 3.68 handwritten).
+# Faces are listed in unfold order from the flat origin; each face od = proved outside length (rules/BEND.md §4).
+# Bend lines, Nobi lookup, flat length, face_graph and the per-bend ledger are derived by the tool.
+job_id: EXAMPLE-BEND
+parts:
+  - code: 26-000011
+    material: SPCC
+    t: 2
+    page: 6
+    envelope: [228.64, 40]
+    bend:
+      axis: X                  # the face chain runs along flat X; bend lines are vertical
+      width: 40                # every face is full width (needed for outline: auto and the Nobi L)
+      width_ev: "p6 top view: web 40 over the whole length"
+      faces:
+        - {id: F1, od: 50, ev: "p6 50 to the outer face"}
+        - {id: F2, od: 64, ev: "p6 62 underside + t2"}
+        - {id: F3, od: 122, ev: "p6 120 upper span + t2"}
+      bends:
+        - {id: B1, angle: 90, sign: 1, nobi: 3.68, ev: "p6 bend 1, handwritten N3.68"}
+        - {id: B2, angle: 90, sign: 1, nobi: 3.68, ev: "p6 bend 2, handwritten N3.68"}
+    outline: auto
+    holes:                     # face-relative: wu along the face from its datum, wv across from the flat edge
+      - {id: H1, d: 7, group: D7, qty: 2, ev: "p6 2-Ø7 on F3", face: F3, from: start,
+         wu: [[30, HOLE_CENTER, "p6 30 from the F2 outer face"]], wv: [[10, HOLE_CENTER, "p6 10"]]}
+      - {id: H2, d: 7, group: D7, face: F3, from: end,
+         wu: [[25, HOLE_CENTER, "p6 25 from the free edge"]], wv: [[30, HOLE_CENTER, "p6 30"]]}

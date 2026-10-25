@@ -53,10 +53,13 @@ def verify_saved(path, job, manifest):
                 deg[(round(p[0], 4), round(p[1], 4))] += 1
         holes = sum(1 for e, i in zip(geo, ids) if i.startswith(f"E_{code}_") and e.dxftype() == "CIRCLE")
         want = sum(1 for e in part["entities"] if e["type"] == "CIRCLE")
+        bends = sum(1 for e, i in zip(geo, ids) if i.startswith(f"E_{code}_") and e.dxftype() == "LINE"
+                    and e.dxf.get("linetype", "").upper() == "DASHED")
+        want_b = sum(1 for e in part["entities"] if e.get("role") == "bend")
         closed = bool(pieces) and all(v == 2 for v in deg.values())
-        if not closed or holes != want:
-            raise SystemExit(f"VERIFY_FAIL {code}: closed={closed} holes={holes}/{want}")
-        rows[code] = {"outline_pieces": len(pieces), "closed": closed, "holes": holes}
+        if not closed or holes != want or bends != want_b:
+            raise SystemExit(f"VERIFY_FAIL {code}: closed={closed} holes={holes}/{want} bend lines={bends}/{want_b}")
+        rows[code] = {"outline_pieces": len(pieces), "closed": closed, "holes": holes, "bend_lines": bends}
     return {"audit_errors": doc.audit().has_errors, "parts": rows}
 
 
@@ -72,6 +75,11 @@ def report(job, manifest, verify, seconds):
             notes.append(f"R/C theo callout ×{row['called']}")
         if row["holes"]:
             notes.append(f"lỗ ×{row['holes']}")
+        if p.get("unfold"):
+            bs = p["unfold"]["bends"]
+            notes.append("uốn ×{}: ".format(len(bs)) + ", ".join(
+                f"{b['id']} {b['angle']:g}° N{b['nobi']:g} ({'tay' if b['nobi_source'] == 'HANDWRITTEN' else 'bảng'})"
+                for b in bs))
         if row["rotation_deg"]:
             notes.append("xoay 180° để J/LJ nằm trên cạnh thẳng")
         blank = f"{row['blank_mm'][0]:g} × {row['blank_mm'][1]:g}"
