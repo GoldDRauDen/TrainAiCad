@@ -6,7 +6,7 @@ Triggers: `曲げ`, `ノビ`/`伸び`, `J`, `内R`, `外寸`, double dashed line
 `source views → witness graph → candidate faces → signed adjacency → attachment edge lock → OD_actual → constraint closure → unfold → feature transforms → bend-line clipping → fold-back → canonical`.
 Shape labels (L, U, Z, hat, box, joggle) only propose candidates; witnesses, projections, bend callouts and sections prove them. Two graphs still possible after source exhaustion → draw the best-supported in Magenta, name the other.
 
-**Tool first:** a chain along one axis (L, U, Z, hat, multi-bend) with full-width or simply notched faces → `bend:` block in the spec and `tools/run_job.py` (`tools/BUILD_CANONICAL_SPEC.md`): it looks up Nobi, places the line pairs, clips them to material, maps face-relative holes and writes the face graph + ledger. Box/two-axis parts, bend-end junctions and split flanges are still built by hand as canonical JSON.
+**Tool first:** a chain along one axis (L, U, Z, hat, multi-bend) with full-width or simply notched faces → `bend:` block in the spec and `tools/run_job.py` (`tools/BUILD_CANONICAL_SPEC.md`): it looks up Nobi, places the line pairs, clips them to material, maps face-relative holes, draws `SPLIT_FLANGE_10MM` for a bend without Nobi and writes the face graph + ledger. Box/two-axis parts and bend-end junctions are still built by hand as canonical JSON.
 
 Records per part (keep in the ledger file):
 - FACE: id, view, local origin/axes, edges with stable ids, own dimensions.
@@ -43,15 +43,12 @@ Prove `FACE_A.edge_i ⟷ BEND ⟷ FACE_B.edge_j` for every bend. Valid: formed/p
 - Stacked plates (B stated to sit on A): printed dims are assembled; offset A's contour by tA as an UNSAVED reference; B's bend/flange derive from it; B's edge facing A retreats tA.
 
 ## 6. Nobi (`python tools/lookup.py nobi --material <printed> --t <t> --L <bend edge length> --angle <A> [--surface "#1"] [--handwritten N] [--no-j] [--customer <code>]`)
-1. Legible handwritten Nobi scoped to that bend → use it at any angle, J or not; a different table value is a nonblocking audit note.
-2. 90° (±0.5°) with J → table by material group, EXACT tabulated t, L bracket (`~X` = previous bound < L ≤ X). SUS uses 2B unless the source says #1. SUS430 uses the SS/SUS430/BRASS table for Nobi only. Customer 646 → its own table, never the general one; its special R2/R10 tooling values apply only when ordered (`data/nobi_kh646.md`, last section).
-3. Everything else → `SPLIT_FLANGE_10MM` + FLAG + PREVIEW: non-90° without handwriting (never a 90° row), no J, t not tabulated (no next row), L outside the table, `Confirm` cell, KH646 without a row.
-`SPLIT_FLANGE_10MM`: main body and the flange each at their proved OD, the flange drawn as a separate closed piece 10 mm away along the unfold direction in the same cluster, no bend line for that bend, all other features drawn. Never drop the code.
-Bend length L = the locked physical shared edge, never a bbox.
+Your inputs: the printed material/surface (SUS 2B unless `#1` is printed), t, L = the locked physical shared edge (never a bbox), the angle, a legible handwritten Nobi scoped to that bend (it wins at any angle, J or not), whether J is printed, the customer. The tool picks the table (KH646 its own) and returns the value or `SPLIT_FLANGE_10MM` + `flag_vi` (non-90° without handwriting, no J, t/L not tabulated, `Confirm`).
+`SPLIT_FLANGE_10MM`: main body and flange each at their proved OD, the flange a separate closed Magenta piece 10 mm away along the unfold direction in the same cluster, no bend line for that bend, every other feature drawn, PREVIEW. The spec builds it (`outline: auto`); shaped outlines by hand. Never drop the code.
 
 ## 7. ID → OD and unfold arithmetic
 - Non-90° inside dimension: `python tools/lookup.py idod --t T --angle A` → offset = round₀.₀₁(t·tan((180−A)/2)) FIRST, then `OD = ID + offset` (165°/t3 → 0.39; 135°/t3 → 1.24). Assign each offset to the face the formed profile proves; never twice.
-- `python tools/lookup.py unfold --od OD1 … ODn --nobi N1 … Nn-1`: total `ΣOD − ΣN`; bend k line1 `Σ₁ᵏOD − Σ₁ᵏN`, line2 `Σ₁ᵏOD − Σ₁ᵏ⁻¹N`; spacing = N_k. The body interior is never reduced by Nobi.
+- `python tools/lookup.py unfold --od OD1 … ODn --nobi N1 … Nn-1` (the `bend:` block does this): total `ΣOD − ΣN`, bend k line pair spaced N_k. The body interior is never reduced by Nobi.
 - Printed inputs are exact. `<0.01 mm` applies only to auditing an already-correct derived value against a reference (018300: (797+0.26)+(24+0.26)−0.37 = 821.15).
 - Stepped/notched flange: `Y_flange_flat = L_flange − N`, `Y_bend = Y_flange_flat`, `Y_notch = Y_flange_flat + gap`, body untouched.
 - C beside a bend: a C called on a main-face corner meeting the bend line ends ON the bend line; a C in the flange view sits on the flange's free corner.

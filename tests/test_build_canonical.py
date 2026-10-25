@@ -163,3 +163,35 @@ def test_run_job_default_work_dir_is_outside_the_spec_folder(tmp_path, monkeypat
     assert run_job.main([str(EXAMPLE), str(tmp_path / "OUT")]) == 0
     assert sorted(p.name for p in EXAMPLE.parent.iterdir()) == before
     assert (tmp_path / ".work" / "EXAMPLE-FLAT" / "EXAMPLE-FLAT_report.md").is_file()
+
+
+def _split_spec(tmp_path, code, job_id="J-MULTI"):
+    spec = copy.deepcopy(yaml.safe_load(EXAMPLE.read_text(encoding="utf-8")))
+    spec["job_id"] = job_id
+    spec["parts"] = [dict(spec["parts"][0], code=code)]
+    path = tmp_path / f"spec_{code}.yaml"
+    path.write_text(yaml.safe_dump(spec, allow_unicode=True), encoding="utf-8")
+    return path
+
+
+def test_run_job_merges_specs_and_hand_canonical_json_in_order(tmp_path):
+    import boxmet_job
+    a, b = _split_spec(tmp_path, "26-000101"), _split_spec(tmp_path, "26-000102")
+    box = tmp_path / "box.job.json"
+    box.write_text(json.dumps(boxmet_job.build_job("26-000103", 200, 150, [30, 30, 30, 30], 1.5, "SS", 2.54,
+                                                   job_id="J-MULTI")), encoding="utf-8")
+    out, work = tmp_path / "OUT", tmp_path / "work"
+    assert run_job.main([str(a), str(box), str(b), str(out), "--work", str(work)]) == 0
+    job = json.loads((work / "J-MULTI_job.json").read_text(encoding="utf-8"))
+    assert [p["code"] for p in job["parts"]] == ["26-000101", "26-000103", "26-000102"]
+    assert sorted(p.name for p in out.iterdir()) == ["J-MULTI_ALL.dxf"]
+    report = (work / "J-MULTI_report.md").read_text(encoding="utf-8")
+    assert all(f"| {c} |" in report for c in ("26-000101", "26-000102", "26-000103"))
+
+
+@pytest.mark.parametrize("second,match", [("26-000101", "duplicate part code"), ("26-000102", "job_id")])
+def test_build_from_files_refuses_duplicates_and_mixed_jobs(tmp_path, second, match):
+    a = _split_spec(tmp_path, "26-000101")
+    b = _split_spec(tmp_path, second, job_id="J-MULTI" if second == "26-000101" else "J-OTHER")
+    with pytest.raises(bc.BuildError, match=match):
+        bc.build_from_files([a, b])

@@ -1,8 +1,8 @@
 # OUTPUT — canonical model, DXF package, review policy, report (L3, always)
 
 ## 1. Pipeline (never bypassed)
-FLAT and single-axis BENT parts: `spec.yaml → python tools/run_job.py spec.yaml OUT/` (spec format `tools/BUILD_CANONICAL_SPEC.md`, examples `examples/flat_minimal.yaml`, `examples/bend_minimal.yaml`).
-Other parts: canonical job JSON (`canonical_contract: TrainAiCad-CANONICAL-V4.34`, schema `tools/CANONICAL_SCHEMA.md` — read it only when writing JSON by hand) → `python tools/export_canonical_dxf.py job.json OUT/`.
+One command per job: `python tools/run_job.py spec_<code>.yaml … [part.job.json …] OUT/` (files in page-1 order). FLAT and single-axis BENT parts are specs (`tools/BUILD_CANONICAL_SPEC.md`, examples `examples/flat_minimal.yaml`, `examples/bend_minimal.yaml`); `tools/boxmet_job.py` output and hand-written parts are canonical job JSON files with the same `job_id`.
+Hand-written parts: canonical job JSON (`canonical_contract: TrainAiCad-CANONICAL-V4.34`, schema `tools/CANONICAL_SCHEMA.md` — read it only when writing JSON by hand) (exported by `run_job.py`, or alone by `python tools/export_canonical_dxf.py job.json OUT/`).
 Never write DXF with `ezdxf.modelspace()` from your own interpretation (`NO_DIRECT_DXF_FROM_INTERPRETATION`). The exporter hard-fails unless `PROVED SOURCE MEMBERS == PROVED CANONICAL MEMBERS` before save and `SAVED DXF ENTITY IDs == CANONICAL ENTITY IDs` after reopening.
 
 Ledger contract: every manufacturing callout → `source_group` (id, family, status PROVED/FLAGGED/CANCELED, qty) with enumerable `members`; each active member → exactly one `canonical_member` (PROVED→PROVED, FLAGGED→PREVIEW or FLAGGED_NO_GEOMETRY, CANCELED→none); each Layer-0 entity has a unique `entity_id` owned by a member. Rule-derived members use `origin: DERIVED_RULE` + `controlling_rule`. One member may own several primitives; quantity closes by members, not entity count.

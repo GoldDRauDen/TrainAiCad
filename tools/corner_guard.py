@@ -35,10 +35,10 @@ def _finite_point(value):
 
 
 def outer_sharp_corners(part):
-    """Sharp convex corners <= 90 degrees (+1e-6) of every outer LWPOLYLINE (no bulge on adjacent segments)."""
+    """Sharp convex corners <= 90 degrees (+1e-6) of every outer / split-flange piece (no bulge on adjacent segments)."""
     corners = []
     for entity in part.get("entities", []):
-        if entity.get("type") != "LWPOLYLINE" or entity.get("role") != "outer" or not entity.get("closed", True):
+        if entity.get("type") != "LWPOLYLINE" or entity.get("role") not in ("outer", "split_flange") or                 not entity.get("closed", True):
             continue
         verts = entity.get("vertices", [])
         pts = [_finite_point(v) for v in verts]
