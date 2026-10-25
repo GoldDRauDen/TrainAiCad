@@ -58,7 +58,7 @@ Bend length L = the locked physical shared edge, never a bbox.
 Replay the flat through the signed graph: face sizes, adjacency, the SAME attachment edges, signs, used ODs, feature hosts/offsets/edge ids, local channels/tabs, bend domains. A matching bbox or total never passes a reversed attachment.
 
 ## 9. Tooling (WARN only)
-Leg shorter than the selected V die's L_min/Z_min (`data/bend_tooling.md`) → WARN, never resize. SS t4.5 V18 is `要確認`.
+Leg shorter than the selected V die's L_min/Z_min (`python tools/lookup.py tooling --material M --t T`) → WARN, never resize. SS t4.5 V18 is `要確認`.
 
 ## Lessons
 `regression/lessons/BEND/` — 520929-25 (order/domain/Z), 521005-02 (face evidence, local domain), 521006-18 (attachment edge, formed OD), 521016-13 (step from hole row), 521019-05 (projection, notch wall, stacked, C at bend), 521021-06 (ortho OD), 521023-14 (weld→bend), 520315-18 (inside view), 520925-03 HD1, 520317-09.

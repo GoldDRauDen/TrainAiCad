@@ -84,3 +84,17 @@ def test_pairs_on_scan_returns_manual_note(tmp_path):
     doc.save(path)
     res = pdf_views.pairs(str(path), 1)
     assert res["pairs"] == [] and res["kind"] == "SCANNED_IMAGE"
+
+
+def test_scan_with_a_few_typed_notes_is_still_a_scan(tmp_path):
+    doc = fitz.open()
+    page = doc.new_page(width=842, height=595)
+    pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 40, 30), False)
+    pix.clear_with(200)
+    page.insert_image(fitz.Rect(0, 0, 842, 595), pixmap=pix)
+    page.insert_text((100, 100), "K E G A K I", fontsize=10)
+    page.insert_text((200, 100), "136", fontsize=10)
+    path = tmp_path / "scan.pdf"
+    doc.save(path)
+    p = pdf_views.info(str(path))["pages"][0]
+    assert p["kind"] == "SCANNED_IMAGE" and 0 < p["vector_words"] < pdf_views.SCAN_NOTE_WORDS

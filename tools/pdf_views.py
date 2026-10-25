@@ -31,6 +31,7 @@ except ImportError:  # older PyMuPDF
         fitz = None
 
 GRID = 10
+SCAN_NOTE_WORDS = 30  # fewer vector words than this on a page with an image = scanned drawing
 DIM_RE = re.compile(r"(?:\d+-)?(?:[ØφΦ]|M|R|C|t\s*=?\s*)?\d+(?:\.\d+)?|[±+\-]\s*\d|[ØφΦ]|\bM\d|\bR\d|\bC\d")
 
 
@@ -60,10 +61,15 @@ def info(path: str) -> dict:
     pages = []
     for i, page in enumerate(doc, 1):
         words = page.get_text("words")
+        images = len(page.get_images())
+        if images and len(words) < SCAN_NOTE_WORDS:  # a scan with a few stamps/notes typed on top
+            kind = "SCANNED_IMAGE"
+        else:
+            kind = "VECTOR" if words else "VECTOR_NO_TEXT"
         pages.append({"page": i, "width_pt": round(page.rect.width, 1), "height_pt": round(page.rect.height, 1),
                       "rotation": page.rotation, "vector_words": len(words),
-                      "drawings": len(page.get_drawings()), "images": len(page.get_images()),
-                      "kind": "VECTOR" if words else ("SCANNED_IMAGE" if page.get_images() else "VECTOR_NO_TEXT")})
+                      "drawings": len(page.get_drawings()), "images": images, "kind": kind,
+                      "read": "values from 600-dpi crops, twice" if kind == "SCANNED_IMAGE" else "values from text --dims"})
     return {"file": path, "pages": pages}
 
 

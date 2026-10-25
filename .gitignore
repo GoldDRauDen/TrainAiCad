@@ -16,3 +16,6 @@ LuanAppTools/.env
 LuanAppTools/screenshots/
 LuanAppTools/frontend/coverage/
 LuanAppTools/frontend/test-results/
+
+# job work files (tools/job.py)
+.work/
