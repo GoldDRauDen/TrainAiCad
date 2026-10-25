@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""V4.31 521005-05: reject source-member loss before/through DXF serialization."""
+"""521005-05: source members must survive canonical -> saved DXF (fixture also used by test_export_artifacts)."""
 from __future__ import annotations
 
 import copy
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import ezdxf
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from canonical_contract import CanonicalContractError, validate_canonical_job  # noqa: E402
 from export_canonical_dxf import export_canonical_job  # noqa: E402
@@ -181,7 +181,7 @@ def expect_fail(job, token):
         raise AssertionError(f"expected canonical failure containing {token}")
 
 
-def main():
+def test_member_completeness_hard_gate():
     job = build_job()
     validation = validate_canonical_job(job)
     by_code = {p["code"]: p for p in validation["parts"]}
@@ -232,8 +232,4 @@ def main():
         assert not any(e.dxf.get("color", 256) == 3 and e.dxftype() in {"LINE", "ARC"} for e in layer0 if "873" in xdata_entity_id(e))
         assert (out / "521005-05-V431_MANIFEST.json").is_file()
 
-    print("PASS: V4.31 521005-05 source-member -> canonical -> saved-DXF completeness hard gate")
 
-
-if __name__ == "__main__":
-    main()

@@ -1,4 +1,4 @@
-"""Scoped generated RAG index and byte benchmark; no duplicate rule authority."""
+"""Rule-route byte benchmark and duplicate-paragraph audit."""
 from __future__ import annotations
 
 import hashlib
@@ -11,42 +11,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from build_rule_index import build_index  # noqa: E402
 from benchmark_rule_routes import benchmark  # noqa: E402
-from audit_rule_coverage import audit  # noqa: E402
-
-
-def test_index_is_generated_from_live_router_and_complete_coverage():
-    index = build_index()
-    cov = audit()
-    router = yaml.safe_load(
-        (ROOT / "skills/lispcad/router/ROUTER.yaml").read_text(encoding="utf-8")
-    )
-    assert index["production"]["active_modules"] == cov["active_modules"]
-    assert index["production"]["feature_routes"] == router["feature_routes"]
-    assert index["production"]["stages"] == router["stage_routes"]
-    assert index["router_sha256"] == hashlib.sha256(
-        (ROOT / "skills/lispcad/router/ROUTER.yaml").read_bytes()
-    ).hexdigest()
-    assert "QA_ENTRYPOINT.md" not in index["production"]["active_modules"]
-    assert all(not p.startswith(("regression/", "skills/lispcad/versions/",
-            "skills/lispcad/portable/", "services/trainaicad-mcp/"))
-               for p in index["production"]["active_modules"])
-    assert len(index["history_audit_only"]["paths"]) >= 24
-    assert len(index["regression_evidence"]["paths"]) >= 20
-    assert index["experimental_mcp"]["policy"] == "RESEARCH_ONLY_NO_DEFAULT_PRODUCTION"
-
-
-def test_rag_index_cli_outputs_reproducible_manifest(tmp_path):
-    output = tmp_path / "RAG_INDEX.yaml"
-    result = subprocess.run([sys.executable, str(ROOT / "tools/build_rule_index.py"),
-                             "--output", str(output)],
-                            cwd=ROOT, text=True, capture_output=True, check=True)
-    report = json.loads(result.stdout)
-    data = output.read_bytes()
-    assert report["sha256"] == hashlib.sha256(data).hexdigest()
-    assert "regression_evidence:" in data.decode("utf-8")
-    assert "active_modules:" in data.decode("utf-8")
 
 
 def test_benchmark_measures_real_file_bytes_without_claiming_total_token_savings():

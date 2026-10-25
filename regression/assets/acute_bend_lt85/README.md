@@ -12,4 +12,4 @@ Original user-supplied calibration evidence:
 
 `ACUTE_BEND_LT85_OD_PROOF.dxf` is non-production proof geometry generated from the approved method and must never be used as a hidden dimension source.
 
-`ACUTE_BEND_LT85_CONSTRUCTION.svg` is the human-readable construction diagram. The executable source-to-result check is `regression/tools/check_acute_bend_lt85.py`.
+`ACUTE_BEND_LT85_CONSTRUCTION.svg` is the human-readable construction diagram. The executable source-to-result check is `tools/acute_bend.py`.

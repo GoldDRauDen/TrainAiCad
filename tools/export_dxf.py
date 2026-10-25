@@ -6,6 +6,7 @@ interpretation, tolerance, material, unfold and manufacturing checks.  This
 serializer adds structural/packaging checks; it does NOT read or interpret PDFs.
 Requires ezdxf>=1.4. See tools/DXF_INPUT_SCHEMA.md.
 """
+import sys
 import argparse
 import json
 import math
@@ -663,4 +664,6 @@ def main():
 
 
 if __name__ == "__main__":
+    for _stream in (sys.stdout, sys.stderr):
+        _stream.reconfigure(encoding="utf-8")  # Vietnamese FLAG text on a Windows console
     main()

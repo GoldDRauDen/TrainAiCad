@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """V4.33 source-only snapshot and post-reference provenance guard."""
 from __future__ import annotations
+import sys
 
 import argparse
 import hashlib
@@ -115,4 +116,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    for _stream in (sys.stdout, sys.stderr):
+        _stream.reconfigure(encoding="utf-8")  # Vietnamese FLAG text on a Windows console
     main()

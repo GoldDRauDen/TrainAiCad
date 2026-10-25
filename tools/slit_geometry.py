@@ -22,6 +22,13 @@ def slit_depth_from_reference(S: float, T: float):
     return abs(S) + T + 0.2
 
 
+def slit_depth_gt90(t: float, theta_deg: float) -> float:
+    """>90-degree bend relief depth D = t*sin(theta), 90 < theta < 180 (exactly 90 uses T+0.2)."""
+    if not 90.0 < theta_deg < 180.0:
+        raise ValueError("slit_depth_gt90 requires 90 < theta < 180")
+    return t * math.sin(math.radians(theta_deg))
+
+
 def _vector(value, name):
     """Fail closed on invalid or non-finite 2D construction vectors."""
     try:

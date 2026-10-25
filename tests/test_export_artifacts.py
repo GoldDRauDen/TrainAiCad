@@ -220,7 +220,7 @@ def test_corrupt_pass_dxf_is_regenerated_after_read_back(tmp_path):
 def test_v431_multi_code_regression_keeps_every_proved_hole_and_bend_non_cut(tmp_path):
     """Existing approved source-member regression fixture, not a fresh PDF read."""
     import importlib.util
-    module_path = ROOT / "regression/tools/check_521005_05_v431.py"
+    module_path = ROOT / "tests/test_member_completeness_521005_05.py"
     spec = importlib.util.spec_from_file_location("v431_source_fixture", module_path)
     fixture = importlib.util.module_from_spec(spec)
     assert spec and spec.loader

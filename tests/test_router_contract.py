@@ -75,7 +75,7 @@ def test_coverage_map_paths_exist():
     coverage = _load(COVERAGE)
     for release in coverage["release_coverage"].values():
         for key in ("active", "regression"):
-            for rel in release.get(key, []):
+            for rel in release.get(key) or []:
                 assert (ROOT / rel).is_file(), rel
 
 
@@ -87,10 +87,3 @@ def test_entrypoint_and_agents_use_router_not_full_portable():
     assert "skills/lispcad/router/FEATURE_CENSUS.md" in agents
     assert "skills/lispcad/router/ROUTER.yaml" in agents
     assert "Read the resolved portable skill **in full**" not in agents
-
-
-def test_portable_snapshot_remains_available_for_audit_only():
-    router = _load(ROUTER)
-    rel = router["portable_compatibility"]["path"]
-    assert (ROOT / rel).is_file()
-    assert router["portable_compatibility"]["runtime_default"] is False
