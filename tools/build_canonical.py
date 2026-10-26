@@ -1039,7 +1039,7 @@ def build_from_files(paths):
 
 
 def load_spec(path):
-    text = Path(path).read_text(encoding="utf-8")
+    text = Path(path).read_text(encoding="utf-8-sig")
     if str(path).endswith((".yaml", ".yml")):
         import yaml
         data = yaml.safe_load(text)

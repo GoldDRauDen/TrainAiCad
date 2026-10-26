@@ -98,7 +98,7 @@ def main() -> None:
 
     args = ap.parse_args()
     if args.cmd == "freeze":
-        payload = json.loads(Path(args.input_json).read_text(encoding="utf-8"))
+        payload = json.loads(Path(args.input_json).read_text(encoding="utf-8-sig"))
         frozen = freeze_snapshot(payload, args.source_file)
         Path(args.output_json).write_text(
             json.dumps(frozen, ensure_ascii=False, indent=2) + "\n",
@@ -107,8 +107,8 @@ def main() -> None:
         print("PASS: SOURCE_ONLY_SNAPSHOT frozen")
         return
 
-    before = json.loads(Path(args.before_json).read_text(encoding="utf-8"))
-    after = json.loads(Path(args.after_json).read_text(encoding="utf-8"))
+    before = json.loads(Path(args.before_json).read_text(encoding="utf-8-sig"))
+    after = json.loads(Path(args.after_json).read_text(encoding="utf-8-sig"))
     errors = audit_transition(before, after)
     if errors:
         raise SystemExit("FAIL: " + "; ".join(errors))

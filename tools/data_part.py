@@ -90,7 +90,7 @@ def to_spec(spec: dict, customer=None):
     path = Path(spec["data"])
     if not path.is_file():
         _fail(f"{code}: data file {path} not found (run tools/dxf_assemble.py first)")
-    assembled = json.loads(path.read_text(encoding="utf-8"))
+    assembled = json.loads(path.read_text(encoding="utf-8-sig"))
     ents = assembled.get("entities") or _fail(f"{code}: {path.name} has no entities")
     if not assembled.get("invariance", {}).get("ok"):
         _fail(f"{code}: {path.name} did not pass the dxf_assemble invariance check")

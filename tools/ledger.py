@@ -106,7 +106,7 @@ def main(argv=None):
     ap.add_argument("--draft", action="store_true",
                     help="print a corner_inventory skeleton (all FLAG / UNKNOWN) for each part instead of the ledger")
     args = ap.parse_args(argv)
-    job = json.loads(Path(args.job).read_text(encoding="utf-8"))
+    job = json.loads(Path(args.job).read_text(encoding="utf-8-sig"))
     job = job.get("job", job)
     if args.draft:
         drafts = {part.get("code", "?"): draft_inventory(part) for part in job.get("parts", [])}

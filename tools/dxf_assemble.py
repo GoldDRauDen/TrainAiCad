@@ -369,8 +369,8 @@ def main(argv=None) -> int:
     ap.add_argument("plan")
     ap.add_argument("--out", required=True)
     a = ap.parse_args(argv)
-    digest = json.loads(Path(a.digest).read_text(encoding="utf-8"))
-    plan = json.loads(Path(a.plan).read_text(encoding="utf-8"))
+    digest = json.loads(Path(a.digest).read_text(encoding="utf-8-sig"))
+    plan = json.loads(Path(a.plan).read_text(encoding="utf-8-sig"))
     src = Path(digest["source"]["file"])
     if src.is_file() and hashlib.sha256(src.read_bytes()).hexdigest() != digest["source"]["sha256"]:
         print("DIGEST_STALE: the DXF changed after the digest was made; digest it again", file=sys.stderr)
