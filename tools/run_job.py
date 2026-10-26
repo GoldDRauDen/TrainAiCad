@@ -24,6 +24,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ezdxf  # noqa: E402
 
+import geom  # noqa: E402
+
 from build_canonical import BuildError, build_from_files, summary  # noqa: E402
 from canonical_contract import CanonicalContractError  # noqa: E402
 from export_canonical_dxf import export_canonical_job  # noqa: E402
@@ -65,6 +67,8 @@ def verify_saved(path, job, manifest):
         closed = True
         for loop in (e["entity_id"] for e in part["entities"] if e.get("role") in ("outer", "split_flange")):
             deg = Counter()
+            if any(b == loop and e.dxftype() == "CIRCLE" for e, b in mine):
+                continue            # a round blank is one CIRCLE: closed by definition
             for e, b in mine:
                 if b == loop and e.dxftype() in ("LINE", "ARC"):
                     for p in _ends(e):
@@ -72,7 +76,8 @@ def verify_saved(path, job, manifest):
             closed = closed and bool(deg) and all(v == 2 for v in deg.values())
         pieces = sum(1 for e, b in mine if any(b == x["entity_id"] and x.get("role") == "outer" for x in part["entities"]))
         holes = sum(1 for e, _ in mine if e.dxftype() == "CIRCLE")
-        want = sum(1 for e in part["entities"] if e["type"] == "CIRCLE")
+        want = sum(1 for e in part["entities"] if e["type"] == "CIRCLE" or
+                   (e["type"] == "LWPOLYLINE" and geom.full_circle(e["vertices"], bool(e.get("closed")))))
         bends = sum(1 for e, _ in mine if e.dxftype() == "LINE" and e.dxf.get("linetype", "").upper() == "DASHED")
         want_b = sum(1 for e in part["entities"] if e.get("role") == "bend")
         if not closed or holes != want or bends != want_b:

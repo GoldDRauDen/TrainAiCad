@@ -46,3 +46,42 @@ def bulge_points(p0, p1, bulge, steps: int):
     a0 = math.atan2(float(p0[1]) - cy, float(p0[0]) - cx)
     return [(cx + radius * math.cos(a0 + theta * k / steps), cy + radius * math.sin(a0 + theta * k / steps))
             for k in range(1, steps)]
+
+
+def full_circle(vertices, closed=True):
+    """((cx, cy), radius) when a closed polyline is exactly one full circle (two vertices, both bulges +-1 of one
+    sign), else None. Such a loop is saved as ONE CIRCLE, never as two ARCs (rules/OUTPUT.md section 4)."""
+    if not closed or len(vertices) != 2:
+        return None
+    (x0, y0, b0), (x1, y1, b1) = [(float(v[0]), float(v[1]), float(v[2])) for v in vertices]
+    if abs(abs(b0) - 1.0) > 1e-9 or abs(b1 - b0) > 1e-9:
+        return None
+    radius = math.hypot(x1 - x0, y1 - y0) / 2.0
+    return ((x0 + x1) / 2.0, (y0 + y1) / 2.0), radius
+
+
+def polyline_bbox(vertices, closed=True):
+    """(xmin, ymin, xmax, ymax) of a polyline including the bulge arcs (a full circle gives its own box)."""
+    circle = full_circle(vertices, closed)
+    if circle:
+        (cx, cy), r = circle
+        return cx - r, cy - r, cx + r, cy + r
+    xs, ys = [v[0] for v in vertices], [v[1] for v in vertices]
+    n = len(vertices)
+    for i in range(n if closed else n - 1):
+        a, b = vertices[i], vertices[(i + 1) % n]
+        if len(a) < 3 or abs(a[2]) < 1e-14:
+            continue
+        cx, cy, r, theta = bulge_circle(a[:2], b[:2], a[2])
+        a0 = math.atan2(a[1] - cy, a[0] - cx)
+        for k in range(4):                      # cardinal points lying on the swept arc
+            ang = k * math.pi / 2
+            rel = ((ang - a0) % (2 * math.pi)) if theta > 0 else ((a0 - ang) % (2 * math.pi))
+            if rel <= abs(theta):
+                xs.append(round(cx + r * math.cos(ang), 6))
+                ys.append(round(cy + r * math.sin(ang), 6))
+    x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
+    # an arc end that only touches the vertex box (fillet tangent point) must not grow it by float noise
+    vx, vy = [v[0] for v in vertices], [v[1] for v in vertices]
+    snap = lambda value, ref: ref if abs(value - ref) <= 1e-5 else value  # noqa: E731
+    return snap(x0, min(vx)), snap(y0, min(vy)), snap(x1, max(vx)), snap(y1, max(vy))

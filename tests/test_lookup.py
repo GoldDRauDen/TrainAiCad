@@ -153,9 +153,24 @@ def test_slit_matrix_t2(S, decision, depth):
         assert res["depth_from_reference"] == 4.2
 
 
-def test_slit_over_90_and_unproved_step():
-    assert lookup.slit("SUS304", 3.2, angle=130)["depth"] == 2.4513
+def test_slit_over_90_follows_the_step_gate_and_unproved_step():
+    cut = lookup.slit("SUS304", 3.2, S=-1, angle=130)
+    assert cut["decision"] == "SLIT" and cut["depth_from_actual_edge"] == 2.4513
+    assert cut["depth_from_reference"] == pytest.approx(3.4513, abs=1e-4)
+    flush = lookup.slit("SUS304", 3.2, S=0, angle=130)
+    assert flush["decision"] == "SLIT" and flush["mechanism"] == "NON_90_RELIEF"
+    assert lookup.slit("SS400", 6, S=6.93, angle=120)["decision"] == "NO_SLIT"      # 26-063295: S>0, no relief
+    assert lookup.slit("SUS304", 3.2, angle=130)["status"] == "FLAG"                  # step not proved
     assert lookup.slit("SPCC", 2)["status"] == "FLAG"
+
+
+def test_leg_od_of_a_non90_bend_from_end_face_dims():
+    welded = lookup.leg(30, 50, 6, 100, nobi=8.64)                                    # 26-062885
+    assert (welded["od1"], welded["od2"]) == (28.942, 56.093)
+    tab = lookup.leg(35, 65, 6, 120, nobi=4.92)                                       # 26-063295
+    assert (tab["od1"], tab["od2"], tab["flat_length"]) == (31.536, 71.928, 98.544)
+    assert (tab["bend_line1_from_leg2_free_end"], tab["bend_line2_from_leg2_free_end"]) == (67.008, 71.928)
+    assert lookup.leg(35, 65, 6, 80, nobi=4)["status"] == "FLAG"
 
 
 def test_retreat_and_kegaki_wrappers():

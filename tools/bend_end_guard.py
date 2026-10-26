@@ -9,7 +9,8 @@ import math
 
 TOL = 1e-7  # Coordinate arithmetic tolerance, never a manufacturing S threshold.
 AUTO_RELIEF_RULES = {"BEND_END_OFFSET_90", "OPPOSITE_FOLD_R_T", "BOXMET", "NON_90_RELIEF"}
-SPECIAL_RULES = {"OPPOSITE_FOLD_R_T", "BOXMET", "CUSTOM_SOURCE_SLIT", "NON_90_RELIEF"}
+SPECIAL_RULES = {"OPPOSITE_FOLD_R_T", "BOXMET", "CUSTOM_SOURCE_SLIT"}
+MEASURED_MECHANISMS = {"BEND_END_OFFSET_90", "NON_90_RELIEF"}  # relief decided by the measured step S
 RELIEF_ROLES = {"slit", "relief", "bend_relief"}
 
 
@@ -206,7 +207,8 @@ def _slit_construction_proved(site, part, edges, relief, entities, bends):
         lead = lead_end_by_offset(base, side_n, web_n, lead_val(part.get("material"), thickness))
         # From the corner B: T + 0.2 past the flange-side bend line = T + 0.2 - S (user samples HD t2: S 0 -> 2.2,
         # S -2 -> 4.2); the lead and R0.5 sit at B.
-        depth = slit_depth_from_reference(_number(site.get("S_mm")), thickness)
+        angle = _number(site.get("included_angle_deg", 90.0))
+        depth = slit_depth_from_reference(_number(site.get("S_mm")), thickness, angle)
         expected = connected_slit(base, direction, (lead[0]-base[0], lead[1]-base[1]), depth)
         actual = [entities[eid] for m in relief for eid in m["entity_ids"]]
         lines, arcs = [e for e in actual if e["type"] == "LINE"], [e for e in actual if e["type"] == "ARC"]
@@ -270,9 +272,6 @@ def _special_rule(site, part, edges, relief):
         if (group.get("family") != "SLIT_RELIEF" or group.get("status") != "PROVED" or
                 not group.get("evidence") or not relief or
                 any(m.get("origin") != "SOURCE" or m.get("source_member_id") not in source_ids for m in relief)):
-            return "BEND_END_SPECIAL_RULE_UNPROVED"
-    elif mechanism == "NON_90_RELIEF":
-        if abs(_number(site.get("included_angle_deg"))-90) <= TOL or not site.get("angle_evidence_ref"):
             return "BEND_END_SPECIAL_RULE_UNPROVED"
     return None
 
@@ -386,7 +385,7 @@ def bend_end_errors(part):
                 raise ValueError("BEND_END_STEP_UNRESOLVED")
             controlled = site.get("bend_ids")
             mechanism = site.get("mechanism")
-            wanted = (1, 2) if mechanism == "BEND_END_OFFSET_90" else (2,)  # a free bend end has one bend
+            wanted = (1, 2) if mechanism in MEASURED_MECHANISMS else (2,)  # a free bend end has one bend
             if (not isinstance(controlled, list) or len(controlled) not in wanted or
                     any(not isinstance(b, str) or b not in bends for b in controlled) or
                     len(set(controlled)) != len(controlled)):
@@ -400,7 +399,15 @@ def bend_end_errors(part):
                 if error:
                     raise ValueError(error)
                 continue
-            if mechanism != "BEND_END_OFFSET_90" or abs(_number(site.get("included_angle_deg"))-90) > TOL:
+            angle = _number(site.get("included_angle_deg"))
+            # one S gate at every angle (SLIT_RELIEF section 3/4): S>0 no relief; the angle only changes the depth
+            if mechanism == "BEND_END_OFFSET_90":
+                if abs(angle-90) > TOL:
+                    raise ValueError("BEND_END_MECHANISM_UNPROVED")
+            elif mechanism == "NON_90_RELIEF":
+                if not 90 < angle < 180 or not site.get("angle_evidence_ref"):
+                    raise ValueError("BEND_END_MECHANISM_UNPROVED")
+            else:
                 raise ValueError("BEND_END_MECHANISM_UNPROVED")
             actual = _measured_step(site, edges)
             claimed = _number(site.get("S_mm"))

@@ -236,14 +236,55 @@ def test_different_fold_directions_do_not_prove_an_r_t_intersection():
                for e in canonical_job_anomalies(candidate))
 
 
-def test_separate_rule_cannot_claim_a_relief_without_physical_members():
-    candidate = job()
+def non90_case(step=None, angle=120):
+    """The 061099 fixture (t2) read as a bend of `angle` degrees: slit at S<=0 with depth |S| + t sin(theta)."""
+    candidate = slit_case(step, depth=abs(step) + 2 * math.sin(math.radians(angle))) if step is not None else job()
     part = candidate["parts"][0]
     site = part["bend_end_junctions"][0]
-    site.update(mechanism="NON_90_RELIEF", included_angle_deg=135,
-                decision="SEPARATE_RULE", special_rule_evidence_ref="synthetic angle control",
-                angle_evidence_ref="synthetic printed135deg")
-    assert any("BEND_END_RELIEF_MEMBER_UNPROVED" in e for e in canonical_job_anomalies(candidate))
+    site.update(mechanism="NON_90_RELIEF", included_angle_deg=angle, angle_evidence_ref="synthetic printed angle")
+    for member in part["canonical_members"]:
+        if member.get("controlling_rule") == "BEND_END_OFFSET_90":
+            member["controlling_rule"] = "NON_90_RELIEF"
+    return candidate
+
+
+@pytest.mark.parametrize("step", [0, -2])
+def test_non90_flush_and_recessed_sites_slit_at_t_sin_theta(tmp_path, step):
+    manifest = export_canonical_job(non90_case(step), tmp_path)
+    saved = ezdxf.readfile(tmp_path / manifest["filename"])
+    green = [e for e in saved.modelspace() if e.dxf.layer == "0" and e.dxf.get("color", 256) == 3]
+    assert sorted(e.dxftype() for e in green) == ["ARC", "LINE", "LINE"]
+
+
+def test_non90_slit_with_the_90_degree_depth_is_refused(tmp_path):
+    candidate = non90_case(0)
+    candidate["parts"][0]["bend_end_junctions"][0]["included_angle_deg"] = 150   # 2 sin150 = 1.0 != 2 sin120
+    with pytest.raises(CanonicalContractError, match="BEND_END_SLIT_CONSTRUCTION_UNPROVED"):
+        export_canonical_job(candidate, tmp_path)
+
+
+def test_non90_positive_step_is_no_relief_and_a_relief_there_is_refused():
+    """S > 0 gates the relief at every angle (HD 26-063295: S +6.93 at 120 degrees, no slit)."""
+    candidate = non90_case()
+    assert not canonical_job_anomalies(candidate)
+    add_relief(candidate["parts"][0], rule="NON_90_RELIEF")
+    assert any("BEND_END_RELIEF_FOR_POSITIVE_STEP" in e for e in canonical_job_anomalies(candidate))
+
+
+def test_non90_step_at_or_below_zero_without_a_slit_is_refused():
+    candidate = non90_case(-2)
+    part = candidate["parts"][0]
+    part["bend_end_junctions"][0].update(decision="NO_RELIEF", relief_member_ids=[])
+    part["canonical_members"] = [m for m in part["canonical_members"] if m.get("controlling_rule") != "NON_90_RELIEF"]
+    part["entities"] = [e for e in part["entities"] if e.get("role") != "slit"]
+    assert any("BEND_END_SLIT_REQUIRED" in e for e in canonical_job_anomalies(candidate))
+
+
+def test_non90_mechanism_needs_an_angle_above_90_and_its_evidence():
+    candidate = non90_case()
+    site = candidate["parts"][0]["bend_end_junctions"][0]
+    site["angle_evidence_ref"] = ""
+    assert any("BEND_END_MECHANISM_UNPROVED" in e for e in canonical_job_anomalies(candidate))
 
 
 @pytest.mark.parametrize("step", [0.5, 1, 3])
@@ -297,7 +338,7 @@ def test_flush_and_recessed_sites_still_require_a_slit_and_correct_depth(tmp_pat
     assert sorted(e.dxftype() for e in green) == ["ARC", "LINE", "LINE"]
 
 
-@pytest.mark.parametrize("mechanism,angle", [("BOXMET", 90), ("CUSTOM_SOURCE_SLIT", 90), ("NON_90_RELIEF", 135)])
+@pytest.mark.parametrize("mechanism,angle", [("BOXMET", 90), ("CUSTOM_SOURCE_SLIT", 90)])
 def test_separately_proved_mechanisms_keep_their_own_rules(mechanism, angle):
     candidate = job()
     part = candidate["parts"][0]
@@ -317,8 +358,6 @@ def test_separately_proved_mechanisms_keep_their_own_rules(mechanism, angle):
         part["source_groups"].append(group)
         part["canonical_members"][-1].update(origin="SOURCE", source_member_id="CUSTOM_SLIT", group_id=group["group_id"])
         site["source_group_id"] = group["group_id"]
-    else:
-        site["angle_evidence_ref"] = "synthetic printed135deg source witness"
     assert not canonical_job_anomalies(candidate)
 
 

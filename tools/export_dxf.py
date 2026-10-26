@@ -277,7 +277,7 @@ def arc_from_bulge(start, end, bulge):
 def emit_entity(msp, ent, dx=0.0, dy=0.0):
     """Write one canonical entity translated by (dx, dy). Returns the created DXF entities.
 
-    LWPOLYLINE is exploded into LINE/ARC pieces, so saved cut geometry never
+    LWPOLYLINE is exploded into LINE/ARC pieces (a full circle becomes one CIRCLE), so saved cut geometry never
     contains LWPOLYLINE. A closed polyline yields one piece per segment, including the
     closing segment; an open polyline yields n-1 pieces.
     """
@@ -293,6 +293,9 @@ def emit_entity(msp, ent, dx=0.0, dy=0.0):
     t = ent["type"]
     if t == "LWPOLYLINE":
         vertices = ent["vertices"]
+        circle = geom.full_circle(vertices, bool(ent.get("closed")))
+        if circle:   # a full circle is ONE CIRCLE, never two ARCs
+            return [msp.add_circle(move(circle[0]), circle[1], dxfattribs=attrs)]
         n = len(vertices)
         segments = n if ent.get("closed") else n - 1
         pieces = []

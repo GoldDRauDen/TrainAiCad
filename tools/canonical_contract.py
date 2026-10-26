@@ -6,6 +6,7 @@ import re
 import math
 from collections import defaultdict
 
+from curve_guard import split_curve_errors
 from weld_kegaki_guard import WeldKegakiError, validate_weld_kegaki
 
 CONTRACT = "TrainAiCad-CANONICAL-V4.34"
@@ -166,6 +167,11 @@ def validate_part(part: dict, customer_code: str | None = None) -> dict:
         annotation = (ent.get("type") == "TEXT" and ent.get("role") == "estimated_note") or ent.get("role") == "mark"
         if not annotation and eid not in entity_owners:
             fail(f"{code}: orphan canonical manufacturing entity {eid}")
+
+    # A circle is one CIRCLE and an arc one ARC: no split arcs, no faceted circles (DATA parts exempt).
+    curve_errors = split_curve_errors(part)
+    if curve_errors:
+        fail(f"{code}: {curve_errors[0]}")
 
     # Independent weld-site census is checked against real KEGAKI source
     # members and canonical RED marking, not merely source/canonical equality.

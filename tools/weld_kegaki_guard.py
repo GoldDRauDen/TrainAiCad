@@ -216,8 +216,8 @@ def validate_weld_kegaki(part: dict, customer_code: str | None) -> dict:
                     fail(f"{code}/{wid}: proved KEGAKI lost canonical geometry")
                 for eid in eids:
                     ent = entities[eid]
-                    if ent.get("type") not in ("LINE", "LWPOLYLINE") or ent.get("role") != "kegaki" or ent.get("color") != 1:
-                        fail(f"{code}/{wid}: proved KEGAKI must be RED LINE/LWPOLYLINE")
+                    if ent.get("type") not in ("LINE", "LWPOLYLINE", "CIRCLE", "ARC") or ent.get("role") != "kegaki" or ent.get("color") != 1:
+                        fail(f"{code}/{wid}: proved KEGAKI must be RED LINE/CIRCLE/ARC (LWPOLYLINE)")
             else:
                 if state != "FLAGGED" or cstate not in ("PREVIEW", "FLAGGED_NO_GEOMETRY", "SOURCE_VIEW"):
                     fail(f"{code}/{wid}: unresolved KEGAKI must remain local FLAGGED")

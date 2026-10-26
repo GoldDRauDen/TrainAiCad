@@ -290,6 +290,11 @@ def end_step(verts, bend, v_end, s, web, code, reach=0.0):
             "f_line": f_line, "side_edge": (B, _flat(axis, side_far, side)), "web_edge": web_edge}
 
 
+def _relief_angle(angle):
+    """90 within the bend tolerance, else the printed angle (relief depth t*sin(theta) above 90 degrees)."""
+    return 90.0 if abs(angle - 90) <= 0.5 else angle
+
+
 def slit_entities(step, material, t, sid):
     """Green LINE + ARC + LINE of one slit (length T + 0.2 − S from B, lead into the void)."""
     axis, d, s = step["bend"]["axis"], step["d"], step["s"]
@@ -306,7 +311,8 @@ def slit_entities(step, material, t, sid):
     lead = sg.lead_val(material, t)
     B = step["B"]
     end = sg.lead_end_by_offset(B, n_side, n_web, lead)
-    geo = sg.connected_slit(B, direction, (end[0] - B[0], end[1] - B[1]), sg.slit_depth_from_reference(step["S"], t))
+    geo = sg.connected_slit(B, direction, (end[0] - B[0], end[1] - B[1]),
+                             sg.slit_depth_from_reference(step["S"], t, _relief_angle(step["bend"]["b"]["angle"])))
     ents = [{"entity_id": f"{sid}_L1", "type": "LINE", "start": list(geo["line1"][0]), "end": list(geo["line1"][1])},
             {"entity_id": f"{sid}_A", "type": "ARC", "center": list(geo["arc"]["center"]),
              "radius": geo["arc"]["radius"], "start_angle": geo["arc"]["start_angle"],
@@ -435,16 +441,16 @@ def records(verts, chains, code, page, material, t):
         return f"{p}_J{count[0]}"
 
     def step_site(steps, bend_ids):
-        """BEND_END_OFFSET_90 site from the measured steps at one corner (one or two bend ends)."""
-        for st in steps:
-            if abs(st["bend"]["b"]["angle"] - 90) > 0.5:
-                _fail(f"{code}: bend {st['bend']['id']} end with a step at {st['bend']['b']['angle']:g}° "
-                      "(NON_90_RELIEF) — build by hand")
+        """BEND_END_OFFSET_90 (NON_90_RELIEF above 90°) site from the measured steps at one corner (one or two bend ends)."""
         slits = [st for st in steps if st["S"] <= 1e-9]
         if len(slits) > 1:
             _fail(f"{code}: two slits at one corner {slits[0]['B']}: one mechanism per junction — build by hand")
         st = slits[0] if slits else min(steps, key=lambda x: x["S"])
         sid = new_site()
+        angle = st["bend"]["b"]["angle"]
+        non90 = abs(angle - 90) > 0.5          # same S gate at every angle; the angle only changes the depth
+        mechanism = "NON_90_RELIEF" if non90 else "BEND_END_OFFSET_90"
+        depth = sg.relief_depth(t, _relief_angle(angle))
         flush_id, web_id, side_id = f"{sid}_FLUSH", f"{sid}_WEB", f"{sid}_SIDE"
         fl = by_id[_flange_line_id(st["bend"], st["member"], st["f_line"])]
         out["edges"][flush_id] = _edge(fl["start"], fl["end"], f"{fl['entity_id']}.FLANGE_SIDE_LINE",
@@ -455,10 +461,12 @@ def records(verts, chains, code, page, material, t):
                 "flush_edge_id": flush_id, "web_edge_id": web_id, "side_edge_id": side_id,
                 "positive_axis": [float(v) for v in _flat(st["bend"]["axis"], st["d"], 0.0)],
                 "positive_axis_evidence_ref": "toward the web face in the canonical flat",
-                "included_angle_deg": 90, "S_mm": st["S"], "mechanism": "BEND_END_OFFSET_90",
+                "included_angle_deg": angle if non90 else 90, "S_mm": st["S"], "mechanism": mechanism,
                 "decision": "NO_RELIEF", "relief_member_ids": [],
                 "steps_mm": {s2["bend"]["id"]: s2["S"] for s2 in steps},
                 "corner_B": [_r6(st["B"][0]), _r6(st["B"][1])]}
+        if non90:
+            site["angle_evidence_ref"] = st["bend"]["b"]["ev"]
         if slits:
             try:
                 ents, wit = slit_entities(st, material, t, sid)
@@ -470,12 +478,12 @@ def records(verts, chains, code, page, material, t):
                 return
             out["relief_entities"] += ents
             out["relief_members"].append({
-                "canonical_member_id": f"CM_{sid}", "origin": "DERIVED_RULE", "controlling_rule": "BEND_END_OFFSET_90",
+                "canonical_member_id": f"CM_{sid}", "origin": "DERIVED_RULE", "controlling_rule": mechanism,
                 "source_member_ids": [f"{p}_{st['member']['mid']}"], "status": "PROVED",
                 "entity_ids": [e["entity_id"] for e in ents], "bend_end_site_id": sid})
             site.update(decision="SLIT", relief_member_ids=[f"CM_{sid}"], slit_construction={
                 "actual_edge_id": web_id, "side_edge_id": side_id, "bend_id": f"{p}_{st['member']['mid']}",
-                "evidence_ref": f"S {st['S']:g}: slit {t + 0.2 - st['S']:g} from B along the flange side", **wit})
+                "evidence_ref": f"S {st['S']:g}: slit {depth - st['S']:g} from B along the flange side", **wit})
         out["sites"].append(site)
 
     done = set()

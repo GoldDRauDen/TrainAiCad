@@ -364,7 +364,7 @@ def canonical_job_anomalies(job: Dict[str, Any]) -> List[str]:
                     ):
                         out.append(f"{code}:BEND_PAIR_SOURCE_GROUP_MISMATCH:{gid}")
             if family == "KEGAKI" and group.get("status") == "PROVED":
-                if any(e.get("type") != "LINE" or e.get("color") != 1 for e in owned):
+                if any(e.get("type") not in ("LINE", "CIRCLE", "ARC") or e.get("color") != 1 for e in owned):
                     out.append(f"{code}:KEGAKI_SOURCE_GROUP_GEOMETRY_MISMATCH:{gid}")
 
         # Independent cross-part witness re-solve is mandatory when the

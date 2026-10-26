@@ -22,7 +22,7 @@ Only from a printed/handwritten `スリット` / `SLIT`. Value, quantity, host e
 - **Shape:** one Green connected `LINE + ARC R0.5 + LINE` (1 feature, 3 entities). Base B (above); short ray along the flange side toward the web, length `T+0.2−S`; lead end P = intersection of both edges offset toward the void by `LeadVal` (`lead_end_by_offset`; at 90° a 45° ray of LeadVal per axis, void side away from the flange); tangent arc R0.5. LeadVal from `data/lead_table.yaml` (`lookup.py slit`); hook rows (t≥19) or a t between rows → FLAG `LEAD_VALUE_UNPROVED`, nothing drawn. The exporter's guard rebuilds the slit with `tools/slit_geometry.py` from the declared edges. Lead is CAD geometry, not NC lead-in. The bend pair only touches B; trim a bend line only on a real interior intersection.
 
 ## 4. >90° bend relief
-`90° < θ < 180°`: depth `D = t·sin θ` (`lookup.py slit --angle θ`; t3.2: 130° 2.4513). Not t/2 in general. Exactly 90° uses §3.
+`90° < θ < 180°`: the §3 step gate decides first at every angle (S>0 → no relief; 26-063295: S +6.93 at 120° → none). S ≤ 0: slit from B, depth `D = t·sin θ` past the flange-side bend line (length D − S; lead and R0.5 as §3); `lookup.py slit --S s --angle θ` (t3.2 130°: 2.4513). Not t/2.
 
 ## 5. Two flanges at one corner
 - **Same fold direction** (collide by t): the SHALLOWER flange (depth = OD perpendicular to its own bend line, difference ≥0.1 mm) retreats its end by t; equal depth → either, prefer the longer bend edge. Retreated end `S = −t` → §3 slit; the other end `S = +t` → none. Never retreat the deeper flange (leaves a `khuyết_t` notch). `python tools/lookup.py retreat --depth A B [--bend-len LA LB]`. Impossible retreat → assemble normally + FLAG.
@@ -38,4 +38,4 @@ Only from a printed/handwritten `スリット` / `SLIT`. Value, quantity, host e
 Per junction: mechanism named once, S and T proved, depth/direction/connectivity right, bend domain clipped, saved DXF keeps the CUT/BEND interaction. `tools/bend_end_guard.py` (run by the exporter) re-measures S from the declared edge witnesses.
 
 ## Lessons
-`regression/lessons/SLIT_RELIEF/` — HD_FLAT_STEP (S in the flat, slit length T+0.2−S, 061247/061248), 521005-05 (S matrix, 057873), 521005-13 (custom スリット 8), 521016-17 (lead shape), 521017-17 (S=+t no slit), 521019-05 (relief inventory, corner depth), 520801-04 / 520929-18 (BOXMET), 520924-19 055958/055962, SILT_GT90, 521026-03 (slanted web edge at a bend end).
+`regression/lessons/SLIT_RELIEF/` — HD_FLAT_STEP (S in the flat, slit length T+0.2−S, 061247/061248), 521005-05 (S matrix, 057873), 521005-13 (custom スリット 8), 521016-17 (lead shape), 521017-17 (S=+t no slit), 521019-05 (relief inventory, corner depth), 520801-04 / 520929-18 (BOXMET), 520924-19 055958/055962, SILT_GT90, 521026-03 (slanted web edge at a bend end), 521026-13 (S gate above 90°).

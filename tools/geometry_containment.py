@@ -94,7 +94,7 @@ def part_containment_errors(part):
         errors = []
         for entity in part.get("entities", []):
             role, typ = entity.get("role"), entity.get("type")
-            if role == "hole" and typ == "CIRCLE":
+            if role in ("hole", "kegaki") and typ == "CIRCLE":
                 cx, cy = map(float, entity["center"][:2])
                 radius = float(entity["radius"])
                 if not all(math.isfinite(x) for x in (cx,cy,radius)) or radius <= 0:
