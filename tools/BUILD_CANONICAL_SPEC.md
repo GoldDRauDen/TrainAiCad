@@ -27,6 +27,8 @@ Job level: `job_id`, optional `customer_code` (numeric, JOB STATISTICS) — its 
 ## Holes / slots
 `{id, d, group, qty, ev, wx: [[value, TO_TYPE, "evidence", KIND?], ...], wy: [...], datum_x: 0, datum_y: 0, at?}` — the chain starts at the outer edge at `datum_x/datum_y`; the center is the sum (an `at` given is checked). Node types: `OUTER_EDGE`, `HOLE_CENTER`, `SLOT_MIDPOINT`, … (`tools/dimension_witness.py`). Slot: `{id, w, cd, axis: [1,0], ev, wx, wy}` → stadium, anchor `SLOT_MIDPOINT`.
 
+Equal pitch: `repeat: {n: 8, step: 75, along: wx}` on a hole/slot = n copies (`H_1`..`H_n`, `qty` defaults to n), copy k adds (k-1) steps to the named chain (`wx|wy|wu|wv`), so `P75*7` is one entry.
+
 Tap: `thread: M6` (or `M8x1` when the pitch is printed) instead of `d` → the pilot Ø from the table, same count and datum.
 
 Hole keys for POINT: `piercing: true` (PIERCING scoped to this family by its leader) → ByLayer POINT; `piercing: true, through: true, stamp: "<scoped text quoting PIERCING + THROUGH HOLE>"` → Green POINT + `piercing_authorizations` (rules/HOLE_TAP.md §2). A hole with `d < t/2` or below the workbook minimum becomes a ByLayer POINT by itself. `d` is still given (witness chain); a Magenta/unknown lookup result is refused (draw by hand + FLAG).

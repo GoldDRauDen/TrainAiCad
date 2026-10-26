@@ -409,6 +409,39 @@ def _cutout_vertices(c, chains, where):
     return [[_r6(x), _r6(y), round(g, 12) if g else 0] for x, y, g in pts]
 
 
+def _expand_repeats(spec, where):
+    """`repeat: {n, step, along}` on a hole/slot -> n features at a constant pitch (P<step>*<n-1>).
+
+    `along` names the witness chain the pitch runs on (wx, wy, wu or wv); feature k appends (k-1) pitch steps to it,
+    so every copy keeps its own full chain from the datum. Ids become <id>_1..<id>_n, `qty` defaults to n."""
+    for kind in ("holes", "slots"):
+        out = []
+        for i, item in enumerate(spec.get(kind) or []):
+            rep = item.get("repeat")
+            if rep is None:
+                out.append(item)
+                continue
+            n, step, along = rep.get("n"), rep.get("step"), rep.get("along")
+            if not isinstance(n, int) or isinstance(n, bool) or n < 2 or along not in ("wx", "wy", "wu", "wv"):
+                fail(f"{where}: {kind}[{i}] repeat needs n >= 2 (integer), step and along: wx|wy|wu|wv")
+            step = _num(step, f"{where}.{kind}[{i}].repeat.step")
+            base = item.get(along) or fail(f"{where}: {kind}[{i}] repeat along {along}: the chain to the first feature is missing")
+            node = base[-1][1]
+            ident = str(item.get("id") or f"{'H' if kind == 'holes' else 'SL'}{i + 1}")
+            for k in range(1, n + 1):
+                copy = {key: val for key, val in item.items() if key != "repeat"}
+                copy["id"] = f"{ident}_{k}"
+                copy[along] = [list(st) for st in base] + [[step, node, f"pitch {step:g} (P{step:g}*{n - 1})", "CHAIN"]] * (k - 1)
+                if k > 1:
+                    copy.pop("ev", None)
+                    copy.pop("qty", None)
+                elif copy.get("qty") is None:
+                    copy["qty"] = n
+                out.append(copy)
+        if out != (spec.get(kind) or []):
+            spec[kind] = out
+
+
 def build_part(spec, customer=None):
     if spec.get("data") is not None or spec.get("data_views") is not None:
         import data_part
@@ -420,6 +453,8 @@ def build_part(spec, customer=None):
         return data_part.finish(part, extra)
     code = str(spec.get("code") or fail("part: code required"))
     where = code
+    spec = dict(spec)
+    _expand_repeats(spec, where)
     material = str(spec.get("material") or fail(f"{code}: material required"))
     t = _num(spec.get("t"), f"{code}.t")
     page = int(spec.get("page", 1))
