@@ -41,6 +41,7 @@ FLAG_LABEL_CLEARANCE_MM = 49.0
 FLAG_LABEL_HEIGHT_MM = 15.0
 FLAG_LINE_PITCH_MM = 25.0       # one horizontal FLAG line per flag, stacked top to bottom
 REVIEW_BANNER = "CHỈ XEM XÉT - KHÔNG CẮT - CÒN MÃ CHƯA GIẢI QUYẾT"  # all DXF notes are Vietnamese (JOB_CARD.md item 10)
+LEFT_LABEL_ROLES = {"dx_label": "dx", "hl_label": "HL"}    # TEXT on Layer 0 (white) so the saved DXF keeps symmetry / grain
 LABEL_COLOR = 7                   # every AI_META note is white (AutoCAD colour 7), whatever the part status
 PIECE_SEPARATOR = ":S"            # canonical entity piece id: <entity_id>:S0001
 
@@ -90,7 +91,7 @@ def validate_entity(entity, part_code, preview):
     if entity.get("layer", "0") != "0":
         fail(f"{part_code}: all entities must use Layer 0")
     col = entity.get("color", 256)
-    if col not in (1, 3, 6, 256):
+    if col not in (1, 3, 6, 256) and not (col == 7 and role in LEFT_LABEL_ROLES):
         fail(f"{part_code}: unsupported color {col}; the colour legend is mandatory")
     if role in ("outer", "cutout", "hole", "slot") and col not in (256, 6):
         fail(f"{part_code}: cut geometry cannot be red/green")
@@ -109,6 +110,9 @@ def validate_entity(entity, part_code, preview):
     if t == "TEXT" and role == "mark":
         if entity.get("text") not in ("J", "LJ") or entity.get("height") != JLJ_TEXT_HEIGHT_MM:
             fail(f"{part_code}: mark TEXT must be J or LJ, height 10")
+    elif t == "TEXT" and role in LEFT_LABEL_ROLES:
+        if entity.get("text") != LEFT_LABEL_ROLES[role] or col != 7:
+            fail(f"{part_code}: {role} TEXT must read {LEFT_LABEL_ROLES[role]!r} and be white")
     elif t == "TEXT" and (not preview or col != 6 or role != "estimated_note"):
         fail(f"{part_code}: source TEXT only for adjacent Magenta preview notes; code labels are generated in AI_META")
     if t == "LWPOLYLINE":
@@ -270,8 +274,6 @@ def validate_job(job):
             jlj_marks_check(part)
         if state == "VIEWS_ONLY" and not any(ent["type"] != "TEXT" for ent in ents):
             fail(f"{code}: no proved source-view geometry")
-        if state == "PREVIEW" and not any(e.get("color") == 6 or e.get("flag_segments") for e in ents):
-            fail(f"{code}: preview requires Magenta geometry (the flagged entity); the FLAG note is generated on AI_META")
     return jid
 
 
@@ -333,7 +335,10 @@ def emit_entity(msp, ent, dx=0.0, dy=0.0):
     if t == "TEXT":
         attrs["height"] = ent.get("height", 2.5)
         attrs["insert"] = move(ent["insert"])
-        return [msp.add_text(ent["text"], dxfattribs=attrs)]
+        obj = msp.add_text(ent["text"], dxfattribs=attrs)
+        if ent.get("align"):
+            obj.set_placement(move(ent["insert"]), align=TextEntityAlignment[ent["align"]])
+        return [obj]
     fail(f"Unknown entity type {t}")
 
 
@@ -448,6 +453,36 @@ def source_view_boxes(part):
     return boxes
 
 
+def add_left_labels(parts):
+    """`dx` (inner-face drawing) and `HL` (hairline) are part entities on Layer 0, left of the outline, white: they travel
+    with the saved DXF like any other entity. Idempotent; the part bounding box ignores them."""
+    for part in parts:
+        if not isinstance(part, dict) or not isinstance(part.get("entities"), list):
+            continue
+        wanted = [role for role, flag in (("dx_label", bool(part.get("dx_label"))),
+                                          ("hl_label", bool(part.get("grain", {}).get("is_hl")))) if flag]
+        have = {e.get("role") for e in part["entities"]}
+        wanted = [r for r in wanted if r not in have]
+        if not wanted:
+            continue
+        xmin, ymin, xmax, ymax = _label_free_bbox(part)
+        k = sum(r in have for r in LEFT_LABEL_ROLES)
+        for role in wanted:
+            part["entities"].append({
+                "entity_id": f"E_{part['code']}_{LEFT_LABEL_ROLES[role].upper()}", "type": "TEXT", "role": role,
+                "text": LEFT_LABEL_ROLES[role], "color": 7, "height": DX_LABEL_HEIGHT_MM, "align": "MIDDLE_RIGHT",
+                "insert": [round(xmin - DX_LABEL_CLEARANCE_MM, 6), round((ymin + ymax) / 2 - k * 2 * DX_LABEL_HEIGHT_MM, 6)]})
+            k += 1
+
+
+def _label_free_bbox(part):
+    scratch = new_doc()
+    for e in part["entities"]:
+        if e.get("role") not in LEFT_LABEL_ROLES:
+            emit_entity(scratch.modelspace(), e)
+    return extents_of(scratch)
+
+
 def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=False):
     """One composite : code-labelled, top-to-bottom, 150 mm between code clusters.
 
@@ -456,6 +491,8 @@ def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=F
     'dx' (20 mm, left, centred) marks a PDF back-face part; FLAG (top-right, reading
     downward) marks any part with flags. Individual CUT files never carry labels.
     """
+    if isinstance(job.get("parts"), list):
+        add_left_labels(job["parts"])
     jid = validate_job(job)
     gap_mm = number(gap_mm, "gap_mm")
     if gap_mm < COMPOSITE_GAP_MM:
@@ -467,13 +504,16 @@ def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=F
     records = []
     for p in parts:
         scratch = new_doc()
+        bbox_doc = new_doc()
         count = 0
         for e in p["entities"]:
             count += len(emit_entity(scratch.modelspace(), e))
+            if e.get("role") not in LEFT_LABEL_ROLES:
+                emit_entity(bbox_doc.modelspace(), e)
         view_boxes = source_view_boxes(p) if p["status"] == "VIEWS_ONLY" else {}
         records.append({"code": p["code"], "material": p["material"],
                         "thickness_mm": p["thickness_mm"], "status": p["status"],
-                        "bbox_mm": extents_of(scratch), "entity_count": count,
+                        "bbox_mm": extents_of(bbox_doc), "entity_count": count,
                         "flags": p.get("flags", []), "checks": p["checks"],
                         "dx_label": bool(p.get("dx_label", False)),
                         "hl_label": bool(p.get("grain", {}).get("is_hl", False)),
@@ -488,8 +528,6 @@ def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=F
     expected_geometry = []
     geometry_ids = []
     expected_labels = []
-    dx_expected = 0
-    hl_expected = 0
     annotation_count = 0
     cursor = stack_height
 
@@ -527,12 +565,7 @@ def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=F
             label(f"FLAG: {flag}",
                   (xmax - xmin + FLAG_LABEL_CLEARANCE_MM, cursor - index * FLAG_LINE_PITCH_MM),
                   height=FLAG_LABEL_HEIGHT_MM, align=TextEntityAlignment.TOP_LEFT)
-        left_notes = (["dx"] if rec["dx_label"] else []) + (["HL"] if rec["hl_label"] else [])
-        for k, note in enumerate(left_notes):          # left of the part: dx (inner face), HL (hairline), stacked downward
-            label(note, (-DX_LABEL_CLEARANCE_MM, bottom + h / 2 - k * 2 * DX_LABEL_HEIGHT_MM), height=DX_LABEL_HEIGHT_MM,
-                  align=TextEntityAlignment.MIDDLE_RIGHT)
-        dx_expected += int(rec["dx_label"])
-        hl_expected += int(rec["hl_label"])
+
         if p["status"] == "VIEWS_ONLY":
             for view_id, bounds in rec["source_view_boxes"].items():
                 label(p["code"] + " VIEW " + view_id, (bounds[0] + dx, bounds[3] + dy + CODE_LABEL_OFFSET_MM))
@@ -555,10 +588,6 @@ def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=F
     labels = [e.dxf.text for e in loaded.modelspace() if e.dxf.layer == "AI_META"]
     if [x for x in labels if x in expected_labels] != expected_labels:
         fail("Missing or misordered code labels in combined DXF")
-    if labels.count("dx") != dx_expected:
-        fail("dx label count does not match PDF back-face parts")
-    if labels.count("HL") != hl_expected:
-        fail("HL label count does not match hairline parts")
     if review and REVIEW_BANNER not in labels:
         fail("REVIEW_ONLY output missing global NO CUT label")
     for upper, lower in zip(layout, layout[1:]):

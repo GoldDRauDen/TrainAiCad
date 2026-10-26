@@ -858,9 +858,6 @@ def build_part(spec, customer=None):
     part["checks"] = checks
     if status == "PREVIEW":
         part["preview_reason"] = "numeric_only_known_topology"
-        local = any(e.get("color") == 6 or e.get("flag_segments") for e in part["entities"])
-        if not local:   # a FLAG with no drawn entity to point at (e.g. an overall size): the whole outline is the unknown
-            part["entities"][0]["color"] = 6
     return part
 
 

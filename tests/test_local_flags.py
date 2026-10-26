@@ -68,15 +68,17 @@ def test_no_estimate_note_and_every_note_is_white(tmp_path):
     part, doc = _export(tmp_path, _spec(dx_label=True))
     assert not any(e.get("role") == "estimated_note" for e in part["entities"])
     texts = [e for e in doc.modelspace() if e.dxftype() == "TEXT"]
-    assert texts and all(e.dxf.layer == "AI_META" and e.dxf.color == 7 for e in texts)
+    assert texts and all(e.dxf.color == 7 for e in texts)
     assert doc.layers.get("AI_META").dxf.color == 7
     assert not any("Ước lượng" in e.dxf.text for e in texts)
     body = [e.dxf.text for e in texts]
-    assert body.count("26-000100") == 1 and "dx" in body                      # code only (no [FLAG] suffix), dx at the left
-    flag_lines = [e for e in texts if e.dxf.text.startswith("FLAG: ")]
+    assert body.count("26-000100") == 1 and "dx" in body                      # code only (no [FLAG] suffix)
+    notes = [e for e in texts if e.dxf.layer == "AI_META"]
+    flag_lines = [e for e in notes if e.dxf.text.startswith("FLAG: ")]
     assert {e.dxf.text for e in flag_lines} >= {"FLAG: 2-M8 hay 4 lỗ?", "FLAG: lỗ dài lệch PDF", "FLAG: R10 khác PDF"}
     assert all(e.dxf.insert.x > 200 for e in flag_lines)                      # at the right of the part
-    assert next(e for e in texts if e.dxf.text == "dx").dxf.insert.x < 0
+    dx = next(e for e in texts if e.dxf.text == "dx")
+    assert dx.dxf.layer == "0" and dx.dxf.insert.x < 0                         # dx / HL: Layer 0, left of the part
 
 
 def test_hairline_part_gets_an_hl_label_at_the_left(tmp_path):
@@ -84,17 +86,19 @@ def test_hairline_part_gets_an_hl_label_at_the_left(tmp_path):
         part["grain"] = {"is_hl": True, "direction_xy": [1, 0], "evidence_ref": "p1 arrow"}
     _, doc = _export(tmp_path, _spec(dx_label=True), hl)
     left = {e.dxf.text: e for e in doc.modelspace() if e.dxftype() == "TEXT" and e.dxf.text in ("dx", "HL")}
-    assert set(left) == {"dx", "HL"} and all(e.dxf.insert.x < 0 for e in left.values())
+    assert set(left) == {"dx", "HL"} and all(e.dxf.insert.x < 0 and e.dxf.layer == "0" for e in left.values())
     assert left["HL"].dxf.insert.y < left["dx"].dxf.insert.y                   # stacked downward, never overlapping
+    outline = [e for e in doc.modelspace() if e.dxf.layer == "0" and e.dxftype() == "LINE"]
+    assert min(min(e.dxf.start.x, e.dxf.end.x) for e in outline) == 0          # the labels never move the part origin
 
 
-def test_flag_with_nothing_to_point_at_keeps_the_whole_outline_magenta():
+def test_flag_with_nothing_to_point_at_is_a_note_only():
     part = bc.build_part({"code": "26-000101", "material": "SPCC", "t": 2, "page": 1, "envelope": [50, 50],
                           "flags": ["kích thước tổng chưa rõ"],
                           "outline": [[0, 0, {"SHARP": "x"}], [50, 0, {"SHARP": "x"}], [50, 50, {"SHARP": "x"}],
                                       [0, 50, {"SHARP": "x"}]]})
-    assert part["status"] == "PREVIEW" and part["entities"][0]["color"] == MAGENTA
-    assert not any(e["type"] == "TEXT" for e in part["entities"])
+    assert part["status"] == "PREVIEW" and part["flags"] == ["kích thước tổng chưa rõ"]
+    assert part["entities"][0].get("color", 256) == 256 and not any(e["type"] == "TEXT" for e in part["entities"])
 
 
 # ---------------------------------------------------------------------------------------- DATA/PDF differences are local

@@ -22,7 +22,7 @@ CUT_ROLES = frozenset({"outer", "cutout", "slot", "hole", "relief", "slit", "cut
 NONCUT_ROLES = frozenset({
     "bend", "kegaki", "ordinary_point", "through_piercing",
     "source_view", "construction", "reference", "measurement",
-    "estimated", "estimated_note", "mark",
+    "estimated", "estimated_note", "mark", "dx_label", "hl_label",
 })
 TOLERANCE = 1e-6
 
