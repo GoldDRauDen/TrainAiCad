@@ -296,7 +296,9 @@ def _scalar(v, loaded, code):
         if refs[1].group(1) not in w["datums"]:
             _fail(f"{code}: span {v['span']} must stay inside one DATA view")
         return abs(_datum_value(v["span"][0], w["datums"], code) - _datum_value(v["span"][1], w["datums"], code))
-    _fail(f"{code}: {v!r} is not a number, ZERO, a scalar datum reference or a span")
+    if isinstance(v, dict) and isinstance(v.get("hypot"), (list, tuple)) and v["hypot"]:
+        return math.sqrt(sum(_scalar(x, loaded, code) ** 2 for x in v["hypot"]))     # a length from two spans (dx, dy)
+    _fail(f"{code}: {v!r} is not a number, ZERO, a scalar datum reference, a span or a hypot")
 
 
 def _resolve_bend(bend, loaded, customer, code, extra):

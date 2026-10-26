@@ -286,3 +286,14 @@ def test_roundtrip_to_data_catches_a_moved_hole(tmp_path):
     next(e for e in part["entities"] if e["type"] == "CIRCLE")["center"][0] += 0.01
     with pytest.raises(data_part.DataPartError, match="DATA_ROUNDTRIP_FAIL"):
         data_part.finish(part, extra)
+
+
+def test_hypot_scalar_builds_a_slanted_length_from_two_spans(tmp_path):
+    spec = _plate_spec(tmp_path, envelope=[45, 27])
+    width = {"span": ["W1.min.x", "W2.min.x"]}                              # 27
+    length = {"hypot": [width, 36]}                                         # 27-36-45
+    spec["outline"] = [["ZERO", "ZERO"], [length, "ZERO"], [length, width], ["ZERO", width]]
+    spec["data_views"][0].pop("origin")
+    part = bc.build_part(spec)
+    outer = next(e for e in part["entities"] if e["role"] == "outer")["vertices"]
+    assert (max(v[0] for v in outer), max(v[1] for v in outer)) == pytest.approx((45, 27))
