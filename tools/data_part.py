@@ -23,10 +23,21 @@ PDF_PRIORITY customer values. DATA vs PDF on the same parameter: Δ < threshold 
 data_pdf_tolerance_mm) keeps DATA; above it the customer data_pdf_policy decides (DATA_NO_DIM_COMPARE keeps DATA,
 PDF_PRIORITY takes the PDF value, otherwise DATA kept + FLAG DATA_PDF_DIM_DIFF + PREVIEW).
 Bend lines in DATA are not automated yet (refused with the reason).
+
+Bent part from SEVERAL DATA views (`data_views`, rules/DATA_DXF.md section 1): each view is one dxf_assemble result with
+its own proved transform (a mirror/rotation per view so that its along axis runs with the chain), `origin` (the flat edge
+v = 0) and `data_faces`. Coordinates are never typed: they are `datum` members of the view read as
+`<member>.<start|end|min|max>.<x|y>`. Outline corners use the same references (`START`/`END` = the chain's free edges):
+
+    data_views:
+      - {data: web.json, origin: LEFT.min.x, width: RIGHT.max.x,
+         data_faces: [{face: FW, from: start, at: BOT.min.y, to: TOP.max.y}], members: {H1: {...}}}
+    outline: [[LEFT.min.x, START], [FB_END.max.x, START], [SLANT.start.x, SLANT.start.y], ...]
 """
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import lookup
@@ -73,6 +84,8 @@ def _ordinate(value, ref, end):
 def to_spec(spec: dict, customer=None):
     """Return (ordinary build spec, extra records for finish())."""
     code = spec.get("code") or _fail("part: code required")
+    if spec.get("data_views") is not None:
+        return _views_spec(spec, customer)
     path = Path(spec["data"])
     if not path.is_file():
         _fail(f"{code}: data file {path} not found (run tools/dxf_assemble.py first)")
@@ -156,6 +169,21 @@ def _face_view(spec, out, extra, by_member, meaning, outer_id, origin, size, cus
     entries = spec.get("data_faces")
     if entries is None:
         entries = [{"face": spec["data_face"], "from": "start", "at": origin[k], "to": origin[k] + along, "gate": True}]
+    ranges = _ranges(code, ch, entries, customer, extra)
+    if spec["bend"].get("width") is not None:
+        _, change, flag = gate(across, spec["bend"]["width"], customer, "DATA bề rộng")
+        if flag:
+            extra["flags"].append(flag)
+    dv = float(spec.get("data_v", 0.0)) - origin[1 - k]
+    mapper = _mapper(code, ranges, k, dv)
+    out["outline"] = spec.get("outline") or _fail(f"{code}: a bent DATA part needs outline (usually auto)")
+    out["envelope"] = spec.get("envelope") or _fail(f"{code}: envelope required (overall flat size)")
+    extra["face_view"] = {"faces": [{"face": r[2], "view_range": [r[0], r[1]], "shift_along": r[3]} for r in ranges]}
+    return _features(out, extra, by_member, meaning, outer_id, code, customer, mapper)
+
+
+def _ranges(code, ch, entries, customer, extra):
+    """[(lo, hi, face, shift)] of the data_faces entries: a feature inside [lo, hi] is on `face`, flat = view + shift."""
     ranges = []
     for n, e in enumerate(entries):
         face, frm = e.get("face"), str(e.get("from", "start"))
@@ -171,12 +199,10 @@ def _face_view(spec, out, extra, by_member, meaning, outer_id, origin, size, cus
             if flag:
                 extra["flags"].append(flag)
         ranges.append((min(at, to), max(at, to), face, (f["start"] if frm == "start" else f["end"]) - at))
-    if spec["bend"].get("width") is not None:
-        _, change, flag = gate(across, spec["bend"]["width"], customer, "DATA bề rộng")
-        if flag:
-            extra["flags"].append(flag)
-    dv = float(spec.get("data_v", 0.0)) - origin[1 - k]
+    return ranges
 
+
+def _mapper(code, ranges, k, dv):
     def mapper(points):
         a = [pt[k] for pt in points]
         hit = [r for r in ranges if r[0] - 1e-6 <= min(a) and max(a) <= r[1] + 1e-6]
@@ -187,17 +213,137 @@ def _face_view(spec, out, extra, by_member, meaning, outer_id, origin, size, cus
         shift = [0.0, 0.0]
         shift[k], shift[1 - k] = d_along, dv
         return shift, f" on {face}"
-    out["outline"] = spec.get("outline") or _fail(f"{code}: a bent DATA part needs outline (usually auto)")
+    return mapper
+
+
+# ---------------------------------------------------------------- bent part from several DATA views
+_REF = re.compile(r"^([A-Za-z0-9_]+)\.(start|end|min|max)\.([xy])$")
+
+
+def _datum_value(ref, datums, code):
+    m = _REF.match(str(ref).strip()) or _fail(f"{code}: {ref!r} is not <datum member>.<start|end|min|max>.<x|y>")
+    mid, which, ax = m.groups()
+    ents = datums.get(mid) or _fail(f"{code}: {mid} is not a `datum` member of this DATA view")
+    i = 0 if ax == "x" else 1
+    if which == "start":
+        return float(ents[0]["start"][i])
+    if which == "end":
+        return float(ents[-1]["end"][i])
+    vals = [float(pt[i]) for e in ents for pt in (e["start"], e["end"])]
+    return min(vals) if which == "min" else max(vals)
+
+
+def _value(v, datums, code):
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else _datum_value(v, datums, code)
+
+
+def _views_spec(spec, customer):
+    import bend_flat
+    code = spec["code"]
+    if not spec.get("bend") or "chains" in spec["bend"]:
+        _fail(f"{code}: data_views needs a one-axis `bend:` block (two axes: build by hand)")
+    try:
+        ch = bend_flat.unfold_chain(spec["bend"], spec["material"], float(spec["t"]), customer, code)
+    except bend_flat.BendError as exc:
+        _fail(str(exc))
+    along_idx = 0 if ch["axis"] == "X" else 1   # flat axis of the chain = the view axis after the proved transform
+    out = {k: v for k, v in spec.items() if k not in ("data_views", "data", "members", "corners", "envelope", "outline")}
+    extra = {"changes": [], "flags": [], "data_file": [], "transform": [], "source_sha256": [], "face_view": []}
+    views, seen = [], set()
+    for n, entry in enumerate(spec["data_views"]):
+        path = Path(entry.get("data") or _fail(f"{code}: data_views[{n}] needs data"))
+        if not path.is_file():
+            _fail(f"{code}: data file {path} not found (run tools/dxf_assemble.py first)")
+        assembled = json.loads(path.read_text(encoding="utf-8-sig"))
+        if not assembled.get("invariance", {}).get("ok"):
+            _fail(f"{code}: {path.name} did not pass the dxf_assemble invariance check")
+        by_member: dict[str, list] = {}
+        for e in assembled.get("entities") or _fail(f"{code}: {path.name} has no entities"):
+            by_member.setdefault(e.get("member_id") or _fail(f"{code}: {path.name} predates member ids"), []).append(e)
+        if any(e.get("role") == "bend" for es in by_member.values() for e in es):
+            _fail(f"{code}: DATA bend lines are not used (faces come from the `bend:` block)")
+        datums = {mid: es for mid, es in by_member.items() if es[0]["role"] == "datum"}
+        features = {mid: es for mid, es in by_member.items() if es[0]["role"] != "datum"}
+        if any(mid in seen for mid in by_member):
+            _fail(f"{code}: member ids must be unique across data_views ({path.name})")
+        seen |= set(by_member)
+        if entry.get("origin") is None:
+            _fail(f"{code}: data_views[{n}] needs origin (a datum reference for the flat edge v = 0)")
+        origin = _value(entry["origin"], datums, code)
+        faces = [{**e, "at": _value(e["at"], datums, code), "to": _value(e["to"], datums, code)}
+                 for e in entry["data_faces"]]
+        sub = {"changes": [], "flags": []}
+        ranges = _ranges(code, ch, faces, customer, sub)
+        if entry.get("width") is not None:
+            _, _, flag = gate(abs(_value(entry["width"], datums, code) - origin), spec["bend"]["width"], customer,
+                              "DATA bề rộng")
+            if flag:
+                sub["flags"].append(flag)
+        dv = float(entry.get("data_v", 0.0)) - origin
+        mapper = _mapper(code, ranges, along_idx, dv)
+        meaning = entry.get("members") or {}
+        if set(meaning) - set(features):
+            _fail(f"{code}: members {sorted(set(meaning) - set(features))} are not feature members of {path.name}")
+        part_out = {}
+        _features(part_out, sub, features, meaning, None, code, customer, mapper)
+        for key in ("holes", "slots", "cutouts", "kegaki"):
+            if part_out.get(key):
+                out.setdefault(key, []).extend(part_out[key])
+        extra["changes"] += sub["changes"]
+        extra["flags"] += sub["flags"]
+        extra["data_file"].append(path.name)
+        extra["transform"].append(assembled.get("transform"))
+        extra["source_sha256"].append(assembled.get("source", {}).get("sha256"))
+        extra["face_view"].append({"view": path.name, "faces": [
+            {"face": r[2], "view_range": [r[0], r[1]], "shift_along": r[3]} for r in ranges]})
+        views.append({"datums": datums, "k": along_idx, "dv": dv, "mapper": mapper})
+    out["outline"] = [_outline_item(it, views, ch, along_idx, code) for it in
+                      spec.get("outline") or _fail(f"{code}: data_views needs an outline (datum references)")]
     out["envelope"] = spec.get("envelope") or _fail(f"{code}: envelope required (overall flat size)")
-    extra["face_view"] = {"faces": [{"face": r[2], "view_range": [r[0], r[1]], "shift_along": r[3]} for r in ranges]}
-    return _features(out, extra, by_member, meaning, outer_id, code, customer, mapper)
+    if extra["flags"]:
+        out["flags"] = list(out.get("flags") or []) + extra["flags"]
+    extra["data_file"] = ", ".join(extra["data_file"])
+    return out, extra
+
+
+def _outline_item(item, views, ch, along_idx, code):
+    """One outline item with every coordinate resolved: a number, START/END of the chain, or a DATA datum reference."""
+    if isinstance(item, dict):
+        return item
+    pt = []
+    for i in (0, 1):
+        v = item[i]
+        if isinstance(v, str) and v.strip() in ("START", "END"):
+            if i != along_idx:
+                _fail(f"{code}: START/END only fill the chain-axis coordinate of an outline point")
+            pt.append(ch["origin"] if v.strip() == "START" else ch["origin"] + ch["total"])
+            continue
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            pt.append(float(v))
+            continue
+        m = _REF.match(str(v).strip()) or _fail(f"{code}: outline coordinate {v!r} is not a number, START/END or a datum "
+                                                "reference")
+        owners = [w for w in views if m.group(1) in w["datums"]]
+        if len(owners) != 1:
+            _fail(f"{code}: datum {m.group(1)} must be a `datum` member of exactly one DATA view")
+        w = owners[0]
+        raw = _datum_value(v, w["datums"], code)
+        if (0 if m.group(3) == "x" else 1) == w["k"]:
+            shift, _ = w["mapper"]([(raw, raw)])
+            flat, flat_axis = raw + shift[w["k"]], along_idx
+        else:
+            flat, flat_axis = raw + w["dv"], 1 - along_idx
+        if flat_axis != i:
+            _fail(f"{code}: outline coordinate {v} is on the other flat axis than its position in the point")
+        pt.append(flat)
+    return [round(pt[0], 6), round(pt[1], 6)] + list(item[2:])
 
 
 def _features(out, extra, by_member, meaning, outer_id, code, customer, mapper):
     """Holes, slots, cut-outs and KEGAKI of the DATA members; mapper(points) -> (translation, face note)."""
     holes, slots, cuts, marks = [], [], [], []
     for mid, es in by_member.items():
-        if mid == outer_id:
+        if mid == outer_id or es[0]["role"] == "datum":
             continue
         m = meaning.get(mid) or _fail(f"{code}: DATA member {mid} needs its PDF meaning in members.{mid} "
                                       "(ev, group/qty, thread/pdf_d/piercing)")

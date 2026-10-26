@@ -15,7 +15,8 @@ plan.json
                   {"reason": "DIMENSION_GRAPHIC", "rest_of": "V03"}]}          # rest_of = pieces of V03 not used/excluded elsewhere
 
 Roles: outer (closed, CCW), cutout / slot (closed, CW), hole (CIRCLE), bend (LINE, DASHED), kegaki (LINE, Red 1),
-point (POINT, ByLayer). Only layer/colour/linetype and the declared rigid transform (scale>0, rotation, mirror,
+point (POINT, ByLayer), datum (LINE: a source edge kept only as a coordinate reference, e.g. a view's end or plane line;
+never drawn - `data_views` in tools/data_part.py reads outline corners and face ranges from it). Only layer/colour/linetype and the declared rigid transform (scale>0, rotation, mirror,
 translation; scale/rotation/mirror need `evidence`) differ from DATA. Every piece must end up used or excluded with a
 reason code (exact duplicates ride on their original); anything else blocks. The result is re-decoded and compared
 with the source pieces in both directions (rules/DATA_DXF.md §4) before it is returned.
@@ -40,7 +41,7 @@ REASONS = {
     "UNSUPPORTED_CURVE_FLAG", "CENTRE_OR_CONSTRUCTION", "OTHER",
 }
 CHAIN_ROLES = {"outer": 1, "cutout": -1, "slot": -1}          # required winding sign
-SINGLE_ROLES = {"hole": "CIRCLE", "bend": "LINE", "kegaki": "LINE", "point": "POINT"}
+SINGLE_ROLES = {"hole": "CIRCLE", "bend": "LINE", "kegaki": "LINE", "point": "POINT", "datum": "LINE"}
 ROLE_ATTRS = {"bend": {"linetype": "DASHED"}, "kegaki": {"color": 1}}
 ENTITY_ROLE = {"point": "ordinary_point"}
 JOIN_TOL = 1e-4          # source endpoints closer than this are the same chain node (closure noise only)

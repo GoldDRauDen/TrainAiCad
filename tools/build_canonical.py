@@ -402,7 +402,7 @@ def _cutout_vertices(c, chains, where):
 
 
 def build_part(spec, customer=None):
-    if spec.get("data") is not None:
+    if spec.get("data") is not None or spec.get("data_views") is not None:
         import data_part
         try:
             spec, extra = data_part.to_spec(spec, customer)
@@ -1041,6 +1041,9 @@ def load_spec(path):
         for part in data.get("parts") or []:  # a DATA path is relative to its spec file
             if isinstance(part, dict) and isinstance(part.get("data"), str):
                 part["data"] = str((Path(path).parent / part["data"]).resolve())
+            for view in (part.get("data_views") or []) if isinstance(part, dict) else []:
+                if isinstance(view, dict) and isinstance(view.get("data"), str):
+                    view["data"] = str((Path(path).parent / view["data"]).resolve())
     return data
 
 
