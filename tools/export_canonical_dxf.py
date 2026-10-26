@@ -142,7 +142,7 @@ def main() -> None:
     ap.add_argument("--allow-nonslip-codes", action="store_true",
                     help="synthetic/test jobs only: skip the delivery-slip work-number check")
     args = ap.parse_args()
-    job = json.loads(args.input_json.read_text(encoding="utf-8"))
+    job = json.loads(args.input_json.read_text(encoding="utf-8-sig"))
     manifest = export_canonical_job(job, args.output_dir, args.gap_mm, args.write_manifest,
                                     individual_dxf=args.individual_dxf,
                                     require_slip_codes=not args.allow_nonslip_codes)

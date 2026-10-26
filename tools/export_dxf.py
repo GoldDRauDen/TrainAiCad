@@ -119,7 +119,8 @@ def validate_entity(entity, part_code, preview):
                 fail(f"{part_code}: vertex requires [x,y,bulge]")
             for n in v:
                 number(n, f"{part_code} polyline")
-        if role in ("outer", "cutout", "slot") and (not entity.get("closed") or len(vertices) < 3):
+        arc_closed = len(vertices) == 2 and any(v[2] for v in vertices)   # D-shaped loop: chord + arc
+        if role in ("outer", "cutout", "slot") and (not entity.get("closed") or (len(vertices) < 3 and not arc_closed)):
             fail(f"{part_code}: outer, cutout and slot must be closed polylines")
         if entity.get("closed") and vertices[0][:2] == vertices[-1][:2]:
             fail(f"{part_code}: omit duplicate closing vertex; use closed=true")

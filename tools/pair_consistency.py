@@ -152,7 +152,7 @@ def main(argv=None) -> int:
     ap.add_argument("--mirror", default="auto", choices=["auto", "none", "x", "y", "xy"])
     ap.add_argument("--tol", type=float, default=TOL)
     a = ap.parse_args(argv)
-    job = json.loads(Path(a.job).read_text(encoding="utf-8"))
+    job = json.loads(Path(a.job).read_text(encoding="utf-8-sig"))
     res = check_pair(job, a.code_a, a.code_b, a.mirror, a.tol)
     print(json.dumps(res, ensure_ascii=False, indent=2))
     return 0 if res["status"] == "OK" else 1

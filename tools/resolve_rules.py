@@ -270,7 +270,7 @@ def main() -> int:
     if args.census is None:
         parser.error("census JSON required (or --template)")
     try:
-        census = json.loads(args.census.read_text(encoding="utf-8"))
+        census = json.loads(args.census.read_text(encoding="utf-8-sig"))
         result = resolve_rules(census, args.repo_root)
         if args.bundle:
             result["bundle"] = write_bundle(result, args.bundle, args.repo_root)

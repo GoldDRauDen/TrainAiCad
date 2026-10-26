@@ -35,7 +35,7 @@ def default_work(job_id: str) -> Path:
     """The current job's work dir when it is this job (tools/job.py), else .work/<job_id> (git-ignored)."""
     try:
         d = job_state.work_dir(None)
-        if json.loads((d / "job_state.json").read_text(encoding="utf-8")).get("job") == job_id:
+        if json.loads((d / "job_state.json").read_text(encoding="utf-8-sig")).get("job") == job_id:
             return d
     except (SystemExit, OSError, ValueError):
         pass

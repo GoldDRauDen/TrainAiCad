@@ -160,7 +160,7 @@ def main() -> None:
     ap.add_argument("--axis", choices=("X", "Y"), required=True)
     ap.add_argument("--expected-mm", help="optional independent QA check")
     args = ap.parse_args()
-    graph = json.loads(args.graph_json.read_text(encoding="utf-8"))
+    graph = json.loads(args.graph_json.read_text(encoding="utf-8-sig"))
     try:
         result = solve_relative(graph, args.start, args.target, args.axis)
         if args.expected_mm is not None:

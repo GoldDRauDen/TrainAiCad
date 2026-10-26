@@ -334,6 +334,14 @@ def _load_chains(bend_spec, material, t, customer, code):
     return chains
 
 
+def _chain_key(item):
+    """Which chain a face-relative item sits on in a two-axis part: `chain: X|Y`, or a string `axis` (older specs).
+    A slot's own `axis` is its direction vector in the flat and never selects a chain."""
+    if item.get("chain") is not None:
+        return item["chain"]
+    return item["axis"] if isinstance(item.get("axis"), str) else None
+
+
 def _face_chain(chains, face, axis, where):
     owners = [c for c in chains if face in c["faces"]]
     if axis:
@@ -349,8 +357,8 @@ def _resolve_outline(items, chains, code):
     out = []
     for item in items:
         if isinstance(item, dict) and "face" in item:
-            ch = _face_chain(chains, item["face"], item.get("axis"), code)
-            res = bend_flat.resolve_outline([{k: v for k, v in item.items() if k != "axis"}], ch, code)
+            ch = _face_chain(chains, item["face"], _chain_key(item), code)
+            res = bend_flat.resolve_outline([{k: v for k, v in item.items() if k not in ("axis", "chain")}], ch, code)
             out += res
         else:
             out.append(item)
@@ -367,13 +375,13 @@ def _cutout_vertices(c, chains, where):
         fail(f"{where}: cutout needs ev")
     if "vertices" in c:  # exact closed polygon, e.g. customer DATA (tools/data_part.py): kept as given
         verts = [[_num(v[0], where), _num(v[1], where), _num(v[2] if len(v) > 2 else 0, where)] for v in c["vertices"]]
-        if len(verts) < 3 or signed_poly_area(verts) >= 0:
+        if len(verts) < 2 or (len(verts) == 2 and not any(v[2] for v in verts)) or signed_poly_area(verts) >= 0:
             fail(f"{where}: cutout vertices must be a closed clockwise loop")
         return [[_r6(x), _r6(y), g] for x, y, g in verts]
     if "face" in c:
         if not chains:
             fail(f"{where}: face needs a bend block")
-        chain = _face_chain(chains, c["face"], c.get("axis"), where)
+        chain = _face_chain(chains, c["face"], _chain_key(c), where)
         try:
             d, _, sgn, _ = bend_flat.face_datum(chain, c["face"], c.get("from"), where)
         except bend_flat.BendError as exc:
@@ -401,17 +409,55 @@ def _cutout_vertices(c, chains, where):
     return [[_r6(x), _r6(y), round(g, 12) if g else 0] for x, y, g in pts]
 
 
+def _expand_repeats(spec, where):
+    """`repeat: {n, step, along}` on a hole/slot -> n features at a constant pitch (P<step>*<n-1>).
+
+    `along` names the witness chain the pitch runs on (wx, wy, wu or wv); feature k appends (k-1) pitch steps to it,
+    so every copy keeps its own full chain from the datum. Ids become <id>_1..<id>_n, `qty` defaults to n."""
+    for kind in ("holes", "slots"):
+        out = []
+        for i, item in enumerate(spec.get(kind) or []):
+            rep = item.get("repeat")
+            if rep is None:
+                out.append(item)
+                continue
+            n, step, along = rep.get("n"), rep.get("step"), rep.get("along")
+            if not isinstance(n, int) or isinstance(n, bool) or n < 2 or along not in ("wx", "wy", "wu", "wv"):
+                fail(f"{where}: {kind}[{i}] repeat needs n >= 2 (integer), step and along: wx|wy|wu|wv")
+            step = _num(step, f"{where}.{kind}[{i}].repeat.step")
+            base = item.get(along) or fail(f"{where}: {kind}[{i}] repeat along {along}: the chain to the first feature is missing")
+            node = base[-1][1]
+            ident = str(item.get("id") or f"{'H' if kind == 'holes' else 'SL'}{i + 1}")
+            for k in range(1, n + 1):
+                copy = {key: val for key, val in item.items() if key != "repeat"}
+                copy["id"] = f"{ident}_{k}"
+                copy[along] = [list(st) for st in base] + [[step, node, f"pitch {step:g} (P{step:g}*{n - 1})", "CHAIN"]] * (k - 1)
+                if k > 1:
+                    copy.pop("ev", None)
+                    copy.pop("qty", None)
+                elif copy.get("qty") is None:
+                    copy["qty"] = n
+                out.append(copy)
+        if out != (spec.get(kind) or []):
+            spec[kind] = out
+
+
 def build_part(spec, customer=None):
-    if spec.get("data") is not None:
+    if spec.get("data") is not None or spec.get("data_views") is not None:
         import data_part
         try:
             spec, extra = data_part.to_spec(spec, customer)
         except data_part.DataPartError as exc:
             fail(str(exc))
         part = build_part(spec, customer)
-        return data_part.finish(part, extra)
+        try:
+            return data_part.finish(part, extra)
+        except data_part.DataPartError as exc:
+            fail(str(exc))
     code = str(spec.get("code") or fail("part: code required"))
     where = code
+    spec = dict(spec)
+    _expand_repeats(spec, where)
     material = str(spec.get("material") or fail(f"{code}: material required"))
     t = _num(spec.get("t"), f"{code}.t")
     page = int(spec.get("page", 1))
@@ -548,7 +594,7 @@ def build_part(spec, customer=None):
                 continue
             if not chains:
                 fail(f"{code}: {kind}[{i}] uses face but the part has no bend block")
-            chain = _face_chain(chains, h["face"], h.get("axis"), f"{code}: {kind}[{i}]")
+            chain = _face_chain(chains, h["face"], _chain_key(h), f"{code}: {kind}[{i}]")
             try:
                 d, st, sgn, dline = bend_flat.face_datum(chain, h["face"], h.get("from"), code)
             except bend_flat.BendError as exc:
@@ -1031,7 +1077,7 @@ def build_from_files(paths):
 
 
 def load_spec(path):
-    text = Path(path).read_text(encoding="utf-8")
+    text = Path(path).read_text(encoding="utf-8-sig")
     if str(path).endswith((".yaml", ".yml")):
         import yaml
         data = yaml.safe_load(text)
@@ -1041,6 +1087,9 @@ def load_spec(path):
         for part in data.get("parts") or []:  # a DATA path is relative to its spec file
             if isinstance(part, dict) and isinstance(part.get("data"), str):
                 part["data"] = str((Path(path).parent / part["data"]).resolve())
+            for view in (part.get("data_views") or []) if isinstance(part, dict) else []:
+                if isinstance(view, dict) and isinstance(view.get("data"), str):
+                    view["data"] = str((Path(path).parent / view["data"]).resolve())
     return data
 
 

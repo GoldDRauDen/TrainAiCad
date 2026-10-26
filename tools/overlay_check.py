@@ -100,7 +100,7 @@ def main(argv=None):
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--max-residual-mm", type=float, default=1.0)
     a = ap.parse_args(argv)
-    job = json.loads(a.job.read_text(encoding="utf-8"))
+    job = json.loads(a.job.read_text(encoding="utf-8-sig"))
     res = overlay(job, a.code, a.image, [parse_anchor(t) for t in a.anchor], a.out)
     res["status"] = "OK" if len(a.anchor) < 3 or res["max_residual_mm"] <= a.max_residual_mm else "MISMATCH"
     print(json.dumps(res, ensure_ascii=False, indent=1))

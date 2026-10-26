@@ -57,7 +57,7 @@ def work_dir(job: str | None = None) -> Path:
         return p if (p / "job_state.json").is_file() else WORK_ROOT / job
     if not CURRENT.is_file():
         raise SystemExit("no current job: run `python tools/job.py init <JOB> --codes ...` first")
-    return Path(CURRENT.read_text(encoding="utf-8").strip())
+    return Path(CURRENT.read_text(encoding="utf-8-sig").strip())
 
 
 def load(job: str | None = None) -> tuple[Path, dict]:
@@ -65,7 +65,7 @@ def load(job: str | None = None) -> tuple[Path, dict]:
     f = d / "job_state.json"
     if not f.is_file():
         raise SystemExit(f"{f} not found")
-    return d, json.loads(f.read_text(encoding="utf-8"))
+    return d, json.loads(f.read_text(encoding="utf-8-sig"))
 
 
 def init(job: str, codes: list[str], sources: list[str], customer: str | None, work: str | None) -> dict:
@@ -116,7 +116,7 @@ def census(job: str | None, code: str) -> dict:
     d, state = load(job)
     f = d / state["codes"][code]["files"].get("census", f"census_{code}.json")
     try:
-        plan = resolve_rules(json.loads(f.read_text(encoding="utf-8")))
+        plan = resolve_rules(json.loads(f.read_text(encoding="utf-8-sig")))
     except (ResolutionError, ValueError, KeyError) as exc:
         raise SystemExit(f"ROUTING_COVERAGE_GAP / census error for {code}: {exc}")
     cards = {s: plan["stage_plans"][s]["rule_paths"] for s in plan["stage_order"]}
