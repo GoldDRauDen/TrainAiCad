@@ -144,7 +144,8 @@ def test_one_review_only_with_user_authorized_unknown_diameter_and_source_views(
     assert not (tmp_path / "MIXED_ALL.dxf").exists()
     doc = ezdxf.readfile(tmp_path / manifest["filename"])
     meta = [e.dxf.text for e in doc.modelspace() if e.dxf.layer == "AI_META"]
-    assert meta.index("043791") < meta.index("043797 [FLAG]") < meta.index("043796 [VIEWS_ONLY - FLAG]")
+    assert meta.index("043791") < meta.index("043797") < meta.index("043796")     # the code only: no [FLAG] suffix any more
+    assert all(e.dxf.color == 7 for e in doc.modelspace() if e.dxf.layer == "AI_META")     # every note is white, banner included
     assert "043796 VIEW FRONT" in meta and "043796 VIEW SIDE" in meta
     assert export_dxf.REVIEW_BANNER == "CHỈ XEM XÉT - KHÔNG CẮT - CÒN MÃ CHƯA GIẢI QUYẾT"
     assert export_dxf.REVIEW_BANNER in meta

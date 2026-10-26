@@ -38,7 +38,7 @@ def labels(tmp_path, parts):
     job = {"canonical_contract": "TrainAiCad-CANONICAL-V4.34", "job_id": "QA_DX", "parts": parts}
     export_canonical_job(job, tmp_path, require_slip_codes=False)
     doc = ezdxf.readfile(tmp_path / "QA_DX_ALL.dxf")
-    return [e.dxf.text for e in doc.modelspace() if e.dxf.layer == "AI_META"]
+    return [e.dxf.text for e in doc.modelspace() if e.dxftype() == "TEXT"]
 
 
 def test_dx_only_on_inner_face_part_and_not_on_mirrored_partner(tmp_path):
@@ -56,3 +56,15 @@ def test_mirrored_partner_needs_no_dx(tmp_path):
     mirror = part("26-000003", MIRROR)
     mirror["dx_label"] = False
     assert "dx" not in labels(tmp_path, [part("26-000002", L_SHAPE), mirror])
+
+
+def test_dx_is_a_layer_0_white_text_entity_not_an_ai_meta_note(tmp_path):
+    inner = part("26-000001", L_SHAPE)
+    inner["dx_label"] = True
+    job = {"canonical_contract": "TrainAiCad-CANONICAL-V4.34", "job_id": "QA_DX", "parts": [inner]}
+    export_canonical_job(job, tmp_path, require_slip_codes=False)
+    doc = ezdxf.readfile(tmp_path / "QA_DX_ALL.dxf")
+    dx = [e for e in doc.modelspace() if e.dxftype() == "TEXT" and e.dxf.text == "dx"]
+    assert len(dx) == 1 and dx[0].dxf.layer == "0" and dx[0].dxf.color == 7 and dx[0].dxf.insert.x < 0
+    assert dx[0].has_xdata("TRAINAICAD")                       # stamped like every Layer-0 entity
+    assert all(e.dxf.layer == "AI_META" for e in doc.modelspace() if e.dxftype() == "TEXT" and e.dxf.text != "dx")

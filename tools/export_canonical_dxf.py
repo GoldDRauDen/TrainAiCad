@@ -11,7 +11,7 @@ from pathlib import Path
 import ezdxf
 
 from canonical_contract import CanonicalContractError, validate_canonical_job
-from export_dxf import COMPOSITE_GAP_MM, entity_signature, export_job, source_entity_id
+from export_dxf import COMPOSITE_GAP_MM, add_left_labels, entity_signature, export_job, source_entity_id
 from export_job_artifacts import export_part_artifacts
 from holistic_engineering_guard import canonical_job_anomalies
 
@@ -110,6 +110,7 @@ def export_canonical_job(job: dict, output_dir, gap_mm=COMPOSITE_GAP_MM, write_m
     """
     if require_slip_codes:
         check_slip_codes(job)
+    add_left_labels(job["parts"])      # dx / HL are Layer-0 part entities: canonical before the member ledger is checked
     validation = validate_canonical_job(job)
     source_anomalies = canonical_job_anomalies(job)
     if source_anomalies:

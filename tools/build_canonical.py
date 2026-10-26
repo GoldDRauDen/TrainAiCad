@@ -263,25 +263,44 @@ def build_outline(corners, auto, where):
             decision = "FLAG" if c["flag"] else "CALLED"
         if kind in ("R", "C") and (c["bulge"] or prev["bulge"]):
             fail(f"{where}: corner {p} touches an arc; R/C only between straight edges")
+        seg_pts = None                 # the drawn R arc / C chamfer: the piece a local FLAG paints Magenta
         if kind == "R":
             d = size / math.tan(alpha / 2)
             t1 = (p[0] + a[0] * d, p[1] + a[1] * d)
             t2 = (p[0] + b[0] * d, p[1] + b[1] * d)
             bulge = (1.0 if convex else -1.0) * math.tan((math.pi - alpha) / 4)
             verts += [[t1[0], t1[1], bulge], [t2[0], t2[1], 0.0]]
+            seg_pts = (t1, t2)
         elif kind == "C":
             d = size
             verts += [[p[0] + a[0] * d, p[1] + a[1] * d, 0.0], [p[0] + b[0] * d, p[1] + b[1] * d, 0.0]]
+            seg_pts = ((p[0] + a[0] * d, p[1] + a[1] * d), (p[0] + b[0] * d, p[1] + b[1] * d))
         else:
             verts.append([p[0], p[1], c["bulge"]])
         decisions.append({"corner": c, "convex": convex, "angle_deg": deg, "eligible": eligible,
-                          "kind": kind, "size": size, "decision": decision})
+                          "kind": kind, "size": size, "decision": decision, "seg_pts": seg_pts})
     # trimming must not overrun the edges
     for i in range(len(verts)):
         if math.dist(verts[i][:2], verts[(i + 1) % len(verts)][:2]) <= 1e-7:
             fail(f"{where}: R/C larger than the adjacent edge near {verts[i][:2]}")
     verts = [[_r6(v[0]), _r6(v[1]), round(v[2], 12) if v[2] else 0] for v in verts]
     return verts, decisions
+
+
+def _flag_segment_indices(verts, decisions):
+    """Indices of the outline segments (R arc / C chamfer) of corners carrying a FLAG, found by their end points."""
+    found = []
+    for d in decisions:
+        if not d["corner"].get("flag") or not d.get("seg_pts"):
+            continue
+        a, b = d["seg_pts"]
+        n = len(verts)
+        for i in range(n):
+            u, w = verts[i][:2], verts[(i + 1) % n][:2]
+            if (math.dist(u, a) < 1e-5 and math.dist(w, b) < 1e-5) or (math.dist(u, b) < 1e-5 and math.dist(w, a) < 1e-5):
+                found.append(i)
+                break
+    return sorted(set(found))
 
 
 def _self_intersects(verts):
@@ -535,6 +554,9 @@ def build_part(spec, customer=None):
     p = code
     eo = f"E_{p}_OUT"
     ents = [{"entity_id": eo, "type": "LWPOLYLINE", "role": "outer", "closed": True, "vertices": verts}]
+    flag_segments = _flag_segment_indices(verts, decisions)
+    if flag_segments:
+        ents[0]["flag_segments"] = flag_segments
     groups, members, inventory, flags = [], [], [], list(spec.get("flags") or [])
     groups.append({"group_id": f"{p}_G_OUTER", "family": "OUTER", "status": "PROVED", "source_quantity": 1,
                    "evidence": "closed outer profile", "members": [{"member_id": f"{p}_OUTER", "status": "PROVED"}]})
@@ -668,7 +690,10 @@ def build_part(spec, customer=None):
                 authorizations.append({"member_id": fid, "entity_id": eid, "source_pdf_page": page,
                                        "evidence_ref": str(h.get("ev") or stamp), "stamp_text": stamp})
         else:
-            ents.append({"entity_id": eid, "type": "CIRCLE", "role": "hole", "center": at, "radius": dia / 2})
+            ents.append({"entity_id": eid, "type": "CIRCLE", "role": "hole", "center": at, "radius": dia / 2,
+                         **({"color": 6} if h.get("flag") else {})})
+        if h.get("flag"):
+            flags.append(str(h["flag"]))
         by_group.setdefault(h.get("group", f"D{dia:g}".replace(".", "_")), []).append((hid, eid, h))
         for axis, datum, node, total in (("X", dx0, nx, sx), ("Y", dy0, ny, sy)):
             targets.append({"feature_id": fid, "datum_node": f"{fid}_{axis}_D", "feature_node": node, "axis": axis,
@@ -678,7 +703,8 @@ def build_part(spec, customer=None):
     for name, items in by_group.items():
         qty = next((it[2].get("qty") for it in items if it[2].get("qty") is not None), None)
         ev = next((it[2].get("ev") for it in items if it[2].get("ev")), None) or fail(f"{code}: hole group {name} needs ev")
-        add_group(name, "HOLE", [it[0] for it in items], ev, ["PROVED"] * len(items), [[it[1]] for it in items], qty)
+        add_group(name, "HOLE", [it[0] for it in items], ev, ["FLAGGED" if it[2].get("flag") else "PROVED" for it in items],
+                  [[it[1]] for it in items], qty)
         # member ids must equal witness feature ids: rename members to the hole ids
     slots_by_group = {}
     for i, s in enumerate(spec.get("slots") or []):
@@ -699,7 +725,9 @@ def build_part(spec, customer=None):
               [c2[0] - nrm[0] * r, c2[1] - nrm[1] * r, 0], [c1[0] - nrm[0] * r, c1[1] - nrm[1] * r, -1]]
         eid = f"E_{p}_{sid}"
         ents.append({"entity_id": eid, "type": "LWPOLYLINE", "role": "slot", "closed": True,
-                     "vertices": [[_r6(v[0]), _r6(v[1]), v[2]] for v in sv]})
+                     "vertices": [[_r6(v[0]), _r6(v[1]), v[2]] for v in sv], **({"color": 6} if s.get("flag") else {})})
+        if s.get("flag"):
+            flags.append(str(s["flag"]))
         slot_records.append({"slot_id": fid, "entity_id": eid, "source_pdf_page": page,
                              "evidence_ref": s.get("ev") or fail(f"{fid}: slot needs ev"), "witness_verified": True,
                              "anchor_point": [_r6(mid[0]), _r6(mid[1])], "anchor_type": "SLOT_MIDPOINT",
@@ -714,19 +742,23 @@ def build_part(spec, customer=None):
     for name, items in slots_by_group.items():
         qty = next((it[2].get("qty") for it in items if it[2].get("qty") is not None), None)
         ev = next((it[2].get("ev") for it in items if it[2].get("ev")), name)
-        add_group(name, "SLOT", [it[0] for it in items], ev, ["PROVED"] * len(items), [[it[1]] for it in items], qty)
+        add_group(name, "SLOT", [it[0] for it in items], ev, ["FLAGGED" if it[2].get("flag") else "PROVED" for it in items],
+                  [[it[1]] for it in items], qty)
 
     cuts_by_group = {}
     for i, c in enumerate(spec.get("cutouts") or []):
         cid = str(c.get("id") or f"CUT{i + 1}")
         eid = f"E_{p}_{cid}"
         ents.append({"entity_id": eid, "type": "LWPOLYLINE", "role": "cutout", "closed": True,
-                     "vertices": _cutout_vertices(c, chains, f"{code}: cutout {cid}")})
+                     "vertices": _cutout_vertices(c, chains, f"{code}: cutout {cid}"), **({"color": 6} if c.get("flag") else {})})
+        if c.get("flag"):
+            flags.append(str(c["flag"]))
         cuts_by_group.setdefault(c.get("group", "CUTOUT"), []).append((cid, eid, c))
     for name, items in cuts_by_group.items():
         qty = next((it[2].get("qty") for it in items if it[2].get("qty") is not None), None)
         ev = next((it[2].get("ev") for it in items if it[2].get("ev")), name)
-        add_group(name, "CUTOUT", [it[0] for it in items], ev, ["PROVED"] * len(items), [[it[1]] for it in items], qty)
+        add_group(name, "CUTOUT", [it[0] for it in items], ev, ["FLAGGED" if it[2].get("flag") else "PROVED" for it in items],
+                  [[it[1]] for it in items], qty)
 
     marks_by_group = {}
     for i, k in enumerate(spec.get("kegaki") or []):
@@ -826,12 +858,6 @@ def build_part(spec, customer=None):
     part["checks"] = checks
     if status == "PREVIEW":
         part["preview_reason"] = "numeric_only_known_topology"
-        part["entities"][0]["color"] = 6
-        xs2 = [v[0] for v in part["entities"][0]["vertices"]]
-        ys2 = [v[1] for v in part["entities"][0]["vertices"]]
-        part["entities"].append({"entity_id": f"E_{p}_NOTE", "type": "TEXT", "role": "estimated_note", "color": 6,
-                                 "text": "Ước lượng - kiểm tra bản vẽ (xem FLAG)", "height": 5.0,
-                                 "insert": [_r6(min(xs2)), _r6(max(ys2) + 6)]})
     return part
 
 
@@ -954,11 +980,6 @@ def _build_split(spec, plan, customer):
             g["targets"] += sub_part["feature_witness_graph"]["targets"]
         part["face_graph"]["faces"] += sub_part["face_graph"]["faces"]
         part["face_graph"]["bends"] += sub_part["face_graph"]["bends"]
-        piece = next(e for e in sub_part["entities"] if e.get("role") == "split_flange")
-        xs, ys = [v[0] for v in piece["vertices"]], [v[1] for v in piece["vertices"]]
-        ents.append({"entity_id": f"E_{sub_part['code']}_NOTE", "type": "TEXT", "role": "estimated_note",
-                     "color": 6, "height": 5.0, "insert": [_r6(min(xs)), _r6(max(ys) + 6)],
-                     "text": "FLAG: bích tách 10 mm - chưa có Nobi"})
     part["flags"] = list(dict.fromkeys(flags))
     part["status"] = "PREVIEW"
     part["preview_reason"] = "numeric_only_known_topology"

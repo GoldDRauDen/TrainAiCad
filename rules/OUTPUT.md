@@ -13,7 +13,7 @@ Ledger contract: every manufacturing callout → `source_group` (id, family, sta
 - **Code = 作業No on the delivery slip verbatim** (`26-056522`, never `056522`); slip vs barcode mismatch → slip wins, reported. Slip サイズ X/Y is a plausibility check only.
 
 ## 3. Entities
-All geometry on Layer 0 (template `templates/CAD_OUTPUT_TEMPLATE.dxf`, mm): cut contours ByLayer, holes CIRCLE, POINT ByLayer (Green 3 only for PIERCING + English `THROUGH HOLE`), KEGAKI Red 1, bend pairs DASHED, proved slit/relief Green 3, review estimate + note Magenta 6. The exporter enforces this legend (`tools/CANONICAL_SCHEMA.md`), writes no DIMENSION and generates the `AI_META` labels.
+All geometry on Layer 0 (template `templates/CAD_OUTPUT_TEMPLATE.dxf`, mm): cut contours ByLayer, holes CIRCLE, POINT ByLayer (Green 3 only for PIERCING + English `THROUGH HOLE`), KEGAKI Red 1, bend pairs DASHED, proved slit/relief Green 3, review estimate Magenta 6 (the flagged entity only). The exporter enforces this legend (`tools/CANONICAL_SCHEMA.md`), writes no DIMENSION and generates the `AI_META` labels.
 
 ## 4. Canonical geometry
 - LWPOLYLINE `[[x,y,bulge],…]` closed, outer CCW, cut-outs CW, R/C baked as true tangent points/bulges, no faceting. CIRCLE for cut holes and round blanks (spec `outline: {circle: {center, d}}`); real POINT (never a tiny circle).
@@ -23,8 +23,9 @@ All geometry on Layer 0 (template `templates/CAD_OUTPUT_TEMPLATE.dxf`, mm): cut 
 - **J/LJ marks** (composite only, ByLayer POINT + TEXT h10 on Layer 0): blank Oy≤100 and Ox≥1000; on the long straight edge as the max-Y edge (if only the bottom edge is straight, turn the part 180°; same for sibling codes); L≤1500 1J+LJ, ≤2000 2J+LJ, ≤2500 3J+LJ; first J at X1+30, LJ at X2−30 (with C5/C2: 35 / L−32), others evenly spaced, LJ last. `build_canonical` does this.
 
 ## 5. Review policy — ALWAYS DRAW, NEVER STOP
-- Every code is drawn. Proved geometry exact; the uncertain item as the best source-supported estimate in Magenta (62=6) with an adjacent `FLAG:` note; part `status: PREVIEW` (`preview_reason: numeric_only_known_topology`). `REVIEW` is only `HL_DIRECTION_UNPROVED`. Questions go in the report after the DXF.
+- Every code is drawn. Proved geometry exact; the uncertain item as the best source-supported estimate in Magenta (62=6); part `status: PREVIEW` (`preview_reason: numeric_only_known_topology`). `REVIEW` is only `HL_DIRECTION_UNPROVED`. Questions go in the report after the DXF.
 - Local FLAG: isolate the unknown; it never forces VIEWS_ONLY. Unknown hole → Magenta CIRCLE at the estimated Ø/position + FLAG, never omitted, never a capacity POINT.
+- A FLAG paints only its own entity Magenta (member `flag`; one R/C piece; DATA/PDF difference of `pdf_d`, `pdf_pos`, `pdf_R/C` flags that member): never the whole outline, no note TEXT in the geometry. All text is white: code and `FLAG:` lines (right) on `AI_META`; `dx`/`HL` (left) are Layer-0 TEXT entities so the saved DXF keeps symmetry/grain. A flag with nothing to point at is a note only.
 - Competing topology/order/attachment → draw the best-supported one in Magenta, name the alternative. Missing Nobi → `SPLIT_FLANGE_10MM` (`BEND.md` §6). Never a bounding rectangle.
 - `VIEWS_ONLY` only when no defensible flat exists after source exhaustion and the holistic challenge: draw every proved source-view member as a labelled subgroup `<CODE> VIEW <id>`, DATA curves preserved, FLAG only the unresolved relation. Unknown identity → `<CODE>?` + FLAG.
 - PREVIEW / VIEWS_ONLY / FLAGGED are never PASS → composite `_ALL_REVIEW_ONLY` with the banner `CHỈ XEM XÉT - KHÔNG CẮT - CÒN MÃ CHƯA GIẢI QUYẾT`. A user's earlier QA PASS never certifies a later changed file.
@@ -44,4 +45,4 @@ Parts top-to-bottom in page-1 order, ≥150 mm apart, labels on AI_META; source 
 AutoLISP only on explicit request, generated from the same canonical entities.
 
 ## Lessons
-`regression/lessons/OUTPUT/` — 521005-05 (members lost before DXF), 521015-04 (dx = inner face, 対称 mirrored), 521020-08 (Vietnamese notes), 521026-13 (one circle), 520625-15 (draw → flag → confirm), CAD_OUTPUT_TEMPLATE_SAMPLE, DXF_SINGLE_COMPOSITE, DXF_DUAL_EXPORT.
+`regression/lessons/OUTPUT/` — 521005-05 (members lost before DXF), 521015-04 (dx = inner face, 対称 mirrored), 521020-08 (Vietnamese notes), 521026-13 (one circle), 521023-09 (local FLAG), 520625-15 (draw → flag → confirm), CAD_OUTPUT_TEMPLATE_SAMPLE, DXF_SINGLE_COMPOSITE, DXF_DUAL_EXPORT.

@@ -316,7 +316,7 @@ def test_source_step_is_pose_invariant_and_normal_unfold_survives_readback(tmp_p
         site["positive_axis"] = pose(site["positive_axis"])
     manifest = export_canonical_job(candidate, tmp_path, require_slip_codes=True)
     saved = ezdxf.readfile(tmp_path / manifest["filename"])
-    geometry = [e for e in saved.modelspace() if e.dxf.layer == "0"]
+    geometry = [e for e in saved.modelspace() if e.dxf.layer == "0" and e.dxftype() != "TEXT"]   # dx / HL TEXT are labels
     assert manifest["status"] == "PASS"
     assert len(geometry) == 30
     assert sum(e.dxftype() == "CIRCLE" for e in geometry) == 8

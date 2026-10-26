@@ -119,11 +119,11 @@ def test_gates_refuse_wrong_input():
         bc.build_job(one(bad))
 
 
-def test_flagged_corner_makes_magenta_preview_without_auto_r():
+def test_flagged_corner_makes_preview_without_auto_r():
     part = spec()["parts"][0]
     part["outline"][0] = [0, 0, {"FLAG": "Góc trái dưới chưa rõ R hay C"}]
     built = bc.build_job(one(part))["parts"][0]
-    assert built["status"] == "PREVIEW" and built["entities"][0]["color"] == 6
+    assert built["status"] == "PREVIEW" and built["entities"][0].get("color", 256) == 256   # a sharp flagged corner: note only
     assert any(r["decision"] == "FLAG" for r in built["corner_inventory"])
     assert built["flags"] == ["Góc trái dưới chưa rõ R hay C"]
 

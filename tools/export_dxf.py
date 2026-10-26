@@ -41,6 +41,8 @@ FLAG_LABEL_CLEARANCE_MM = 49.0
 FLAG_LABEL_HEIGHT_MM = 15.0
 FLAG_LINE_PITCH_MM = 25.0       # one horizontal FLAG line per flag, stacked top to bottom
 REVIEW_BANNER = "CHỈ XEM XÉT - KHÔNG CẮT - CÒN MÃ CHƯA GIẢI QUYẾT"  # all DXF notes are Vietnamese (JOB_CARD.md item 10)
+LEFT_LABEL_ROLES = {"dx_label": "dx", "hl_label": "HL"}    # TEXT on Layer 0 (white) so the saved DXF keeps symmetry / grain
+LABEL_COLOR = 7                   # every AI_META note is white (AutoCAD colour 7), whatever the part status
 PIECE_SEPARATOR = ":S"            # canonical entity piece id: <entity_id>:S0001
 
 
@@ -89,7 +91,7 @@ def validate_entity(entity, part_code, preview):
     if entity.get("layer", "0") != "0":
         fail(f"{part_code}: all entities must use Layer 0")
     col = entity.get("color", 256)
-    if col not in (1, 3, 6, 256):
+    if col not in (1, 3, 6, 256) and not (col == 7 and role in LEFT_LABEL_ROLES):
         fail(f"{part_code}: unsupported color {col}; the colour legend is mandatory")
     if role in ("outer", "cutout", "hole", "slot") and col not in (256, 6):
         fail(f"{part_code}: cut geometry cannot be red/green")
@@ -108,6 +110,9 @@ def validate_entity(entity, part_code, preview):
     if t == "TEXT" and role == "mark":
         if entity.get("text") not in ("J", "LJ") or entity.get("height") != JLJ_TEXT_HEIGHT_MM:
             fail(f"{part_code}: mark TEXT must be J or LJ, height 10")
+    elif t == "TEXT" and role in LEFT_LABEL_ROLES:
+        if entity.get("text") != LEFT_LABEL_ROLES[role] or col != 7:
+            fail(f"{part_code}: {role} TEXT must read {LEFT_LABEL_ROLES[role]!r} and be white")
     elif t == "TEXT" and (not preview or col != 6 or role != "estimated_note"):
         fail(f"{part_code}: source TEXT only for adjacent Magenta preview notes; code labels are generated in AI_META")
     if t == "LWPOLYLINE":
@@ -119,6 +124,14 @@ def validate_entity(entity, part_code, preview):
                 fail(f"{part_code}: vertex requires [x,y,bulge]")
             for n in v:
                 number(n, f"{part_code} polyline")
+        segs = entity.get("flag_segments")
+        if segs is not None:
+            n_seg = len(vertices) if entity.get("closed") else len(vertices) - 1
+            if (not isinstance(segs, list) or not segs or
+                    any(isinstance(i, bool) or not isinstance(i, int) or not 0 <= i < n_seg for i in segs)):
+                fail(f"{part_code}: flag_segments must list segment indices of the polyline")
+            if role != "outer" or col != 256:
+                fail(f"{part_code}: flag_segments only on an uncoloured outer polyline")
         arc_closed = len(vertices) == 2 and any(v[2] for v in vertices)   # D-shaped loop: chord + arc
         if role in ("outer", "cutout", "slot") and (not entity.get("closed") or (len(vertices) < 3 and not arc_closed)):
             fail(f"{part_code}: outer, cutout and slot must be closed polylines")
@@ -261,8 +274,6 @@ def validate_job(job):
             jlj_marks_check(part)
         if state == "VIEWS_ONLY" and not any(ent["type"] != "TEXT" for ent in ents):
             fail(f"{code}: no proved source-view geometry")
-        if state == "PREVIEW" and not (any(e.get("color") == 6 for e in ents) and any(e.get("type") == "TEXT" for e in ents)):
-            fail(f"{code}: preview requires Magenta geometry AND adjacent Magenta TEXT")
     return jid
 
 
@@ -298,17 +309,19 @@ def emit_entity(msp, ent, dx=0.0, dy=0.0):
             return [msp.add_circle(move(circle[0]), circle[1], dxfattribs=attrs)]
         n = len(vertices)
         segments = n if ent.get("closed") else n - 1
+        flagged = set(ent.get("flag_segments") or [])     # only these pieces are Magenta (local FLAG, e.g. one R or C)
         pieces = []
         for i in range(segments):
             a = vertices[i]
             b = vertices[(i + 1) % n]
             if a[:2] == b[:2]:
                 fail("zero-length polyline segment")
+            piece_attrs = {**attrs, "color": 6} if i in flagged else attrs
             if a[2] == 0:
-                pieces.append(msp.add_line(move(a[:2]), move(b[:2]), dxfattribs=attrs))
+                pieces.append(msp.add_line(move(a[:2]), move(b[:2]), dxfattribs=piece_attrs))
             else:
                 center, radius, sa, ea = arc_from_bulge(a[:2], b[:2], a[2])
-                pieces.append(msp.add_arc(move(center), radius, sa, ea, dxfattribs=attrs))
+                pieces.append(msp.add_arc(move(center), radius, sa, ea, dxfattribs=piece_attrs))
         return pieces
     if t == "CIRCLE":
         return [msp.add_circle(move(ent["center"]), ent["radius"], dxfattribs=attrs)]
@@ -322,7 +335,10 @@ def emit_entity(msp, ent, dx=0.0, dy=0.0):
     if t == "TEXT":
         attrs["height"] = ent.get("height", 2.5)
         attrs["insert"] = move(ent["insert"])
-        return [msp.add_text(ent["text"], dxfattribs=attrs)]
+        obj = msp.add_text(ent["text"], dxfattribs=attrs)
+        if ent.get("align"):
+            obj.set_placement(move(ent["insert"]), align=TextEntityAlignment[ent["align"]])
+        return [obj]
     fail(f"Unknown entity type {t}")
 
 
@@ -437,6 +453,36 @@ def source_view_boxes(part):
     return boxes
 
 
+def add_left_labels(parts):
+    """`dx` (inner-face drawing) and `HL` (hairline) are part entities on Layer 0, left of the outline, white: they travel
+    with the saved DXF like any other entity. Idempotent; the part bounding box ignores them."""
+    for part in parts:
+        if not isinstance(part, dict) or not isinstance(part.get("entities"), list):
+            continue
+        wanted = [role for role, flag in (("dx_label", bool(part.get("dx_label"))),
+                                          ("hl_label", bool(part.get("grain", {}).get("is_hl")))) if flag]
+        have = {e.get("role") for e in part["entities"]}
+        wanted = [r for r in wanted if r not in have]
+        if not wanted:
+            continue
+        xmin, ymin, xmax, ymax = _label_free_bbox(part)
+        k = sum(r in have for r in LEFT_LABEL_ROLES)
+        for role in wanted:
+            part["entities"].append({
+                "entity_id": f"E_{part['code']}_{LEFT_LABEL_ROLES[role].upper()}", "type": "TEXT", "role": role,
+                "text": LEFT_LABEL_ROLES[role], "color": 7, "height": DX_LABEL_HEIGHT_MM, "align": "MIDDLE_RIGHT",
+                "insert": [round(xmin - DX_LABEL_CLEARANCE_MM, 6), round((ymin + ymax) / 2 - k * 2 * DX_LABEL_HEIGHT_MM, 6)]})
+            k += 1
+
+
+def _label_free_bbox(part):
+    scratch = new_doc()
+    for e in part["entities"]:
+        if e.get("role") not in LEFT_LABEL_ROLES:
+            emit_entity(scratch.modelspace(), e)
+    return extents_of(scratch)
+
+
 def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=False):
     """One composite : code-labelled, top-to-bottom, 150 mm between code clusters.
 
@@ -445,6 +491,8 @@ def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=F
     'dx' (20 mm, left, centred) marks a PDF back-face part; FLAG (top-right, reading
     downward) marks any part with flags. Individual CUT files never carry labels.
     """
+    if isinstance(job.get("parts"), list):
+        add_left_labels(job["parts"])
     jid = validate_job(job)
     gap_mm = number(gap_mm, "gap_mm")
     if gap_mm < COMPOSITE_GAP_MM:
@@ -456,31 +504,34 @@ def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=F
     records = []
     for p in parts:
         scratch = new_doc()
+        bbox_doc = new_doc()
         count = 0
         for e in p["entities"]:
             count += len(emit_entity(scratch.modelspace(), e))
+            if e.get("role") not in LEFT_LABEL_ROLES:
+                emit_entity(bbox_doc.modelspace(), e)
         view_boxes = source_view_boxes(p) if p["status"] == "VIEWS_ONLY" else {}
         records.append({"code": p["code"], "material": p["material"],
                         "thickness_mm": p["thickness_mm"], "status": p["status"],
-                        "bbox_mm": extents_of(scratch), "entity_count": count,
+                        "bbox_mm": extents_of(bbox_doc), "entity_count": count,
                         "flags": p.get("flags", []), "checks": p["checks"],
                         "dx_label": bool(p.get("dx_label", False)),
+                        "hl_label": bool(p.get("grain", {}).get("is_hl", False)),
                         "source_view_boxes": view_boxes})
     stack_height = (sum(r["bbox_mm"][3] - r["bbox_mm"][1] for r in records)
                     + (len(records) - 1) * (gap_mm + LABEL_RESERVE_MM))
     merged = new_doc()
-    merged.layers.new("AI_META", dxfattribs={"color": 8, "plot": 0})
+    merged.layers.new("AI_META", dxfattribs={"color": LABEL_COLOR, "plot": 0})
     merged.appids.new("AICAD")
     msp = merged.modelspace()
     layout = []
     expected_geometry = []
     geometry_ids = []
     expected_labels = []
-    dx_expected = 0
     annotation_count = 0
     cursor = stack_height
 
-    def label(text_value, where, color=8, height=CODE_LABEL_HEIGHT_MM, align=None, rotation=0.0):
+    def label(text_value, where, color=LABEL_COLOR, height=CODE_LABEL_HEIGHT_MM, align=None, rotation=0.0):
         nonlocal annotation_count
         attrs = {"layer": "AI_META", "color": color, "height": height, "rotation": rotation}
         if align is None:
@@ -507,20 +558,14 @@ def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=F
                 geometry_ids.append(pid)
         if len(expected_geometry) - before != rec["entity_count"]:
             fail(f"{p['code']}: source-to-composite piece count changed")
-        status_suffix = "" if p["status"] == "PASS" else " [FLAG]"
-        if p["status"] == "VIEWS_ONLY":
-            status_suffix = " [VIEWS_ONLY - FLAG]"
-        code_label = p["code"] + status_suffix
+        code_label = p["code"]            # the drawing code only; the FLAG notes stand at the right
         label(code_label, (0.0, cursor + CODE_LABEL_OFFSET_MM))
         expected_labels.append(code_label)
         for index, flag in enumerate(p.get("flags", [])):
             label(f"FLAG: {flag}",
                   (xmax - xmin + FLAG_LABEL_CLEARANCE_MM, cursor - index * FLAG_LINE_PITCH_MM),
-                  color=6, height=FLAG_LABEL_HEIGHT_MM, align=TextEntityAlignment.TOP_LEFT)
-        if rec["dx_label"]:
-            label("dx", (-DX_LABEL_CLEARANCE_MM, bottom + h / 2), height=DX_LABEL_HEIGHT_MM,
-                  align=TextEntityAlignment.MIDDLE_RIGHT)
-            dx_expected += 1
+                  height=FLAG_LABEL_HEIGHT_MM, align=TextEntityAlignment.TOP_LEFT)
+
         if p["status"] == "VIEWS_ONLY":
             for view_id, bounds in rec["source_view_boxes"].items():
                 label(p["code"] + " VIEW " + view_id, (bounds[0] + dx, bounds[3] + dy + CODE_LABEL_OFFSET_MM))
@@ -532,7 +577,7 @@ def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=F
         cursor = bottom - gap_mm - LABEL_RESERVE_MM
     if review:
         # above the first code label (baseline +10, height 10) so the two never overlap
-        label(REVIEW_BANNER, (0, stack_height + LABEL_RESERVE_MM + 10), color=6)
+        label(REVIEW_BANNER, (0, stack_height + LABEL_RESERVE_MM + 10))
     filename = f"{jid}_ALL_REVIEW_ONLY.dxf" if review else f"{jid}_ALL.dxf"
     target = out / filename
     write_and_audit(merged, target, len(expected_geometry) + annotation_count)
@@ -543,8 +588,6 @@ def export_single_job(job, output_dir, gap_mm=COMPOSITE_GAP_MM, write_manifest=F
     labels = [e.dxf.text for e in loaded.modelspace() if e.dxf.layer == "AI_META"]
     if [x for x in labels if x in expected_labels] != expected_labels:
         fail("Missing or misordered code labels in combined DXF")
-    if labels.count("dx") != dx_expected:
-        fail("dx label count does not match PDF back-face parts")
     if review and REVIEW_BANNER not in labels:
         fail("REVIEW_ONLY output missing global NO CUT label")
     for upper, lower in zip(layout, layout[1:]):

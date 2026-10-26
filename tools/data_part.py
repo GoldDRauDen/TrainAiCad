@@ -399,7 +399,7 @@ def _views_spec(spec, customer):
         if w["features"]:
             if w["mapper"] is None:
                 _fail(f"{code}: data_views[{n}] has feature members but no data_faces / origin to place them")
-            _features(part_out, sub, w["features"], meaning, None, code, customer, w["mapper"])
+            _features(part_out, sub, w["features"], meaning, None, code, customer, w["mapper"], datums)
         for key in ("holes", "slots", "cutouts", "kegaki"):
             if part_out.get(key):
                 out.setdefault(key, []).extend(part_out[key])
@@ -471,8 +471,8 @@ def _outline_item(item, loaded, ch, along_idx, code, customer, extra):
         pdf_val = opts.pop(f"pdf_{key}", None)
         if pdf_val is not None and key in opts:
             _, _, flag = gate(opts[key], pdf_val, customer, f"{opts.get('pdf_label') or 'góc'} {key}")
-            if flag and flag not in extra["flags"]:
-                extra["flags"].append(flag)
+            if flag:
+                opts["FLAG"] = flag            # only this R / C is painted Magenta (local FLAG)
     opts.pop("pdf_label", None)
     point = [pt[0], pt[1]] + ([opts] if opts else [])
     point_meta = {"nominal": nominal, "traces": traces, "corner": {k: opts[k] for k in ("R", "C") if k in opts}}
@@ -539,7 +539,26 @@ def _bbox(verts):
     return max(xs) - min(xs), max(ys) - min(ys)
 
 
-def _features(out, extra, by_member, meaning, outer_id, code, customer, mapper):
+def _position_flags(m, centre, datums, code, customer, fid, n_entities):
+    """Same-parameter position gate: `pdf_pos: [{from: <datum ref>, axis: x|y, pdf: n, label?}]` compares |centre - datum|
+    (view coordinates, after the proved transform) with the PDF dimension; Δ >= the customer threshold is a local FLAG."""
+    out = []
+    for n, row in enumerate(m.get("pdf_pos") or []):
+        if n_entities != 1:
+            _fail(f"{code}: members.{fid}.pdf_pos needs a one-entity member (a dimension belongs to one centre)")
+        if datums is None:
+            _fail(f"{code}: pdf_pos needs `datum` members of a data_views view")
+        axis = str(row.get("axis", "")).lower()
+        if axis not in ("x", "y") or row.get("pdf") is None or not row.get("from"):
+            _fail(f"{code}: members.{fid}.pdf_pos[{n}] needs from (datum ref), axis x|y and pdf")
+        ref = _datum_value(row["from"], datums, code)
+        _, _, flag = gate(round(abs(centre["xy".index(axis)] - ref), 6), row["pdf"], customer, row.get("label") or f"{fid} vị trí {axis.upper()}")
+        if flag:
+            out.append(flag)
+    return out
+
+
+def _features(out, extra, by_member, meaning, outer_id, code, customer, mapper, datums=None):
     """Holes, slots, cut-outs and KEGAKI of the DATA members; mapper(points) -> (translation, face note)."""
     holes, slots, cuts, marks = [], [], [], []
     for mid, es in by_member.items():
@@ -561,6 +580,7 @@ def _features(out, extra, by_member, meaning, outer_id, code, customer, mapper):
             if role == "slot":
                 pts = [v[:2] for v in e["vertices"]]
             (dx, dy), where = mapper(pts)
+            local = [str(m["flag"])] if m.get("flag") else []     # local FLAGs of THIS entity (painted Magenta)
 
             def mv(pt, dx=dx, dy=dy):
                 return [pt[0] + dx, pt[1] + dy]
@@ -587,11 +607,14 @@ def _features(out, extra, by_member, meaning, outer_id, code, customer, mapper):
                         d, change, flag = gate(d, m["pdf_d"], customer, f"{m.get('pdf_label') or fid} Ø")
                         if change:
                             extra["changes"].append({"member": fid, "source": ref, **change})
-                        if flag and flag not in extra["flags"]:
-                            extra["flags"].append(flag)
+                        if flag:
+                            local.append(flag)
                 else:
                     d = m.get("d") or _fail(f"{code}: DATA POINT {mid} needs d (the PDF Ø) in members.{mid}")
                 h["d"] = _r6(d)
+                local += _position_flags(m, c, datums, code, customer, fid, len(es))
+                if local:
+                    h["flag"] = " | ".join(local)
                 holes.append(h)
                 extra.setdefault("trace", []).append({"kind": "hole", "id": fid, "flat": c, "shift": [dx, dy],
                                                       "raw": list(e["center"] if role == "hole" else e["point"])})
@@ -601,12 +624,14 @@ def _features(out, extra, by_member, meaning, outer_id, code, customer, mapper):
                 except SlotAnchorError:
                     _fail(f"{code}: DATA slot {mid} is not a stadium: draw it as a cut-out member")
                 mx, my = mv(g["midpoint"])
+                local += _position_flags(m, g["midpoint"], datums, code, customer, fid, len(es))
                 extra.setdefault("trace", []).append({"kind": "slot", "id": fid, "flat": [mx, my], "shift": [dx, dy],
                                                       "raw": list(g["midpoint"])})
                 slots.append({"id": fid, "group": group, "ev": ev, "datum_type": "REFERENCE_DATUM",
                               "w": _r6(g["width_mm"]), "cd": _r6(g["center_distance_mm"]),
                               "axis": [g["axis_unit"][0], g["axis_unit"][1]],
-                              "wx": _ordinate(mx, ref, "SLOT_MIDPOINT"), "wy": _ordinate(my, ref, "SLOT_MIDPOINT")})
+                              "wx": _ordinate(mx, ref, "SLOT_MIDPOINT"), "wy": _ordinate(my, ref, "SLOT_MIDPOINT"),
+                              **({"flag": " | ".join(local)} if local else {})})
             elif role == "cutout":
                 verts = [mv(v[:2]) + [v[2]] for v in e["vertices"]]
                 if m.get("pdf_size") is not None:
@@ -615,9 +640,10 @@ def _features(out, extra, by_member, meaning, outer_id, code, customer, mapper):
                         _, change, flag = gate(round(dv, 6), pv, customer, f"{m.get('pdf_label') or fid} {axis}")
                         if change:
                             _fail(f"{code}: PDF_PRIORITY on the size of cut-out {fid} changes the DATA loop: build by hand")
-                        if flag and flag not in extra["flags"]:
-                            extra["flags"].append(flag)
-                cuts.append({"id": fid, "group": group, "ev": ev, "vertices": verts})
+                        if flag:
+                            local.append(flag)
+                cuts.append({"id": fid, "group": group, "ev": ev, "vertices": verts,
+                             **({"flag": " | ".join(local)} if local else {})})
                 extra.setdefault("trace", []).append({"kind": "cutout", "id": fid, "flat": verts, "shift": [dx, dy],
                                                       "raw": [list(v) for v in e["vertices"]]})
             elif role == "kegaki":

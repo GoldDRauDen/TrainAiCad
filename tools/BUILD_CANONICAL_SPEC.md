@@ -40,6 +40,9 @@ Hole keys for POINT: `piercing: true` (PIERCING scoped to this family by its lea
 ## Cut-outs (rectangular opening, optional R corners)
 `cutouts: [{id, rect: [x0, y0, x1, y1] | face, from, u: [a, b], v: [c, d] | vertices: [[x, y, bulge], ...], R: 10, group, qty, ev}]` (`vertices` = an exact CW loop, e.g. DATA) → one CW closed contour (4 tangent arcs when `R>0`), family `CUTOUT` (`qty` closes per `group`). `face/u/v` maps like a hole on a bent face (`u` along the face from its datum, `v` across from the flat edge). Refused: outside the material (CONTAINMENT), `R` > half the short side, overlapping a bend zone (bend lines must stop at the void: build by hand).
 
+## Local FLAG (only the flagged entity is Magenta)
+`flag: "nội dung"` on a hole / slot / cut-out (spec or DATA `members.<id>`) paints that entity Magenta and adds a `FLAG:` line at the right of the part; a corner `{R|C: v, FLAG: "…"}` paints only its arc/chamfer piece (`flag_segments`). `pdf_d`, `pdf_size`, `pdf_R`/`pdf_C` and `pdf_pos: [{from: <datum ref>, axis: x|y, pdf: n, label?}]` (one-entity member: |centre − datum| in the view frame against the PDF dimension) raise the flag themselves when Δ ≥ the customer threshold. A part-level `flags:` entry with no entity to point at (overall size, closure snap, a sharp unresolved corner, a flagged POINT) is a note at the right of the part only. `dx_label: true` / hairline grain add the white Layer-0 TEXT `dx` / `HL` at the left.
+
 ## What the tool proves (checks it sets PASS)
 contour_topology (closed, CCW, no self-intersection), datum (envelope + every witness chain), feature_count (group closure), containment (full boundary), material_rules (lookup). unfold/bend_domain N/A; slot_semantics PASS only with slots.
 J/LJ: on the long straight edge (`rules/OUTPUT.md` §4); if the max-Y edge is notched/sloped and the min-Y edge is straight the part is rotated 180° (`canonical_rotation_deg`).
