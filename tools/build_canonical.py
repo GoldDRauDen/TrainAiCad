@@ -334,6 +334,14 @@ def _load_chains(bend_spec, material, t, customer, code):
     return chains
 
 
+def _chain_key(item):
+    """Which chain a face-relative item sits on in a two-axis part: `chain: X|Y`, or a string `axis` (older specs).
+    A slot's own `axis` is its direction vector in the flat and never selects a chain."""
+    if item.get("chain") is not None:
+        return item["chain"]
+    return item["axis"] if isinstance(item.get("axis"), str) else None
+
+
 def _face_chain(chains, face, axis, where):
     owners = [c for c in chains if face in c["faces"]]
     if axis:
@@ -349,8 +357,8 @@ def _resolve_outline(items, chains, code):
     out = []
     for item in items:
         if isinstance(item, dict) and "face" in item:
-            ch = _face_chain(chains, item["face"], item.get("axis"), code)
-            res = bend_flat.resolve_outline([{k: v for k, v in item.items() if k != "axis"}], ch, code)
+            ch = _face_chain(chains, item["face"], _chain_key(item), code)
+            res = bend_flat.resolve_outline([{k: v for k, v in item.items() if k not in ("axis", "chain")}], ch, code)
             out += res
         else:
             out.append(item)
@@ -373,7 +381,7 @@ def _cutout_vertices(c, chains, where):
     if "face" in c:
         if not chains:
             fail(f"{where}: face needs a bend block")
-        chain = _face_chain(chains, c["face"], c.get("axis"), where)
+        chain = _face_chain(chains, c["face"], _chain_key(c), where)
         try:
             d, _, sgn, _ = bend_flat.face_datum(chain, c["face"], c.get("from"), where)
         except bend_flat.BendError as exc:
@@ -548,7 +556,7 @@ def build_part(spec, customer=None):
                 continue
             if not chains:
                 fail(f"{code}: {kind}[{i}] uses face but the part has no bend block")
-            chain = _face_chain(chains, h["face"], h.get("axis"), f"{code}: {kind}[{i}]")
+            chain = _face_chain(chains, h["face"], _chain_key(h), f"{code}: {kind}[{i}]")
             try:
                 d, st, sgn, dline = bend_flat.face_datum(chain, h["face"], h.get("from"), code)
             except bend_flat.BendError as exc:
