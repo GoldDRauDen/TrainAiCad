@@ -450,7 +450,10 @@ def build_part(spec, customer=None):
         except data_part.DataPartError as exc:
             fail(str(exc))
         part = build_part(spec, customer)
-        return data_part.finish(part, extra)
+        try:
+            return data_part.finish(part, extra)
+        except data_part.DataPartError as exc:
+            fail(str(exc))
     code = str(spec.get("code") or fail("part: code required"))
     where = code
     spec = dict(spec)

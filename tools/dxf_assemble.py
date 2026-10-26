@@ -15,8 +15,8 @@ plan.json
                   {"reason": "DIMENSION_GRAPHIC", "rest_of": "V03"}]}          # rest_of = pieces of V03 not used/excluded elsewhere
 
 Roles: outer (closed, CCW), cutout / slot (closed, CW), hole (CIRCLE), bend (LINE, DASHED), kegaki (LINE, Red 1),
-point (POINT, ByLayer), datum (LINE: a source edge kept only as a coordinate reference, e.g. a view's end or plane line;
-never drawn - `data_views` in tools/data_part.py reads outline corners and face ranges from it). Only layer/colour/linetype and the declared rigid transform (scale>0, rotation, mirror,
+point (POINT, ByLayer), datum (LINE or ARC: a source edge kept only as a coordinate reference, e.g. a view's end or plane
+line, a corner R or a chamfer line; an ARC becomes an open one-segment LWPOLYLINE; never drawn - `data_views` in tools/data_part.py reads outline corners and face ranges from it). Only layer/colour/linetype and the declared rigid transform (scale>0, rotation, mirror,
 translation; scale/rotation/mirror need `evidence`) differ from DATA. Every piece must end up used or excluded with a
 reason code (exact duplicates ride on their original); anything else blocks. The result is re-decoded and compared
 with the source pieces in both directions (rules/DATA_DXF.md §4) before it is returned.
@@ -41,7 +41,7 @@ REASONS = {
     "UNSUPPORTED_CURVE_FLAG", "CENTRE_OR_CONSTRUCTION", "OTHER",
 }
 CHAIN_ROLES = {"outer": 1, "cutout": -1, "slot": -1}          # required winding sign
-SINGLE_ROLES = {"hole": "CIRCLE", "bend": "LINE", "kegaki": "LINE", "point": "POINT", "datum": "LINE"}
+SINGLE_ROLES = {"hole": "CIRCLE", "bend": "LINE", "kegaki": "LINE", "point": "POINT"}
 ROLE_ATTRS = {"bend": {"linetype": "DASHED"}, "kegaki": {"color": 1}}
 ENTITY_ROLE = {"point": "ordinary_point"}
 JOIN_TOL = 1e-4          # source endpoints closer than this are the same chain node (closure noise only)
@@ -233,6 +233,19 @@ def _build(pieces, plan, tr, errors):
             if signed_poly_area(verts) * CHAIN_ROLES[role] < 0:
                 verts = _flip(segs)
             ents.append({"entity_id": f"E_{mid}", "type": "LWPOLYLINE", "closed": True, "vertices": verts, **base})
+        elif role == "datum":
+            for k, r in enumerate(recs, 1):
+                eid = f"E_{mid}" if len(recs) == 1 else f"E_{mid}_{k}"
+                e = {"entity_id": eid, **{**base, "source_piece_ids": [r["id"]]}}
+                if r["type"] == "LINE":
+                    e.update(type="LINE", start=tr["fwd"](r["start"]), end=tr["fwd"](r["end"]))
+                elif r["type"] == "ARC":
+                    verts, segs = _vertices([(r, True)], tr, mid)
+                    e.update(type="LWPOLYLINE", closed=False, vertices=verts + [[segs[0][1][0], segs[0][1][1], 0.0]])
+                else:
+                    errors.append(f"ROLE_GEOMETRY_MISMATCH: member {mid} role datum needs LINE or ARC, got {r['type']} {r['id']}")
+                    continue
+                ents.append(e)
         elif role in SINGLE_ROLES:
             want = SINGLE_ROLES[role]
             for k, r in enumerate(recs, 1):
@@ -249,7 +262,7 @@ def _build(pieces, plan, tr, errors):
                     e.update(type="POINT", point=tr["fwd"](r["point"]))
                 ents.append(e)
         else:
-            errors.append(f"UNKNOWN_ROLE: member {mid} role {role!r}; allowed: {', '.join(sorted(set(CHAIN_ROLES) | set(SINGLE_ROLES)))}")
+            errors.append(f"UNKNOWN_ROLE: member {mid} role {role!r}; allowed: {', '.join(sorted(set(CHAIN_ROLES) | set(SINGLE_ROLES) | {'datum'}))}")
     return ents
 
 
@@ -266,7 +279,7 @@ def _decode_out(ents):
         t = e["type"]
         if t == "LWPOLYLINE":
             v = e["vertices"]
-            for a, b in zip(v, v[1:] + v[:1]):
+            for a, b in zip(v, v[1:] + v[:1] if e.get("closed", True) else v[1:]):
                 if a[2] == 0:
                     prims.append(("LINE", tuple(sorted((tuple(a[:2]), tuple(b[:2])))), None, None, None))
                 else:
