@@ -8,18 +8,24 @@ from __future__ import annotations
 import math
 
 
-def slit_depth_from_actual_edge(S: float, T: float):
-    """90-degree BEND_END_OFFSET_90: None = NO slit (S>0); else T+0.2 from the actual edge."""
-    if S > 0:
-        return None
-    return T + 0.2
+def relief_depth(T: float, angle: float = 90.0) -> float:
+    """Depth of the relief past the flange-side bend line: T + 0.2 at 90 degrees, t*sin(theta) above (SLIT_RELIEF section 4)."""
+    return T + 0.2 if abs(angle - 90.0) <= 1e-9 else slit_depth_gt90(T, angle)
 
 
-def slit_depth_from_reference(S: float, T: float):
-    """Same slit measured from the zero/outside reference: |S|+T+0.2 (S<0), T+0.2 (S=0)."""
+def slit_depth_from_actual_edge(S: float, T: float, angle: float = 90.0):
+    """Bend-end relief from the proved step S (same gate at every angle): None = NO slit (S>0); else the
+    relief depth (90 degrees T+0.2, above 90 degrees t*sin(theta)) from the actual edge."""
     if S > 0:
         return None
-    return abs(S) + T + 0.2
+    return relief_depth(T, angle)
+
+
+def slit_depth_from_reference(S: float, T: float, angle: float = 90.0):
+    """Same slit measured from the corner B / zero reference: |S| + relief depth (S<0), the depth itself (S=0)."""
+    if S > 0:
+        return None
+    return abs(S) + relief_depth(T, angle)
 
 
 def slit_depth_gt90(t: float, theta_deg: float) -> float:

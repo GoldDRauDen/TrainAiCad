@@ -16,7 +16,8 @@ Ledger contract: every manufacturing callout → `source_group` (id, family, sta
 All geometry on Layer 0 (template `templates/CAD_OUTPUT_TEMPLATE.dxf`, mm): cut contours ByLayer, holes CIRCLE, POINT ByLayer (Green 3 only for PIERCING + English `THROUGH HOLE`), KEGAKI Red 1, bend pairs DASHED, proved slit/relief Green 3, review estimate + note Magenta 6. The exporter enforces this legend (`tools/CANONICAL_SCHEMA.md`), writes no DIMENSION and generates the `AI_META` labels.
 
 ## 4. Canonical geometry
-- LWPOLYLINE `[[x,y,bulge],…]` closed, outer CCW, cut-outs CW, R/C baked as true tangent points/bulges, no faceting. CIRCLE for cut holes; real POINT (never a tiny circle).
+- LWPOLYLINE `[[x,y,bulge],…]` closed, outer CCW, cut-outs CW, R/C baked as true tangent points/bulges, no faceting. CIRCLE for cut holes and round blanks (spec `outline: {circle: {center, d}}`); real POINT (never a tiny circle).
+- **A circle is ONE CIRCLE and an arc ONE ARC**: never several ARCs/LINEs (customer DATA excepted); `tools/curve_guard.py` fails SPLIT_CIRCLE / SPLIT_ARC.
 - Slot: one closed LWPOLYLINE, two tangents + two bulges of magnitude 1 (`SLOT.md`).
 - Canonical flat frame = orientation of the primary/plan view; the composite stays source-readable (translation only).
 - **J/LJ marks** (composite only, ByLayer POINT + TEXT h10 on Layer 0): blank Oy≤100 and Ox≥1000; on the long straight edge as the max-Y edge (if only the bottom edge is straight, turn the part 180°; same for sibling codes); L≤1500 1J+LJ, ≤2000 2J+LJ, ≤2500 3J+LJ; first J at X1+30, LJ at X2−30 (with C5/C2: 35 / L−32), others evenly spaced, LJ last. `build_canonical` does this.
@@ -43,4 +44,4 @@ Parts top-to-bottom in page-1 order, ≥150 mm apart, labels on AI_META; source 
 AutoLISP only on explicit request, generated from the same canonical entities.
 
 ## Lessons
-`regression/lessons/OUTPUT/` — 521005-05 (members lost before DXF), 521015-04 (dx = inner face, 対称 mirrored), 521020-08 (Vietnamese notes), 520625-15 (draw → flag → confirm), CAD_OUTPUT_TEMPLATE_SAMPLE, DXF_SINGLE_COMPOSITE, DXF_DUAL_EXPORT.
+`regression/lessons/OUTPUT/` — 521005-05 (members lost before DXF), 521015-04 (dx = inner face, 対称 mirrored), 521020-08 (Vietnamese notes), 521026-13 (one circle), 520625-15 (draw → flag → confirm), CAD_OUTPUT_TEMPLATE_SAMPLE, DXF_SINGLE_COMPOSITE, DXF_DUAL_EXPORT.

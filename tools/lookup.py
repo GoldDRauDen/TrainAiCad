@@ -462,6 +462,27 @@ def idod(t: float, angle: float) -> dict:
     return out
 
 
+def leg(a: float, b: float, t: float, angle: float, nobi: float | None = None) -> dict:
+    """OD of the two legs of a non-90° bend whose section dims a (leg 1, to its end face) and b (leg 2, along its
+    outer face from the end-face corner) do not reach the outer-face intersection (BEND.md §4):
+    d = angle - 90, OD1 = a - t·tan d, OD2 = b + t/cos d (26-062885: 30, 50, t6, 100° -> 28.942 / 56.093)."""
+    out = {"a": a, "b": b, "t": t, "angle": angle}
+    if angle <= 85 + EPS:
+        out.update(status="FLAG", action="USE_ACUTE_BEND_LT85", reason="ACUTE_BEND_LT85",
+                   flag_vi="Góc ≤85°: dựng bán kính thật theo rules/BEND_ACUTE.md (tools/acute_bend.py)")
+        return out
+    if angle >= 180 - EPS:
+        raise LookupError_("angle must be below 180")
+    d = math.radians(angle - 90.0)
+    od1, od2 = a - t * math.tan(d), b + t / math.cos(d)
+    out.update(status="OK", od1=round(od1, 3), od2=round(od2, 3),
+               rule="OD1 = a - t·tan(angle-90), OD2 = b + t/cos(angle-90)")
+    if nobi is not None:
+        out.update(nobi=nobi, flat_length=round(od1 + od2 - nobi, 3),
+                   bend_line1_from_leg2_free_end=round(od2 - nobi, 3), bend_line2_from_leg2_free_end=round(od2, 3))
+    return out
+
+
 def unfold(od: list[float], nobi_values: list[float]) -> dict:
     if len(nobi_values) != len(od) - 1:
         raise LookupError_("need len(nobi) == len(od) - 1")
@@ -475,25 +496,25 @@ def unfold(od: list[float], nobi_values: list[float]) -> dict:
 
 # ------------------------------------------------------------ slit / retreat / KEGAKI (rules/SLIT_RELIEF.md, KEGAKI.md)
 def slit(material: str, t: float, S: float | None = None, angle: float = 90.0) -> dict:
-    """Bend-end relief decision: 90° from the proved step S (SLIT_RELIEF §3), >90° depth t·sin θ (§4)."""
+    """Bend-end relief decision: the proved step S decides at every angle (S>0 no slit, SLIT_RELIEF §3); the depth is T+0.2 at 90°, t·sin θ above (§4)."""
     import slit_geometry as sg
     base = {"material": material, "t": t, "angle": angle}
-    if abs(angle - 90.0) > ANGLE_TOL:
-        if not 90.0 < angle < 180.0:
-            return _flag("ASK", "ANGLE_OUT_OF_RANGE", f"Góc {angle:g}° không thuộc 90–180°", **base)
-        return {"status": "OK", "mechanism": "NON_90_RELIEF", "depth": round(sg.slit_depth_gt90(t, angle), 4), **base}
+    non90 = abs(angle - 90.0) > ANGLE_TOL
+    if non90 and not 90.0 < angle < 180.0:
+        return _flag("ASK", "ANGLE_OUT_OF_RANGE", f"Góc {angle:g}° không thuộc 90–180°", **base)
+    mechanism = "NON_90_RELIEF" if non90 else "BEND_END_OFFSET_90"
     if S is None:
         return _flag("FLAG", "S_UNPROVED", "Chưa chứng minh được bậc S ở đầu đường gấp: SLIT_RELIEF = UNKNOWN", **base)
-    depth = sg.slit_depth_from_actual_edge(S, t)
+    depth = sg.slit_depth_from_actual_edge(S, t, angle)
     if depth is None:
-        return {"status": "OK", "mechanism": "BEND_END_OFFSET_90", "decision": "NO_SLIT", "S": S, **base}
+        return {"status": "OK", "mechanism": mechanism, "decision": "NO_SLIT", "S": S, **base}
     try:
         lead = sg.lead_val(material, t)
     except sg.LeadValueUnproved as exc:
         return _flag("FLAG", str(exc), "Chưa có giá trị lead cho vật liệu/độ dày này: không vẽ slit, FLAG", S=S, **base)
-    return {"status": "OK", "mechanism": "BEND_END_OFFSET_90", "decision": "SLIT", "S": S,
+    return {"status": "OK", "mechanism": mechanism, "decision": "SLIT", "S": S,
             "depth_from_actual_edge": round(depth, 4),
-            "depth_from_reference": round(sg.slit_depth_from_reference(S, t), 4),
+            "depth_from_reference": round(sg.slit_depth_from_reference(S, t, angle), 4),
             "lead": lead, "arc_R": 0.5, **base}
 
 
@@ -554,6 +575,12 @@ def main(argv=None) -> int:
     u = sub.add_parser("unfold")
     u.add_argument("--od", type=float, nargs="+", required=True)
     u.add_argument("--nobi", type=float, nargs="*", default=[])
+    lg = sub.add_parser("leg", help="non-90° bend: OD of both legs from section dims that stop at the end faces")
+    lg.add_argument("--a", type=float, required=True, help="leg 1 dim to its end face")
+    lg.add_argument("--b", type=float, required=True, help="leg 2 dim along its outer face")
+    lg.add_argument("--t", type=float, required=True)
+    lg.add_argument("--angle", type=float, required=True)
+    lg.add_argument("--nobi", type=float)
     sl = sub.add_parser("slit", help="bend-end relief: 90° from the proved step S, >90° t·sin θ")
     sl.add_argument("--material", required=True)
     sl.add_argument("--t", type=float, required=True)
@@ -593,6 +620,8 @@ def main(argv=None) -> int:
         res = tooling(a.material, a.t)
     elif a.cmd == "idod":
         res = idod(a.t, a.angle)
+    elif a.cmd == "leg":
+        res = leg(a.a, a.b, a.t, a.angle, a.nobi)
     else:
         res = unfold(a.od, a.nobi)
     print(json.dumps(res, ensure_ascii=False, indent=2, default=str))

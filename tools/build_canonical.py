@@ -26,6 +26,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import geom  # noqa: E402
 import bend_flat  # noqa: E402
 import bend_corner  # noqa: E402
 import lookup  # noqa: E402
@@ -442,6 +443,17 @@ def _expand_repeats(spec, where):
             spec[kind] = out
 
 
+def _circle_spec(c, where):
+    """(cx, cy, r) of a circle item {center: [x, y], d: diameter}."""
+    if not isinstance(c, dict) or "center" not in c or "d" not in c:
+        fail(f"{where}: circle needs center: [x, y] and d")
+    cx, cy = _pt(c["center"], where)
+    d = _num(c["d"], f"{where}.d")
+    if d <= 0:
+        fail(f"{where}: d must be positive")
+    return cx, cy, d / 2.0
+
+
 def build_part(spec, customer=None):
     if spec.get("data") is not None or spec.get("data_views") is not None:
         import data_part
@@ -482,8 +494,16 @@ def build_part(spec, customer=None):
     except bend_flat.BendError as exc:
         fail(str(exc))
     auto, laser = auto_corner(material, t, customer)
-    corners, patterns = expand_outline(outline, where)
-    verts, decisions = build_outline(corners, auto, where)
+    if isinstance(outline, dict) and "circle" in outline:       # round blank: ONE circle, saved as one CIRCLE
+        if chains:
+            fail(f"{code}: a circular outline cannot carry a bend: block")
+        cx, cy, rad = _circle_spec(outline["circle"], f"{where}.outline.circle")
+        corners = [{"at": (cx - rad, cy - rad)}, {"at": (cx + rad, cy + rad)}]
+        patterns, decisions = [], []
+        verts = [[_r6(cx - rad), _r6(cy), 1], [_r6(cx + rad), _r6(cy), 1]]
+    else:
+        corners, patterns = expand_outline(outline, where)
+        verts, decisions = build_outline(corners, auto, where)
     b_ents, b_groups, bend_graph, bend_ledger, corner_rec = [], [], None, None, None
     if chains:
         try:
@@ -711,12 +731,21 @@ def build_part(spec, customer=None):
     marks_by_group = {}
     for i, k in enumerate(spec.get("kegaki") or []):
         kid = str(k.get("id") or f"K{i + 1}")
-        lines = k.get("lines") or fail(f"{code}: kegaki {kid} needs lines [[x0, y0, x1, y1], ...]")
+        lines = k.get("lines") or []
+        circles = k.get("circles") or []
+        if not lines and not circles:
+            fail(f"{code}: kegaki {kid} needs lines [[x0, y0, x1, y1], ...] or circles [{{center: [x, y], d: D}}]")
         owned = []
+        for n, circle in enumerate(circles, 1):     # a round mark is ONE Red CIRCLE
+            cx, cy, rad = _circle_spec(circle, f"{code}: kegaki {kid} circle {n}")
+            eid = f"E_{p}_{kid}_C{n}" if len(circles) + len(lines) > 1 else f"E_{p}_{kid}"
+            ents.append({"entity_id": eid, "type": "CIRCLE", "role": "kegaki", "color": 1,
+                         "center": [_r6(cx), _r6(cy)], "radius": _r6(rad)})
+            owned.append(eid)
         for n, ln in enumerate(lines, 1):
             if not isinstance(ln, (list, tuple)) or len(ln) != 4:
                 fail(f"{code}: kegaki {kid} line {n} must be [x0, y0, x1, y1]")
-            eid = f"E_{p}_{kid}" if len(lines) == 1 else f"E_{p}_{kid}_{n}"
+            eid = f"E_{p}_{kid}" if len(lines) + len(circles) == 1 else f"E_{p}_{kid}_{n}"
             ents.append({"entity_id": eid, "type": "LINE", "role": "kegaki", "color": 1,
                          "start": [_r6(_num(ln[0], kid)), _r6(_num(ln[1], kid))],
                          "end": [_r6(_num(ln[2], kid)), _r6(_num(ln[3], kid))]})
@@ -946,9 +975,8 @@ def _outer(part):
 
 
 def _blank(part):
-    v = _outer(part)["vertices"]
-    xs, ys = [p[0] for p in v], [p[1] for p in v]
-    return min(xs), min(ys), max(xs), max(ys)
+    o = _outer(part)
+    return geom.polyline_bbox(o["vertices"], bool(o.get("closed", True)))
 
 
 def _straight_long_edge(verts, level, length):

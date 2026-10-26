@@ -20,10 +20,10 @@ Per code: `part_code`, `customer_code`, `source_assembly_view_ids`, `source_weld
 - "No dimension on the mark" is not a FLAG reason; FLAG only when a needed number is truly absent from the PDF.
 
 ## 4. Drawing form
-RED (62=1) LINE only (or proved LWPOLYLINE), Layer 0, role kegaki. No line on the part contour (`KEGAKI_ON_CONTOUR`); touching zones drawn as ONE union outline (`KEGAKI_DUPLICATE_SEGMENT`); never the full child outline. Marks on a formed face follow that face's local→flat transform and must fold back to the contact. Separate faces/regions with a gap stay split. The KEGAKI face is the OUTER face (`OUTPUT.md` §6).
+RED (62=1) LINE, Layer 0, role kegaki; a round mark (bar/tube end) is ONE CIRCLE (tube: outer ring only), spec `circles:`. No line on the part contour (`KEGAKI_ON_CONTOUR`); touching zones drawn as ONE union outline (`KEGAKI_DUPLICATE_SEGMENT`); never the full child outline. Marks on a formed face follow that face's local→flat transform and must fold back to the contact. Separate faces/regions with a gap stay split. The KEGAKI face is the OUTER face (`OUTPUT.md` §6).
 
 ## 5. RIB and formed marks
 A RIB with its own code is an independent part; its CUT and the main part's locating mark are separate families; cancelling one never cancels the other. Formed-feature reference marks (louver, emboss, dimple, half shear, hem, curl, lance) = Red LINE when the drawing requires them; respect `※ケガキ不可` (Cu/Brass t≥6). HD4: PL1 located by the material edge (no mark), PL2 inside the face (mark) — function decides, not symmetry.
 
 ## Lessons
-`regression/lessons/KEGAKI/` — 521005-01 (weld cue), 521013-12 (KH851), 521019-13 (outer face), 521021-03 / 521021-20 (footprints, across the bend), 520925-03 HD1 (B-side footprints), 520929-10, HD4.
+`regression/lessons/KEGAKI/` — 521005-01 (weld cue), 521013-12 (KH851), 521019-13 (outer face), 521021-03 / 521021-20 (footprints, across the bend), 520925-03 HD1 (B-side footprints), 520929-10, HD4, 521026-13 (round marks, one circle).

@@ -39,6 +39,8 @@ python tools/lookup.py laser-r --material SS400 --t 9 [--customer 768]
 python tools/lookup.py hole --material SS400 --t 9 --dia 4.2 [--piercing] [--through] [--customer 859]
 python tools/lookup.py pilot --thread M8x1        # also: countersink --thread M6, tooling --material SPCC --t 3
 python tools/lookup.py idod --t 3 --angle 165
+python tools/lookup.py leg --a 35 --b 65 --t 6 --angle 120 --nobi 4.92   # non-90° OD when the dims stop at the end faces
+python tools/lookup.py slit --material SS400 --t 6 --S -2 --angle 120      # S gates the relief at every angle
 python tools/lookup.py unfold --od 410.8 20.8 175 --nobi 1.68 0.36
 python tools/acute_bend.py od --t 3 --angle 75 --rin 0.6 --inside 179.2 46.9
 python tools/run_job.py spec_A.yaml spec_B.yaml [box.job.json] OUT/   # whole job: build -> export -> reopen -> report
