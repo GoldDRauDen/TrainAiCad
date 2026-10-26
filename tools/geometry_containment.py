@@ -11,7 +11,7 @@ class ContainmentError(ValueError):
 
 
 def _loop(vertices, tolerance=0.005):
-    if len(vertices) < 3:
+    if len(vertices) < 3 and not (len(vertices) == 2 and any(len(v) > 2 and v[2] for v in vertices)):
         raise ContainmentError("CONTAINMENT_OUTER_GEOMETRY_UNVERIFIABLE")
     points = [(float(v[0]), float(v[1]), float(v[2]) if len(v) > 2 else 0.0)
               for v in vertices]

@@ -367,7 +367,7 @@ def _cutout_vertices(c, chains, where):
         fail(f"{where}: cutout needs ev")
     if "vertices" in c:  # exact closed polygon, e.g. customer DATA (tools/data_part.py): kept as given
         verts = [[_num(v[0], where), _num(v[1], where), _num(v[2] if len(v) > 2 else 0, where)] for v in c["vertices"]]
-        if len(verts) < 3 or signed_poly_area(verts) >= 0:
+        if len(verts) < 2 or (len(verts) == 2 and not any(v[2] for v in verts)) or signed_poly_area(verts) >= 0:
             fail(f"{where}: cutout vertices must be a closed clockwise loop")
         return [[_r6(x), _r6(y), g] for x, y, g in verts]
     if "face" in c:

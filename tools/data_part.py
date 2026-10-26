@@ -37,6 +37,7 @@ v = 0) and `data_faces`. Coordinates are never typed: they are `datum` members o
 from __future__ import annotations
 
 import json
+import math
 import re
 from pathlib import Path
 
@@ -339,6 +340,25 @@ def _outline_item(item, views, ch, along_idx, code):
     return [round(pt[0], 6), round(pt[1], 6)] + list(item[2:])
 
 
+def _bbox(verts):
+    """(width, height) of a closed bulged loop, arcs included (exact extrema)."""
+    from geom import bulge_circle
+    xs, ys = [v[0] for v in verts], [v[1] for v in verts]
+    n = len(verts)
+    for i, (x, y, b) in enumerate(verts):
+        if not b:
+            continue
+        cx, cy, r, theta = bulge_circle((x, y), verts[(i + 1) % n][:2], b)
+        a0 = math.atan2(y - cy, x - cx)
+        for k in range(4):                                  # axis extremes lying on the arc's sweep
+            ang = k * math.pi / 2
+            rel = (ang - a0) % (2 * math.pi) if theta > 0 else (a0 - ang) % (2 * math.pi)
+            if rel <= abs(theta):
+                xs.append(cx + r * math.cos(ang))
+                ys.append(cy + r * math.sin(ang))
+    return max(xs) - min(xs), max(ys) - min(ys)
+
+
 def _features(out, extra, by_member, meaning, outer_id, code, customer, mapper):
     """Holes, slots, cut-outs and KEGAKI of the DATA members; mapper(points) -> (translation, face note)."""
     holes, slots, cuts, marks = [], [], [], []
@@ -384,10 +404,10 @@ def _features(out, extra, by_member, meaning, outer_id, code, customer, mapper):
                 elif role == "hole":
                     d = 2 * e["radius"]
                     if m.get("pdf_d") is not None:
-                        d, change, flag = gate(d, m["pdf_d"], customer, f"{fid} Ø")
+                        d, change, flag = gate(d, m["pdf_d"], customer, f"{m.get('pdf_label') or fid} Ø")
                         if change:
                             extra["changes"].append({"member": fid, "source": ref, **change})
-                        if flag:
+                        if flag and flag not in extra["flags"]:
                             extra["flags"].append(flag)
                 else:
                     d = m.get("d") or _fail(f"{code}: DATA POINT {mid} needs d (the PDF Ø) in members.{mid}")
@@ -404,8 +424,16 @@ def _features(out, extra, by_member, meaning, outer_id, code, customer, mapper):
                               "axis": [g["axis_unit"][0], g["axis_unit"][1]],
                               "wx": _ordinate(mx, ref, "SLOT_MIDPOINT"), "wy": _ordinate(my, ref, "SLOT_MIDPOINT")})
             elif role == "cutout":
-                cuts.append({"id": fid, "group": group, "ev": ev,
-                             "vertices": [mv(v[:2]) + [v[2]] for v in e["vertices"]]})
+                verts = [mv(v[:2]) + [v[2]] for v in e["vertices"]]
+                if m.get("pdf_size") is not None:
+                    box = _bbox(verts)
+                    for axis, dv, pv in zip("XY", box, m["pdf_size"]):
+                        _, change, flag = gate(round(dv, 6), pv, customer, f"{m.get('pdf_label') or fid} {axis}")
+                        if change:
+                            _fail(f"{code}: PDF_PRIORITY on the size of cut-out {fid} changes the DATA loop: build by hand")
+                        if flag and flag not in extra["flags"]:
+                            extra["flags"].append(flag)
+                cuts.append({"id": fid, "group": group, "ev": ev, "vertices": verts})
             elif role == "kegaki":
                 marks.append({"id": fid, "group": group, "ev": ev, "lines": [mv(e["start"]) + mv(e["end"])]})
             else:
