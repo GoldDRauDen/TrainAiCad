@@ -21,4 +21,4 @@ DATA = physical geometry and provenance. PDF = code, material, t, view/face mean
 - Reference/audit only: normalise exact duplicate entities for counting, report `REFERENCE_ANOMALY`.
 
 ## Lessons
-`regression/lessons/DATA_DXF/` — 520930-03 (preservation), 521001-03 (census, bidirectional), 521001-13 (DATA tap / auto R), 521001-19 (bulge), 521001-20 (DATA first), 520928-20, 520930-10, 520702-08 (digest/assemble; KH646 ears + web, slip size is not proof).
+`regression/lessons/DATA_DXF/` — 520930-03 (preservation), 521001-03 (census, bidirectional), 521001-13 (DATA tap / auto R), 521001-19 (bulge), 521001-20 (DATA first), 520928-20, 520930-10, 520702-08 (digest/assemble; KH646 ears + web, slip size is not proof), 521026-03 (bent/flat parts from several views, D-cut, datum references).

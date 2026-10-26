@@ -241,13 +241,16 @@ def _value(v, datums, code):
 def _views_spec(spec, customer):
     import bend_flat
     code = spec["code"]
-    if not spec.get("bend") or "chains" in spec["bend"]:
-        _fail(f"{code}: data_views needs a one-axis `bend:` block (two axes: build by hand)")
-    try:
-        ch = bend_flat.unfold_chain(spec["bend"], spec["material"], float(spec["t"]), customer, code)
-    except bend_flat.BendError as exc:
-        _fail(str(exc))
-    along_idx = 0 if ch["axis"] == "X" else 1   # flat axis of the chain = the view axis after the proved transform
+    flat = not spec.get("bend")                 # flat part: every view is only translated into the flat frame
+    ch, along_idx = None, None
+    if not flat:
+        if "chains" in spec["bend"]:
+            _fail(f"{code}: data_views needs a one-axis `bend:` block (two axes: build by hand)")
+        try:
+            ch = bend_flat.unfold_chain(spec["bend"], spec["material"], float(spec["t"]), customer, code)
+        except bend_flat.BendError as exc:
+            _fail(str(exc))
+        along_idx = 0 if ch["axis"] == "X" else 1   # flat axis of the chain = the view axis after the proved transform
     out = {k: v for k, v in spec.items() if k not in ("data_views", "data", "members", "corners", "envelope", "outline")}
     extra = {"changes": [], "flags": [], "data_file": [], "transform": [], "source_sha256": [], "face_view": []}
     views, seen = [], set()
@@ -270,18 +273,29 @@ def _views_spec(spec, customer):
         seen |= set(by_member)
         if entry.get("origin") is None:
             _fail(f"{code}: data_views[{n}] needs origin (a datum reference for the flat edge v = 0)")
-        origin = _value(entry["origin"], datums, code)
-        faces = [{**e, "at": _value(e["at"], datums, code), "to": _value(e["to"], datums, code)}
-                 for e in entry["data_faces"]]
         sub = {"changes": [], "flags": []}
-        ranges = _ranges(code, ch, faces, customer, sub)
-        if entry.get("width") is not None:
-            _, _, flag = gate(abs(_value(entry["width"], datums, code) - origin), spec["bend"]["width"], customer,
-                              "DATA bề rộng")
-            if flag:
-                sub["flags"].append(flag)
-        dv = float(entry.get("data_v", 0.0)) - origin
-        mapper = _mapper(code, ranges, along_idx, dv)
+        if flat:
+            if not isinstance(entry["origin"], (list, tuple)) or len(entry["origin"]) != 2:
+                _fail(f"{code}: a flat data view needs origin [x ref|null, y ref|null] (the flat X = 0 and Y = 0 edges)")
+            org = [None if o is None else _value(o, datums, code) for o in entry["origin"]]
+            ranges, dv = [], None
+
+            def mapper(points, org=org):
+                if any(o is None for o in org):
+                    _fail(f"{code}: a view that carries features needs both origin refs")
+                return [-org[0], -org[1]], ""
+        else:
+            origin = _value(entry["origin"], datums, code)
+            faces = [{**e, "at": _value(e["at"], datums, code), "to": _value(e["to"], datums, code)}
+                     for e in entry["data_faces"]]
+            ranges = _ranges(code, ch, faces, customer, sub)
+            if entry.get("width") is not None:
+                _, _, flag = gate(abs(_value(entry["width"], datums, code) - origin), spec["bend"]["width"], customer,
+                                  "DATA bề rộng")
+                if flag:
+                    sub["flags"].append(flag)
+            dv = float(entry.get("data_v", 0.0)) - origin
+            mapper = _mapper(code, ranges, along_idx, dv)
         meaning = entry.get("members") or {}
         if set(meaning) - set(features):
             _fail(f"{code}: members {sorted(set(meaning) - set(features))} are not feature members of {path.name}")
@@ -297,7 +311,7 @@ def _views_spec(spec, customer):
         extra["source_sha256"].append(assembled.get("source", {}).get("sha256"))
         extra["face_view"].append({"view": path.name, "faces": [
             {"face": r[2], "view_range": [r[0], r[1]], "shift_along": r[3]} for r in ranges]})
-        views.append({"datums": datums, "k": along_idx, "dv": dv, "mapper": mapper})
+        views.append({"datums": datums, "k": along_idx, "dv": dv, "mapper": mapper, "flat": org if flat else None})
     out["outline"] = [_outline_item(it, views, ch, along_idx, code) for it in
                       spec.get("outline") or _fail(f"{code}: data_views needs an outline (datum references)")]
     out["envelope"] = spec.get("envelope") or _fail(f"{code}: envelope required (overall flat size)")
@@ -315,6 +329,8 @@ def _outline_item(item, views, ch, along_idx, code):
     for i in (0, 1):
         v = item[i]
         if isinstance(v, str) and v.strip() in ("START", "END"):
+            if ch is None:
+                _fail(f"{code}: START/END need a `bend:` chain (a flat part takes every coordinate from a datum reference)")
             if i != along_idx:
                 _fail(f"{code}: START/END only fill the chain-axis coordinate of an outline point")
             pt.append(ch["origin"] if v.strip() == "START" else ch["origin"] + ch["total"])
@@ -329,7 +345,13 @@ def _outline_item(item, views, ch, along_idx, code):
             _fail(f"{code}: datum {m.group(1)} must be a `datum` member of exactly one DATA view")
         w = owners[0]
         raw = _datum_value(v, w["datums"], code)
-        if (0 if m.group(3) == "x" else 1) == w["k"]:
+        axis_idx = 0 if m.group(3) == "x" else 1
+        if w["flat"] is not None:
+            if w["flat"][axis_idx] is None or axis_idx != i:
+                _fail(f"{code}: outline coordinate {v} needs its view's origin on the same axis and the same slot of the point")
+            pt.append(raw - w["flat"][axis_idx])
+            continue
+        if axis_idx == w["k"]:
             shift, _ = w["mapper"]([(raw, raw)])
             flat, flat_axis = raw + shift[w["k"]], along_idx
         else:

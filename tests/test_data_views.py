@@ -141,3 +141,29 @@ def test_start_end_tokens_only_on_the_chain_axis(tmp_path):
     spec["outline"][0] = ["START", "LEFT.min.y"]
     with pytest.raises(bc.BuildError, match="chain-axis"):
         bc.build_part(spec)
+
+
+def test_flat_part_takes_outline_and_holes_from_datum_lines(tmp_path):
+    doc = ezdxf.new("R2010", setup=True)
+    msp = doc.modelspace()
+    for a, b in (((5, 10), (5, 50)), ((25, 10), (25, 50)), ((5, 10), (25, 10)), ((5, 50), (25, 50))):
+        msp.add_line(a, b)
+    msp.add_circle((15, 20), 2)
+    path = tmp_path / "plate.dxf"
+    doc.saveas(path)
+    dg = dxf_digest.digest(str(path))
+    line, circle = _ids(dg)
+    plate = _write(tmp_path, "plate.json", dg, _plan(dg, [
+        {"id": "L", "role": "datum", "pieces": [line((5, 10), (5, 50))]}, {"id": "R", "role": "datum", "pieces": [line((25, 10), (25, 50))]},
+        {"id": "B", "role": "datum", "pieces": [line((5, 10), (25, 10))]}, {"id": "T", "role": "datum", "pieces": [line((5, 50), (25, 50))]},
+        {"id": "H1", "role": "hole", "pieces": [circle((15, 20))]}]))
+    spec = {"code": "26-000950", "material": "SPCC", "t": 2, "page": 1, "envelope": [20, 40],
+            "data_views": [{"data": plate, "origin": ["L.min.x", "B.min.y"], "members": {"H1": {"group": "D4", "ev": "1-Ø4"}}}],
+            "outline": [["L.min.x", "B.min.y"], ["R.min.x", "B.min.y"], ["R.min.x", "T.min.y"], ["L.min.x", "T.min.y"]]}
+    part = bc.build_part(spec)
+    assert _holes(part) == [(10, 10, 2)] and part["status"] == "PASS"
+    xs = [v[0] for v in next(e for e in part["entities"] if e["role"] == "outer")["vertices"]]
+    assert (min(xs), max(xs)) == pytest.approx((0, 20))
+    spec["outline"][0][0] = "START"
+    with pytest.raises(bc.BuildError, match="START/END need"):
+        bc.build_part(spec)
