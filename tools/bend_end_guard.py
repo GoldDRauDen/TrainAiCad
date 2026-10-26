@@ -52,11 +52,35 @@ def _measured_step(site, edges):
     web = _edge(edges, site.get("web_edge_id"), site.get("frame_id"))
     if edges[site["flush_edge_id"]]["physical_edge_id"] == edges[site["web_edge_id"]]["physical_edge_id"]:
         raise ValueError("BEND_END_EDGE_IDENTITY_INVALID")
-    for a, b in (flush, web):
-        delta = (b[0]-a[0], b[1]-a[1])
-        if abs(sum(delta[i]*axis[i] for i in range(2))) > TOL*math.hypot(*delta):
-            raise ValueError("BEND_END_MEASUREMENT_AXIS_INVALID")
-    return math.fsum((web[0][i]-flush[0][i])*axis[i] for i in range(2))
+    along = lambda a, b: sum((b[i]-a[i])*axis[i] for i in range(2))
+    if abs(along(*flush)) > TOL*math.dist(*flush):
+        raise ValueError("BEND_END_MEASUREMENT_AXIS_INVALID")
+    if abs(along(*web)) <= TOL*math.dist(*web):
+        return math.fsum((web[0][i]-flush[0][i])*axis[i] for i in range(2))
+    # web edge slanted against the bend: S is read at the corner B where it meets the flange side edge, and the
+    # edge must leave B toward the web (rules/SLIT_RELIEF.md section 3)
+    side = _edge(edges, site.get("side_edge_id"), site.get("frame_id"))
+    corner = _segment_intersection(web, side)
+    if corner is None:
+        raise ValueError("BEND_END_MEASUREMENT_AXIS_INVALID")
+    far = max(web, key=lambda p: math.dist(p, corner))
+    if along(corner, far) <= TOL*math.dist(corner, far):
+        raise ValueError("BEND_END_MEASUREMENT_AXIS_INVALID")
+    return math.fsum((corner[i]-flush[0][i])*axis[i] for i in range(2))
+
+
+def _segment_intersection(e1, e2):
+    """Common point of two non-parallel segments, or None."""
+    (a, b), (c, d) = e1, e2
+    u, v, w = (b[0]-a[0], b[1]-a[1]), (d[0]-c[0], d[1]-c[1]), (c[0]-a[0], c[1]-a[1])
+    cross = lambda x, y: x[0]*y[1]-x[1]*y[0]
+    denom = cross(u, v)
+    if abs(denom) <= TOL*math.hypot(*u)*math.hypot(*v):
+        return None
+    t, s = cross(w, v)/denom, cross(w, u)/denom
+    if not all(-TOL <= k <= 1+TOL for k in (t, s)):
+        return None
+    return (a[0]+t*u[0], a[1]+t*u[1])
 
 
 def _physical_intersection(site, edges):

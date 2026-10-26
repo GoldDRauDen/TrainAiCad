@@ -224,6 +224,23 @@ def check_features(entities, bends, code):
 
 
 # ------------------------------------------------------------------ bend-end step
+def _slanted_edge(verts, axis, along, across, s, d):
+    """The straight outline edge that leaves the corner (along, across) toward +s across and toward the web (d along)
+    without lying on `along` = const: a web edge slanted against the bend (rules/SLIT_RELIEF.md §3)."""
+    k, j = _k(axis), 1 - _k(axis)
+    n = len(verts)
+    for i in range(n):
+        a, b = verts[i], verts[(i + 1) % n]
+        if a[2]:
+            continue
+        for p, q in ((a, b), (b, a)):
+            if abs(p[k] - along) > 1e-5 or abs(p[j] - across) > 1e-5:
+                continue
+            if (q[j] - across) * s > 1e-5 and (q[k] - along) * d > 1e-5:
+                return (_flat(axis, along, across), _flat(axis, q[k], q[j]))
+    return None
+
+
 def end_step(verts, bend, v_end, s, web, code, reach=0.0):
     """Corner B, step S and the two edges at one bend end; None when the outline runs straight across the zone.
 
@@ -263,7 +280,7 @@ def end_step(verts, bend, v_end, s, web, code, reach=0.0):
     u_b = run[1] if d > 0 else run[0]
     if (u_b - w_line) * d > 1e-5:
         return None  # the side edge passes the whole zone: no corner
-    web_edge = _cross_edge(verts, axis, u_b, side, s)
+    web_edge = _cross_edge(verts, axis, u_b, side, s) or _slanted_edge(verts, axis, u_b, side, s, d)
     if web_edge is None:
         _fail(f"{code}: bend {bend['id']} end: no straight web edge from the corner ({_flat(axis, u_b, side)}) "
               "— build by hand")
@@ -279,6 +296,13 @@ def slit_entities(step, material, t, sid):
     direction = _flat(axis, d, 0.0)
     n_side = _flat(axis, 0.0, s)
     n_web = _flat(axis, -d, 0.0)
+    (x0, y0), (x1, y1) = step["web_edge"]
+    if abs((x1 - x0) * direction[0] + (y1 - y0) * direction[1]) > 1e-9 * math.hypot(x1 - x0, y1 - y0):
+        # web edge slanted against the bend: its own void-side normal (away from the web), same LeadVal offset
+        length = math.hypot(x1 - x0, y1 - y0)
+        n_web = ((y0 - y1) / length, (x1 - x0) / length)
+        if n_web[0] * direction[0] + n_web[1] * direction[1] > 0:
+            n_web = (-n_web[0], -n_web[1])
     lead = sg.lead_val(material, t)
     B = step["B"]
     end = sg.lead_end_by_offset(B, n_side, n_web, lead)
@@ -428,7 +452,7 @@ def records(verts, chains, code, page, material, t):
         out["edges"][web_id] = _edge(*st["web_edge"], f"{sid}.WEB_EDGE", "web edge at the corner B (outline)")
         out["edges"][side_id] = _edge(*st["side_edge"], f"{sid}.FLANGE_SIDE_EDGE", "flange side edge (outline)")
         site = {"site_id": sid, "status": "PROVED", "frame_id": FRAME, "bend_ids": bend_ids,
-                "flush_edge_id": flush_id, "web_edge_id": web_id,
+                "flush_edge_id": flush_id, "web_edge_id": web_id, "side_edge_id": side_id,
                 "positive_axis": [float(v) for v in _flat(st["bend"]["axis"], st["d"], 0.0)],
                 "positive_axis_evidence_ref": "toward the web face in the canonical flat",
                 "included_angle_deg": 90, "S_mm": st["S"], "mechanism": "BEND_END_OFFSET_90",
