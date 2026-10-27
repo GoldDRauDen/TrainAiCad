@@ -10,7 +10,7 @@ class ContainmentError(ValueError):
     pass
 
 
-def _loop(vertices, tolerance=0.005):
+def _loop(vertices, tolerance=0.005, curves=None):
     if len(vertices) < 3 and not (len(vertices) == 2 and any(len(v) > 2 and v[2] for v in vertices)):
         raise ContainmentError("CONTAINMENT_OUTER_GEOMETRY_UNVERIFIABLE")
     points = [(float(v[0]), float(v[1]), float(v[2]) if len(v) > 2 else 0.0)
@@ -18,10 +18,20 @@ def _loop(vertices, tolerance=0.005):
     if not all(math.isfinite(x) for v in points for x in v):
         raise ContainmentError("CONTAINMENT_NONFINITE_GEOMETRY")
     out = []
+    cseg = {c["seg"]: c for c in (curves or [])}
     for i, (x0, y0, bulge) in enumerate(points):
         x1, y1, _ = points[(i + 1) % len(points)]
         if not out:
             out.append((x0, y0))
+        if i in cseg:       # native SPLINE / ELLIPSE: validate against the curve itself, not its chord
+            import curves as _curves
+            pts = _curves.flatten(cseg[i], tolerance)
+            if math.dist(pts[0], (x0, y0)) > math.dist(pts[-1], (x0, y0)):
+                pts = pts[::-1]
+            out.extend((p[0], p[1]) for p in pts[1:-1])
+            if i < len(points)-1:
+                out.append((x1, y1))
+            continue
         if abs(bulge) < 1e-14:
             if i < len(points)-1:
                 out.append((x1, y1))
@@ -90,7 +100,7 @@ def part_containment_errors(part):
     if len(outers) != 1 or outers[0].get("type") != "LWPOLYLINE" or outers[0].get("closed") is not True:
         return ["CONTAINMENT_OUTER_GEOMETRY_UNVERIFIABLE"]
     try:
-        outer = _loop(outers[0].get("vertices", []))
+        outer = _loop(outers[0].get("vertices", []), curves=outers[0].get("curves"))
         errors = []
         for entity in part.get("entities", []):
             role, typ = entity.get("role"), entity.get("type")

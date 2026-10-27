@@ -180,7 +180,7 @@ def test_face_ods_and_width_come_from_data_spans_with_the_pdf_as_a_gate(tmp_path
     assert part["status"] == "PASS" and part["unfold"]["flat_length_mm"] == pytest.approx(FLAT)
     spec["bend"]["faces"][2]["od"]["pdf"] = 29.8                      # PDF says 29.8, DATA span is 30
     part = bc.build_part(spec)
-    assert part["status"] == "PREVIEW" and any("DATA_PDF_DIM_DIFF DATA OD FT" in f for f in part["flags"])
+    assert part["status"] == "PREVIEW" and any("Lệch PDF DATA OD FT" in f for f in part["flags"])
     assert part["unfold"]["flat_length_mm"] == pytest.approx(FLAT)    # DATA wins
     spec["bend"]["faces"][0]["od"]["span"] = ["FREE_B.min.y", "LEFT_T.min.y"]          # two different views
     with pytest.raises(bc.BuildError, match="exactly one DATA view|inside one DATA view"):
@@ -229,7 +229,7 @@ def test_corner_r_and_c_come_from_datum_arc_and_chamfer(tmp_path):
     spec = _plate_spec(tmp_path)
     spec["outline"][0][2]["pdf_R"] = 3.5                                   # PDF R3.5 against DATA R3
     part = bc.build_part(spec)
-    assert part["status"] == "PREVIEW" and any("DATA_PDF_DIM_DIFF" in f and "R" in f for f in part["flags"])
+    assert part["status"] == "PREVIEW" and any("Lệch PDF" in f and "R" in f for f in part["flags"])
 
 
 def test_length_and_span_scalars_build_a_rectangle_without_typed_numbers(tmp_path):

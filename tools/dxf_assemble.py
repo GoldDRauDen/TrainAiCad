@@ -34,6 +34,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from export_dxf import signed_poly_area  # noqa: E402
 from geom import bulge_circle  # noqa: E402
+import curves  # noqa: E402
 
 REASONS = {
     "FRAME_OR_TITLE_BLOCK", "EXPLODED_TEXT_OR_DIM_NOISE", "DIMENSION_GRAPHIC", "VIEW_NOT_USED", "ISO_VIEW",
@@ -81,6 +82,7 @@ def _transform(plan_tr: dict, errors: list):
 def _account(digest, plan, errors):
     pieces = {p["id"]: p for p in digest["pieces"]}
     unsupported = {u["id"] for u in digest["unsupported"]}
+    native = {u["id"] for u in digest["unsupported"] if u.get("curve")}     # open SPLINE / ELLIPSE decoded exactly
     views = {v["id"]: v["piece_ids"] for v in digest["views"]}
     everything = set(pieces) | unsupported
     owner, used, excluded, detail = {}, [], {}, []
@@ -96,7 +98,10 @@ def _account(digest, plan, errors):
         return False
     for m in plan.get("members", []):
         for pid in m.get("pieces", []):
-            if pid in unsupported:
+            if pid in native and m.get("role") in CHAIN_ROLES:
+                if claim(pid, f"member {m.get('id')}"):
+                    used.append(pid)
+            elif pid in unsupported:
                 errors.append(f"UNSUPPORTED_PIECE_USED: {pid} ({m.get('id')}): ELLIPSE/SPLINE stay UNKNOWN/FLAG, never flattened")
             elif pid in pieces and pieces[pid].get("duplicate_of"):
                 errors.append(f"DUPLICATE_PIECE_USED: {pid} duplicates {pieces[pid]['duplicate_of']}; use the original")
@@ -196,6 +201,21 @@ def _t_split(segs, notes, who):
     return out
 
 
+def _dedupe(segs, notes, who):
+    """Two cut sub-lines on the same span (two DATA lines that overlap by a hair) keep one; the other is a ledger row."""
+    out = []
+    for s in segs:
+        twin = next((o for o in out if s.get("_parent") and o["type"] == "LINE" == s["type"] and
+                     {tuple(round(v / JOIN_TOL) for v in o["start"]), tuple(round(v / JOIN_TOL) for v in o["end"])} ==
+                     {tuple(round(v / JOIN_TOL) for v in s["start"]), tuple(round(v / JOIN_TOL) for v in s["end"])}), None)
+        if twin is None:
+            out.append(s)
+            continue
+        notes.append({"rule": "T_SPUR", "member": who, "piece": s["id"], "dropped": [list(s["start"]), list(s["end"])],
+                      "note": f"overlaps {twin['id']} on the same span; one copy kept"})
+    return out
+
+
 def _prune_spurs(segs, notes, who):
     """After a T split, a sub-line that ends in the air (degree 1) is the overhang of the same piece beyond the contour:
     it is not part of the closed loop and is dropped with a ledger row. Original pieces are never pruned."""
@@ -228,11 +248,11 @@ def _noise_rows(segs, notes, who):
 def _chain(recs, errors, who, notes=None):
     """Order LINE/ARC pieces into one closed loop; returns [(rec, forward)] or None."""
     notes = [] if notes is None else notes
-    segs = [r for r in recs if r["type"] in ("LINE", "ARC")]
+    segs = [r for r in recs if r["type"] in ("LINE", "ARC", "SPLINE", "ELLIPSE")]
     if len(segs) != len(recs) or len(segs) < 2:
         errors.append(f"CHAIN_INVALID: {who} needs >=2 LINE/ARC pieces")
         return None
-    segs = _prune_spurs(_t_split(segs, notes, who), notes, who)
+    segs = _prune_spurs(_dedupe(_t_split(segs, notes, who), notes, who), notes, who)
     _noise_rows(segs, notes, who)
     ends = _nodes(segs)
     deg = Counter(n for e in ends for n in e)
@@ -277,6 +297,21 @@ def _flip(segs):
     return [[segs[n - 1 - j][1][0], segs[n - 1 - j][1][1], -segs[n - 1 - j][2]] for j in range(n)]
 
 
+def _curve_pieces(digest):
+    """Open SPLINE / ELLIPSE records decoded by dxf_digest, as pseudo pieces a contour chain can use."""
+    return {u["id"]: {"id": u["id"], "type": u["curve"]["kind"], "layer": u["layer"], "color": u.get("color", 256),
+                      "linetype": u.get("linetype", "CONTINUOUS"), "start": u["curve"]["start"], "end": u["curve"]["end"],
+                      "curve": u["curve"]} for u in digest["unsupported"] if u.get("curve")}
+
+
+def _curve_of(rec, tr, errors):
+    try:
+        return curves.transform(rec["curve"], tr["fwd"], tr["scale"], tr["mirror_x"])
+    except curves.CurveError as exc:
+        errors.append(f"{exc}: {rec['id']} (an ELLIPSE cannot be mirrored: turn the view instead, or FLAG)")
+        return None
+
+
 def _build(pieces, plan, tr, errors, notes=None):
     notes = [] if notes is None else notes
     ents = []
@@ -295,9 +330,15 @@ def _build(pieces, plan, tr, errors, notes=None):
             if order is None:
                 continue
             verts, segs = _vertices(order, tr, mid)
+            cur = [_curve_of(rec, tr, errors) if rec["type"] in ("SPLINE", "ELLIPSE") else None for rec, _fwd in order]
             if signed_poly_area(verts) * CHAIN_ROLES[role] < 0:
-                verts = _flip(segs)
-            ents.append({"entity_id": f"E_{mid}", "type": "LWPOLYLINE", "closed": True, "vertices": verts, **base})
+                verts, cur = _flip(segs), cur[::-1]
+            ent = {"entity_id": f"E_{mid}", "type": "LWPOLYLINE", "closed": True, "vertices": verts, **base}
+            if any(cur):
+                if role != "outer":
+                    errors.append(f"CURVE_IN_{role.upper()}_NOT_SUPPORTED: member {mid}: a native SPLINE/ELLIPSE is only kept in an outer contour")
+                ent["curves"] = [{"seg": i, **c} for i, c in enumerate(cur) if c]
+            ents.append(ent)
         elif role == "datum":
             for k, r in enumerate(recs, 1):
                 eid = f"E_{mid}" if len(recs) == 1 else f"E_{mid}_{k}"
@@ -344,8 +385,11 @@ def _decode_out(ents):
         t = e["type"]
         if t == "LWPOLYLINE":
             v = e["vertices"]
-            for a, b in zip(v, v[1:] + v[:1] if e.get("closed", True) else v[1:]):
-                if a[2] == 0:
+            cseg = {c["seg"]: c for c in e.get("curves", [])}
+            for k, (a, b) in enumerate(zip(v, v[1:] + v[:1] if e.get("closed", True) else v[1:])):
+                if k in cseg:
+                    prims.append(("CURVE", curves.key({kk: vv for kk, vv in cseg[k].items() if kk != "seg"}), None, None, None))
+                elif a[2] == 0:
                     prims.append(("LINE", tuple(sorted((tuple(a[:2]), tuple(b[:2])))), None, None, None))
                 else:
                     c, r, sw = _arc_from_bulge(a[:2], b[:2], a[2])
@@ -375,7 +419,10 @@ def _src_prims(recs, tr, kept=None):
     kept = kept or {}
     for r in recs:
         t, f = r["type"], tr["fwd"]
-        if t == "LINE" and r["id"] in kept:
+        if t in ("SPLINE", "ELLIPSE"):
+            c = curves.transform(r["curve"], f, tr["scale"], tr["mirror_x"])
+            prims.append(("CURVE", curves.key(c), None, None, None))
+        elif t == "LINE" and r["id"] in kept:
             for p, q in kept[r["id"]]:
                 prims.append(("LINE", tuple(sorted((tuple(f(p)), tuple(f(q))))), None, None, None))
         elif t == "LINE":
@@ -392,6 +439,8 @@ def _src_prims(recs, tr, kept=None):
 
 
 def _dist(a, b):
+    if a[0] == "CURVE" or b[0] == "CURVE":
+        return 0.0 if a[0] == b[0] and a[1] == b[1] else math.inf
     if a[0] != b[0] or len(a[1]) != len(b[1]):
         return math.inf
     d = max(abs(p[0] - q[0]) + abs(p[1] - q[1]) for p, q in zip(a[1], b[1]))
@@ -409,15 +458,15 @@ def verify_invariance(digest: dict, plan: dict, result: dict) -> dict:
     tr = _transform(plan.get("transform"), errs)
     if tr is None:
         return {"ok": False, "max_dev": None, "errors": errs}
-    pieces = {p["id"]: p for p in digest["pieces"]}
+    pieces = {p["id"]: p for p in digest["pieces"]} | _curve_pieces(digest)
     used = [pieces[i] for m in plan.get("members", []) for i in m.get("pieces", []) if i in pieces]
     rows = result.get("changes", [])
     kept = {}
-    for r in rows:
-        if r["rule"] == "T_SPUR" and r["piece"] in pieces:
-            cuts = [c for x in rows if x["rule"] == "T_SPLIT" and x["piece"] == r["piece"] for c in x["at"]]
-            drops = [x["dropped"] for x in rows if x["rule"] == "T_SPUR" and x["piece"] == r["piece"]]
-            kept[r["piece"]] = _kept_lines(pieces[r["piece"]], cuts, drops)
+    for pid in {r["piece"] for r in rows if r["rule"] == "T_SPLIT"}:
+        if pid in pieces:
+            cuts = [c for x in rows if x["rule"] == "T_SPLIT" and x["piece"] == pid for c in x["at"]]
+            drops = [x["dropped"] for x in rows if x["rule"] == "T_SPUR" and x["piece"] == pid]
+            kept[pid] = _kept_lines(pieces[pid], cuts, drops)
     src = _src_prims(used, tr, kept)
     out = _decode_out(result["entities"])
     noise = max([x["gap_mm"] for x in rows if x["rule"] == "CLOSURE_NOISE"], default=0.0)
@@ -454,13 +503,15 @@ def assemble(digest: dict, plan: dict) -> dict:
     if errors or tr is None:
         raise AssembleError(errors)
     notes: list = []
+    n_pieces = len(pieces)
+    pieces = {**pieces, **_curve_pieces(digest)}
     ents = _build(pieces, plan, tr, errors, notes)
     if errors:
         raise AssembleError(errors)
     result = {"entities": ents, "changes": notes,
               "transform": {k: v for k, v in tr.items() if k != "fwd"},
               "source": digest["source"],
-              "ledger": {"pieces": len(pieces), "unsupported": len(digest["unsupported"]), "used": len(used),
+              "ledger": {"pieces": n_pieces, "unsupported": len(digest["unsupported"]), "used": len(used),
                          "excluded": len(excluded), "duplicates_auto": auto_dup, "unaccounted": missing,
                          "excluded_by_reason": dict(Counter(excluded.values())), "excluded_detail": detail}}
     result["invariance"] = verify_invariance(digest, plan, result)

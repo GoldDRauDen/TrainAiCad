@@ -68,8 +68,8 @@ def test_two_vertex_loop_with_an_arc_is_a_valid_clockwise_cutout(tmp_path):
 def test_pdf_size_is_a_same_parameter_gate_flagged_once(tmp_path):
     part = bc.build_part(_spec(tmp_path))            # PDF 12.1 / 10.1 against DATA 12 / 10 (delta 0.1 flags)
     assert part["status"] == "PREVIEW"
-    assert sum("DATA_PDF_DIM_DIFF" in f and "lỗ bán nguyệt X" in f for f in part["flags"]) == 1
-    assert sum("DATA_PDF_DIM_DIFF" in f and "lỗ bán nguyệt Y" in f for f in part["flags"]) == 1
+    assert sum("Lệch PDF" in f and "lỗ bán nguyệt X" in f for f in part["flags"]) == 1
+    assert sum("Lệch PDF" in f and "lỗ bán nguyệt Y" in f for f in part["flags"]) == 1
     cuts = [e for e in part["entities"] if e["role"] == "cutout"]
     assert data_part._bbox(cuts[0]["vertices"]) == pytest.approx((12.0, 10.0), abs=1e-6)      # DATA kept
 

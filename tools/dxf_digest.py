@@ -28,6 +28,8 @@ from pathlib import Path
 
 import ezdxf
 
+import curves
+
 SUPPORTED = {"LINE", "ARC", "CIRCLE", "POINT"}
 CURVES_UNSUPPORTED = {"ELLIPSE", "SPLINE"}
 ANNOT = {"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER", "HATCH", "ATTRIB", "ATTDEF"}
@@ -154,9 +156,17 @@ def _read(path):
                     box = [_n(ex.extmin.x), _n(ex.extmin.y), _n(ex.extmax.x), _n(ex.extmax.y)]
             except Exception:
                 pass
-            unsupported.append({"id": f"U{len(unsupported) + 1:04d}", "type": t, "layer": e.dxf.get("layer", "0"),
-                                "handle": handle, "bbox": box,
-                                "reason": "UNSUPPORTED_CURVE_FLAG" if t in CURVES_UNSUPPORTED else "UNSUPPORTED_ENTITY"})
+            rec = {"id": f"U{len(unsupported) + 1:04d}", "type": t, "layer": e.dxf.get("layer", "0"),
+                   "handle": handle, "bbox": box,
+                   "reason": "UNSUPPORTED_CURVE_FLAG" if t in CURVES_UNSUPPORTED else "UNSUPPORTED_ENTITY"}
+            if t in CURVES_UNSUPPORTED:     # an open SPLINE / ELLIPSE is decoded exactly: a contour segment kept as that entity
+                try:
+                    rec["curve"] = curves.decode(e)
+                    rec["color"] = e.dxf.get("color", 256)
+                    rec["linetype"] = _eff_linetype(doc, e)
+                except curves.CurveError:
+                    pass
+            unsupported.append(rec)
             continue
         for piece, src, via in _decode(e):
             pt = piece.dxftype()
@@ -426,7 +436,7 @@ def summary(d: dict) -> dict:
             "views_top_to_bottom": [{k: v[k] for k in keys if k in v} | {"pieces": len(v["piece_ids"])}
                                     for v in d["views"]],
             "tap_pair_candidates": len(d["tap_pair_candidates"]), "warnings": d["warnings"][:5],
-            "note": d["source"]["note"] + " ELLIPSE/SPLINE stay UNKNOWN (FLAG), never simplified."}
+            "note": d["source"]["note"] + " Open ELLIPSE/SPLINE carry an exact `curve`; closed ones and other entities stay UNKNOWN."}
 
 
 def main(argv=None) -> int:

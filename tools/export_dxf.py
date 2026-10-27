@@ -15,6 +15,7 @@ import ezdxf
 from ezdxf import bbox
 from ezdxf.enums import TextEntityAlignment
 
+import curves
 import geom
 
 CHECKS = ("contour_topology", "datum", "feature_count", "unfold", "containment",
@@ -124,6 +125,19 @@ def validate_entity(entity, part_code, preview):
                 fail(f"{part_code}: vertex requires [x,y,bulge]")
             for n in v:
                 number(n, f"{part_code} polyline")
+        cv = entity.get("curves")
+        if cv is not None:       # native SPLINE / ELLIPSE segments of customer DATA, kept as that entity (tools/curves.py)
+            n_seg = len(vertices) if entity.get("closed") else len(vertices) - 1
+            seen = set()
+            if role != "outer" or not isinstance(cv, list) or not cv:
+                fail(f"{part_code}: curves only on an outer polyline")
+            for c in cv:
+                i = c.get("seg")
+                if (isinstance(i, bool) or not isinstance(i, int) or not 0 <= i < n_seg or i in seen
+                        or c.get("kind") not in curves.KINDS or vertices[i][2] != 0
+                        or not all(isinstance(c.get(k), list) for k in ("start", "end"))):
+                    fail(f"{part_code}: invalid curve segment {c.get('seg')!r} (a chord vertex with bulge 0 plus a SPLINE/ELLIPSE)")
+                seen.add(i)
         segs = entity.get("flag_segments")
         if segs is not None:
             n_seg = len(vertices) if entity.get("closed") else len(vertices) - 1
@@ -305,7 +319,8 @@ def emit_entity(msp, ent, dx=0.0, dy=0.0):
     if t == "LWPOLYLINE":
         vertices = ent["vertices"]
         circle = geom.full_circle(vertices, bool(ent.get("closed")))
-        if circle:   # a full circle is ONE CIRCLE, never two ARCs
+        cseg = {c["seg"]: c for c in ent.get("curves", [])}
+        if circle and not cseg:   # a full circle is ONE CIRCLE, never two ARCs
             return [msp.add_circle(move(circle[0]), circle[1], dxfattribs=attrs)]
         n = len(vertices)
         segments = n if ent.get("closed") else n - 1
@@ -317,7 +332,9 @@ def emit_entity(msp, ent, dx=0.0, dy=0.0):
             if a[:2] == b[:2]:
                 fail("zero-length polyline segment")
             piece_attrs = {**attrs, "color": 6} if i in flagged else attrs
-            if a[2] == 0:
+            if i in cseg:
+                pieces.append(curves.emit(msp, cseg[i], piece_attrs, move))
+            elif a[2] == 0:
                 pieces.append(msp.add_line(move(a[:2]), move(b[:2]), dxfattribs=piece_attrs))
             else:
                 center, radius, sa, ea = arc_from_bulge(a[:2], b[:2], a[2])
@@ -400,6 +417,8 @@ def entity_signature(ent):
         geometry = (xy(ent.dxf.center), round(ent.dxf.radius, 6), round(ent.dxf.start_angle, 6), round(ent.dxf.end_angle, 6))
     elif t == "TEXT":
         geometry = (xy(ent.dxf.insert), ent.dxf.text, round(ent.dxf.height, 6))
+    elif t in ("SPLINE", "ELLIPSE"):
+        geometry = curves.signature(ent)
     else:
         fail(f"Unexpected written DXF entity {t}")
     return (attrs, geometry)

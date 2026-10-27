@@ -45,6 +45,9 @@ def default_work(job_id: str) -> Path:
 
 
 def _ends(e):
+    if e.dxftype() in ("SPLINE", "ELLIPSE"):
+        import curves
+        return curves.saved_ends(e)
     if e.dxftype() == "LINE":
         return (e.dxf.start.x, e.dxf.start.y), (e.dxf.end.x, e.dxf.end.y)
     c, r = e.dxf.center, e.dxf.radius
@@ -70,7 +73,7 @@ def verify_saved(path, job, manifest):
             if any(b == loop and e.dxftype() == "CIRCLE" for e, b in mine):
                 continue            # a round blank is one CIRCLE: closed by definition
             for e, b in mine:
-                if b == loop and e.dxftype() in ("LINE", "ARC"):
+                if b == loop and e.dxftype() in ("LINE", "ARC", "SPLINE", "ELLIPSE"):
                     for p in _ends(e):
                         deg[(round(p[0], 4), round(p[1], 4))] += 1
             closed = closed and bool(deg) and all(v == 2 for v in deg.values())
