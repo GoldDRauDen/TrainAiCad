@@ -214,6 +214,8 @@ def _datum_coordinate_proved(entity: Dict[str, Any], axis: str, coordinate: floa
         edges = list(zip(vertices, vertices[1:]))
         if entity.get("closed") is True:
             edges.append((vertices[-1], vertices[0]))
+        curved = {c.get("seg") for c in entity.get("curves", [])}      # a SPLINE/ELLIPSE chord is not a straight edge
+        edges = [e for k, e in enumerate(edges) if k not in curved]
         return any(
             len(a) >= 2 and len(b) >= 2 and
             matches(a[index]) and matches(b[index]) and

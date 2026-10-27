@@ -29,6 +29,7 @@ All geometry on Layer 0 (template `templates/CAD_OUTPUT_TEMPLATE.dxf`, mm): cut 
 - Competing topology/order/attachment → draw the best-supported one in Magenta, name the alternative. Missing Nobi → `SPLIT_FLANGE_10MM` (`BEND.md` §6). Never a bounding rectangle.
 - `VIEWS_ONLY` only when no defensible flat exists after source exhaustion and the holistic challenge: draw every proved source-view member as a labelled subgroup `<CODE> VIEW <id>`, DATA curves preserved, FLAG only the unresolved relation. Unknown identity → `<CODE>?` + FLAG.
 - PREVIEW / VIEWS_ONLY / FLAGGED are never PASS → composite `_ALL_REVIEW_ONLY` with the banner `CHỈ XEM XÉT - KHÔNG CẮT - CÒN MÃ CHƯA GIẢI QUYẾT`. A user's earlier QA PASS never certifies a later changed file.
+- A FLAG is a real difference only (DATA vs PDF beyond the gate, DATA vs a rule): one short line, e.g. `Lệch PDF Ø9: DATA 9.05 / PDF 9.5`. Decisions (cancelled callout, excluded milled recess, same-name material) are ledger rows, never FLAGs.
 - What the drawing itself settles is never a FLAG: general corner note = Laser R, sibling of a called family, bare R on a slot end = W/2, an unprinted optional label, anything measurable in the DXF. Never call an existing DXF entity unclear.
 - **Notes in the DXF are Vietnamese with diacritics**: `FLAG: <nội dung>` (no repeated work code), e.g. `Kích thước ước lượng - kiểm tra bản vẽ`, `M6 hoặc M8?`. Codes, entity IDs, file names and Japanese source text stay verbatim.
 
@@ -45,4 +46,4 @@ Parts top-to-bottom in page-1 order, ≥150 mm apart, labels on AI_META; source 
 AutoLISP only on explicit request, generated from the same canonical entities.
 
 ## Lessons
-`regression/lessons/OUTPUT/` — 521005-05 (members lost before DXF), 521015-04 (dx = inner face, 対称 mirrored), 521020-08 (Vietnamese notes), 521026-13 (one circle), 521023-09 (local FLAG), 520625-15 (draw → flag → confirm), CAD_OUTPUT_TEMPLATE_SAMPLE, DXF_SINGLE_COMPOSITE, DXF_DUAL_EXPORT.
+`regression/lessons/OUTPUT/` — 521027-26 (short FLAGs), 521005-05 (members lost before DXF), 521015-04 (dx = inner face, 対称 mirrored), 521020-08 (Vietnamese notes), 521026-13 (one circle), 521023-09 (local FLAG), 520625-15 (draw → flag → confirm), CAD_OUTPUT_TEMPLATE_SAMPLE, DXF_SINGLE_COMPOSITE, DXF_DUAL_EXPORT.

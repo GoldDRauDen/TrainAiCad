@@ -21,7 +21,7 @@ DATA coordinates are copied (to 1e-6 mm), never retyped. Changes are only the ro
 `manufacturing_change_ledger` (rules/DATA_DXF.md §3): Laser R on sharp DATA corners (DATA_AUTO_R), tap pilots,
 PDF_PRIORITY customer values. DATA vs PDF on the same parameter: Δ < threshold (0.1 mm; customer
 data_pdf_tolerance_mm) keeps DATA; above it the customer data_pdf_policy decides (DATA_NO_DIM_COMPARE keeps DATA,
-PDF_PRIORITY takes the PDF value, otherwise DATA kept + FLAG DATA_PDF_DIM_DIFF + PREVIEW).
+PDF_PRIORITY takes the PDF value, otherwise DATA kept + FLAG `Lệch PDF` + PREVIEW).
 Bend lines in DATA are not automated yet (refused with the reason).
 
 Bent part from SEVERAL DATA views (`data_views`, rules/DATA_DXF.md section 1): each view is one dxf_assemble result with
@@ -41,6 +41,7 @@ import math
 import re
 from pathlib import Path
 
+import curves
 import lookup
 from slot_anchor import SlotAnchorError, stadium_geometry
 
@@ -74,8 +75,7 @@ def gate(data_value, pdf_value, customer, what):
     if pol == "PDF_PRIORITY":
         return float(pdf_value), {"rule": "PDF_PRIORITY", "parameter": what, "old": data_value, "new": pdf_value,
                                   "gate": f"Δ {delta:g} ≥ {tol:g}"}, None
-    return float(data_value), None, (f"DATA_PDF_DIM_DIFF {what}: DATA {data_value:g} / PDF {pdf_value:g} "
-                                     f"(Δ {delta:g} ≥ {tol:g}) - giữ DATA, xác nhận với khách")
+    return float(data_value), None, f"Lệch PDF {what}: DATA {data_value:g} / PDF {pdf_value:g}"
 
 
 def _assemble_rows(assembled, file):
@@ -167,11 +167,14 @@ def to_spec(spec: dict, customer=None):
         at = c.get("at") or _fail(f"{code}: corners[] needs at [x, y]")
         overrides[(round(float(at[0]), 4), round(float(at[1]), 4))] = {k: v for k, v in c.items() if k != "at"}
     items, used = [], set()
-    for x, y, b in outer["vertices"]:
+    cseg = {c["seg"]: {k: v for k, v in c.items() if k != "seg"} for c in outer.get("curves", [])}
+    for i, (x, y, b) in enumerate(outer["vertices"]):
         key = (round(x, 4), round(y, 4))
         opts = dict(overrides.get(key, {}))
         if b:
             opts["bulge"] = b
+        if i in cseg:       # native SPLINE / ELLIPSE segment: kept as that entity, translated with the outline
+            opts["curve"] = curves.transform(cseg[i], lambda q: [q[0] + sh[0], q[1] + sh[1]])
         if key in overrides:
             used.add(key)
         px, py = _r6(x + sh[0]), _r6(y + sh[1])

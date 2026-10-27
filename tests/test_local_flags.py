@@ -167,7 +167,7 @@ def test_hole_diameter_difference_flags_only_that_hole(tmp_path):
     part = bc.build_part(_data_spec(tmp_path, **_members(H1={"group": "D", "ev": "p1 Ø6", "pdf_d": 6})))
     magenta = [e["entity_id"] for e in part["entities"] if e.get("color") == MAGENTA]
     assert magenta == ["E_26-000110_H1"] and part["entities"][0].get("color", 256) == 256
-    assert any("H1" in f and "DATA_PDF_DIM_DIFF" in f for f in part["flags"])
+    assert any("H1" in f and "Lệch PDF" in f for f in part["flags"])
 
 
 def test_slot_position_difference_flags_only_that_slot(tmp_path):
@@ -207,6 +207,6 @@ def test_corner_radius_difference_paints_only_that_arc(tmp_path):
     outer = part["entities"][0]
     assert outer.get("color", 256) == 256 and len(outer["flag_segments"]) == 1
     assert outer["vertices"][outer["flag_segments"][0]][2] != 0               # the flagged piece is the arc (R5 in DATA, R6 on the PDF)
-    assert any("DATA_PDF_DIM_DIFF" in f and "R" in f for f in part["flags"])
+    assert any("Lệch PDF" in f and "R" in f for f in part["flags"])
     spec["outline"][0][2]["pdf_R"] = 5
     assert "flag_segments" not in bc.build_part(spec)["entities"][0]

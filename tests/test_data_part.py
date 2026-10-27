@@ -95,7 +95,7 @@ def test_pdf_value_beyond_the_gate_flags_and_keeps_data(tmp_path):
     data["parts"][0]["members"]["H1"]["pdf_d"] = 9.5
     spec.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
     part = bc.build_from_files([spec])["parts"][0]
-    assert part["status"] == "PREVIEW" and any("DATA_PDF_DIM_DIFF" in f for f in part["flags"])
+    assert part["status"] == "PREVIEW" and any("Lệch PDF" in f for f in part["flags"])
     assert {e["radius"] for e in part["entities"] if e["type"] == "CIRCLE"} >= {4.525}
 
 
@@ -108,7 +108,7 @@ def test_customer_data_pdf_policy(tmp_path, customer, radius, flagged):
     spec.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
     part = bc.build_from_files([spec])["parts"][0]
     assert any(e["type"] == "CIRCLE" and e["radius"] == radius for e in part["entities"])
-    assert any("DATA_PDF_DIM_DIFF" in f for f in part["flags"]) is flagged
+    assert any("Lệch PDF" in f for f in part["flags"]) is flagged
 
 
 def test_member_without_pdf_meaning_and_qty_mismatch_are_refused(tmp_path):
@@ -179,7 +179,7 @@ def test_face_view_longer_than_the_face_od_flags(tmp_path):
     data["parts"][0]["bend"]["faces"][1]["od"] = 639.5
     spec.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
     part = bc.build_from_files([spec])["parts"][0]
-    assert any("DATA W OD" in f and "DATA_PDF_DIM_DIFF" in f for f in part["flags"])
+    assert any("DATA W OD" in f and "Lệch PDF" in f for f in part["flags"])
 
 
 def test_one_view_two_kinds_of_faces_ears_and_web(tmp_path):

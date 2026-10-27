@@ -26,6 +26,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import curves  # noqa: E402
 import geom  # noqa: E402
 import bend_flat  # noqa: E402
 import bend_corner  # noqa: E402
@@ -112,6 +113,10 @@ def _corner_from_item(item, where):
         c["flag"] = str(opts["FLAG"])
     if "bulge" in opts:
         c["bulge"] = _num(opts["bulge"], where + ".bulge")
+    if opts.get("curve") is not None:       # native SPLINE / ELLIPSE segment of customer DATA from this corner to the next
+        if not isinstance(opts["curve"], dict) or opts["curve"].get("kind") not in ("SPLINE", "ELLIPSE"):
+            fail(f"{where}: curve must be a SPLINE/ELLIPSE mapping (tools/curves.py)")
+        c["curve"] = opts["curve"]
     if c["kind"] in ("R", "C") and c["size"] <= 0:
         fail(f"{where}: R/C must be positive")
     if c["kind"] in ("R", "C") and not c["flag"] and not c["ev"]:
@@ -238,7 +243,8 @@ def build_outline(corners, auto, where):
         a, b, alpha, cross = _corner_geometry(prev["at"], p, nxt["at"])
         convex = cross > EPS
         deg = math.degrees(alpha)
-        eligible = convex and deg <= 90 + ANGLE_TOL_DEG and not prev["bulge"] and not c["bulge"]
+        eligible = (convex and deg <= 90 + ANGLE_TOL_DEG and not prev["bulge"] and not c["bulge"]
+                    and not prev.get("curve") and not c.get("curve"))
         kind, size = c["kind"], c["size"]
         decision = None
         if c["flag"] and kind in ("AUTO", "SHARP"):
@@ -261,9 +267,10 @@ def build_outline(corners, auto, where):
             decision = "SHARP"
         else:
             decision = "FLAG" if c["flag"] else "CALLED"
-        if kind in ("R", "C") and (c["bulge"] or prev["bulge"]):
+        if kind in ("R", "C") and (c["bulge"] or prev["bulge"] or c.get("curve") or prev.get("curve")):
             fail(f"{where}: corner {p} touches an arc; R/C only between straight edges")
         seg_pts = None                 # the drawn R arc / C chamfer: the piece a local FLAG paints Magenta
+        vi = len(verts)                # vertex that starts the segment leaving this corner (plain corners only)
         if kind == "R":
             d = size / math.tan(alpha / 2)
             t1 = (p[0] + a[0] * d, p[1] + a[1] * d)
@@ -278,7 +285,7 @@ def build_outline(corners, auto, where):
         else:
             verts.append([p[0], p[1], c["bulge"]])
         decisions.append({"corner": c, "convex": convex, "angle_deg": deg, "eligible": eligible,
-                          "kind": kind, "size": size, "decision": decision, "seg_pts": seg_pts})
+                          "kind": kind, "size": size, "decision": decision, "seg_pts": seg_pts, "vi": vi})
     # trimming must not overrun the edges
     for i in range(len(verts)):
         if math.dist(verts[i][:2], verts[(i + 1) % len(verts)][:2]) <= 1e-7:
@@ -557,6 +564,11 @@ def build_part(spec, customer=None):
     flag_segments = _flag_segment_indices(verts, decisions)
     if flag_segments:
         ents[0]["flag_segments"] = flag_segments
+    curve_list = [{**d["corner"]["curve"], "seg": d["vi"]} for d in decisions if d["corner"].get("curve")]
+    if curve_list:
+        if chains:
+            fail(f"{code}: a native SPLINE/ELLIPSE contour segment is not supported on a bent part")
+        ents[0]["curves"] = curve_list
     groups, members, inventory, flags = [], [], [], list(spec.get("flags") or [])
     groups.append({"group_id": f"{p}_G_OUTER", "family": "OUTER", "status": "PROVED", "source_quantity": 1,
                    "evidence": "closed outer profile", "members": [{"member_id": f"{p}_OUTER", "status": "PROVED"}]})
@@ -1033,6 +1045,8 @@ def _rotate_180(part):
     for e in part["entities"]:
         if e["type"] == "LWPOLYLINE":
             e["vertices"] = [f(v) + [v[2]] for v in e["vertices"]]
+            if e.get("curves"):
+                e["curves"] = [{**curves.transform(c, lambda q: [sx - q[0], sy - q[1]]), "seg": c["seg"]} for c in e["curves"]]
         elif e["type"] == "CIRCLE":
             e["center"] = f(e["center"])
         elif e["type"] == "POINT":

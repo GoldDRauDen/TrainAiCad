@@ -50,8 +50,9 @@ def outer_sharp_corners(part):
             continue
         sign = 1.0 if area2 > 0 else -1.0
         n = len(pts)
+        curved = {c.get("seg") for c in entity.get("curves", [])}    # native SPLINE/ELLIPSE segment: like an arc, its ends are not corners
         for i in range(n):
-            if bulges[i] or bulges[i-1]:
+            if bulges[i] or bulges[i-1] or i in curved or (i-1) % n in curved:
                 continue  # arc end, not a sharp corner
             p0, p1, p2 = pts[i-1], pts[i], pts[(i+1) % n]
             a = (p0[0]-p1[0], p0[1]-p1[1])
