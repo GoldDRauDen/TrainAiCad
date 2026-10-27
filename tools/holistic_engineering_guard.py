@@ -197,11 +197,20 @@ def _datum_coordinate_proved(entity: Dict[str, Any], axis: str, coordinate: floa
         return isinstance(point, (list, tuple)) and len(point) >= 2 and matches(point[index])
     if typ == "CIRCLE":
         center = entity.get("center")
-        return isinstance(center, (list, tuple)) and len(center) >= 2 and matches(center[index])
+        radius = _numeric(entity.get("radius"))
+        return (isinstance(center, (list, tuple)) and len(center) >= 2 and
+                (matches(center[index]) or (radius is not None and
+                 (matches(center[index] - radius) or matches(center[index] + radius)))))
     if typ == "LWPOLYLINE":
         vertices = entity.get("vertices", [])
         if len(vertices) < 2:
             return False
+        from geom import full_circle
+        circle = full_circle(vertices, entity.get("closed") is True)
+        if circle:      # a round blank has no straight edge: its centre line or tangent edge (c +- r) is the datum
+            (cx, cy), r = circle
+            c = (cx, cy)[index]
+            return matches(c) or matches(c - r) or matches(c + r)
         edges = list(zip(vertices, vertices[1:]))
         if entity.get("closed") is True:
             edges.append((vertices[-1], vertices[0]))

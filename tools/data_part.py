@@ -78,6 +78,23 @@ def gate(data_value, pdf_value, customer, what):
                                      f"(Δ {delta:g} ≥ {tol:g}) - giữ DATA, xác nhận với khách")
 
 
+def _assemble_rows(assembled, file):
+    """Ledger rows the assembly step wrote (closure noise, T-junction cuts): each one is a routed, listed change to DATA."""
+    rows = []
+    for r in assembled.get("changes") or []:
+        who = r.get("member") or r.get("piece")
+        if r["rule"] == "CLOSURE_NOISE":
+            rows.append({"rule": r["rule"], "member": who, "parameter": "node gap mm", "old": round(r["gap_mm"], 6),
+                         "new": "joined", "source": f"{file}: {','.join(r['pieces'])} at {r['at']}"})
+        elif r["rule"] == "T_SPLIT":
+            rows.append({"rule": r["rule"], "member": who, "parameter": r["piece"], "old": "1 LINE",
+                         "new": f"cut at {r['at']}", "source": file})
+        else:
+            rows.append({"rule": r["rule"], "member": who, "parameter": r["piece"], "old": r.get("dropped"),
+                         "new": "not in the closed contour", "source": file})
+    return rows
+
+
 def _ordinate(value, ref, end):
     return [[_r6(value), end, f"DATA {ref} (dxf_assemble)", "ORDINATE"]]
 
@@ -111,7 +128,8 @@ def to_spec(spec: dict, customer=None):
     if unknown:
         _fail(f"{code}: members {sorted(unknown)} are not in {path.name}")
     out = {k: v for k, v in spec.items() if k not in ("data", "members", "corners", "envelope", "data_face", "data_faces", "data_v")}
-    extra = {"changes": [], "flags": [], "data_file": path.name, "transform": assembled.get("transform"),
+    extra = {"changes": _assemble_rows(assembled, path.name), "flags": [], "data_file": path.name,
+             "transform": assembled.get("transform"),
              "source_sha256": assembled.get("source", {}).get("sha256")}
 
     outer = by_member[outers[0]][0]
@@ -119,6 +137,29 @@ def to_spec(spec: dict, customer=None):
     size = [max(xs) - min(xs), max(ys) - min(ys)]  # vertex extent = the builder's nominal envelope
     if spec.get("data_face") or spec.get("data_faces"):
         return _face_view(spec, out, extra, by_member, meaning, outers[0], (min(xs), min(ys)), size, customer)
+    import geom
+    disc = geom.full_circle(outer["vertices"], True)
+    # the flat frame starts at the lower-left of the blank (translation only, a ledger row): the witness datum X = 0 / Y = 0
+    # is then the straight edge, or the tangent edge of a round blank, of the DATA outline itself
+    org = ((disc[0][0] - disc[1], disc[0][1] - disc[1]) if disc else (min(xs), min(ys)))
+    sh = (_r6(-org[0]), _r6(-org[1]))
+    if sh != (0.0, 0.0):
+        extra["changes"].append({"rule": "TRANSLATE_TO_ORIGIN", "parameter": "shift", "old": "DATA frame", "new": list(sh),
+                                 "source": path.name})
+
+    def place(_pts, sh=sh):
+        return ((sh[0], sh[1]), "")
+    if disc:     # round blank: ONE circle
+        (cx, cy), rad = disc
+        size = [2 * rad, 2 * rad]
+        out["outline"] = {"circle": {"center": [_r6(cx + sh[0]), _r6(cy + sh[1])], "d": _r6(2 * rad), "ev": "DATA full circle"}}
+        if spec.get("envelope"):
+            for axis, (dv, pv) in enumerate(zip(size, spec["envelope"])):
+                _, change, flag = gate(dv, pv, customer, f"bao {'XY'[axis]}")
+                if flag:
+                    extra["flags"].append(flag)
+        out["envelope"] = [_r6(v) for v in size]
+        return _features(out, extra, by_member, meaning, outers[0], code, customer, place)
 
     # outline: DATA vertices (arcs kept as bulges) + per-vertex corner decisions
     overrides = {}
@@ -133,7 +174,8 @@ def to_spec(spec: dict, customer=None):
             opts["bulge"] = b
         if key in overrides:
             used.add(key)
-        items.append([_r6(x), _r6(y), opts] if opts else [_r6(x), _r6(y)])
+        px, py = _r6(x + sh[0]), _r6(y + sh[1])
+        items.append([px, py, opts] if opts else [px, py])
     if set(overrides) - used:
         _fail(f"{code}: corners {sorted(set(overrides) - used)} are not DATA outline vertices")
     out["outline"] = items
@@ -145,7 +187,7 @@ def to_spec(spec: dict, customer=None):
             if flag:
                 extra["flags"].append(flag)
     out["envelope"] = [_r6(v) for v in size]
-    return _features(out, extra, by_member, meaning, outers[0], code, customer, lambda pts: ((0.0, 0.0), ""))
+    return _features(out, extra, by_member, meaning, outers[0], code, customer, place)
 
 
 def _face_view(spec, out, extra, by_member, meaning, outer_id, origin, size, customer):
@@ -405,6 +447,7 @@ def _views_spec(spec, customer):
                 out.setdefault(key, []).extend(part_out[key])
         for key in ("changes", "trace"):
             extra[key] += sub[key]
+        extra["changes"] += _assemble_rows(w["assembled"], path.name)
         extra["flags"] += [f for f in sub["flags"] if f not in extra["flags"]]
         extra["data_file"].append(path.name)
         extra["transform"].append(w["assembled"].get("transform"))
@@ -687,6 +730,11 @@ def _roundtrip(part, extra):
     ents = {e["entity_id"]: e for e in part["entities"]}
     outer = next((e for e in part["entities"] if e.get("role") == "outer"), None)
     bad = []
+    unrot = lambda p: list(p)  # noqa: E731
+    if part.get("canonical_rotation_deg") == 180 and outer is not None:   # the J/LJ turn about the blank centre (OUTPUT.md section 4)
+        import geom
+        x0, y0, x1, y1 = geom.polyline_bbox(outer["vertices"], bool(outer.get("closed", True)))
+        unrot = lambda p: [x0 + x1 - p[0], y0 + y1 - p[1]] + list(p[2:])  # noqa: E731
     for t in extra.get("trace", []):
         kind = t["kind"]
         if kind in ("hole", "slot"):
@@ -695,15 +743,17 @@ def _roundtrip(part, extra):
             if kind == "slot":
                 rec = next((r for r in part.get("slot_anchor_records", []) if r.get("entity_id") == f"E_{code}_{t['id']}"), None)
                 got = rec["canonical_midpoint"] if rec else None
+            if got is not None:
+                got = unrot(got)
             if got is None or math.dist([got[0] - t["shift"][0], got[1] - t["shift"][1]], t["raw"]) > 2e-6:
                 bad.append(f"{kind} {t['id']}")
         elif kind == "cutout":
             e = ents.get(f"E_{code}_{t['id']}")
             want = sorted((round(v[0], 6), round(v[1], 6), round(v[2], 6)) for v in t["flat"])
-            if e is None or sorted((round(v[0], 6), round(v[1], 6), round(v[2], 6)) for v in e["vertices"]) != want:
+            if e is None or sorted((round(v[0], 6), round(v[1], 6), round(v[2], 6)) for v in (unrot(v) for v in e["vertices"])) != want:
                 bad.append(f"cutout {t['id']}")
         elif kind == "outline" and outer is not None:
-            dist, r = _boundary_distance(t["flat"], outer["vertices"])
+            dist, r = _boundary_distance(t["flat"], [unrot(v) for v in outer["vertices"]])
             called = t.get("corner") or {}
             cut = max(called.get("R", 0.0) * (math.sqrt(2) - 1), called.get("C", 0.0) / math.sqrt(2))   # a called R/C cuts the corner
             allow = 2e-6 + max(r * (math.sqrt(2) - 1), cut) + max((tr.get("snapped", 0) for tr in t["traces"] if tr), default=0.0)
