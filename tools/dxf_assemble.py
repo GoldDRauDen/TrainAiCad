@@ -44,8 +44,9 @@ CHAIN_ROLES = {"outer": 1, "cutout": -1, "slot": -1}          # required winding
 SINGLE_ROLES = {"hole": "CIRCLE", "bend": "LINE", "kegaki": "LINE", "point": "POINT"}
 ROLE_ATTRS = {"bend": {"linetype": "DASHED"}, "kegaki": {"color": 1}}
 ENTITY_ROLE = {"point": "ordinary_point"}
-JOIN_TOL = 1e-4          # source endpoints closer than this are the same chain node (closure noise only)
+JOIN_TOL = 1e-3          # source endpoints closer than this are the same chain node (closure noise only; each gap is a ledger row)
 INV_TOL = 2e-4           # invariance gate: not a redraw tolerance, only the chain-closure noise above
+NOISE_ROW_MM = 1e-6      # a node whose endpoints differ by more than this gets a CLOSURE_NOISE ledger row
 
 
 class AssembleError(ValueError):
@@ -164,12 +165,75 @@ def _nodes(segs):
     return [(node_of(s["start"]), node_of(s["end"])) for s in segs]
 
 
-def _chain(recs, errors, who):
+def _t_split(segs, notes, who):
+    """A LINE piece whose interior holds the endpoint of another piece of the same member (T-junction, e.g. a bar end drawn
+    over the neighbouring plate's edge) is cut there into collinear sub-lines: same geometry, one ledger row."""
+    ends = [pt for s in segs for pt in (s["start"], s["end"])]
+    out = []
+    for s in segs:
+        if s["type"] != "LINE":
+            out.append(s)
+            continue
+        a, b = s["start"], s["end"]
+        length = math.dist(a, b)
+        cuts = []
+        for q in ends:
+            if q is a or q is b or length <= 2 * JOIN_TOL:
+                continue
+            t = ((q[0] - a[0]) * (b[0] - a[0]) + (q[1] - a[1]) * (b[1] - a[1])) / length ** 2
+            off = abs((q[0] - a[0]) * (b[1] - a[1]) - (q[1] - a[1]) * (b[0] - a[0])) / length
+            if JOIN_TOL < t * length < length - JOIN_TOL and off <= JOIN_TOL:
+                cuts.append(t)
+        if not cuts:
+            out.append(s)
+            continue
+        ts = sorted(set(round(t, 12) for t in cuts))
+        pts = [list(a)] + [[a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])] for t in ts] + [list(b)]
+        for k in range(len(pts) - 1):
+            out.append({**s, "start": pts[k], "end": pts[k + 1], "_parent": s["id"]})
+        notes.append({"rule": "T_SPLIT", "member": who, "piece": s["id"], "at": [p[:] for p in pts[1:-1]],
+                      "note": "collinear cut at the endpoint of another piece; geometry unchanged"})
+    return out
+
+
+def _prune_spurs(segs, notes, who):
+    """After a T split, a sub-line that ends in the air (degree 1) is the overhang of the same piece beyond the contour:
+    it is not part of the closed loop and is dropped with a ledger row. Original pieces are never pruned."""
+    while True:
+        ends = _nodes(segs)
+        deg = Counter(n for e in ends for n in e)
+        spur = next((i for i, (a, b) in enumerate(ends) if segs[i].get("_parent") and (deg[a] == 1 or deg[b] == 1)), None)
+        if spur is None:
+            return segs
+        s = segs[spur]
+        notes.append({"rule": "T_SPUR", "member": who, "piece": s["id"], "dropped": [list(s["start"]), list(s["end"])],
+                      "note": "overhang of the piece beyond the T-junction, outside the closed contour"})
+        segs = segs[:spur] + segs[spur + 1:]
+
+
+def _noise_rows(segs, notes, who):
+    """CLOSURE_NOISE ledger rows: nodes whose joined endpoints are not bit-identical in the source."""
+    ends = _nodes(segs)
+    at = {}
+    for s, (a, b) in zip(segs, ends):
+        at.setdefault(a, []).append((s["id"], s["start"]))
+        at.setdefault(b, []).append((s["id"], s["end"]))
+    for n, items in at.items():
+        gap = max(math.dist(p[1], q[1]) for p in items for q in items)
+        if gap > NOISE_ROW_MM:
+            notes.append({"rule": "CLOSURE_NOISE", "member": who, "gap_mm": gap, "pieces": sorted({i for i, _ in items}),
+                          "at": [round(v, 6) for v in items[0][1]]})
+
+
+def _chain(recs, errors, who, notes=None):
     """Order LINE/ARC pieces into one closed loop; returns [(rec, forward)] or None."""
+    notes = [] if notes is None else notes
     segs = [r for r in recs if r["type"] in ("LINE", "ARC")]
     if len(segs) != len(recs) or len(segs) < 2:
         errors.append(f"CHAIN_INVALID: {who} needs >=2 LINE/ARC pieces")
         return None
+    segs = _prune_spurs(_t_split(segs, notes, who), notes, who)
+    _noise_rows(segs, notes, who)
     ends = _nodes(segs)
     deg = Counter(n for e in ends for n in e)
     if any(d == 1 for d in deg.values()):
@@ -213,7 +277,8 @@ def _flip(segs):
     return [[segs[n - 1 - j][1][0], segs[n - 1 - j][1][1], -segs[n - 1 - j][2]] for j in range(n)]
 
 
-def _build(pieces, plan, tr, errors):
+def _build(pieces, plan, tr, errors, notes=None):
+    notes = [] if notes is None else notes
     ents = []
     for m in plan.get("members", []):
         mid, role = str(m.get("id", "")), m.get("role")
@@ -226,7 +291,7 @@ def _build(pieces, plan, tr, errors):
                 "source_piece_ids": [r["id"] for r in recs],
                 "source_attrs": sorted(src, key=lambda a: json.dumps(a, sort_keys=True))}
         if role in CHAIN_ROLES:
-            order = _chain(recs, errors, f"member {mid}")
+            order = _chain(recs, errors, f"member {mid}", notes)
             if order is None:
                 continue
             verts, segs = _vertices(order, tr, mid)
@@ -294,11 +359,26 @@ def _decode_out(ents):
     return prims
 
 
-def _src_prims(recs, tr):
+def _kept_lines(piece, cuts, dropped):
+    """The sub-lines of a T-split LINE piece that stay in the contour (the dropped overhang removed)."""
+    a, b = piece["start"], piece["end"]
+    length = math.dist(a, b)
+    pts = sorted([list(a), list(b)] + [list(c) for c in cuts],
+                 key=lambda p: ((p[0] - a[0]) * (b[0] - a[0]) + (p[1] - a[1]) * (b[1] - a[1])) / length)
+    gone = [{tuple(round(v, 9) for v in d[0]), tuple(round(v, 9) for v in d[1])} for d in dropped]
+    return [(p, q) for p, q in zip(pts, pts[1:])
+            if {tuple(round(v, 9) for v in p), tuple(round(v, 9) for v in q)} not in gone]
+
+
+def _src_prims(recs, tr, kept=None):
     prims = []
+    kept = kept or {}
     for r in recs:
         t, f = r["type"], tr["fwd"]
-        if t == "LINE":
+        if t == "LINE" and r["id"] in kept:
+            for p, q in kept[r["id"]]:
+                prims.append(("LINE", tuple(sorted((tuple(f(p)), tuple(f(q))))), None, None, None))
+        elif t == "LINE":
             prims.append(("LINE", tuple(sorted((tuple(f(r["start"])), tuple(f(r["end"]))))), None, None, None))
         elif t == "ARC":
             sw = math.radians((r["end_angle"] - r["start_angle"]) % 360 or 360)
@@ -331,9 +411,17 @@ def verify_invariance(digest: dict, plan: dict, result: dict) -> dict:
         return {"ok": False, "max_dev": None, "errors": errs}
     pieces = {p["id"]: p for p in digest["pieces"]}
     used = [pieces[i] for m in plan.get("members", []) for i in m.get("pieces", []) if i in pieces]
-    src = _src_prims(used, tr)
+    rows = result.get("changes", [])
+    kept = {}
+    for r in rows:
+        if r["rule"] == "T_SPUR" and r["piece"] in pieces:
+            cuts = [c for x in rows if x["rule"] == "T_SPLIT" and x["piece"] == r["piece"] for c in x["at"]]
+            drops = [x["dropped"] for x in rows if x["rule"] == "T_SPUR" and x["piece"] == r["piece"]]
+            kept[r["piece"]] = _kept_lines(pieces[r["piece"]], cuts, drops)
+    src = _src_prims(used, tr, kept)
     out = _decode_out(result["entities"])
-    tol = INV_TOL * max(1.0, tr["scale"])
+    noise = max([x["gap_mm"] for x in rows if x["rule"] == "CLOSURE_NOISE"], default=0.0)
+    tol = max(INV_TOL * max(1.0, tr["scale"]), 4 * noise * max(1.0, tr["scale"]))
     left, worst = list(range(len(src))), 0.0
     for prim in out:
         best, bd = None, math.inf
@@ -357,14 +445,19 @@ def assemble(digest: dict, plan: dict) -> dict:
     want = plan.get("source_sha256")
     if want and want != digest["source"]["sha256"]:
         raise AssembleError(["DIGEST_HASH_MISMATCH: plan was written for a different DXF"])
+    from dxf_digest import pieces_sha256
+    if digest.get("pieces_sha256") != pieces_sha256(digest):
+        raise AssembleError(["DIGEST_PIECES_ALTERED: the decoded pieces are not what tools/dxf_digest.py wrote "
+                             "(customer DATA is copied 100%: never add, merge, split or edit a piece; rules/DATA_DXF.md)"])
     tr = _transform(plan.get("transform"), errors)
     pieces, used, excluded, detail, auto_dup, missing = _account(digest, plan, errors)
     if errors or tr is None:
         raise AssembleError(errors)
-    ents = _build(pieces, plan, tr, errors)
+    notes: list = []
+    ents = _build(pieces, plan, tr, errors, notes)
     if errors:
         raise AssembleError(errors)
-    result = {"entities": ents,
+    result = {"entities": ents, "changes": notes,
               "transform": {k: v for k, v in tr.items() if k != "fwd"},
               "source": digest["source"],
               "ledger": {"pieces": len(pieces), "unsupported": len(digest["unsupported"]), "used": len(used),

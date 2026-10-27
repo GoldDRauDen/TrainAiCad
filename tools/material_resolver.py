@@ -52,7 +52,7 @@ def resolve_material(printed: str, process: str = "LASER_R") -> dict:
         group = cell = None
         for alias, candidate, source_cell in _aliases():
             if value == alias or (
-                len(alias) >= 3 and value.startswith(alias) and (
+                (len(alias) >= 3 or re.match(r"[-_]?\d", value[len(alias):])) and value.startswith(alias) and (
                     len(value) == len(alias) or value[len(alias)] in "-_/.(,=0123456789"
                     or is_hairline(printed) or value[len(alias):].startswith("ボンデ")
                 )

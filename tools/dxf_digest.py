@@ -370,7 +370,7 @@ def digest(path: str, profile: str = "auto", noise_mm: float | None = None) -> d
             for c, ps in sorted(circles.items()) if len({round(p["radius"], 6) for p in ps}) >= 2]
 
     homeless = [p["id"] for p in pieces if p["home"] is None]
-    return {
+    out = {
         "source": {"file": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "dxfversion": doc.dxfversion,
                    "insunits": doc.header.get("$INSUNITS", 0),
                    "note": "$INSUNITS is metadata: prove real units/scale per view against the PDF."},
@@ -380,6 +380,14 @@ def digest(path: str, profile: str = "auto", noise_mm: float | None = None) -> d
         "ledger": {"pieces": len(pieces), "views": len(view_list), "duplicates": len(duplicates),
                    "unsupported": len(unsupported), "annotations": len(annotations), "homeless": len(homeless)},
     }
+    out["pieces_sha256"] = pieces_sha256(out)
+    return out
+
+
+def pieces_sha256(d: dict) -> str:
+    """Seal of the decoded primitives: dxf_assemble refuses a digest whose pieces were edited after this tool wrote them."""
+    blob = json.dumps({"pieces": d["pieces"], "unsupported": d["unsupported"]}, sort_keys=True, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
 def _png(d, out):
