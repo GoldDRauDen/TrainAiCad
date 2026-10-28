@@ -33,8 +33,8 @@ def test_unfold_matches_approved_jobs(job, od, nobi, flat, pairs):
     assert res["status"] == "OK"
     assert res["flat_length"] == pytest.approx(flat, abs=1e-9)
     if pairs:
-        got = [(b["line1"], b["line2"]) for b in res["bend_lines"]]
-        assert got == pytest.approx(pairs, abs=1e-9)
+        got = [x for b in res["bend_lines"] for x in (b["line1"], b["line2"])]  # flat: approx rejects nested pairs
+        assert got == pytest.approx([x for pair in pairs for x in pair], abs=1e-9)
 
 
 def test_same_total_does_not_mean_same_face_order():
