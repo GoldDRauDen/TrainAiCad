@@ -248,13 +248,17 @@ def end_step(verts, bend, v_end, s, web, code, reach=0.0):
     (free end: the face that continues beyond the end); reach: how far beyond the end the side edge may lie
     (0 at a free end, the perpendicular zone at a corner)."""
     axis = bend["axis"]
+    shoulder = False
     if web is None:
         straight = [r for r in _straight_runs(verts, axis, v_end)
                     if r[0] <= bend["l1"] + 1e-5 and r[1] >= bend["l2"] - 1e-5]
-        if straight:
-            return None
+        shoulder = any(_cross_edge(verts, axis, u, v_end, s) for r in straight for u in r)
+        if straight and not shoulder:
+            return None   # collinear through the zone and no shoulder leaves toward the void: no corner
         beyond = v_end + s * 1e-3
         cont = [f for f in bend["faces"] if any(lo < beyond < hi for lo, hi in face_extent(verts, bend["chain"], f))]
+        if len(cont) != 1 and straight:
+            return None   # a shoulder that does not single out the continuing face is not a bend-end step
         if len(cont) != 1:
             _fail(f"{code}: bend {bend['id']} end at {v_end:g}: cannot tell the flange from the web (outline steps on "
                   "both or neither face) — build by hand")
@@ -278,21 +282,22 @@ def end_step(verts, bend, v_end, s, web, code, reach=0.0):
     _, side, lo, hi = best
     run = (lo, hi)
     u_b = run[1] if d > 0 else run[0]
-    if (u_b - w_line) * d > 1e-5:
-        return None  # the side edge passes the whole zone: no corner
     web_edge = _cross_edge(verts, axis, u_b, side, s) or _slanted_edge(verts, axis, u_b, side, s, d)
+    if (u_b - w_line) * d > 1e-5 and not (shoulder and web_edge):
+        return None  # the side edge passes the whole zone and no shoulder steps at its end: no corner
     if web_edge is None:
         _fail(f"{code}: bend {bend['id']} end: no straight web edge from the corner ({_flat(axis, u_b, side)}) "
               "— build by hand")
     B = _flat(axis, u_b, side)
     side_far = run[0] if d > 0 else run[1]
     return {"bend": bend, "web": web, "flange": flange, "d": d, "s": s, "B": B, "S": round((u_b - f_line) * d, 9),
-            "f_line": f_line, "side_edge": (B, _flat(axis, side_far, side)), "web_edge": web_edge}
+            "f_line": f_line, "side_edge": (B, _flat(axis, side_far, side)), "web_edge": web_edge,
+            "shoulder": shoulder and (u_b - w_line) * d > 1e-5}
 
 
 def _relief_angle(angle):
-    """90 within the bend tolerance, else the printed angle (relief depth t*sin(theta) above 90 degrees)."""
-    return 90.0 if abs(angle - 90) <= 0.5 else angle
+    """90 up to the bend tolerance above it (and below 90), else the printed angle (relief depth t*sin(theta) above 90)."""
+    return angle if angle - 90 > 0.5 else 90.0
 
 
 def slit_entities(step, material, t, sid):
@@ -448,7 +453,7 @@ def records(verts, chains, code, page, material, t):
         st = slits[0] if slits else min(steps, key=lambda x: x["S"])
         sid = new_site()
         angle = st["bend"]["b"]["angle"]
-        non90 = abs(angle - 90) > 0.5          # same S gate at every angle; the angle only changes the depth
+        non90 = angle - 90 > 0.5               # same S gate at every angle; only above 90 the angle changes the depth
         mechanism = "NON_90_RELIEF" if non90 else "BEND_END_OFFSET_90"
         depth = sg.relief_depth(t, _relief_angle(angle))
         flush_id, web_id, side_id = f"{sid}_FLUSH", f"{sid}_WEB", f"{sid}_SIDE"
@@ -486,7 +491,7 @@ def records(verts, chains, code, page, material, t):
                 "evidence_ref": f"S {st['S']:g}: slit {depth - st['S']:g} from B along the flange side", **wit})
         out["sites"].append(site)
 
-    done = set()
+    done, shoulders = set(), []
     for b in bends:
         for m in b["members"]:
             for end, s in (("lo", -1), ("hi", 1)):
@@ -494,7 +499,10 @@ def records(verts, chains, code, page, material, t):
                 if corner is None:
                     v_end = m["iv"]["L1"][0] if s < 0 else m["iv"]["L1"][1]
                     st = end_step(verts, b, v_end, s, None, code)
-                    if st:
+                    if st and st["shoulder"]:        # a shoulder past the zone: recorded unless a corner site owns that B
+                        st["member"] = m
+                        shoulders.append((st, [f"{p}_{m['mid']}"]))
+                    elif st:
                         st["member"] = m
                         step_site([st], [f"{p}_{m['mid']}"])
                     continue
@@ -550,6 +558,9 @@ def records(verts, chains, code, page, material, t):
                         if dr > dk + 0.1:
                             out["flags"].append(f"{slit[0]['bend']['id']}: bích sâu hơn (OD {dr:g}) đang lùi t, "
                                                 f"bích nông (OD {dk:g}) mới phải lùi (khuyết_t, SLIT_RELIEF §5)")
+    for st, ids in shoulders:
+        if not any(site.get("corner_B") and math.dist(site["corner_B"], st["B"]) <= 1e-4 for site in out["sites"]):
+            step_site([st], ids)
     out["verts"] = verts
     out["bends"] = bends
     return out

@@ -5,7 +5,7 @@ The reader states only what the drawing says: outline corners with their R/C cal
 repeated notch patterns, holes/slots with their dimension chains, and the overall envelope.
 This tool derives the rest deterministically and runs the checks it reports as PASS:
 
-* Laser R from ``lookup.laser_r`` on every uncalled convex corner <=90 deg (AUTO), tangent fillets;
+* Laser R from ``lookup.laser_r`` on every uncalled convex corner <=93 deg (AUTO), tangent fillets;
 * source_groups / canonical_members / corner_inventory (CALLED / AUTO_R / SHARP / FLAG);
 * typed witness graph for every hole/slot (center derived from the chain when ``at`` is omitted);
 * closed CCW, non-self-intersecting outline, full containment, envelope match;
@@ -35,6 +35,7 @@ from dimension_witness import validate_graph  # noqa: E402
 from export_dxf import (CHECKS, JLJ_INSET_MM, signed_poly_area)  # noqa: E402
 from geometry_containment import _intersects, _loop, part_containment_errors  # noqa: E402
 from canonical_contract import CONTRACT  # noqa: E402
+from corner_guard import AUTO_R_MAX_DEG  # noqa: E402
 
 EPS = 1e-9
 ANGLE_TOL_DEG = 1e-6
@@ -243,7 +244,7 @@ def build_outline(corners, auto, where):
         a, b, alpha, cross = _corner_geometry(prev["at"], p, nxt["at"])
         convex = cross > EPS
         deg = math.degrees(alpha)
-        eligible = (convex and deg <= 90 + ANGLE_TOL_DEG and not prev["bulge"] and not c["bulge"]
+        eligible = (convex and deg <= AUTO_R_MAX_DEG + ANGLE_TOL_DEG and not prev["bulge"] and not c["bulge"]
                     and not prev.get("curve") and not c.get("curve"))
         kind, size = c["kind"], c["size"]
         decision = None

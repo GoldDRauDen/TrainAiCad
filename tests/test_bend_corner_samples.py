@@ -133,7 +133,10 @@ def test_061247_opposite_fold_r_t_relief_and_slit_match_the_sample(tmp_path):
                 ((0, 37.7), (202, 37.7)), ((0, 43.2), (202, 43.2))):
         assert seg in bends or seg[::-1] in bends, seg
     mech = sorted(s["mechanism"] + ":" + s["decision"] for s in part["bend_end_junctions"])
-    assert mech == ["BEND_END_OFFSET_90:SLIT", "OPPOSITE_FOLD_R_T:SEPARATE_RULE"]
+    # the 202 -> 265 shoulder past B1's zone is recorded too: S = 52.7 - 37.7 = +15, no relief
+    assert mech == ["BEND_END_OFFSET_90:NO_RELIEF", "BEND_END_OFFSET_90:SLIT", "OPPOSITE_FOLD_R_T:SEPARATE_RULE"]
+    shoulder = next(s for s in part["bend_end_junctions"] if s["decision"] == "NO_RELIEF")
+    assert shoulder["corner_B"] == [202.0, 52.7] and shoulder["S_mm"] == pytest.approx(15.0)
     lines = [(e["start"], e["end"]) for e in _green(part) if e["type"] == "LINE"]
     assert any(_close(p, [261.6, 158.6]) or _close(q, [261.6, 158.6]) for p, q in lines)
     assert any(_close(p, [268, 161.6]) or _close(q, [268, 161.6]) for p, q in lines)

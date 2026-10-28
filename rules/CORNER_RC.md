@@ -15,7 +15,7 @@ Triggers: `R5`, `C2`, `n-R`, `n×m-R`, `面取り`, `角R`, `指示無き角部�
 - C beside a bend: see `BEND.md` §7.
 
 ## 3. Automatic Laser R (`python tools/lookup.py laser-r --material M --t T [--customer CODE]`)
-- Only on corners drawn SHARP and uncalled; only convex outside corners ≤90° (material interior angle) unless the row says otherwise; never on holes/slots/inner notches; never on reliefs (`R=t` relief and slit R0.5 are not Laser R).
+- Only on corners drawn SHARP and uncalled; only convex outside corners ≤93° (material interior angle; a 90° corner closed from rounded dims reads ≈90.01°) unless the row says otherwise; never on holes/slots/inner notches; never on reliefs (`R=t` relief and slit R0.5 are not Laser R).
 - SS t≥19: R3 on the OUTER perimeter only, including its concave corners; never on holes/slots. Customer sharp vs this R3 → draw the customer corner, FLAG, ask.
 - SUS430: Laser R/holes from the SUS/他 rows. Cu/Brass: t≤6 R0.5, t>6 none.
 - DATA jobs: a sharp DATA vertex does not suppress a required R; replace locally with a true tangent arc, record `DATA_AUTO_R_CANONICALIZATION`; explicit R/C still wins.
@@ -26,4 +26,4 @@ Triggers: `R5`, `C2`, `n-R`, `n×m-R`, `面取り`, `角R`, `指示無き角部�
 Bake R into tangent points + bulge (`tan(sweep/4)`, 90° → 0.41421356, sign from the sweep); C as two offset vertices with bulge 0. Flat spec corner items: `[x,y]` (AUTO), `[x,y,{R|C: v, group, qty, ev}]`, `[x,y,{SHARP: "lý do"}]`, `[x,y,{FLAG: "…"}]`.
 
 ## Lessons
-`regression/lessons/CORNER_RC/` — 520924-19 (workbook, 055955 two R2), 520801-04 (044841 10×R5), 520929-18 (C/R lock), 520217-26/27, 521023-16 (general note, sibling C1).
+`regression/lessons/CORNER_RC/` — 520924-19 (workbook, 055955 two R2), 520801-04 (044841 10×R5), 520929-18 (C/R lock), 520217-26/27, 521023-16 (general note, sibling C1), 521028-17 (≤93°).
