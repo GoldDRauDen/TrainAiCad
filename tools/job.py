@@ -5,6 +5,7 @@
     python tools/job.py status [JOB|DIR]           # compact summary + next step (default: current job)
     python tools/job.py set CODE [--job JOB] [--stage L2] [--status PREVIEW] [--flag "..."] [--file spec=spec.yaml] [--note "..."]
     python tools/job.py census CODE [--job JOB]    # resolve_rules on census_<CODE>.json -> cards per stage
+    python tools/job.py deliver [JOB] [--dxf FILE] [--dest DIR]   # last step: copy the composite DXF into the job's input folder
     python tools/job.py hook                       # SessionStart (compact/resume) hook: status of an open job, else silent
 
 Work dir default: `.work/<JOB>/` in the repo (git-ignored); `.work/CURRENT` names the current job.
@@ -14,7 +15,10 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
+import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -128,6 +132,61 @@ def census(job: str | None, code: str) -> dict:
     return {"code": code, "cards": cards, "customer_notes": state["codes"][code]["customer_notes"]}
 
 
+def _is_job_dir(name: str, job: str) -> bool:
+    """The job number leads the folder name; whatever follows it (customer, urgency) is ignored."""
+    return re.match(rf"{re.escape(job)}(?!\d)", name) is not None
+
+
+def input_dir(job: str, sources: list[str], dest: str | None = None) -> Path:
+    """Where the job was received: the source folder named after the job, else its unique sibling."""
+    if dest:
+        return Path(dest)
+    for src in sources:
+        folder = Path(src).parent
+        if folder.is_dir() and _is_job_dir(folder.name, job):
+            return folder
+    for src in sources:
+        sibs = [d for d in Path(src).parent.parent.glob("*") if d.is_dir() and _is_job_dir(d.name, job)]
+        if len(sibs) == 1:
+            return sibs[0]
+    raise SystemExit(f"input folder of job {job} unclear (sources: {sources}): pass --dest DIR")
+
+
+def _digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def deliver(job: str | None, dxf: str | None = None, dest: str | None = None) -> Path | None:
+    """Copy the composite DXF to the job's input folder; never overwrite (_v2, _v3 ...), never repeat identical content."""
+    d, state = load(job)
+    name_re = re.compile(rf"{re.escape(state['job'])}_ALL(_REVIEW_ONLY)?\.dxf")
+    if dxf:
+        src = Path(dxf)
+    else:
+        found = [f for f in d.rglob("*.dxf") if name_re.fullmatch(f.name)]
+        if not found:
+            raise SystemExit(f"no {state['job']}_ALL[_REVIEW_ONLY].dxf under {d}: pass --dxf FILE")
+        src = max(found, key=lambda f: f.stat().st_mtime)
+    if not name_re.fullmatch(src.name):
+        raise SystemExit(f"{src.name} is not the composite {state['job']}_ALL[_REVIEW_ONLY].dxf")
+    target_dir = input_dir(state["job"], state.get("sources", []), dest)
+    if not target_dir.is_dir():
+        raise SystemExit(f"{target_dir} is not a folder")
+    same = sorted(target_dir.glob(f"{src.stem}*.dxf"))
+    if any(f.is_file() and _digest(f) == _digest(src) for f in same):
+        print(f"already delivered (identical content): {target_dir}")
+        return None
+    out, n = target_dir / src.name, 1
+    while out.exists():
+        n += 1
+        out = target_dir / f"{src.stem}_v{n}.dxf"
+    shutil.copyfile(src, out)
+    state.setdefault("delivered", []).append({"file": str(out), "time": _now()})
+    _write(d / "job_state.json", state)
+    print(f"delivered: {out}")
+    return out
+
+
 def summary(job: str | None = None) -> str:
     d, state = load(job)
     head = _head()
@@ -184,6 +243,10 @@ def main(argv=None) -> int:
     c = sub.add_parser("census")
     c.add_argument("code")
     c.add_argument("--job")
+    v = sub.add_parser("deliver")
+    v.add_argument("job", nargs="?")
+    v.add_argument("--dxf", help="composite DXF (default: newest <JOB>_ALL[_REVIEW_ONLY].dxf under the work dir)")
+    v.add_argument("--dest", help="input folder (default: the job folder named 52xxxx-xx next to the sources)")
     sub.add_parser("hook")
     a = ap.parse_args(argv)
     if a.cmd == "hook":
@@ -194,6 +257,8 @@ def main(argv=None) -> int:
     if a.cmd == "init":
         init(a.job, a.codes, a.source, a.customer, a.work)
         print(summary(a.work or a.job))
+    elif a.cmd == "deliver":
+        deliver(a.job, a.dxf, a.dest)
     elif a.cmd == "status":
         print(summary(a.job))
     elif a.cmd == "set":

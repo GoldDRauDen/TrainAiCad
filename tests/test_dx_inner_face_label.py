@@ -68,3 +68,15 @@ def test_dx_is_a_layer_0_white_text_entity_not_an_ai_meta_note(tmp_path):
     assert len(dx) == 1 and dx[0].dxf.layer == "0" and dx[0].dxf.color == 7 and dx[0].dxf.insert.x < 0
     assert dx[0].has_xdata("TRAINAICAD")                       # stamped like every Layer-0 entity
     assert all(e.dxf.layer == "AI_META" for e in doc.modelspace() if e.dxftype() == "TEXT" and e.dxf.text != "dx")
+
+
+def test_partner_of_a_dx_sibling_keeps_its_coordinates(tmp_path):
+    """521028-22: sibling drawn from the inner face (dx) -> 対称 partner is the same coordinates, no dx."""
+    from pair_consistency import check_pair
+    sibling = part("26-000001", L_SHAPE)
+    sibling["dx_label"] = True
+    partner = part("26-000002", L_SHAPE)
+    partner["dx_label"] = False
+    assert labels(tmp_path, [sibling, partner]).count("dx") == 1
+    job = {"canonical_contract": "TrainAiCad-CANONICAL-V4.34", "job_id": "QA_DX", "parts": [sibling, partner]}
+    assert check_pair(job, "26-000001", "26-000002", "none")["status"] == "OK"

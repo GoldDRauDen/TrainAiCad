@@ -22,7 +22,7 @@ PDF / image / customer DXF DATA → canonical geometry JSON → verified DXF. `E
 | L0 | list every code from the slip (作業No) and every source file; `job.py init` pins the commit | this card | `.work/<JOB>/job_state.json` |
 | L1 | per code: inspect source, notes census, families YES/NO/UNKNOWN, `job.py census <code>` | `rules/READ_SOURCE.md`, `rules/CENSUS.md` + L1 cards it prints | `census_<code>.json`, `ledger_<code>.md` |
 | L2 | identity, datum, witnesses, faces/bends, lookups, canonical | L2 cards from the resolver | `spec_<code>.yaml` or `job.json` part |
-| L3 | validate, holistic challenge, pair check, export, read-back | `rules/VALIDATE.md`, `rules/OUTPUT.md` | `<JOB>_ALL.dxf` / `<JOB>_ALL_REVIEW_ONLY.dxf` |
+| L3 | validate, holistic challenge, pair check, export, read-back | `rules/VALIDATE.md`, `rules/OUTPUT.md` | `<JOB>_ALL.dxf` / `<JOB>_ALL_REVIEW_ONLY.dxf` → `job.py deliver` |
 | Report | per-code table, corrections, every FLAG, customer questions, time | `rules/OUTPUT.md` §8 | chat |
 
 One code at a time; keep proved work per code (a failure never forces redoing a proved code). After every code/stage run `job.py set <code> --stage .. --status .. [--flag ..] [--file key=path]`; after a compaction run `job.py status` and continue from the files. A census change → rerun `job.py census`.
