@@ -8,3 +8,4 @@ description: TrainAiCad sheet-metal CAD job — PDF / scan / customer DXF DATA �
 3. Per code: read `rules/READ_SOURCE.md` + `rules/CENSUS.md`, fill `census_<code>.json`, run `python tools/job.py census <code>`, then read only the cards it lists for the current stage.
 4. Write the ledger/spec of each code to its file as you go and record progress with `python tools/job.py set`. After a compaction, `python tools/job.py status` tells you where you are.
 5. Tables and arithmetic come from `tools/`; never write DXF with ezdxf yourself; a job never edits the repo.
+6. Last step: after the saved DXF is reopened and checked, `python tools/job.py deliver` copies the composite into the job's input folder (never overwrites: `_v2`, `_v3`…).

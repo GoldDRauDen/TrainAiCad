@@ -9,6 +9,7 @@ Ledger contract: every manufacturing callout → `source_group` (id, family, sta
 
 ## 2. Package
 - Default: ONE `<JOB>_ALL.dxf` if every code is PASS, else `<JOB>_ALL_REVIEW_ONLY.dxf` (all codes, warnings intact). `<JOB>` = slip order number (注番), e.g. `520928-06`. No JSON output (`--write-manifest` only for debug).
+- Delivery (default, E2E only): once the saved DXF has been reopened, `python tools/job.py deliver` copies the composite into the job's input folder (name starts with the `52xxxx-xx` job number, the tail is ignored). Never overwrite: an existing name gets `_v2`, `_v3`…; identical content is not copied again.
 - Individual cuts only with `--individual-dxf`: `parts_dxf/<slip-no>.dxf` for verified PASS codes, CUT only (LINE/ARC/CIRCLE; no POINT/BEND/KEGAKI/labels). Another code's REVIEW never suppresses a PASS cut.
 - **Code = 作業No on the delivery slip verbatim** (`26-056522`, never `056522`); slip vs barcode mismatch → slip wins, reported. Slip サイズ X/Y is a plausibility check only.
 
