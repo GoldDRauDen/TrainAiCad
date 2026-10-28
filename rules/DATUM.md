@@ -11,7 +11,7 @@ Every coordinate is an explicit expression from a proved datum, e.g. `Y = 0 + 10
 
 ## 2. Datum graph
 - Witness endpoints = nodes, dimensions = edges. A coordinate needs a connected path from the datum node. Visual alignment is not connectivity.
-- Tag every endpoint by what it lands on: `OUTER_EDGE`, `CONTOUR_EDGE/STEP`, `HOLE_CENTER`, `SLOT_MIDPOINT`, `ARC_CENTER`, `CENTERLINE`, `THEORETICAL_SHARP_CORNER`, `REFERENCE_DATUM`. Never borrow a neighbour's endpoint.
+- Tag every endpoint by what it lands on: `OUTER_EDGE`, `CONTOUR_EDGE/STEP`, `HOLE_CENTER`, `SLOT_MIDPOINT`, `ARC_CENTER`, `CENTERLINE`, `THEORETICAL_SHARP_CORNER`, `REFERENCE_DATUM`. Never borrow a neighbour's endpoint: a rib/child extent with no dimension of its own is not the dimension that ends at a hole; an extension line within ~1 mm of two features → name which at ≥900 dpi, else Magenta + FLAG both candidates.
 - Hole-center chains and contour/step chains never mix. **Each hole family has its own string**; name the printed label on each witness step (521021-20: M8 200+15 → X15; M5 204+13 → X13, not 15).
 - Notch with radius: overall depth to the deepest point ≠ center setback. `R` + overall depth `D` → center setback `D − R` (R3 + depth 8 → setback 5, not 8).
 - Parenthesized/参考 dimension: no mid-tolerance, but its own extension-line datum still applies (`(276.5)` from a hole row at Y10 → Y286.5). A formed-view reference overall is NOT the flat length; derive the flat from the face chain.
@@ -38,4 +38,4 @@ Asymmetric/limit tolerance → mid value `X = nominal + (upper + lower)/2` (`50 
 Every proved HOLE/SLOT member carries X and Y witness edges (`from_node`/`to_node`, endpoint types, signed value, kind, page, crop ref); `tools/dimension_witness.py` solves them. `endpoint_verified=true` is not proof: the crop is. Bent faces: local face → flat transform in `BEND.md` §5.
 
 ## Lessons
-`regression/lessons/DATUM/` — 520728-06 (top-left origin, H138), 520919-05 (chains), 520919-07 (endpoint identity, reference datum). Hole-family strings: 521021-20 (`KEGAKI/`).
+`regression/lessons/DATUM/` — 520728-06 (top-left origin, H138), 520919-05 (chains), 520919-07 (endpoint identity, reference datum), 521028-22 (rib width ≠ hole dimension). Hole-family strings: 521021-20 (`KEGAKI/`).
