@@ -34,7 +34,7 @@ def strip(**kw):
             "outline": [[0, 0], [1720, 0], [1720, 70],
                         {"vnotch": {"start": 1680, "pitch": -200, "count": 8, "level": 70, "depth": 25,
                                     "inward": -1, "qty": 8, "ev": "8-90 8-25"}},
-                        [100, 70], [0, 65]]}
+                        [100, 70], [0, 60]]}
     part.update(kw)
     return part
 
@@ -55,12 +55,31 @@ def test_example_passes_contract_guards_and_saved_dxf(tmp_path):
     assert not verify["audit_errors"] and all(r["closed"] for r in verify["parts"].values())
 
 
-def test_auto_laser_r_only_on_convex_corners_up_to_90_degrees():
+def test_auto_laser_r_only_on_convex_corners_up_to_93_degrees():
     part = bc.build_job(one(strip()))["parts"][0]
     inv = part["corner_inventory"]
-    assert [r["decision"] for r in inv] == ["AUTO_R"] * 3      # (0,65) is 92.86 deg: no automatic R
+    assert [r["decision"] for r in inv] == ["AUTO_R"] * 3      # (0,60) is 95.71 deg: no automatic R
     arcs = [v for v in part["entities"][0]["vertices"] if v[2]]
     assert len(arcs) == 3
+    assert corner_errors(part) == []
+
+
+def test_corner_up_to_93_degrees_takes_auto_r():
+    for left_y, expected in ((65, 4), (60, 3)):               # 92.86 deg rounds, 95.71 deg stays sharp
+        spec_ = strip()
+        spec_["outline"][-1] = [0, left_y]
+        part = bc.build_job(one(spec_))["parts"][0]
+        assert [r["decision"] for r in part["corner_inventory"]] == ["AUTO_R"] * expected
+        assert corner_errors(part) == []
+
+
+def test_perpendicular_corner_read_from_rounded_dims_still_takes_auto_r():
+    """521028-17 26-063996: 61.8 / 9.2 / 38 deg close the tip at 90.009 deg; the tip is a 90 deg corner and takes R2."""
+    pent = {"code": "26-063996", "material": "SPHCP", "t": 6, "page": 3, "envelope": [61.8, 50],
+            "outline": [[0, 0], [30, 0], [61.8, 40.8], [50, 50], [0, 50]]}
+    part = bc.build_job(one(pent))["parts"][0]
+    assert sorted(tuple(r["point"]) for r in part["corner_inventory"]) == [(0.0, 0.0), (0.0, 50.0), (61.8, 40.8)]
+    assert all(r["decision"] == "AUTO_R" for r in part["corner_inventory"])
     assert corner_errors(part) == []
 
 
@@ -71,7 +90,7 @@ def test_slope_reads_up_from_left_end_and_part_turns_for_jlj():
     assert [m["text"] for m in marks] == ["J", "J", "LJ"]       # 1500 < L <= 2000
     assert {m["insert"][1] for m in marks} == {70.0}
     pts = {tuple(v[:2]) for v in part["entities"][0]["vertices"]}
-    assert (1720.0, 5.0) in pts and (1620.0, 0.0) in pts       # left end at 65 rose to 70 at x=100, turned 180 deg
+    assert (1720.0, 10.0) in pts and (1620.0, 0.0) in pts      # left end at 60 rose to 70 at x=100, turned 180 deg
     assert (1440.0, 25.0) in pts                               # first V bottom: 70-25 = 45 from the old bottom
 
 

@@ -1,6 +1,6 @@
 # Minimal FLAT job spec for tools/build_canonical.py / tools/run_job.py (synthetic, not a customer job).
 # Coordinates: part-local mm, outline counter-clockwise (material on the left). Corner without options = AUTO
-# (Laser R from tools/lookup.py when convex <=90 deg, else sharp). Spec: tools/BUILD_CANONICAL_SPEC.md
+# (Laser R from tools/lookup.py when convex <=93 deg, else sharp). Spec: tools/BUILD_CANONICAL_SPEC.md
 job_id: EXAMPLE-FLAT
 parts:
   - code: 26-000001            # delivery-slip work number, verbatim

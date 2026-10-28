@@ -314,7 +314,7 @@ def _customer_corner(code, t: float) -> dict | None:
                          rule=rule)
         value = pol["above"]
     return {"status": "OK", "laser_r": "NONE" if value == "SHARP" else value, "rule": rule,
-            "corner_class": "uncalled outside corner ≤90° (customer rule); drawn R/C still wins"}
+            "corner_class": "uncalled outside corner ≤93° (customer rule); drawn R/C still wins"}
 
 
 def laser_r(material: str, t: float, customer: str | None = None) -> dict:
@@ -330,7 +330,7 @@ def laser_r(material: str, t: float, customer: str | None = None) -> dict:
         return _flag("ASK", str(exc), f"Vật liệu {material} chưa xác định nhóm Laser R", **base)
     if group == "CU_BRASS":  # L10 approved override
         r = "R0.5" if t <= 6 + EPS else "NONE"
-        return {"status": "OK", "laser_r": r, "group": group, "rule": "L10", "corner_class": "outside ≤90°", **base}
+        return {"status": "OK", "laser_r": r, "group": group, "rule": "L10", "corner_class": "outside ≤93°", **base}
     row, upward = _material_row(group, t)
     if row is None:
         return _flag("ASK", "THICKNESS_OUTSIDE_WORKBOOK", f"t={t:g} ngoài bảng Laser R nhóm {group}", **base)
@@ -338,7 +338,7 @@ def laser_r(material: str, t: float, customer: str | None = None) -> dict:
     m = re.search(r"R(\d+(?:\.\d+)?)", cell)
     value = f"R{m.group(1)}" if m else "NONE"
     scope = ("outer material perimeter only (incl. concave corners of that perimeter), never holes/slots"
-             if value == "R3" else "outside corner ≤90°, uncalled-out only" if m else "no automatic R")
+             if value == "R3" else "outside corner ≤93°, uncalled-out only" if m else "no automatic R")
     return {"status": "OK", "laser_r": value, "group": group, "excel_row": row["excel_row"],
             "upward_row": upward, "corner_class": scope, **base}
 

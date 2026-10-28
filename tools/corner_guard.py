@@ -14,7 +14,7 @@ Inventory (optional for legacy jobs; REQUIRED as soon as any MATERIAL_AUTO_R mem
      "no_auto_r_reason": "..."}   # SHARP decision only
   ]
 
-When an outer LWPOLYLINE exists, every sharp convex corner of <= 90 degrees on it must have an
+When an outer LWPOLYLINE exists, every sharp convex corner of <= AUTO_R_MAX_DEG (93) degrees on it must have an
 inventory row at its point (census closure), so a corner cannot be skipped silently.
 """
 from __future__ import annotations
@@ -25,6 +25,7 @@ DECISIONS = {"CALLED", "AUTO_R", "FLAG", "SHARP"}
 SHAPES = {"SHARP", "ROUNDED", "CHAMFERED", "UNKNOWN"}
 AUTO_RULE = "MATERIAL_AUTO_R"
 POINT_TOL = 1e-3
+AUTO_R_MAX_DEG = 93.0   # an outside corner up to this interior angle takes the automatic Laser R (a drawn 90 deg corner is never exactly 90)
 
 
 def _finite_point(value):
@@ -35,7 +36,7 @@ def _finite_point(value):
 
 
 def outer_sharp_corners(part):
-    """Sharp convex corners <= 90 degrees (+1e-6) of every outer / split-flange piece (no bulge on adjacent segments)."""
+    """Sharp convex corners <= AUTO_R_MAX_DEG (+1e-6) of every outer / split-flange piece (no bulge on adjacent segments)."""
     corners = []
     for entity in part.get("entities", []):
         if entity.get("type") != "LWPOLYLINE" or entity.get("role") not in ("outer", "split_flange") or                 not entity.get("closed", True):
@@ -64,7 +65,7 @@ def outer_sharp_corners(part):
             if cross*sign <= 1e-9:
                 continue  # concave or straight
             cosang = max(-1.0, min(1.0, (a[0]*b[0]+a[1]*b[1])/(la*lb)))
-            if math.degrees(math.acos(cosang)) <= 90.0 + 1e-6:
+            if math.degrees(math.acos(cosang)) <= AUTO_R_MAX_DEG + 1e-6:
                 corners.append(p1)
     return corners
 
@@ -121,7 +122,7 @@ def corner_errors(part):
 
 
 def draft_inventory(part):
-    """Skeleton rows for every sharp convex corner (<= 90 degrees) of the outer polyline.
+    """Skeleton rows for every sharp convex corner (<= AUTO_R_MAX_DEG) of the outer polyline.
 
     Every row starts as drawn_shape UNKNOWN / decision FLAG on purpose: the reader must look at the drawing
     and set drawn_shape (and CALLED / AUTO_R / SHARP) per corner; nothing is defaulted to automatic R.
