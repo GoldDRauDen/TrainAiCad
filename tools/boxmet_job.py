@@ -53,6 +53,8 @@ def polygon_with_arcs(poly, R):
 
 def build_job(code, L, W, heights, T, material, N, holes=(), drawn_corners="SHARP", customer=None,
               job_id=None, source_ref="BOXMET input (L, W, H1-H4, T, material, N supplied by the reader)"):
+    if drawn_corners == "RELIEF":     # the source draws a relief/void (+R) at the box corners: SLIT_RELIEF section 0, no slit
+        raise BoxMetError("BOXMET_SOURCE_DRAWN_RELIEF_USE_SOURCE_DRAWN_RELIEF")
     if drawn_corners != "SHARP":
         raise BoxMetError("BOXMET_CORNER_DRAWN_SHAPE_NOT_SHARP_FLAG")
     geo = box_flat(L, W, *heights, T, material, N)
@@ -224,7 +226,7 @@ def _main(argv=None):
     ap.add_argument("--material", required=True)
     ap.add_argument("--N", type=float, required=True)
     ap.add_argument("--hole", nargs=4, action="append", metavar=("X", "Y", "DIA", "EVIDENCE"), default=[])
-    ap.add_argument("--drawn-corners", default="SHARP", choices=["SHARP", "ROUNDED", "CHAMFERED", "UNKNOWN"])
+    ap.add_argument("--drawn-corners", default="SHARP", choices=["SHARP", "ROUNDED", "CHAMFERED", "UNKNOWN", "RELIEF"])
     ap.add_argument("--job-id", help="slip order number (注番) when the box joins a multi-code job")
     ap.add_argument("--customer", help="numeric JOB STATISTICS code")
     ap.add_argument("--out", required=True)

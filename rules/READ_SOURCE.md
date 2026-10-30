@@ -15,7 +15,7 @@ Job family 646 (not customer 646) expects DATA: absent → `DATA_REQUIRED_MISSIN
 ## 2. Read sequence
 1. Map codes, pages, views; lock code, material, thickness, revision before any table lookup.
 2. `pdf_views.py render` (grid) → `text --dims` (vector values, exact) → `crop --dpi 600` where witness lines/leaders/handwriting decide meaning. Scanned page: read every value twice from two crops. Close same-axis dims (70/65): ≥900 dpi, name the edge each extension line touches; after building run `overlay_check.py` (≥3 anchors, ≤1 mm).
-3. Trace the real contour first (steps, notches, R/C, openings). Census EVERY notch/cut-out: built, cancelled (reason) or FLAG with coordinates — never dropped.
+3. Trace the real contour first (steps, notches, reliefs, R/C, openings). Census EVERY notch/cut-out/relief (bend end, box corner too): built as drawn (`SLIT_RELIEF.md` §0), cancelled (reason) or FLAG with coordinates.
 4. Each used dimension → ledger row with both witness endpoints (`DATUM.md`).
 5. One feature shown in several views = one source member, owned by its controlling view/face.
 6. Handwritten corrections / Nobi apply only to the member the leader scopes; unclear scope = local FLAG.
@@ -43,7 +43,7 @@ Precedence (high → low): latest revision note/cloud → red handwritten correc
 - Struck callout = cancelled (circled ② beside it = sure), all its members: draw nothing, spec `cancelled:` → ledger `CANCELED`, report note, no FLAG, can PASS. Struck tolerance/finish/chamfer (`4-C1`, `4-Ø16` stays) cancels only itself. Strike on no single callout → UNKNOWN + FLAG.
 
 ## 6. Customer
-Customer = the numeric code in JOB STATISTICS only (never a Japanese name, barcode or job-family 646). Absent/unlisted → general rules, no REVIEW. `resolve_rules.py` prints that customer's notes; tools apply its structured fields. Precedence per physical parameter: source handwriting/correction > customer exception > shop table. KH646 Nobi, KH851 weld KEGAKI, KH433 DATA tolerance live in their cards.
+Customer = the numeric code in JOB STATISTICS only (never a Japanese name, barcode or job-family 646). Absent/unlisted → general rules, no REVIEW. `resolve_rules.py` prints that customer's notes; tools apply its structured fields. Precedence per physical parameter: source handwriting/correction > customer exception > shop table.
 
 ## 7. Census closure
 Every source view, DATA member and note ends as a scoped member, an explicit drawing-only/helper/duplicate/cancelled item, or an unresolved member. A family YES/UNKNOWN with no group/member is not closed. Several barcodes / constituents ①② / weld relations in one view → `MULTI_PART.md`.

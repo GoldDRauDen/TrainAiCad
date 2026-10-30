@@ -168,3 +168,14 @@ def connected_slit(B, S, D, slit_len: float, R: float = 0.5) -> dict:
     start, end = (a1, a2) if (a2 - a1) % 360 <= 180 else (a2, a1)
     return {"line1": (E1, T1), "arc": {"center": c, "radius": R, "start_angle": start, "end_angle": end},
             "line2": (T2, E2), "theta_deg": math.degrees(theta), "tangent_dist": td}
+
+
+def custom_slit_at_intersection(base, direction, n_side, n_web, length: float, material: str, T: float) -> dict:
+    """Source slit (printed スリット L) that starts exactly at the intersection B of two outer edges: it gets the lead
+    (vòi dẫn) of the shape in SLIT_RELIEF section 3: both edges offset by LeadVal(material, t) toward the void from B
+    (SUS t6 -> 6|6), closed by the R0.5 fillet.  `length` is the source value measured from B along `direction`."""
+    lead = lead_val(material, T)
+    end = lead_end_by_offset(base, n_side, n_web, lead)
+    out = connected_slit(base, direction, (end[0] - _vector(base, "base")[0], end[1] - _vector(base, "base")[1]), length)
+    out["lead"] = lead
+    return out

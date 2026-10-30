@@ -9,7 +9,8 @@ import math
 
 TOL = 1e-7  # Coordinate arithmetic tolerance, never a manufacturing S threshold.
 AUTO_RELIEF_RULES = {"BEND_END_OFFSET_90", "OPPOSITE_FOLD_R_T", "BOXMET", "NON_90_RELIEF"}
-SPECIAL_RULES = {"OPPOSITE_FOLD_R_T", "BOXMET", "CUSTOM_SOURCE_SLIT"}
+SPECIAL_RULES = {"OPPOSITE_FOLD_R_T", "BOXMET", "CUSTOM_SOURCE_SLIT", "SOURCE_DRAWN_RELIEF"}
+SOURCE_RELIEF_FAMILIES = {"RELIEF_DRAWN", "CUTOUT", "HOLE", "SLOT", "OPEN_NOTCH"}
 MEASURED_MECHANISMS = {"BEND_END_OFFSET_90", "NON_90_RELIEF"}  # relief decided by the measured step S
 RELIEF_ROLES = {"slit", "relief", "bend_relief"}
 
@@ -247,7 +248,134 @@ def _check_corner_retreat(site, claimed, thickness):
         raise ValueError("BEND_END_CORNER_RETREAT_S_MISMATCH")
 
 
-def _special_rule(site, part, edges, relief):
+def _flat_loop(vertices, steps=24):
+    """Closed polyline [x, y, bulge] -> polygon points (arcs flattened, for containment tests only)."""
+    from geom import bulge_points
+    pts, n = [], len(vertices)
+    for i, v in enumerate(vertices):
+        a, b, bulge = _point(list(v[:2])), _point(list(vertices[(i+1) % n][:2])), float(v[2]) if len(v) > 2 else 0.0
+        pts.append(a)
+        if abs(bulge) > 1e-12 and math.dist(a, b) > TOL:
+            pts.extend(bulge_points(a, b, bulge, steps))
+    return pts
+
+
+def _in_polygon(p, polygon):
+    inside = False
+    for i, a in enumerate(polygon):
+        b = polygon[(i+1) % len(polygon)]
+        if (a[1] > p[1]) != (b[1] > p[1]) and p[0] < (b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1]) + a[0]:
+            inside = not inside
+    return inside
+
+
+def _near_boundary(p, polygon, tol=1e-4):
+    for i, a in enumerate(polygon):
+        b = polygon[(i+1) % len(polygon)]
+        v = (b[0]-a[0], b[1]-a[1])
+        n = v[0]*v[0]+v[1]*v[1]
+        u = 0.0 if n <= 0 else max(0.0, min(1.0, ((p[0]-a[0])*v[0]+(p[1]-a[1])*v[1])/n))
+        if math.dist(p, (a[0]+u*v[0], a[1]+u*v[1])) <= tol:
+            return True
+    return False
+
+
+def _source_relief_proved(site, part, relief, entities, bends):
+    """SOURCE_DRAWN_RELIEF: the PDF/DATA already draws the relief (round / rectangle / slot / notch / corner void with R).
+    The relief IS the junction mechanism (rules/SLIT_RELIEF.md section 0): drawn as the source draws it, no Green slit,
+    no BOXMET, no R = t.  The guard proves: a PROVED source group owns it, the relief members are SOURCE members that own
+    the real outline / cut-out entities, the declared junction point lies in the void, and no bend line of the site
+    enters the void (bend lines stop at it)."""
+    sid = site["site_id"]
+    group = next((g for g in part.get("source_groups", []) if g.get("group_id") == site.get("source_group_id")), {})
+    source_ids = {m.get("member_id") for m in group.get("members", [])}
+    if (group.get("family") not in SOURCE_RELIEF_FAMILIES or group.get("status") != "PROVED" or not group.get("evidence")
+            or not relief):
+        return "BEND_END_SPECIAL_RULE_UNPROVED"
+    if any(e.get("bend_end_site_id") == sid and e.get("role") in RELIEF_ROLES for e in entities.values()):
+        return "BEND_END_TWO_RELIEFS"                       # a Green slit on top of the drawn relief
+    owned = []
+    for member in relief:
+        if (member.get("origin") != "SOURCE" or member.get("status") != "PROVED" or
+                member.get("source_member_id") not in source_ids or member.get("bend_end_site_id") != sid):
+            return "BEND_END_RELIEF_MEMBER_UNPROVED"
+        for eid in member.get("entity_ids", []):
+            ent = entities.get(eid)
+            if not ent or ent.get("type") not in {"LWPOLYLINE", "CIRCLE"} or ent.get("role") not in {"outer", "cutout", "hole", "slot"}:
+                return "BEND_END_RELIEF_MEMBER_UNPROVED"
+            owned.append(ent)
+    try:
+        at = _point(site.get("relief_point"))
+        outers = [e for e in entities.values() if e.get("type") == "LWPOLYLINE" and e.get("role") == "outer" and e.get("closed", True)]
+        if len(outers) != 1:
+            return "BEND_END_RELIEF_GEOMETRY_UNPROVED"
+        material = _flat_loop(outers[0]["vertices"])
+        voids = [e for e in owned if e is not outers[0]]
+
+        loops = [_flat_loop(e["vertices"]) for e in voids if e["type"] == "LWPOLYLINE"]
+
+        def in_void(p):
+            if _near_boundary(p, material) or any(_near_boundary(p, loop) for loop in loops):
+                return False                      # on the edge of the drawn relief = still material (bend lines end there)
+            if not _in_polygon(p, material):
+                return True
+            for e in voids:
+                if e["type"] == "CIRCLE" and math.dist(p, _point(e["center"])) < _number(e["radius"]) - TOL:
+                    return True
+            return any(_in_polygon(p, loop) for loop in loops)
+        if not in_void(at):
+            return "BEND_END_RELIEF_POINT_NOT_IN_VOID"
+        for bid in site["bend_ids"]:
+            for eid in bends[bid].get("material_domain", {}).get("entity_ids", []):
+                ent = entities.get(eid, {})
+                if ent.get("type") != "LINE" or ent.get("role") != "bend":
+                    continue
+                a, b = _point(ent["start"]), _point(ent["end"])
+                if any(in_void((a[0]+(b[0]-a[0])*k/200, a[1]+(b[1]-a[1])*k/200)) for k in range(201)):
+                    return "BEND_END_BEND_LINE_ENTERS_RELIEF"
+    except (ValueError, TypeError, KeyError):
+        return "BEND_END_RELIEF_GEOMETRY_UNPROVED"
+    return None
+
+
+def _custom_slit_lead_proved(site, part, relief, entities, edges):
+    """A source slit that starts exactly at the intersection of two outer edges carries the lead (vòi dẫn): both edges
+    offset by LeadVal(material, t) toward the void, closed by R0.5 (rules/SLIT_RELIEF.md section 1)."""
+    from slit_geometry import custom_slit_at_intersection
+    w = site.get("slit_construction") or {}
+    try:
+        web = _edge(edges, w.get("web_edge_id"), site.get("frame_id"))
+        side = _edge(edges, w.get("side_edge_id"), site.get("frame_id"))
+        corner = _segment_intersection(web, side)
+        if corner is None or math.dist(corner, _point(w.get("base"))) > 1e-6:
+            return False                           # the slit does not start at the intersection of the two outer edges
+        for vec, key in (((web[1][0]-web[0][0], web[1][1]-web[0][1]), "web_void_normal"),
+                         ((side[1][0]-side[0][0], side[1][1]-side[0][1]), "side_void_normal")):
+            normal = _point(w.get(key))
+            if abs(vec[0]*normal[0]+vec[1]*normal[1]) > 1e-6*math.hypot(*vec):
+                return False
+        exp = custom_slit_at_intersection(_point(w.get("base")), _point(w.get("direction")), _point(w.get("side_void_normal")),
+                                          _point(w.get("web_void_normal")), _number(w.get("length")), part.get("material"),
+                                          _number(part.get("thickness_mm")))
+    except (ValueError, TypeError):
+        return False
+    actual = [entities[eid] for m in relief for eid in m["entity_ids"]]
+    lines, arcs = [e for e in actual if e["type"] == "LINE"], [e for e in actual if e["type"] == "ARC"]
+    if len(lines) != 2 or len(arcs) != 1:
+        return False
+    close = lambda p, q: math.dist(_point(p), _point(q)) <= 1e-6
+    for key in ("line1", "line2"):
+        p, q = exp[key]
+        hit = next((e for e in lines if (close(e["start"], p) and close(e["end"], q)) or (close(e["end"], p) and close(e["start"], q))), None)
+        if hit is None:
+            return False
+        lines.remove(hit)
+    arc, want = arcs[0], exp["arc"]
+    return (close(arc["center"], want["center"]) and abs(_number(arc["radius"]) - want["radius"]) <= 1e-6 and
+            all(abs((_number(arc[k]) - want[k] + 180) % 360 - 180) <= 1e-6 for k in ("start_angle", "end_angle")))
+
+
+def _special_rule(site, part, edges, relief, entities=None):
     mechanism = site.get("mechanism")
     if not relief:
         return "BEND_END_RELIEF_MEMBER_UNPROVED"
@@ -273,6 +401,8 @@ def _special_rule(site, part, edges, relief):
                 not group.get("evidence") or not relief or
                 any(m.get("origin") != "SOURCE" or m.get("source_member_id") not in source_ids for m in relief)):
             return "BEND_END_SPECIAL_RULE_UNPROVED"
+        if site.get("at_edge_intersection") and not _custom_slit_lead_proved(site, part, relief, entities, edges):
+            return "BEND_END_SLIT_LEAD_UNPROVED"
     return None
 
 
@@ -385,17 +515,24 @@ def bend_end_errors(part):
                 raise ValueError("BEND_END_STEP_UNRESOLVED")
             controlled = site.get("bend_ids")
             mechanism = site.get("mechanism")
-            wanted = (1, 2) if mechanism in MEASURED_MECHANISMS else (2,)  # a free bend end has one bend
+            wanted = (1, 2) if mechanism in MEASURED_MECHANISMS | {"SOURCE_DRAWN_RELIEF"} else (2,)  # a free bend end has one bend
             if (not isinstance(controlled, list) or len(controlled) not in wanted or
                     any(not isinstance(b, str) or b not in bends for b in controlled) or
                     len(set(controlled)) != len(controlled)):
                 raise ValueError("BEND_END_BEND_OWNERSHIP_UNPROVED")
+            if mechanism == "SOURCE_DRAWN_RELIEF":
+                if not site.get("special_rule_evidence_ref") or site.get("decision") != "SEPARATE_RULE":
+                    raise ValueError("BEND_END_SPECIAL_RULE_UNPROVED")
+                error = _source_relief_proved(site, part, relief, entities, bends)
+                if error:
+                    raise ValueError(error)
+                continue
             if mechanism in SPECIAL_RULES:
                 if not (_relief_members_proved(site, relief, entities) or
                         mechanism == "OPPOSITE_FOLD_R_T" and
                         _outline_relief_proved(site, relief, entities, _number(part.get("thickness_mm")))):
                     raise ValueError("BEND_END_RELIEF_MEMBER_UNPROVED")
-                error = _special_rule(site, part, edges, relief)
+                error = _special_rule(site, part, edges, relief, entities)
                 if error:
                     raise ValueError(error)
                 continue
