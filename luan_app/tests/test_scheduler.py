@@ -168,6 +168,22 @@ def test_recover_on_start_kills_orphan(sched, store, user, paths, job_dir):
     assert store.get_run(rid)["status"] == "ERROR"
 
 
+def test_recover_does_not_kill_reused_pid(sched, store, user, paths, job_dir):
+    """After a reboot the stored pid may belong to another program: never kill it."""
+    import subprocess
+    other = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    try:
+        rid = store.insert_run("RUN", str(job_dir), "k-reused", "J", None, user["id"])
+        store.update_run(rid, status="RUNNING", pid=other.pid, pid_name="claude.exe", slot=1)
+        Scheduler(store, paths, Slots(paths.repo_root, paths.slots_root)).recover_on_start()
+        assert store.get_run(rid)["status"] == "ERROR"
+        time.sleep(0.5)
+        assert other.poll() is None and pid_alive(other.pid)
+    finally:
+        other.kill()
+        other.wait()
+
+
 def test_repo_touched_flagged(sched, store, user, paths, job_dir):
     sched.extra_env["FAKE_MODE"] = "touch"
     rid = sched.submit(user, "RUN", str(job_dir), None, False, False)

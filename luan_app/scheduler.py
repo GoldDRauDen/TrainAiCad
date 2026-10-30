@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from . import archive, progress, sources
 from .config import SLOTS_MAX, SLOTS_MIN, USAGE_PAUSE_MIN
 from .prompts import build_prompt
-from .runner import ClaudeProcess, build_command, claude_executable, kill_tree, pid_alive
+from .runner import ClaudeProcess, build_command, claude_executable, kill_tree, same_program
 from .store import ACTIVE, FINAL, Duplicate, now_iso
 
 log = logging.getLogger("luan_app.scheduler")
@@ -198,7 +198,7 @@ class Scheduler:
         for r in self.store.active_runs():
             if r["status"] == "QUEUED":
                 continue
-            if r.get("pid") and pid_alive(r["pid"]):
+            if r.get("pid") and same_program(r["pid"], r.get("pid_name")):
                 kill_tree(r["pid"])
             self.store.update_run(r["id"], status="ERROR", error="Bị ngắt do app khởi động lại",
                                   summary="Bị ngắt do app khởi động lại", ended_at=now_iso())
@@ -236,7 +236,8 @@ class Scheduler:
             started = now_iso()
             proc.start(cmd, cwd=self.slots.path(k), env=env, prompt=build_prompt(run["kind"], run["path"], run.get("codes"), od),
                        transcript=rd / "transcript.jsonl", stderr_log=rd / "stderr.log")
-            self.store.update_run(rid, status="RUNNING", started_at=started, pid=proc.pid)
+            self.store.update_run(rid, status="RUNNING", started_at=started, pid=proc.pid,
+                                  pid_name=os.path.basename(cmd[0]))
             if w.cancel.is_set():
                 proc.kill()
             deadline = self.clock() + float(settings["timeout_min"]) * 60

@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS runs(
   "commit" TEXT, queued_at TEXT, started_at TEXT, ended_at TEXT, exit_code INTEGER, error TEXT,
   verdict TEXT, summary TEXT, codes_status_json TEXT, repo_touched INTEGER DEFAULT 0,
   cancelled_by TEXT, rerun_of INTEGER, activity TEXT, activity_at TEXT, delivered_json TEXT,
-  usage_json TEXT, warnings_json TEXT);
+  usage_json TEXT, warnings_json TEXT, pid_name TEXT);
 CREATE INDEX IF NOT EXISTS runs_key_status ON runs(path_key, status);
 CREATE VIRTUAL TABLE IF NOT EXISTS run_search USING fts5(run_id UNINDEXED, search_text);
 CREATE TABLE IF NOT EXISTS review_items(
@@ -74,6 +74,10 @@ class Store:
         self.db_path = str(db_path)
         self._local = threading.local()
         self._conn().executescript(SCHEMA)  # executescript commits on its own
+        have = {r[1] for r in self._conn().execute("PRAGMA table_info(runs)")}
+        for col in ("pid_name",):  # columns added after a database was created
+            if col not in have:
+                self._conn().execute(f"ALTER TABLE runs ADD COLUMN {col} TEXT")
 
     # -- connection -------------------------------------------------------
     def _conn(self) -> sqlite3.Connection:

@@ -182,6 +182,31 @@ def kill_tree(pid: int) -> None:
             pass
 
 
+def process_name(pid: int | None) -> str | None:
+    """Image name of a live process (`claude.exe`, `python.exe`), or None."""
+    if not pid:
+        return None
+    if os.name == "nt":
+        out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"], capture_output=True, text=True,
+                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout.strip()
+        if not out.startswith('"'):
+            return None
+        return out.split('","')[0].strip('"')
+    try:
+        return Path(f"/proc/{pid}/comm").read_text().strip()
+    except OSError:
+        return None
+
+
+def same_program(pid: int | None, name: str | None) -> bool:
+    """True when `pid` is still the program we started (guards against pid reuse after a reboot)."""
+    actual = process_name(pid)
+    if not actual or not name:
+        return False
+    a, n = actual.lower(), Path(name).name.lower()
+    return a == n or Path(a).stem == Path(n).stem or a.startswith(Path(n).stem[:15])
+
+
 def pid_alive(pid: int | None) -> bool:
     if not pid:
         return False
