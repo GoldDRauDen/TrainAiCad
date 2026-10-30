@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -85,7 +86,7 @@ def test_duplicate_path_rejected(sched, store, user, job_dir):
     sched.extra_env["FAKE_MODE"] = "hang"
     sched.submit(user, "RUN", str(job_dir), None, False, False)
     other = store.create_user("Minh")
-    variant = str(job_dir).upper() + "\\"
+    variant = (str(job_dir).upper() if os.name == "nt" else str(job_dir)) + "\\"  # posix paths are case-sensitive
     with pytest.raises(Duplicate) as e:
         sched.submit(other, "RUN", variant.replace("\\", "/"), None, False, False)
     assert e.value.run["user_id"] == user["id"]
