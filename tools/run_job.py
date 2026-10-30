@@ -101,6 +101,10 @@ def report(job, manifest, verify, seconds):
             notes.append(f"R/C theo callout ×{row['called']}")
         if row["holes"]:
             notes.append(f"lỗ ×{row['holes']}")
+        if p.get("cancelled"):
+            notes.append("hủy theo bản vẽ: " + ", ".join(
+                f"{c['label']} ×{c['qty']} ({'gạch + ②' if c['mark'] == 'STRIKE_SIGNED' else 'gạch'})"
+                for c in p["cancelled"]))
         if p.get("split_flange"):
             notes.append("tách bích 10 mm: " + ", ".join(s["bend"] for s in p["split_flange"]))
         if p.get("unfold"):

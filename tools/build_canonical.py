@@ -471,6 +471,38 @@ def _expand_repeats(spec, where):
             spec[kind] = out
 
 
+CANCEL_MARKS = ("STRIKE", "STRIKE_SIGNED")      # struck callout / struck + circled ② (the sure form)
+CANCEL_FAMILIES = ("HOLE", "SLOT", "CUTOUT", "CORNER")
+
+
+def _cancelled_entries(items, where):
+    """`cancelled: [{id, label, family, qty, mark, ev}]` -> validated entries for callouts struck out on the drawing.
+
+    A struck callout cancels its whole family (qty = the callout's count): nothing is drawn, the ledger keeps the
+    CANCELED group and the report notes it; no FLAG, the part can still PASS."""
+    out = []
+    for i, c in enumerate(items or []):
+        w = f"{where}.cancelled[{i}]"
+        if not isinstance(c, dict):
+            fail(f"{w}: expected {{id, label, family, qty, mark, ev}}")
+        cid = str(c.get("id") or fail(f"{w}: id required"))
+        family = str(c.get("family") or "")
+        if family not in CANCEL_FAMILIES:
+            fail(f"{w}: family must be one of {', '.join(CANCEL_FAMILIES)}")
+        qty = c.get("qty")
+        if not isinstance(qty, int) or isinstance(qty, bool) or qty < 1:
+            fail(f"{w}: qty must be the callout count (integer >= 1)")
+        if c.get("mark") not in CANCEL_MARKS:
+            fail(f"{w}: mark must be STRIKE or STRIKE_SIGNED (struck + circled ②)")
+        if not c.get("ev"):
+            fail(f"{w}: ev required (page/view where the callout is struck)")
+        if any(o["id"] == cid for o in out):
+            fail(f"{w}: duplicate id {cid}")
+        out.append({"id": cid, "label": str(c.get("label") or cid), "family": family, "qty": qty,
+                    "mark": c["mark"], "ev": str(c["ev"])})
+    return out
+
+
 def _circle_spec(c, where):
     """(cx, cy, r) of a circle item {center: [x, y], d: diameter}."""
     if not isinstance(c, dict) or "center" not in c or "d" not in c:
@@ -729,6 +761,15 @@ def build_part(spec, customer=None):
         add_group(name, "HOLE", [it[0] for it in items], ev, ["FLAGGED" if it[2].get("flag") else "PROVED" for it in items],
                   [[it[1]] for it in items], qty)
         # member ids must equal witness feature ids: rename members to the hole ids
+    cancelled = _cancelled_entries(spec.get("cancelled"), code)
+    for c in cancelled:   # struck callouts: ledger rows only, zero entities (rules/READ_SOURCE.md §5)
+        gid = f"{p}_G_{c['id']}"
+        if any(g["group_id"] == gid for g in groups):
+            fail(f"{code}: duplicate group {c['id']} (cancelled entry clashes with a drawn group)")
+        groups.append({"group_id": gid, "family": c["family"], "status": "CANCELED", "source_quantity": c["qty"],
+                       "evidence": c["ev"],
+                       "members": [{"member_id": f"{p}_{c['id']}_C{k}", "status": "CANCELED"}
+                                   for k in range(1, c["qty"] + 1)]})
     slots_by_group = {}
     for i, s in enumerate(spec.get("slots") or []):
         sid = str(s.get("id") or f"SL{i + 1}")
@@ -830,6 +871,8 @@ def build_part(spec, customer=None):
             "entities": ents, "source_groups": groups, "canonical_members": members, "corner_inventory": inventory,
             "laser_r_lookup": {k: laser.get(k) for k in ("laser_r", "group", "excel_row", "rule")},
             "envelope_mm": [float(env[0]), float(env[1])]}
+    if cancelled:
+        part["cancelled"] = cancelled
     if required:
         part["witness_required_feature_ids"] = required
         part["feature_witness_graph"] = {"nodes": nodes, "edges": edges, "targets": targets}
@@ -935,7 +978,10 @@ def _build_split(spec, plan, customer):
     body = max(range(len(plan)), key=lambda i: (sizes[i], -i))
     subs = []
     for i, seg in enumerate(plan):
-        sub = {key: v for key, v in spec.items() if key not in _FEATURE_KEYS + ("bend", "envelope", "flags")}
+        sub = {key: v for key, v in spec.items()
+               if key not in _FEATURE_KEYS + ("bend", "envelope", "flags", "cancelled")}
+        if i == body and spec.get("cancelled"):
+            sub["cancelled"] = spec["cancelled"]
         sub["code"] = code if i == body else f"{code}_SF{i + 1}"
         sub["bend"] = {**{key: v for key, v in bend.items() if key not in ("faces", "bends")},
                        "faces": seg["faces"], "bends": seg["bends"]}
