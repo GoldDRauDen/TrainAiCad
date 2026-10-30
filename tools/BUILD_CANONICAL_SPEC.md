@@ -29,7 +29,7 @@ Job level: `job_id`, optional `customer_code` (numeric, JOB STATISTICS) — its 
 - `{unotch: {at: [[x,y],...], inward: [ux,uy], width, depth, mouth: {C: 1, ev}, qty, ev}}` — open U notch; `depth` = mouth → semicircle center, R = width/2; the mouth R/C applies to every notch of the entry.
 
 ## Holes / slots
-`{id, d, group, qty, ev, wx: [[value, TO_TYPE, "evidence", KIND?], ...], wy: [...], datum_x: 0, datum_y: 0, at?}` — the chain starts at the outer edge at `datum_x/datum_y`; the center is the sum (an `at` given is checked). Node types: `OUTER_EDGE`, `HOLE_CENTER`, `SLOT_MIDPOINT`, … (`tools/dimension_witness.py`). Slot: `{id, w, cd, axis: [1,0], ev, wx, wy}` → stadium, anchor `SLOT_MIDPOINT`.
+`{id, d, group, qty, ev, wx: [[value, TO_TYPE, "evidence", KIND?], ...], wy: [...], datum_x: 0, datum_y: 0, at?}` — the chain starts at the outer edge at `datum_x/datum_y`; the center is the sum (an `at` given is checked). Node types: `OUTER_EDGE`, `HOLE_CENTER`, `SLOT_MIDPOINT`, … (`tools/dimension_witness.py`). Slot: `{id, w, cd, axis: [1,0], ev, wx, wy}` → stadium, anchor `SLOT_MIDPOINT`. `datum_ref: ID66` on a hole/slot = its chains start at that hole's centre (round blank / ring: no straight datum edge).
 
 Equal pitch: `repeat: {n: 8, step: 75, along: wx}` on a hole/slot = n copies (`H_1`..`H_n`, `qty` defaults to n), copy k adds (k-1) steps to the named chain (`wx|wy|wu|wv`), so `P75*7` is one entry.
 
@@ -38,7 +38,8 @@ Tap: `thread: M6` (or `M8x1` when the pitch is printed) instead of `d` → the p
 Hole keys for POINT: `piercing: true` (PIERCING scoped to this family by its leader) → ByLayer POINT; `piercing: true, through: true, stamp: "<scoped text quoting PIERCING + THROUGH HOLE>"` → Green POINT + `piercing_authorizations` (rules/HOLE_TAP.md §2). A hole with `d < t/2` or below the workbook minimum becomes a ByLayer POINT by itself. `d` is still given (witness chain); a Magenta/unknown lookup result is refused (draw by hand + FLAG).
 
 ## KEGAKI
-`kegaki: [{id, group, qty, ev, lines: [[x0, y0, x1, y1], ...], circles: [{center: [x, y], d}]}]` → Red LINEs and ONE Red CIRCLE per round mark, family `KEGAKI`, one member per id (footprint from `tools/kegaki_footprint.py`, rules/KEGAKI.md).
+`kegaki: [{id, group, qty, ev, lines: [[x0, y0, x1, y1], ...], circles: [{center: [x, y], d}]}]` → Red LINEs and ONE Red CIRCLE per round mark, family `KEGAKI`, one member per id (footprint from `tools/kegaki_footprint.py`, rules/KEGAKI.md). `flag: "<vi>"` on an item = unresolved mark: its lines/circles become Magenta estimates, none given = `FLAGGED_NO_GEOMETRY`.
+`weld_site_census`, `source_assembly_view_ids`, `source_weld_site_ids` (KH851, rules/KEGAKI.md §2) are copied to the part; absent from the spec they come from `census_<code>.json` next to the spec (or one folder up). A short `mark_member_ids` entry (`K1`) names this part's kegaki id; `source_weld_site_ids` defaults to the sites.
 
 ## Cut-outs (rectangular opening, optional R corners)
 `cutouts: [{id, rect: [x0, y0, x1, y1] | face, from, u: [a, b], v: [c, d] | vertices: [[x, y, bulge], ...], R: 10, group, qty, ev}]` (`vertices` = an exact CW loop, e.g. DATA) → one CW closed contour (4 tangent arcs when `R>0`), family `CUTOUT` (`qty` closes per `group`). `face/u/v` maps like a hole on a bent face (`u` along the face from its datum, `v` across from the flat edge). Refused: outside the material (CONTAINMENT), `R` > half the short side, overlapping a bend zone (bend lines must stop at the void: build by hand).

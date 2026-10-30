@@ -3,6 +3,11 @@
 
     python tools/dxf_partition.py digest.json --box X0 Y0 X1 Y1 --out draft.json      # or --view V02
     -> draft.json: {"members": [...], "unresolved": [...], "other": {...}}   (paste `members` into the dxf_assemble plan)
+    python tools/dxf_partition.py digest.json --box X0 Y0 X1 Y1 --plan --out plan.json
+    -> a whole dxf_assemble plan: members, every other piece excluded by its drawing style (centre / hidden / dimension
+       layer-0 colour-0 / noise / outside the box, notes start "auto ... confirm against the PDF") and `todo` = what only
+       the AI can decide (unresolved contours, rings concentric with a hole, unstyled pieces). Exit 1 while todo remains;
+       dxf_assemble refuses the plan until every todo piece is a member or an exclusion with a reason.
 
 Only geometry decides here, never a name or a note:
   * contour pieces = LINE / ARC / open native SPLINE-ELLIPSE, CONTINUOUS, not a dimension-style piece (layer 0, colour 0);
@@ -11,7 +16,7 @@ Only geometry decides here, never a name or a note:
     with its pieces - the AI decides what it is (a pad outline, an overlapped neighbour, ...);
   * CIRCLEs become `hole` members grouped by diameter (concentric pairs are listed as tap candidates);
   * everything else in the box is counted by (layer, colour, linetype, type) in `other` - exclusion reasons stay the AI's call.
-It never edits a piece and never writes a plan the assembler would accept without the exclusions the AI adds.
+It never edits a piece. A --plan exclusion is a drawing-style class only (never a size or a name); the AI confirms it.
 """
 from __future__ import annotations
 
@@ -138,13 +143,24 @@ def partition(digest: dict, box) -> dict:
     members = []
     loops.sort(key=lambda l: -l["area"])
     outer = next((l for l in loops if not l["stadium"]), None)
+    container = outer["poly"] if outer else None
+    bigger = []   # an unresolved component larger than every loop is the real outline: no outer guess, nest inside it
+    for u in unresolved:
+        xy = [q for s in segs if s["id"] in u["pieces"] for q in (s["start"], s["end"])]
+        x0, y0, x1, y1 = min(q[0] for q in xy), min(q[1] for q in xy), max(q[0] for q in xy), max(q[1] for q in xy)
+        if (x1 - x0) * (y1 - y0) > (outer["area"] if outer else 0):
+            bigger.append(((x1 - x0) * (y1 - y0), [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], u))
+    if bigger:
+        _, container, u = max(bigger, key=lambda b: b[0])
+        u["why"] += "; the largest contour: the outer outline, decide its pieces (no outer member guessed)"
+        outer = None
     if outer:
         members.append({"id": "OUT", "role": "outer", "pieces": outer["pieces"]})
     k_slot = k_cut = 0
     for l in loops:
         if l is outer:
             continue
-        if outer and not _inside(l["poly"][0], outer["poly"]):
+        if container and not _inside(l["poly"][0], container):
             unresolved.append({"pieces": l["pieces"], "why": "closed loop outside the outer contour"})
         elif l["stadium"]:
             k_slot += 1
@@ -169,6 +185,96 @@ def partition(digest: dict, box) -> dict:
             "tap_candidates": taps, "other": {"|".join(map(str, k)): v for k, v in sorted(other.items(), key=lambda kv: -kv[1])}}
 
 
+AUTO = "auto (dxf_partition --plan), confirm against the PDF: "
+CENTRE_LT = ("CENTER", "CENTER2", "CENTERX2", "DASHDOT", "DASHDOT2", "DASHDOTX2")
+HIDDEN_LT = ("DASHED", "DASHED2", "DASHEDX2", "HIDDEN", "HIDDEN2", "HIDDENX2", "PHANTOM", "PHANTOM2")
+
+
+def _where(p):
+    if p.get("bbox"):
+        b = p["bbox"]
+        return [[b[0], b[1]], [b[2], b[3]]]
+    if p.get("curve"):
+        return [p["curve"]["start"], p["curve"]["end"]]
+    return _pts(p)
+
+
+def _auto_class(p, centres, arc_centres=frozenset()):
+    """Exclusion class a job would give this leftover piece by its drawing style alone, else None (the AI decides)."""
+    lt = str(p.get("linetype", "")).upper()
+    if p["type"] == "ARC" and (round(p["center"][0], 3), round(p["center"][1], 3)) in centres:
+        return None   # concentric with a hole: tap nominal ring or not is the AI's call (HOLE_TAP.md §1)
+    if p.get("home") == "B_NOISE":
+        return "EXPLODED_TEXT_OR_DIM_NOISE", "digest noise bucket (exploded text / dimension strokes)"
+    if lt in CENTRE_LT:
+        return "CENTRE_OR_CONSTRUCTION", "centre line (linetype " + lt + ")"
+    if lt in HIDDEN_LT:
+        return "HIDDEN_OR_PROJECTION_ONLY", "hidden / projection line (linetype " + lt + "); a bend line -> member role bend"
+    if p.get("layer") == "0" and p.get("color") == 0 and p["type"] != "CIRCLE":
+        return "DIMENSION_GRAPHIC", "dimension arrow / leader (layer 0 colour 0)"
+    if p["type"] == "POINT" and (round(p["point"][0], 3), round(p["point"][1], 3)) in centres | arc_centres:
+        return "CENTRE_OR_CONSTRUCTION", "centre POINT of a hole / arc (a PIERCING point -> member role point)"
+    return None
+
+
+def draft_plan(digest: dict, box, origin=None) -> dict:
+    """A dxf_assemble plan for the part in `box`: the partition members, every other piece excluded by an automatic
+    style class (centre / hidden / dimension / noise / outside the box) and the rest in `todo` for the AI. dxf_assemble
+    refuses the plan until `todo` is empty (each todo piece moved to a member or an exclusion with a reason)."""
+    res = partition(digest, box)
+    members = res["members"]
+    used = {i for m in members for i in m["pieces"]}
+    pieces = {p["id"]: p for p in digest["pieces"]} | {u["id"]: u for u in digest["unsupported"]}
+    def in_box(p):
+        if p.get("bbox") or p.get("curve"):   # unsupported entity: wholly inside
+            return all(box[0] <= q[0] <= box[2] and box[1] <= q[1] <= box[3] for q in _where(p))
+        return bool(_pts(p)) and _in_box(p, box)
+    inside = {pid for pid, p in pieces.items() if in_box(p)}
+    nowhere = {pid for pid, p in pieces.items() if not _where(p)}
+    def centres_of(kind):
+        return {(round(p["center"][0], 3), round(p["center"][1], 3)) for pid, p in pieces.items()
+                if pid in inside and p.get("type") == kind}
+    centres, arc_centres = centres_of("CIRCLE"), centres_of("ARC")
+    excluded, todo, classes = [], [], defaultdict(list)
+    for v in digest["views"]:
+        ids = [i for i in v["piece_ids"] if i not in used and not pieces.get(i, {}).get("duplicate_of")]
+        if v["id"] == "B_NOISE":
+            excluded.append({"reason": "EXPLODED_TEXT_OR_DIM_NOISE", "bucket": "B_NOISE", "note": AUTO + "digest noise bucket"})
+        elif ids and not any(i in inside or i in nowhere for i in ids):
+            excluded.append({"reason": "VIEW_NOT_USED", "view": v["id"], "note": AUTO + "no piece inside this part's box"})
+        else:
+            for i in ids:
+                p = pieces[i]
+                if i in nowhere:
+                    classes[("OTHER", "unsupported entity without geometry (text / hatch / block), listed by the digest")].append(i)
+                elif i not in inside:
+                    classes[("OTHER", "outside this part's box (another view / part of the sheet)")].append(i)
+                elif "type" in p and p["type"] in ("LINE", "ARC", "CIRCLE", "POINT") and _auto_class(p, centres, arc_centres):
+                    classes[_auto_class(p, centres, arc_centres)].append(i)
+                else:
+                    todo.append(i)
+    for (reason, note), ids in classes.items():
+        excluded.append({"reason": reason, "note": AUTO + note, "pieces": sorted(ids)})
+    todo_set = set(todo)
+    items = [{"why": u["why"], "pieces": [i for i in u["pieces"] if i in todo_set]} for u in res["unresolved"]]
+    in_comp = {i for it in items for i in it["pieces"]}
+    groups = defaultdict(list)
+    for i in todo:
+        if i not in in_comp:
+            p = pieces[i]
+            groups[(p.get("type"), p.get("layer"), p.get("color"), p.get("linetype"))].append(i)
+    items += [{"why": "no style class: " + "|".join(map(str, k)), "pieces": sorted(v)} for k, v in groups.items()]
+    plan = {"source_sha256": digest["source"]["sha256"], "members": members, "excluded": excluded,
+            "todo": [it for it in items if it["pieces"]], "tap_candidates": res["tap_candidates"]}
+    outer = next((m for m in members if m["role"] == "outer"), None)
+    if origin is None and outer:
+        xy = [q for i in outer["pieces"] for q in _pts(pieces[i])]
+        origin = (min(q[0] for q in xy), min(q[1] for q in xy))
+    if origin is not None:
+        plan["transform"] = {"translate": [-origin[0], -origin[1]]}
+    return plan
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("digest")
@@ -176,9 +282,19 @@ def main(argv=None) -> int:
     g.add_argument("--box", nargs=4, type=float, metavar=("X0", "Y0", "X1", "Y1"))
     g.add_argument("--view", help="a view id of the digest (its bbox is the box)")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--plan", action="store_true", help="write a whole dxf_assemble plan (members + auto exclusions + todo)")
     a = ap.parse_args(argv)
     d = json.loads(Path(a.digest).read_text(encoding="utf-8-sig"))
     box = a.box or next(v["bbox"] for v in d["views"] if v["id"] == a.view)
+    if a.plan:
+        plan = draft_plan(d, box)
+        Path(a.out).write_text(json.dumps(plan, ensure_ascii=False, indent=1), encoding="utf-8")
+        print(json.dumps({"members": {m["id"]: len(m["pieces"]) for m in plan["members"]},
+                          "excluded": {f"{e['reason']} {e.get('view') or e.get('bucket') or ''}".strip():
+                                       len(e.get("pieces", [])) or "view" for e in plan["excluded"]},
+                          "todo": [{**t, "pieces": t["pieces"][:12], "n": len(t["pieces"])} for t in plan["todo"]]},
+                         ensure_ascii=False, indent=1))
+        return 0 if not plan["todo"] else 1
     res = partition(d, box)
     Path(a.out).write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps({"members": {m["id"]: len(m["pieces"]) for m in res["members"]}, "unresolved": len(res["unresolved"]),

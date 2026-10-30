@@ -33,7 +33,7 @@ python tools/benchmark_rule_routes.py
 JOB_CARD.md      cửa vào job CAD
 rules/           ROUTER.yaml, CENSUS.md (bảng từ khóa → thẻ) và các thẻ rule
 data/            bảng Nobi, Laser R/lỗ, ren, vòi dẫn, vật liệu, khách hàng (tool đọc)
-tools/           lookup, pdf_views, resolve_rules, run_job/build_canonical, export_canonical_dxf, slip, dwg_roles/dwg_to_dxf, job (make/ QA/ AI_L/), guard…
+tools/           lookup, pdf_views, scan_measure (scan estimate = Magenta FLAG only), resolve_rules, run_job/build_canonical, export_canonical_dxf, dxf_digest/dxf_partition/dxf_assemble, slip, dwg_roles/dwg_to_dxf, job (make/ QA/ AI_L/ clean), guard…
 examples/        spec mẫu cho tools/run_job.py
 templates/       CAD_OUTPUT_TEMPLATE.dxf
 regression/      bài học đã duyệt + fixture (không phải nguồn kích thước)

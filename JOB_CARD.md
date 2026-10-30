@@ -10,7 +10,7 @@ PDF / image / customer DXF DATA → canonical geometry JSON → verified DXF. `E
 5. **Always draw, never stop.** Every code drawn; an uncertain item = best source-supported estimate in Magenta + Vietnamese `FLAG:` + status PREVIEW. FLAG only real unknowns. Questions go in the report after the DXF.
 6. **Missing Nobi → `SPLIT_FLANGE_10MM`** + FLAG (non-90° without handwriting, no J, t or L not in the table).
 7. **No invention:** no bounding-rectangle placeholder, no borrowed neighbour dimension, no coordinate from a sample DXF, no mirror without proved partner/axis/scope.
-8. **Canonical JSON → `tools/export_canonical_dxf.py` (or `tools/run_job.py` for flat) → reopen the saved DXF.** Never write DXF with ezdxf yourself.
+8. **Spec / canonical JSON → `tools/run_job.py` (build → `export_canonical_dxf.py` → reopen the saved DXF).** Never write DXF with ezdxf yourself.
 9. **PASS only for checks actually run.**
 10. **DXF notes in Vietnamese** with diacritics; codes, entity IDs, file names and Japanese text verbatim.
 11. **Pair codes (対称) agree:** `tools/pair_consistency.py` before export.
@@ -25,14 +25,14 @@ PDF / image / customer DXF DATA → canonical geometry JSON → verified DXF. `E
 | L3 | validate, holistic challenge, pair check, export, read-back | `rules/VALIDATE.md`, `rules/OUTPUT.md` | `<JOB>_ALL.dxf` / `<JOB>_ALL_REVIEW_ONLY.dxf` → `job.py deliver` |
 | Report | per-code table, corrections, every FLAG, customer questions, time | `rules/OUTPUT.md` §8 | chat |
 
-One code at a time; keep proved work per code (a failure never forces redoing a proved code). After every code/stage run `job.py set <code> --stage .. --status .. [--flag ..] [--file key=path]`; after a compaction run `job.py status` and continue from the files. A census change → rerun `job.py census`.
+One code at a time; keep proved work per code (a failure never forces redoing a proved code). After every code/stage run `job.py set <code> --stage .. --status .. [--flag ..] [--file key=path]`; after a compaction run `job.py status` and continue from the files. A census change → rerun `job.py census`. A job-local script = a tool gap: name it in the report.
 
 ## Commands
 ```sh
-python tools/job.py init <JOB> [--source x.pdf]   # slip.py -> codes; then: status | set | census --set | qa | deliver | deliver-code
+python tools/job.py init <JOB> [--source x.pdf]   # slip.py -> codes; then: status | set | census --set/--from | qa | deliver | deliver-code | clean
 python tools/pdf_views.py info|render|text|crop|pairs drawing.pdf --page 1 [--dims] [--cells C3:E5] [--dpi 600] --out x.png
 python tools/resolve_rules.py census.json [--bundle rules.md]  # cards per stage + customer notes (job.py census wraps it)
-python tools/dxf_digest.py file.dxf [--out digest.json] [--png v.png]   # any DXF: views top-to-bottom, holes by Ø, R, piece ids
+python tools/dxf_digest.py file.dxf [--out digest.json] [--png v.png]   # any DXF: views, holes by Ø, R, piece ids; `show` zooms
 python tools/dxf_assemble.py digest.json plan.json --out assembled.json   # DATA pieces by id -> spec part `data: assembled.json`
 python tools/lookup.py nobi --material SPCC --t 1.6 --L 900 [--angle 135] [--surface "#1"] [--handwritten 0.36] [--no-j] [--customer 646]
 python tools/lookup.py laser-r --material SS400 --t 9 [--customer 768]
