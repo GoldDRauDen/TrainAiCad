@@ -40,7 +40,7 @@ Record every production note (printed, handwritten, revision): `text | scope cod
 
 ## 5. Revision / cancellation
 Precedence (high → low): latest revision note/cloud → red handwritten correction → explicit callout → detail → section → projection → implied DXF geometry → visual estimate.
-- Cancel only the struck callout/family/members the leader scopes; a struck tolerance does not delete the cut, but a struck locating-pin hole cancels all of its type. Keep cancelled members as `CANCELED` in the ledger, produce zero entities. Ambiguous strike-through → UNKNOWN + FLAG, never deletion.
+- Struck callout = cancelled (circled ② beside it = sure), all its members: draw nothing, spec `cancelled:` → ledger `CANCELED`, report note, no FLAG, can PASS. Struck tolerance/finish/chamfer (`4-C1`, `4-Ø16` stays) cancels only itself. Strike on no single callout → UNKNOWN + FLAG.
 
 ## 6. Customer
 Customer = the numeric code in JOB STATISTICS only (never a Japanese name, barcode or job-family 646). Absent/unlisted → general rules, no REVIEW. `resolve_rules.py` prints that customer's notes; tools apply its structured fields. Precedence per physical parameter: source handwriting/correction > customer exception > shop table. KH646 Nobi, KH851 weld KEGAKI, KH433 DATA tolerance live in their cards.
@@ -49,4 +49,4 @@ Customer = the numeric code in JOB STATISTICS only (never a Japanese name, barco
 Every source view, DATA member and note ends as a scoped member, an explicit drawing-only/helper/duplicate/cancelled item, or an unresolved member. A family YES/UNKNOWN with no group/member is not closed. Several barcodes / constituents ①② / weld relations in one view → `MULTI_PART.md`.
 
 ## Lessons
-`regression/lessons/READ_SOURCE/` — 520709-07 (two whole Ø8H7 holes cancelled; scope only), 521027-26 (locating pin).
+`regression/lessons/READ_SOURCE/` — 520709-07 (two whole Ø8H7 holes cancelled; scope only), 521027-26 (locating pin), 521030-16 (struck + ②).
