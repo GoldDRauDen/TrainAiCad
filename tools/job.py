@@ -8,6 +8,7 @@
     python tools/job.py census CODE [--job JOB] [--set HOLE=YES[:evidence] ...] [--rest NO] [--source-mode PDF_ONLY] [--part-mode BEND]
                                                    # resolve_rules on make/census_<CODE>.json -> cards per stage; --set edits the census first
     python tools/job.py deliver [JOB] [--dxf FILE] [--dest DIR]   # composite DXF -> <input folder>/AI_L/ (never overwrite: _v2, _v3)
+    python tools/job.py order [JOB]                # codes easiest first (from the census): the delivery order of an urgent job
     python tools/job.py deliver-code CODE [JOB] [--dest DIR]      # urgent jobs: this code's DXF -> AI_L/<CODE>.dxf as soon as it is drawn (_v2 on change)
     python tools/job.py qa [JOB] [--dest DIR]      # DWGs of the job: roles (tools/dwg_roles.py), DXF + digest into QA/
     python tools/job.py hook                       # SessionStart (compact/resume) hook: status of an open job, else silent
@@ -216,13 +217,13 @@ def _is_job_dir(name: str, job: str) -> bool:
 def input_dir(job: str, sources: list[str], dest: str | None = None) -> Path:
     """Where the job was received: the source folder named after the job, else its unique sibling."""
     if dest:
-        return Path(dest)
+        return slip_mod.norm_path(dest)
     for src in sources:
-        folder = Path(src).parent
+        folder = slip_mod.norm_path(src).parent
         if folder.is_dir() and _is_job_dir(folder.name, job):
             return folder
     for src in sources:
-        sibs = [d for d in Path(src).parent.parent.glob("*") if d.is_dir() and _is_job_dir(d.name, job)]
+        sibs = [d for d in slip_mod.norm_path(src).parent.parent.glob("*") if d.is_dir() and _is_job_dir(d.name, job)]
         if len(sibs) == 1:
             return sibs[0]
     raise SystemExit(f"input folder of job {job} unclear (sources: {sources}): pass --dest DIR")
@@ -348,6 +349,51 @@ def qa_prepare(job: str | None, dest: str | None = None) -> dict:
     return roles
 
 
+_FAMILY_WEIGHT = {"HOLE": 1, "TAP": 2, "PIASU": 1, "SLOT_STRAIGHT": 2, "CURVED_SLOT": 3, "KEGAKI": 3, "RIB": 3,
+                  "FORMING_FEATURES": 4, "SLIT_RELIEF": 1, "ACUTE_BEND_LT85": 3, "BOXMET": 3}
+_MODE_WEIGHT = {"FLAT_NO_BEND": 0, "BEND": 3, "MULTI_FACE": 5, "UNKNOWN": 4}
+
+
+def difficulty(census: dict) -> tuple[float, list[str]]:
+    """Rough effort of one code from its census (lower = draw first): bend mode, families YES (UNKNOWN counts half), assembly."""
+    why = []
+    score = _MODE_WEIGHT.get(census.get("part_mode"), 4)
+    why.append(f"{census.get('part_mode')}={score}")
+    for fam, v in (census.get("features") or {}).items():
+        w = _FAMILY_WEIGHT.get(fam, 1) * {"YES": 1.0, "UNKNOWN": 0.5}.get(v.get("state"), 0.0)
+        if w:
+            score += w
+            why.append(f"{fam}:{v['state']}")
+    if census.get("multi_code_or_assembly") == "YES":
+        score += 2
+        why.append("assembly")
+    if census.get("source_mode") == "PDF_DATA_RAW":
+        score += 1
+        why.append("DATA")
+    unresolved = sum(n.get("resolution") == "UNRESOLVED" for n in census.get("source_manufacturing_notes", []))
+    if unresolved:
+        score += unresolved
+        why.append(f"{unresolved} note UNRESOLVED")
+    return score, why
+
+
+def order(job: str | None = None) -> list[dict]:
+    """Codes of the job, easiest first (urgent jobs deliver in this order): from the filled census, ties by slip order."""
+    d, state = load(job)
+    rows = []
+    for i, (code, c) in enumerate(state["codes"].items()):
+        f = d / c["files"].get("census", f"{MAKE}/census_{code}.json")
+        try:
+            score, why = difficulty(json.loads(f.read_text(encoding="utf-8-sig")))
+        except OSError:
+            score, why = 99.0, ["no census"]
+        rows.append({"code": code, "score": score, "why": why, "stage": c["stage"], "slip_index": i})
+    rows.sort(key=lambda r: (r["stage"] == "DONE", r["score"], r["slip_index"]))
+    state["order"] = [r["code"] for r in rows]
+    _write(d / "job_state.json", state)
+    return rows
+
+
 def summary(job: str | None = None) -> str:
     d, state = load(job)
     head = _head()
@@ -423,6 +469,8 @@ def main(argv=None) -> int:
     v.add_argument("job", nargs="?")
     v.add_argument("--dxf", help="composite DXF (default: newest <JOB>_ALL[_REVIEW_ONLY].dxf under the work dir)")
     v.add_argument("--dest", help="input folder (default: the job folder named 52xxxx-xx next to the sources)")
+    o = sub.add_parser("order")
+    o.add_argument("job", nargs="?")
     dc = sub.add_parser("deliver-code")
     dc.add_argument("code")
     dc.add_argument("job", nargs="?")
@@ -442,6 +490,9 @@ def main(argv=None) -> int:
         print(summary(a.work or a.job))
     elif a.cmd == "deliver":
         deliver(a.job, a.dxf, a.dest)
+    elif a.cmd == "order":
+        for r in order(a.job):
+            print(f"{r['score']:5.1f}  {r['code']}  {r['stage']}  {', '.join(r['why'])}")
     elif a.cmd == "deliver-code":
         deliver_code(a.job, a.code, a.dest)
     elif a.cmd == "qa":

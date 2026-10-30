@@ -15,6 +15,7 @@ Job level: `job_id`, optional `customer_code` (numeric, JOB STATISTICS) — its 
 | `outline` | corners **counter-clockwise**; items below |
 | `holes`, `slots` | features with their dimension chains |
 | `flags` | Vietnamese FLAG lines → status PREVIEW; a note at the right of the part, the geometry keeps its colour (only for a real unknown, `rules/OUTPUT.md` §5) |
+| `drawing_material` | material printed on the drawing when `material` is the slip's: a different family (SS/SUS/AL/CU) adds the FLAG line automatically, the same family is silent |
 | `estimate: true` | the whole blank is an estimate (no printed size): outline Magenta; needs a `flags:` line |
 | `mirror_of: {code, axis, ev}` | 対称 / 反対勝手 partner: this part = the mirror of sibling `code` in the same file (`axis: y` → y' = H − y, `x` → x' = W − x); other keys of the partner replace the mirrored ones; `pair_consistency` runs on the pair. Bent: only across the flat axis perpendicular to the chain; slots, cut-outs, KEGAKI, notch patterns, DATA and two-axis parts are refused (`MIRROR_UNSUPPORTED`: hand part) |
 | `jlj_edge` | `auto` (default) / `top` / `bottom` |

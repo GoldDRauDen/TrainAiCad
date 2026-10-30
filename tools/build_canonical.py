@@ -576,6 +576,11 @@ def build_part(spec, customer=None):
             fail(f"{code}: a native SPLINE/ELLIPSE contour segment is not supported on a bent part")
         ents[0]["curves"] = curve_list
     groups, members, inventory, flags = [], [], [], list(spec.get("flags") or [])
+    if spec.get("drawing_material"):       # `material` is the slip's; a different family on the drawing is a FLAG
+        from material_resolver import material_check
+        mc = material_check(material, str(spec["drawing_material"]))
+        if mc["flag_vi"]:
+            flags.append(mc["flag_vi"])
     groups.append({"group_id": f"{p}_G_OUTER", "family": "OUTER", "status": "PROVED", "source_quantity": 1,
                    "evidence": "closed outer profile", "members": [{"member_id": f"{p}_OUTER", "status": "PROVED"}]})
     members.append({"canonical_member_id": f"CM_{p}_OUTER", "origin": "SOURCE", "source_member_id": f"{p}_OUTER",

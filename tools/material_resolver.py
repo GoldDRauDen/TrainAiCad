@@ -85,3 +85,28 @@ def resolve_material(printed: str, process: str = "LASER_R") -> dict:
         "source_cell": f"一覧表2026.07.30!{cell}",
         "hairline": is_hairline(printed),
     }
+
+
+def material_info(text) -> dict:
+    """Family of a printed/slip material text (`304-2B**`, `SPHCP(酸洗)`): {material_text, family, surface[, unresolved]}."""
+    text = unicodedata.normalize("NFKC", text).strip() if isinstance(text, str) else ""
+    base = re.sub(r"\*+$", "", text).strip()
+    info = {"material_text": text, "family": None,
+            "surface": "#1" if "#1" in base else ("HL" if is_hairline(base) else None)}
+    try:
+        info["family"] = resolve_material(base)["material_family"]
+    except MaterialResolveError:
+        info["unresolved"] = True
+    return info
+
+
+def material_check(slip_text, drawing_text) -> dict:
+    """The slip material wins; a different FAMILY on the drawing is a FLAG (flag_vi), the same family is silent."""
+    s, d = material_info(slip_text), material_info(drawing_text)
+    out = {"slip_family": s["family"], "drawing_family": d["family"], "flag_vi": None}
+    if s["family"] and d["family"] and s["family"] != d["family"]:
+        out["flag_vi"] = (f"Vật liệu phiếu {slip_text} ({s['family']}) khác bản vẽ {drawing_text} ({d['family']}): "
+                          "dùng vật liệu phiếu, cần xác nhận khách")
+    elif not s["family"] or not d["family"]:
+        out["flag_vi"] = f"Không xác định nhóm vật liệu ({slip_text} / {drawing_text}): kiểm tra phiếu"
+    return out

@@ -26,7 +26,7 @@ from pathlib import Path
 import openpyxl
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from material_resolver import MaterialResolveError, is_hairline, resolve_material  # noqa: E402
+from material_resolver import material_check, material_info  # noqa: E402,F401  (material_check re-exported)
 
 URGENT_TAGS = ("EXPRESS", "とても急ぎます")
 HEADER_ROW, FIRST_ROW = 4, 6
@@ -75,17 +75,6 @@ def _columns(ws) -> dict:
     return cols
 
 
-def material_info(text) -> dict:
-    text = _clean(text) or ""
-    base = re.sub(r"\*+$", "", text).strip()
-    info = {"material_text": text, "family": None, "surface": "#1" if "#1" in base else ("HL" if is_hairline(base) else None)}
-    try:
-        info["family"] = resolve_material(base)["material_family"]
-    except MaterialResolveError:
-        info["unresolved"] = True
-    return info
-
-
 def read_slip(path) -> dict:
     f = find_slip(path)
     wb = openpyxl.load_workbook(f, data_only=True, read_only=False)
@@ -112,18 +101,6 @@ def read_slip(path) -> dict:
 def is_urgent(tag) -> bool:
     t = unicodedata.normalize("NFKC", str(tag or "")).upper().replace(" ", "")
     return any(u.upper().replace(" ", "") in t for u in URGENT_TAGS)
-
-
-def material_check(slip_text, drawing_text) -> dict:
-    """The slip material wins; a different family on the drawing is a FLAG, the same family is silent."""
-    s, d = material_info(slip_text), material_info(drawing_text)
-    out = {"slip_family": s["family"], "drawing_family": d["family"], "flag_vi": None}
-    if s["family"] and d["family"] and s["family"] != d["family"]:
-        out["flag_vi"] = (f"Vật liệu phiếu {slip_text} ({s['family']}) khác bản vẽ {drawing_text} ({d['family']}): "
-                          "dùng vật liệu phiếu, cần xác nhận khách")
-    elif not s["family"] or not d["family"]:
-        out["flag_vi"] = f"Không xác định nhóm vật liệu ({slip_text} / {drawing_text}): kiểm tra phiếu"
-    return out
 
 
 def table(slip: dict) -> str:
