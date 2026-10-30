@@ -9,7 +9,7 @@ Ledger contract: every manufacturing callout → `source_group` (id, family, sta
 
 ## 2. Package
 - Default: ONE `<JOB>_ALL.dxf` if every code is PASS, else `<JOB>_ALL_REVIEW_ONLY.dxf` (all codes, warnings intact). `<JOB>` = slip order number (注番), e.g. `520928-06`. No JSON output (`--write-manifest` only for debug).
-- Delivery (default, E2E only): once the saved DXF has been reopened, `python tools/job.py deliver` copies the composite into the job's input folder (name starts with the `52xxxx-xx` job number, the tail is ignored). Never overwrite: an existing name gets `_v2`, `_v3`…; identical content is not copied again.
+- Delivery (E2E): into `<input folder>/AI_L/` (folder name starts with the `52xxxx-xx` job number, the tail is ignored); never overwrite (`_v2`, `_v3`…; identical content is skipped). Default job: the composite via `job.py deliver`. Urgent job (slip tag Express / とても急ぎます, easy codes first): each code as soon as it is drawn via `job.py deliver-code CODE` (`<CODE>.dxf`, PREVIEW codes too, same form as the composite), the composite at the end. Work files: `.work/<JOB>/make/` (ours), `QA/` (DWG side).
 - Individual cuts only with `--individual-dxf`: `parts_dxf/<slip-no>.dxf` for verified PASS codes, CUT only (LINE/ARC/CIRCLE; no POINT/BEND/KEGAKI/labels). Another code's REVIEW never suppresses a PASS cut.
 - **Code = 作業No on the delivery slip verbatim** (`26-056522`, never `056522`); slip vs barcode mismatch → slip wins, reported. Slip サイズ X/Y is a plausibility check only.
 
@@ -38,7 +38,7 @@ All geometry on Layer 0 (template `templates/CAD_OUTPUT_TEMPLATE.dxf`, mm): cut 
 - No bend: the visible top face is the outer face. Rib/emboss/checker face (縞板/エンボス) → the opposite face is outer. 表 = outer; 保護面 only when a protective film is marked. The KEGAKI face is the outer face.
 - Decide inner/outer by comparing section/lower views of sibling codes; never assume outer. A part drawn from its INNER face gets `dx_label: true` (label h20, 23 mm left of the outline, vertically centred; geometry unchanged); outer face → none.
 - View face ≠ the face carrying the KEGAKI (the mate is hidden-line or lies on the far side; at a crossing the continuous outline is the upper part) → inner-face drawing, `dx_label: true`.
-- 対称 partner: reuse the sibling geometry mirrored (either axis, e.g. flat plate `x' = W − x`), `dx_label: false`; a sibling that carries `dx` → the partner keeps its coordinates, translated only.
+- 対称 partner: reuse the sibling geometry mirrored (either axis, e.g. flat plate `x' = W − x`; spec `mirror_of: {code, axis}` + `pair_consistency`), `dx_label: false`; a sibling that carries `dx` → the partner keeps its coordinates, translated only.
 
 ## 7. Layout and cut pose (the exporter does both)
 Parts top-to-bottom in page-1 order, ≥150 mm apart, labels on AI_META; source views of one code 10 mm apart. Individual PASS cuts (on request): bbox X ≥ Y, proved HL grain along X, never mirrored/scaled.
@@ -48,4 +48,4 @@ Parts top-to-bottom in page-1 order, ≥150 mm apart, labels on AI_META; source 
 AutoLISP only on explicit request, generated from the same canonical entities.
 
 ## Lessons
-`regression/lessons/OUTPUT/` — 521027-26 (short FLAGs), 521005-05 (members lost before DXF), 521015-04 (dx = inner face, 対称 mirrored), 521028-22 (対称 of a dx part), 521020-08 (Vietnamese notes), 521026-13 (one circle), 521023-09 (local FLAG), 520625-15 (draw → flag → confirm), CAD_OUTPUT_TEMPLATE_SAMPLE, DXF_SINGLE_COMPOSITE, DXF_DUAL_EXPORT.
+`regression/lessons/OUTPUT/` — 521027-26 (short FLAGs), 521005-05 (members lost before DXF), 521015-04 (dx = inner face, 対称 mirrored), 521028-22 (対称 of a dx part), 521020-08 (Vietnamese notes), 521026-13 (one circle), 521023-09 (local FLAG), 520625-15 (draw → flag → confirm), CAD_OUTPUT_TEMPLATE_SAMPLE, DXF_SINGLE_COMPOSITE, DXF_DUAL_EXPORT, 521030-10 (AI_L delivery, per-code urgent flow, mirror partner).

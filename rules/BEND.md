@@ -16,6 +16,7 @@ Records per part (keep in the ledger file):
 
 ## 2. Faces need bend evidence
 - A slope, step, R/C or silhouette break is NOT a bend. New face only with positive evidence: bend/J/Nobi callout, section/side view with two planes, formed-edge/thickness lines, unique projection, authoritative DATA.
+- One outline for an edge-on plate and a face-on ear proves neither: UNKNOWN, use function cues (a welded bar needs a face) and notes (三方曲げ), ask.
 - SAME_FACE_FIRST: first try one planar face with a complex contour. Both models possible → unresolved.
 - Lock the local bend domain: a flange may span only part of the width (521005-02: bend 555 long on a 1025 part). Bend lines only where material crosses the shared edge; split around notches, reliefs, voids.
 - Theoretical-sharp overall vs physical R/C bbox: compare each to its own geometry; never sharpen the R to match a bbox.
@@ -60,4 +61,4 @@ Replay the flat through the signed graph: face sizes, adjacency, the SAME attach
 Leg shorter than the selected V die's L_min/Z_min (`python tools/lookup.py tooling --material M --t T`) → WARN, never resize. SS t4.5 V18 is `要確認`.
 
 ## Lessons
-`regression/lessons/BEND/` — 520929-25 (order/domain/Z), 521005-02 (face evidence, local domain), 521006-18 (attachment edge, formed OD), 521016-13 (step from hole row), 521019-05 (projection, notch wall, stacked, C at bend), 521021-06 (ortho OD), 521023-14 (weld→bend), 521026-13 (end-face dims, leg), 520315-18 (inside view), 520925-03 HD1, 520317-09.
+`regression/lessons/BEND/` — 520929-25 (order/domain/Z), 521005-02 (face evidence, local domain), 521006-18 (attachment edge, formed OD), 521016-13 (step from hole row), 521019-05 (projection, notch wall, stacked, C at bend), 521021-06 (ortho OD), 521023-14 (weld→bend), 521026-13 (end-face dims, leg), 520315-18 (inside view), 520925-03 HD1, 520317-09, 521030-10 (ear vs plate).

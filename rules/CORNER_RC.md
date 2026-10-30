@@ -12,6 +12,7 @@ Triggers: `R5`, `C2`, `n-R`, `n×m-R`, `面取り`, `角R`, `指示無き角部�
 - Semicircular notch/groove bottom whose width W is proved = R W/2; read `n×m-R` by source grouping (010421: width 6, `2×2-R` = 4×R3; `2×4-R1` = 8 mouth R1).
 - Drawn R/C with no callout and no general note → `FLAG` row (keep the drawn shape as preview), never auto-rounded.
 - A general note for uncalled corners (「指示無き角部はC0.5程度の面取り」) = the shop Laser R → AUTO_R, no FLAG.
+- A small chamfer drawn like the called C corners but with no callout of its own (notch mouth) = sibling CALLED + one FLAG line to confirm with the customer.
 - C beside a bend: see `BEND.md` §7.
 
 ## 3. Automatic Laser R (`python tools/lookup.py laser-r --material M --t T [--customer CODE]`)
@@ -26,4 +27,4 @@ Triggers: `R5`, `C2`, `n-R`, `n×m-R`, `面取り`, `角R`, `指示無き角部�
 Bake R into tangent points + bulge (`tan(sweep/4)`, 90° → 0.41421356, sign from the sweep); C as two offset vertices with bulge 0. Flat spec corner items: `[x,y]` (AUTO), `[x,y,{R|C: v, group, qty, ev}]`, `[x,y,{SHARP: "lý do"}]`, `[x,y,{FLAG: "…"}]`.
 
 ## Lessons
-`regression/lessons/CORNER_RC/` — 520924-19 (workbook, 055955 two R2), 520801-04 (044841 10×R5), 520929-18 (C/R lock), 520217-26/27, 521023-16 (general note, sibling C1), 521028-17 (≤93°).
+`regression/lessons/CORNER_RC/` — 520924-19 (workbook, 055955 two R2), 520801-04 (044841 10×R5), 520929-18 (C/R lock), 520217-26/27, 521023-16 (general note, sibling C1), 521028-17 (≤93°), 521030-10 (undimensioned notch-mouth chamfer).

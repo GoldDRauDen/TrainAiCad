@@ -1,4 +1,4 @@
-"""Delivery of the composite DXF to the job's input folder (OUTPUT.md §2): no overwrite, _v2, 52xxxx-xx folder match."""
+"""Delivery of the composite DXF to <input folder>/AI_L (OUTPUT.md §2): no overwrite, _v2, 52xxxx-xx folder match."""
 import json
 import sys
 from pathlib import Path
@@ -33,13 +33,15 @@ def setup(tmp_path):
 def test_delivers_to_the_folder_named_after_the_job_then_versions(setup):
     _, inbox, work = setup
     make_dxf(work / "out" / f"{JOB}_ALL.dxf", 5)
-    assert jobmod.deliver(str(work)) == inbox / f"{JOB}_ALL.dxf"
+    ai_l = inbox / "AI_L"
+    assert jobmod.deliver(str(work)) == ai_l / f"{JOB}_ALL.dxf"
     assert jobmod.deliver(str(work)) is None                     # identical content: nothing new
     make_dxf(work / "out" / f"{JOB}_ALL.dxf", 6)
-    assert jobmod.deliver(str(work)) == inbox / f"{JOB}_ALL_v2.dxf"
+    assert jobmod.deliver(str(work)) == ai_l / f"{JOB}_ALL_v2.dxf"
     make_dxf(work / "out" / f"{JOB}_ALL.dxf", 7)
-    assert jobmod.deliver(str(work)) == inbox / f"{JOB}_ALL_v3.dxf"
-    assert ezdxf.readfile(inbox / f"{JOB}_ALL.dxf").modelspace()[0].dxf.radius == 5   # first delivery untouched
+    assert jobmod.deliver(str(work)) == ai_l / f"{JOB}_ALL_v3.dxf"
+    assert ezdxf.readfile(ai_l / f"{JOB}_ALL.dxf").modelspace()[0].dxf.radius == 5   # first delivery untouched
+    assert not list(inbox.glob("*.dxf"))                         # nothing lands next to the sources
 
 
 def test_source_path_without_the_tail_finds_the_unique_sibling_folder(setup):
@@ -48,7 +50,7 @@ def test_source_path_without_the_tail_finds_the_unique_sibling_folder(setup):
     state["sources"] = [str(day / JOB / f"{JOB}.pdf")]             # tail missing in the given path
     (work / "job_state.json").write_text(json.dumps(state), encoding="utf-8")
     make_dxf(work / "out" / f"{JOB}_ALL_REVIEW_ONLY.dxf", 5)
-    assert jobmod.deliver(str(work)) == inbox / f"{JOB}_ALL_REVIEW_ONLY.dxf"
+    assert jobmod.deliver(str(work)) == inbox / "AI_L" / f"{JOB}_ALL_REVIEW_ONLY.dxf"
 
 
 def test_other_job_folder_is_not_a_match_and_unclear_destination_stops(setup):

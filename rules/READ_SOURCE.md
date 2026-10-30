@@ -13,7 +13,7 @@ OCR, filenames, bbox, entity counts, symmetry and familiar shapes are search hin
 Job family 646 (not customer 646) expects DATA: absent → `DATA_REQUIRED_MISSING`, ask, no production geometry for it.
 
 ## 2. Read sequence
-1. Map codes, pages, views; lock code, material (as printed), thickness, revision before any table lookup.
+1. Map codes, pages, views; lock code, material, thickness, revision before any table lookup.
 2. `pdf_views.py render` (grid) → `text --dims` (vector values, exact) → `crop --dpi 600` where witness lines/leaders/handwriting decide meaning. Scanned page: read every value twice from two crops. Close same-axis dims (70/65): ≥900 dpi, name the edge each extension line touches; after building run `overlay_check.py` (≥3 anchors, ≤1 mm).
 3. Trace the real contour first (steps, notches, R/C, openings). Census EVERY notch/cut-out: built, cancelled (reason) or FLAG with coordinates — never dropped.
 4. Each used dimension → ledger row with both witness endpoints (`DATUM.md`).

@@ -31,6 +31,7 @@ groups:
     "焼入れリボン鋼": A47
   SUS:
     "SUS": C28
+    "304": C28
     "301": C34
     "430": C35
     "304CSP": C36
@@ -48,6 +49,7 @@ groups:
   CU_BRASS:
     "銅": E48
     "真ちゅう": E46
+    "真鍮": E46
     "BRASS": E46
     "CU": E48
   OTHER:

@@ -20,5 +20,9 @@ Compare the two DXFs first (`tools/dxf_digest.py` on both gives parts top-to-bot
 - Exact printed inputs get no tolerance; only derived values may differ by strictly < 0.01 mm.
 - Exact duplicate sample entities → normalise for counting, report `REFERENCE_ANOMALY`.
 
+## 5. Job-folder files and colours
+- DWG `<JOB>-<creator>[ -]<checker>.dwg` (`tools/dwg_roles.py`): a checker token (t = Thanh, h = Hiếu, `hcheck`) = checked SAMPLE; none = the file to QA; no name = Thanh drew it. Read a DWG with `job.py qa` (`tools/dwg_to_dxf.py`) → `QA/`.
+- Checked sample colours: red dimension text = FLAG for the customer, red outline = KEGAKI, yellow outline = guide line (not cut); any other text colour: ask whether it is a FLAG or only a highlight. `*→質問.pdf` = the questions already sent to the customer.
+
 ## Lessons
-`regression/lessons/REFERENCE/` — 520217-26 (direct audit), 520315-18 (units), 521007-07 (firewall), 521016-13 (sample audit), 520925-03 (reference-assisted).
+`regression/lessons/REFERENCE/` — 520217-26 (direct audit), 520315-18 (units), 521007-07 (firewall), 521016-13 (sample audit), 520925-03 (reference-assisted), 521030-10 (DWG roles, sample colours).

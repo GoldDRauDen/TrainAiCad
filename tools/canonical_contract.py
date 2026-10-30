@@ -216,7 +216,14 @@ def validate_canonical_job(job: dict) -> dict:
         customer_code = str(int(str(raw_customer_code).strip()))
     else:
         customer_code = None
-    records = [validate_part(part, customer_code=customer_code) for part in parts]
+    def part_customer(part):   # a slip lists several customers per job: the part's own code wins
+        raw = part.get("customer_code")
+        if raw is None:
+            return customer_code
+        if isinstance(raw, bool) or not str(raw).strip().isdigit():
+            fail("part customer_code must be the numeric code from job statistics")
+        return str(int(str(raw).strip()))
+    records = [validate_part(part, customer_code=part_customer(part)) for part in parts]
     from material_resolver import is_hairline, resolve_material, MaterialResolveError
     for part in parts:
         code = part["code"]

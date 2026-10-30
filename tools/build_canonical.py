@@ -19,6 +19,7 @@ Never writes DXF; export with tools/export_canonical_dxf.py (or tools/run_job.py
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import math
 import re
@@ -562,6 +563,10 @@ def build_part(spec, customer=None):
     p = code
     eo = f"E_{p}_OUT"
     ents = [{"entity_id": eo, "type": "LWPOLYLINE", "role": "outer", "closed": True, "vertices": verts}]
+    if spec.get("estimate"):         # the whole blank is an estimate (no printed size): Magenta outline + a flags: line
+        if not spec.get("flags"):
+            fail(f"{code}: estimate: true needs a flags: line saying what is estimated")
+        ents[0]["color"] = 6
     flag_segments = _flag_segment_indices(verts, decisions)
     if flag_segments:
         ents[0]["flag_segments"] = flag_segments
@@ -1100,17 +1105,38 @@ def _add_jlj_marks(part):
 def build_job(spec):
     if not isinstance(spec, dict) or not spec.get("parts"):
         fail("spec needs job_id and parts")
-    job = {"canonical_contract": CONTRACT, "job_id": str(spec.get("job_id") or fail("job_id required")),
-           "parts": [build_part(ps, spec.get("customer_code")) for ps in spec["parts"]]}
+    import mirror_part
+    raw = copy.deepcopy(spec["parts"])           # a mirror partner reads its source before the source build edits it
+    sources = {str(r.get("code")): r for r in raw if isinstance(r, dict) and "mirror_of" not in r}
+    parts, mirrors = [], []
+    for ps, r in zip(spec["parts"], raw):
+        if isinstance(ps, dict) and "mirror_of" in ps:
+            try:
+                ps = mirror_part.expand_part(r, sources)
+            except mirror_part.MirrorError as exc:
+                fail(str(exc))
+            mirrors.append((str(r["mirror_of"]["code"]), str(r["code"]), str(r["mirror_of"]["axis"]).lower()))
+        cust = ps.get("customer_code", spec.get("customer_code"))
+        part = build_part(ps, None if cust is None else str(cust))
+        if cust is not None:
+            part["customer_code"] = str(cust)
+        parts.append(part)
+    job = {"canonical_contract": CONTRACT, "job_id": str(spec.get("job_id") or fail("job_id required")), "parts": parts}
     if spec.get("customer_code") is not None:
         job["customer_code"] = str(spec["customer_code"])
+    if mirrors:
+        import pair_consistency
+        for source, code, axis in mirrors:
+            res = pair_consistency.check_pair(job, source, code, mirror=axis)
+            if res.get("differences"):
+                fail(f"MIRROR_PAIR_DIFF {source} / {code} (mirror {axis}): {res['differences'][:3]}")
     return job
 
 
 def build_from_files(paths):
     """One job from several files in page-1 order: build specs (YAML/JSON) and hand-written canonical job
     JSON (``canonical_contract`` set, e.g. tools/boxmet_job.py output) are merged part by part."""
-    job, seen = None, set()
+    job, seen, customers = None, set(), set()
     for path in paths:
         data = load_spec(path)
         if not isinstance(data, dict):
@@ -1123,13 +1149,14 @@ def build_from_files(paths):
             part_job = build_job(data)
         if job is None:
             job = {"canonical_contract": CONTRACT, "job_id": str(part_job.get("job_id")), "parts": []}
-            if part_job.get("customer_code") is not None:
-                job["customer_code"] = str(part_job["customer_code"])
         if str(part_job.get("job_id")) != job["job_id"]:
             fail(f"{path}: job_id {part_job.get('job_id')} != {job['job_id']} (one job per DXF)")
-        cust = part_job.get("customer_code")
-        if (None if cust is None else str(cust)) != job.get("customer_code"):
-            fail(f"{path}: customer_code {cust} != {job.get('customer_code')} (set it in every file)")
+        file_cust = part_job.get("customer_code")
+        file_cust = None if file_cust is None else str(file_cust)
+        for part in part_job["parts"]:     # each part keeps its own customer (a slip lists several customers per job)
+            if file_cust is not None and part.get("customer_code") is None:
+                part["customer_code"] = file_cust
+        customers.add(file_cust)
         for part in part_job["parts"]:
             if part["code"] in seen:
                 fail(f"{path}: duplicate part code {part['code']}")
@@ -1137,6 +1164,8 @@ def build_from_files(paths):
             job["parts"].append(part)
     if job is None:
         fail("no input files")
+    if len(customers) == 1 and None not in customers:   # job level only when every file names the same customer
+        job["customer_code"] = customers.pop()
     return job
 
 

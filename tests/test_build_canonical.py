@@ -181,7 +181,7 @@ def test_run_job_default_work_dir_is_outside_the_spec_folder(tmp_path, monkeypat
     before = sorted(p.name for p in EXAMPLE.parent.iterdir())
     assert run_job.main([str(EXAMPLE), str(tmp_path / "OUT")]) == 0
     assert sorted(p.name for p in EXAMPLE.parent.iterdir()) == before
-    assert (tmp_path / ".work" / "EXAMPLE-FLAT" / "EXAMPLE-FLAT_report.md").is_file()
+    assert (tmp_path / ".work" / "EXAMPLE-FLAT" / "make" / "EXAMPLE-FLAT_report.md").is_file()
 
 
 def _split_spec(tmp_path, code, job_id="J-MULTI"):

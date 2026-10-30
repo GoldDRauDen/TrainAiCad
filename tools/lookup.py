@@ -15,7 +15,8 @@ module parses them, so editing a table there changes the lookup result here.
     python tools/lookup.py countersink --thread M6
     python tools/lookup.py tooling --material SPCC --t 3
     python tools/lookup.py idod --t 3 --angle 165
-    python tools/lookup.py unfold --od 410.8 20.8 175 --nobi 1.68 0.36
+    python tools/lookup.py unfold --od 410.8 20.8 175 --nobi 1.68 0.36      # also the [start, end] range of every face
+    python tools/lookup.py slant --width 70 --rise 70 --opening 5 --t 1.5      # slanted plate from a side section (521030-10)
 
 Every result is JSON. ``status`` is ``OK`` or ``FLAG``; a FLAG carries
 ``flag_vi`` (Vietnamese text for the DXF FLAG line) and the ``action`` the
@@ -484,6 +485,9 @@ def leg(a: float, b: float, t: float, angle: float, nobi: float | None = None) -
 
 
 def unfold(od: list[float], nobi_values: list[float]) -> dict:
+    """Bend lines and the [start, end] flat range of every face. A face dimensioned outer-plane to outer-plane (OD) spans exactly
+    its OD there: its free edge toward a bend-less neighbour sits at start/end, i.e. ON the narrow neighbour's side bend line
+    (S = 0), never one Nobi short of it (rules/SLIT_RELIEF.md §3)."""
     if len(nobi_values) != len(od) - 1:
         raise LookupError_("need len(nobi) == len(od) - 1")
     lines = []
@@ -491,7 +495,33 @@ def unfold(od: list[float], nobi_values: list[float]) -> dict:
         lines.append({"bend": k,
                       "line1": r2(sum(od[:k]) - sum(nobi_values[:k])),
                       "line2": r2(sum(od[:k]) - sum(nobi_values[:k - 1]))})
-    return {"status": "OK", "flat_length": r2(sum(od) - sum(nobi_values)), "bend_lines": lines}
+    total = r2(sum(od) - sum(nobi_values))
+    faces = []
+    for k, face_od in enumerate(od):
+        start = 0.0 if k == 0 else lines[k - 1]["line1"]
+        end = total if k == len(od) - 1 else lines[k]["line2"]
+        faces.append({"face": k + 1, "od": face_od, "start": start, "end": end})
+    return {"status": "OK", "flat_length": total, "bend_lines": lines, "faces": faces}
+
+
+def slant(width: float, rise: float, opening: float, t: float, wall_t: float | None = None) -> dict:
+    """Slanted plate in a side section: it leaves the far wall's outer-bottom corner (x = width, apex) and ends `rise` below it,
+    its inner tip `opening` from the near wall's inner face (x = wall_t + opening). The tip's end face is square to the plate, so
+    x_outer_tip = wall_t + opening + t*cos(a) with tan(a) = (width - x_outer_tip) / rise (a from vertical). Solved by iteration.
+    included angle = 180 - a (the bend between the vertical wall and the slant); length = outer face from apex to tip."""
+    import math
+    wall_t = t if wall_t is None else wall_t
+    x = wall_t + opening
+    for _ in range(100):
+        a = math.atan2(width - x, rise)
+        nx = wall_t + opening + t * math.cos(a)
+        if abs(nx - x) < 1e-12:
+            break
+        x = nx
+    a_deg = math.degrees(a)
+    return {"status": "OK", "x_outer_tip": r2(x), "angle_from_vertical": round(a_deg, 3),
+            "included_angle": round(180 - a_deg, 3), "outer_length": r2(math.hypot(width - x, rise)),
+            "run": r2(width - x), "tip_offset_x": r2(t * math.cos(a)), "tip_offset_y": r2(t * math.sin(a))}
 
 
 # ------------------------------------------------------------ slit / retreat / KEGAKI (rules/SLIT_RELIEF.md, KEGAKI.md)
@@ -575,6 +605,12 @@ def main(argv=None) -> int:
     u = sub.add_parser("unfold")
     u.add_argument("--od", type=float, nargs="+", required=True)
     u.add_argument("--nobi", type=float, nargs="*", default=[])
+    sl = sub.add_parser("slant", help="slanted plate from a side section: angle, outer length, tip offset")
+    sl.add_argument("--width", type=float, required=True, help="outer-to-outer width between the walls (apex x)")
+    sl.add_argument("--rise", type=float, required=True, help="vertical drop of the slant from the apex to the tip")
+    sl.add_argument("--opening", type=float, required=True, help="gap from the near wall's inner face to the inner tip")
+    sl.add_argument("--t", type=float, required=True)
+    sl.add_argument("--wall-t", type=float)
     lg = sub.add_parser("leg", help="non-90° bend: OD of both legs from section dims that stop at the end faces")
     lg.add_argument("--a", type=float, required=True, help="leg 1 dim to its end face")
     lg.add_argument("--b", type=float, required=True, help="leg 2 dim along its outer face")
@@ -620,6 +656,8 @@ def main(argv=None) -> int:
         res = tooling(a.material, a.t)
     elif a.cmd == "idod":
         res = idod(a.t, a.angle)
+    elif a.cmd == "slant":
+        res = slant(a.width, a.rise, a.opening, a.t, a.wall_t)
     elif a.cmd == "leg":
         res = leg(a.a, a.b, a.t, a.angle, a.nobi)
     else:
