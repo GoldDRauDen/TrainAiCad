@@ -14,7 +14,7 @@ One `census.json` per code (`python tools/resolve_rules.py --template > census.j
 | SLIT_RELIEF | `スリット`, `SLIT`, Green lines at bend ends, box corners | SLIT_RELIEF |
 | part_mode BEND / MULTI_FACE / UNKNOWN (L, U, Z, hem, box, Nobi) | `曲げ`, `ノビ`, double dashed lines, side/section views, `J` | BEND + SLIT_RELIEF |
 | ACUTE_BEND_LT85 | included angle ≤85° | BEND_ACUTE |
-| BOXMET | base rectangle + four flanges | SLIT_RELIEF |
+| BOXMET | base + four flanges, corners drawn sharp | SLIT_RELIEF |
 | source_mode PDF_DATA_RAW | customer DXF with the PDF | DATA_DXF |
 | reference_present YES/UNKNOWN | sample / approved DXF | REFERENCE |
 | multi_code_or_assembly YES/UNKNOWN | several codes/constituents/weld relations | MULTI_PART |

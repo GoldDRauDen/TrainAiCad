@@ -18,7 +18,6 @@ DATA = physical geometry and provenance. PDF = code, material, t, view/face mean
 - Outside the changed scopes the result is physically identical to DATA after canonical AND saved-DXF read-back (`dxf_assemble` checks both directions; the 0.1 threshold is not a redraw tolerance). LINE/ARC vs exact bulged polyline is equivalent; entity counts and OVERKILL prove nothing.
 - Every active physical source curve/family is in canonical (or excluded with a reason), every output maps to DATA or a ledger row.
 - DATA is copied 100%: never add, merge, split or patch a piece or the digest. Noise ≤1e-3 mm, T-junctions, origin shift, J/LJ turn: tools, ledger rows. An open ELLIPSE/SPLINE contour segment stays that entity, never an arc. Milled-recess outlines (`2mm削る`) are not cuts.
-- Reference/audit only: normalise exact duplicate entities for counting, report `REFERENCE_ANOMALY`.
 
 ## Lessons
 `regression/lessons/DATA_DXF/` — 520930-03 (preservation), 521001-03 (census, bidirectional), 521001-13 (DATA tap / auto R), 521001-19 (bulge), 521001-20 (DATA first), 520928-20, 520930-10, 520702-08 (digest/assemble; KH646 ears + web, slip size is not proof), 521026-03 (bent/flat parts from several views, D-cut, datum references), 521027-26 (DATA never edited).
