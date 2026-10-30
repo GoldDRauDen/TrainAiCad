@@ -38,4 +38,5 @@ examples/        spec mẫu cho tools/run_job.py
 templates/       CAD_OUTPUT_TEMPLATE.dxf
 regression/      bài học đã duyệt + fixture (không phải nguồn kích thước)
 tests/           kiểm thử
+luan_app/        app LAN chạy job E2E/QA cho cả nhóm (README trong thư mục; không phải công cụ của job)
 ```
