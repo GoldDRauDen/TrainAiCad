@@ -189,6 +189,31 @@ class Store:
             vals.append(v)
         self._conn().execute(f"UPDATE runs SET {', '.join(cols)} WHERE id = ?", (*vals, run_id))
 
+    def active_run_for(self, path_key: str) -> dict | None:
+        rows = self._runs(f"r.path_key = ? AND r.status IN ({','.join('?' * len(ACTIVE))})", (path_key, *ACTIVE), limit=1)
+        return rows[0] if rows else None
+
+    def claim_run(self, run_id: int, slot: int) -> bool:
+        """QUEUED -> PREPARING on a slot; False if someone cancelled it first."""
+        cur = self._conn().execute("UPDATE runs SET status = 'PREPARING', slot = ? WHERE id = ? AND status = 'QUEUED'",
+                                   (slot, run_id))
+        return cur.rowcount == 1
+
+    def cancel_queued(self, run_id: int, by: str) -> bool:
+        cur = self._conn().execute("UPDATE runs SET status = 'CANCELLED', cancelled_by = ?, ended_at = ?, "
+                                   "summary = 'Đã hủy khi đang chờ' WHERE id = ? AND status = 'QUEUED'",
+                                   (by, now_iso(), run_id))
+        return cur.rowcount == 1
+
+    def finish_run(self, run_id: int, **fields) -> bool:
+        """Write a final state only while the run is still active (recovery may have closed it already)."""
+        with self._tx():
+            r = self._conn().execute("SELECT status FROM runs WHERE id = ?", (run_id,)).fetchone()
+            if not r or r[0] not in ACTIVE:
+                return False
+            self.update_run(run_id, **fields)
+            return True
+
     def _runs(self, where="1=1", args=(), order="r.id DESC", limit=200) -> list[dict]:
         return self._q(f"SELECT r.*, u.name AS user_name FROM runs r LEFT JOIN users u ON u.id = r.user_id "
                        f"WHERE {where} ORDER BY {order} LIMIT {int(limit)}", args)
