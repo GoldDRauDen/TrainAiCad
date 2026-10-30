@@ -68,3 +68,39 @@ def test_hook_is_silent_without_an_open_job_and_prints_it_otherwise(isolated):
     assert "26-000004: L0" in job.hook_text() and "Re-read JOB_CARD.md" in job.hook_text()
     job.set_code(None, "26-000004", stage="DONE")
     assert job.hook_text() == ""
+
+
+def test_census_from_one_file_sets_every_code_and_keeps_an_explicit_unknown(isolated):
+    job.init("J9", ["26-000001", "26-000002"], [], None, None)
+    d = isolated / ".work" / "J9"
+    f = isolated / "c.yaml"
+    f.write_text("defaults: {source_mode: PDF_ONLY, part_mode: FLAT_NO_BEND, reference: 'NO', multi: 'NO', rest: 'NO'}\n"
+                 "codes:\n"
+                 "  26-000001: {set: {HOLE: 'YES:p2 2-Ø10'}}\n"
+                 "  26-000002: {part_mode: BEND, set: {HOLE: 'YES:p3', SLIT_RELIEF: 'UNKNOWN:p3 bend end'},\n"
+                 "              material_and_grain: {printed_grade: SPCC}}\n", encoding="utf-8")
+    out = job.census_batch("J9", str(f))
+    assert [r["code"] for r in out] == ["26-000001", "26-000002"]
+    c2 = json.loads((d / "make" / "census_26-000002.json").read_text(encoding="utf-8"))
+    assert c2["part_mode"] == "BEND" and c2["features"]["SLIT_RELIEF"]["state"] == "UNKNOWN"
+    assert c2["features"]["TAP"]["state"] == "NO" and c2["material_and_grain"] == {"printed_grade": "SPCC"}
+    assert "rules/SLIT_RELIEF.md" in out[1]["cards"]["L2_GEOMETRY"]
+    f.write_text("codes: {26-000001: {colour: red}}\n", encoding="utf-8")
+    with pytest.raises(SystemExit, match="unknown keys"):
+        job.census_batch("J9", str(f))
+
+
+def test_clean_keeps_the_record_and_drops_scratch(isolated):
+    job.init("J8", ["26-000001"], [], None, None)
+    d = isolated / ".work" / "J8"
+    (d / "make" / "ledger_26-000001.md").write_text("| crop | c1.png |\n", encoding="utf-8")
+    for name in ("make/c1.png", "make/c2.png", "make/mk.py", "make/out_t2/x.dxf", "make/spec_26-000001.yaml",
+                 "make/J8_ALL.dxf"):
+        (d / name).parent.mkdir(parents=True, exist_ok=True)
+        (d / name).write_text("x", encoding="utf-8")
+    dry = job.clean("J8")
+    assert dry["files"] == 3 and (d / "make" / "mk.py").is_file()
+    job.clean("J8", apply=True)
+    left = {p.relative_to(d).as_posix() for p in d.rglob("*") if p.is_file()}
+    assert {"make/c1.png", "make/spec_26-000001.yaml", "make/J8_ALL.dxf", "job_state.json"} <= left
+    assert not {"make/c2.png", "make/mk.py", "make/out_t2/x.dxf"} & left and not (d / "make" / "out_t2").exists()

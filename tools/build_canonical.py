@@ -514,6 +514,16 @@ def _circle_spec(c, where):
     return cx, cy, d / 2.0
 
 
+def _datum_ref(item, p, hole_ids, code):
+    """`datum_ref: ID66` = the chains start at that hole's centre (a round blank has no straight datum edge)."""
+    ref = item.get("datum_ref")
+    if ref is None:
+        return None
+    if str(ref) not in hole_ids or str(ref) == str(item.get("id")):
+        fail(f"{code}: datum_ref {ref} must name another hole of this part")
+    return f"E_{p}_{ref}"
+
+
 def build_part(spec, customer=None):
     if spec.get("data") is not None or spec.get("data_views") is not None:
         import data_part
@@ -710,6 +720,7 @@ def build_part(spec, customer=None):
             if dline:
                 datum_entities[(kind, key, along_axis)] = bend_line_entity(*dline)
     by_group = {}
+    hole_ids = {str(h.get("id") or f"H{i + 1}") for i, h in enumerate(spec.get("holes") or [])}
     for i, h in enumerate(spec.get("holes") or []):
         hid = str(h.get("id") or f"H{i + 1}")
         fid = f"{p}_{hid}"
@@ -753,7 +764,8 @@ def build_part(spec, customer=None):
         for axis, datum, node, total in (("X", dx0, nx, sx), ("Y", dy0, ny, sy)):
             targets.append({"feature_id": fid, "datum_node": f"{fid}_{axis}_D", "feature_node": node, "axis": axis,
                             "coordinate_mm": total, "datum_coordinate_mm": datum,
-                            "datum_entity_id": datum_entities.get(("holes", hid, axis), eo), "entity_id": eid})
+                            "datum_entity_id": datum_entities.get(("holes", hid, axis)) or _datum_ref(h, p, hole_ids, code) or eo,
+                            "entity_id": eid})
         required.append(fid)
     for name, items in by_group.items():
         qty = next((it[2].get("qty") for it in items if it[2].get("qty") is not None), None)
@@ -800,7 +812,8 @@ def build_part(spec, customer=None):
         slots_by_group.setdefault(s.get("group", "SLOT"), []).append((sid, eid, s))
         for axis, datum, node, total in (("X", dx0, nx, sx), ("Y", dy0, ny, sy)):
             targets.append({"feature_id": fid, "datum_node": f"{fid}_{axis}_D", "feature_node": node, "axis": axis,
-                            "coordinate_mm": total, "datum_coordinate_mm": datum, "datum_entity_id": datum_entities.get(("slots", sid, axis), eo),
+                            "coordinate_mm": total, "datum_coordinate_mm": datum,
+                            "datum_entity_id": datum_entities.get(("slots", sid, axis)) or _datum_ref(s, p, hole_ids, code) or eo,
                             "entity_id": eid})
         required.append(fid)
     for name, items in slots_by_group.items():
@@ -829,20 +842,24 @@ def build_part(spec, customer=None):
         kid = str(k.get("id") or f"K{i + 1}")
         lines = k.get("lines") or []
         circles = k.get("circles") or []
-        if not lines and not circles:
+        flag = k.get("flag")   # unresolved weld mark: Magenta estimate, or no geometry at all (KEGAKI.md §2)
+        if not lines and not circles and not flag:
             fail(f"{code}: kegaki {kid} needs lines [[x0, y0, x1, y1], ...] or circles [{{center: [x, y], d: D}}]")
+        role, colour = ("estimated", 6) if flag else ("kegaki", 1)
+        if flag:
+            flags.append(str(flag))
         owned = []
         for n, circle in enumerate(circles, 1):     # a round mark is ONE Red CIRCLE
             cx, cy, rad = _circle_spec(circle, f"{code}: kegaki {kid} circle {n}")
             eid = f"E_{p}_{kid}_C{n}" if len(circles) + len(lines) > 1 else f"E_{p}_{kid}"
-            ents.append({"entity_id": eid, "type": "CIRCLE", "role": "kegaki", "color": 1,
+            ents.append({"entity_id": eid, "type": "CIRCLE", "role": role, "color": colour,
                          "center": [_r6(cx), _r6(cy)], "radius": _r6(rad)})
             owned.append(eid)
         for n, ln in enumerate(lines, 1):
             if not isinstance(ln, (list, tuple)) or len(ln) != 4:
                 fail(f"{code}: kegaki {kid} line {n} must be [x0, y0, x1, y1]")
             eid = f"E_{p}_{kid}" if len(lines) + len(circles) == 1 else f"E_{p}_{kid}_{n}"
-            ents.append({"entity_id": eid, "type": "LINE", "role": "kegaki", "color": 1,
+            ents.append({"entity_id": eid, "type": "LINE", "role": role, "color": colour,
                          "start": [_r6(_num(ln[0], kid)), _r6(_num(ln[1], kid))],
                          "end": [_r6(_num(ln[2], kid)), _r6(_num(ln[3], kid))]})
             owned.append(eid)
@@ -850,7 +867,11 @@ def build_part(spec, customer=None):
     for name, items in marks_by_group.items():
         qty = next((it[2].get("qty") for it in items if it[2].get("qty") is not None), None)
         ev = next((it[2].get("ev") for it in items if it[2].get("ev")), None) or fail(f"{code}: kegaki {name} needs ev")
-        add_group(name, "KEGAKI", [it[0] for it in items], ev, ["PROVED"] * len(items), [it[1] for it in items], qty)
+        add_group(name, "KEGAKI", [it[0] for it in items], ev, ["FLAGGED" if it[2].get("flag") else "PROVED" for it in items],
+                  [it[1] for it in items], qty)
+        for kid, owned, _ in items:
+            if not owned:   # a flagged mark without a position: the member stays, its geometry does not
+                next(m for m in members if m.get("source_member_id") == f"{p}_{kid}")["status"] = "FLAGGED_NO_GEOMETRY"
 
     if chains:
         try:
@@ -1153,6 +1174,27 @@ def _add_jlj_marks(part):
 
 
 # ------------------------------------------------------------------ job
+WELD_KEYS = ("source_assembly_view_ids", "source_weld_site_ids", "weld_site_census")
+
+
+def attach_weld_census(part, src):
+    """KH851 weld-site census (rules/KEGAKI.md §2) from the spec part or its census_<code>.json onto the canonical
+    part. A short mark id (`K1`) names the part's own kegaki member; `source_weld_site_ids` defaults to the sites."""
+    if not isinstance(src, dict) or "weld_site_census" not in src:
+        return
+    code = part["code"]
+    for key in WELD_KEYS:
+        if key in src:
+            part[key] = copy.deepcopy(src[key])
+    census = part["weld_site_census"]
+    if not isinstance(census, dict):
+        fail(f"{code}: weld_site_census must be a mapping")
+    for site in census.get("sites") or []:
+        site["mark_member_ids"] = [m if str(m).startswith(f"{code}_") else f"{code}_{m}"
+                                   for m in site.get("mark_member_ids") or []]
+    part.setdefault("source_weld_site_ids", [s["weld_site_id"] for s in census.get("sites") or []])
+
+
 def build_job(spec):
     if not isinstance(spec, dict) or not spec.get("parts"):
         fail("spec needs job_id and parts")
@@ -1169,6 +1211,7 @@ def build_job(spec):
             mirrors.append((str(r["mirror_of"]["code"]), str(r["code"]), str(r["mirror_of"]["axis"]).lower()))
         cust = ps.get("customer_code", spec.get("customer_code"))
         part = build_part(ps, None if cust is None else str(cust))
+        attach_weld_census(part, ps)
         if cust is not None:
             part["customer_code"] = str(cust)
         parts.append(part)
@@ -1229,6 +1272,12 @@ def load_spec(path):
         data = json.loads(text)
     if isinstance(data, dict) and not data.get("canonical_contract"):
         for part in data.get("parts") or []:  # a DATA path is relative to its spec file
+            if isinstance(part, dict) and "weld_site_census" not in part:   # job.py census holds the weld census
+                here = Path(path).resolve().parent
+                census = next((d / f"census_{part.get('code')}.json" for d in (here, here.parent)
+                               if (d / f"census_{part.get('code')}.json").is_file()), None)
+                found = json.loads(census.read_text(encoding="utf-8-sig")) if census else {}
+                part.update({k: found[k] for k in WELD_KEYS if k in found})
             if isinstance(part, dict) and isinstance(part.get("data"), str):
                 part["data"] = str((Path(path).parent / part["data"]).resolve())
             for view in (part.get("data_views") or []) if isinstance(part, dict) else []:

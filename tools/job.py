@@ -7,6 +7,8 @@
     python tools/job.py set CODE [--job JOB] [--stage L2] [--status PREVIEW] [--flag "..."] [--file spec=spec.yaml] [--note "..."]
     python tools/job.py census CODE [--job JOB] [--set HOLE=YES[:evidence] ...] [--rest NO] [--source-mode PDF_ONLY] [--part-mode BEND]
                                                    # resolve_rules on make/census_<CODE>.json -> cards per stage; --set edits the census first
+    python tools/job.py census --from census.yaml  # every code at once: {defaults: {...}, codes: {CODE: {set: {HOLE: "YES:ev"}, ...}}}
+    python tools/job.py clean [JOB] [--apply]      # finished job: list (or delete) scripts, scratch out_*/test*/tmp*, unreferenced images
     python tools/job.py deliver [JOB] [--dxf FILE] [--dest DIR]   # composite DXF -> <input folder>/AI_L/ (never overwrite: _v2, _v3)
     python tools/job.py order [JOB]                # codes easiest first (from the census): the delivery order of an urgent job
     python tools/job.py deliver-code CODE [JOB] [--dest DIR]      # urgent jobs: this code's DXF -> AI_L/<CODE>.dxf as soon as it is drawn (_v2 on change)
@@ -164,17 +166,19 @@ def edit_census(c: dict, sets=(), rest=None, source_mode=None, part_mode=None, r
                 customer=None, notes=()) -> dict:
     """Edit a census dict in place from CLI flags (no JSON by hand). --set FAMILY=STATE[:evidence]; --rest sets every
     family still UNKNOWN (UNKNOWN != NO: only with evidence in --rest-evidence)."""
+    named = set()
     for kv in sets:
         key, _, val = kv.partition("=")
         state, _, ev = val.partition(":")
         if key not in c["features"] or state not in ("YES", "NO", "UNKNOWN"):
             raise SystemExit(f"--set FAMILY=YES|NO|UNKNOWN[:evidence]; families: {', '.join(c['features'])}")
         c["features"][key] = {"state": state, "evidence": [ev] if ev else c["features"][key].get("evidence", [])}
+        named.add(key)
     if rest:
         if rest not in ("NO", "UNKNOWN"):
             raise SystemExit("--rest NO|UNKNOWN")
         for k, v in c["features"].items():
-            if v["state"] == "UNKNOWN" and rest == "NO":
+            if v["state"] == "UNKNOWN" and rest == "NO" and k not in named:   # an UNKNOWN set just now stays UNKNOWN
                 c["features"][k] = {"state": "NO", "evidence": v.get("evidence") or ["no such note/feature on the source"]}
     for key, val in (("source_mode", source_mode), ("part_mode", part_mode), ("reference_present", reference),
                      ("multi_code_or_assembly", multi), ("customer_code", customer)):
@@ -207,6 +211,81 @@ def census(job: str | None, code: str, **edits) -> dict:
         state["codes"][code]["stage"] = "L1"
     _write(d / "job_state.json", state)
     return {"code": code, "cards": cards, "customer_notes": state["codes"][code]["customer_notes"]}
+
+
+RAW_CENSUS_KEYS = ("source_assembly_view_ids", "source_weld_site_ids", "weld_site_census", "material_and_grain")
+BATCH_KEYS = ("set", "rest", "source_mode", "part_mode", "reference", "multi", "customer", "notes") + RAW_CENSUS_KEYS
+
+
+def census_batch(job: str | None, path: str) -> list[dict]:
+    """Every code's census from one YAML/JSON file (one command instead of a script per job):
+        defaults: {source_mode: PDF_ONLY, part_mode: FLAT_NO_BEND, reference: "NO", multi: "NO", rest: "NO"}
+        codes:
+          26-063295: {part_mode: BEND, set: {HOLE: "YES:p2 2-Ø10", SLIT_RELIEF: "YES:p2 120°"}, notes: ["text|HOLE|ROUTED"]}
+          26-063296: {set: {KEGAKI: "YES:p3 ケガキ"}, weld_site_census: {...}, source_assembly_view_ids: [P3]}
+    A code's keys override `defaults`; `set` is applied before `rest`; weld/material keys are copied as written."""
+    text = Path(path).read_text(encoding="utf-8-sig")
+    if str(path).endswith((".yaml", ".yml")):
+        import yaml
+        data = yaml.safe_load(text)
+    else:
+        data = json.loads(text)
+    if not isinstance(data, dict) or not isinstance(data.get("codes"), dict):
+        raise SystemExit(f"{path}: needs `codes: {{CODE: {{...}}}}` (and optional `defaults`)")
+    d, state = load(job)
+    out = []
+    for code, entry in data["codes"].items():
+        code = str(code)
+        e = {**(data.get("defaults") or {}), **(entry or {})}
+        bad = sorted(set(e) - set(BATCH_KEYS))
+        if bad or code not in state["codes"]:
+            raise SystemExit(f"{code}: " + (f"unknown keys {bad}; allowed {', '.join(BATCH_KEYS)}" if bad
+                                             else "not a code of this job"))
+        raw = {k: e[k] for k in RAW_CENSUS_KEYS if k in e}
+        if raw:
+            f = d / state["codes"][code]["files"].get("census", f"{MAKE}/census_{code}.json")
+            c = json.loads(f.read_text(encoding="utf-8-sig"))
+            c.update(raw)
+            _write(f, c)
+        sets = [f"{k}={v}" for k, v in (e.get("set") or {}).items()]
+        out.append(census(job, code, sets=sets, rest=e.get("rest"), source_mode=e.get("source_mode"),
+                          part_mode=e.get("part_mode"), reference=e.get("reference"), multi=e.get("multi"),
+                          customer=None if e.get("customer") is None else str(e["customer"]), notes=e.get("notes") or ()))
+    return out
+
+
+KEEP_NAMES = ("job_state.json",)
+KEEP_GLOBS = ("census_*.json", "spec_*.yaml", "spec_*.yml", "spec_*.json", "ledger_*.md", "*_report*.md", "*_job*.json",
+              "*.job.json", "plan*.json", "asm*.json", "assembled*.json", "digest*.json", "roles.json", "*_ALL*.dxf")
+SCRATCH_DIRS = re.compile(r"^(out_(t\d*|try\w*|tmp\w*|test\w*|b|flat|notch|patched)|test\d+|tmp\w*|__pycache__)$")
+
+
+def clean(job: str | None, apply: bool = False) -> dict:
+    """Scratch of a finished job: job-local scripts, scratch output folders and images no kept file names.
+    Kept: job_state, census/spec/ledger/report/job json, assemble plans + digests, composite DXF, QA/, AI_L copies,
+    any file whose name a kept text file mentions (a ledger crop). Dry run unless apply=True."""
+    d, _ = load(job)
+    files = [f for f in d.rglob("*") if f.is_file()]
+    keep = {f for f in files if f.name in KEEP_NAMES or any(f.match(g) for g in KEEP_GLOBS)
+            or QA in f.relative_to(d).parts}
+    mentioned = "\n".join(f.read_text(encoding="utf-8", errors="ignore") for f in keep
+                          if f.suffix in (".md", ".yaml", ".yml", ".json") and f.stat().st_size < 5_000_000)
+    drop = []
+    for f in files:
+        if f in keep or f.name in mentioned:
+            continue
+        rel = f.relative_to(d).parts
+        if any(SCRATCH_DIRS.match(x) for x in rel[:-1]) or f.suffix.lower() in (".py", ".sh", ".png", ".jpg", ".log", ".txt"):
+            drop.append(f)
+    size = sum(f.stat().st_size for f in drop)
+    if apply:
+        for f in drop:
+            f.unlink()
+        for sub in sorted((x for x in d.rglob("*") if x.is_dir()), key=lambda x: -len(x.parts)):
+            if not any(sub.iterdir()):
+                sub.rmdir()
+    return {"job_dir": str(d), "files": len(drop), "mb": round(size / 1e6, 1), "applied": apply,
+            "sample": [str(f.relative_to(d)) for f in drop[:15]]}
 
 
 def _is_job_dir(name: str, job: str) -> bool:
@@ -455,7 +534,8 @@ def main(argv=None) -> int:
     t.add_argument("--file", action="append", default=[], metavar="KEY=PATH")
     t.add_argument("--note", action="append", default=[])
     c = sub.add_parser("census")
-    c.add_argument("code")
+    c.add_argument("code", nargs="?")
+    c.add_argument("--from", dest="from_file", help="YAML/JSON with every code's census (see census_batch)")
     c.add_argument("--job")
     c.add_argument("--set", action="append", default=[], dest="sets", metavar="FAMILY=STATE[:EVIDENCE]")
     c.add_argument("--rest", choices=("NO", "UNKNOWN"), help="every family still UNKNOWN becomes this (NO needs evidence you checked)")
@@ -479,6 +559,9 @@ def main(argv=None) -> int:
     q.add_argument("job", nargs="?")
     q.add_argument("--dest", help="input folder holding the DWGs (default: next to the sources)")
     sub.add_parser("hook")
+    cl = sub.add_parser("clean")
+    cl.add_argument("job", nargs="?")
+    cl.add_argument("--apply", action="store_true", help="delete (default: list what would go)")
     a = ap.parse_args(argv)
     if a.cmd == "hook":
         text = hook_text()
@@ -505,6 +588,12 @@ def main(argv=None) -> int:
     elif a.cmd == "set":
         set_code(a.job, a.code, a.stage, a.status, a.flag, a.file, a.note)
         print(summary(a.job))
+    elif a.cmd == "clean":
+        print(json.dumps(clean(a.job, a.apply), ensure_ascii=False, indent=1))
+    elif a.from_file:
+        print(json.dumps(census_batch(a.job, a.from_file), ensure_ascii=False, indent=1))
+    elif not a.code:
+        ap.error("census needs CODE or --from FILE")
     else:
         print(json.dumps(census(a.job, a.code, sets=a.sets, rest=a.rest, source_mode=a.source_mode, part_mode=a.part_mode,
                                 reference=a.reference, multi=a.multi, customer=a.customer, notes=a.notes),

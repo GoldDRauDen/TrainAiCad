@@ -120,19 +120,33 @@ def _union(ivs):
     return out
 
 
-def face_extent(verts, chain, face):
-    """Material across the flat in the middle half of a face (5 sections, united: a chamfer or step at one
-    section does not narrow the face)."""
+def face_extent(verts, chain, face, flat=False):
+    """Material across a face, united over sections (a chamfer or step at one section does not narrow the face):
+    the middle half (5 sections), or with `flat` its whole flat part - the OD span minus the bend zones, 9 sections
+    from 5 % to 95 % (single-axis parts: 521030-03 26-064602, a chamfer in the middle of the leg, full width again
+    before the bend; a two-axis part keeps the middle half, the material next to its zone is the other chain's)."""
     f = chain["faces"][face]
     lo, hi = sorted((f["start"], f["end"]))
-    return _union([iv for k in range(5) for iv in across_intervals(verts, chain["axis"], lo + (hi - lo) * (0.25 + k / 8))])
+    if not flat:
+        return _union([iv for k in range(5) for iv in across_intervals(verts, chain["axis"], lo + (hi - lo) * (0.25 + k / 8))])
+    a, b = lo, hi
+    for bend in chain["bends"]:
+        if face in bend["faces"]:
+            z0, z1 = sorted((bend["line1"], bend["line2"]))
+            if (z0 + z1) / 2 < (lo + hi) / 2:
+                a = max(a, z1)
+            else:
+                b = min(b, z0)
+    if b - a <= EPS:
+        return face_extent(verts, chain, face)
+    return _union([iv for k in range(9) for iv in across_intervals(verts, chain["axis"], a + (b - a) * (0.05 + k * 0.1125))])
 
 
-def pre_domain(verts, bend):
+def pre_domain(verts, bend, flat=False):
     c, axis = bend["chain"], bend["axis"]
     dom = _intersect(across_intervals(verts, axis, bend["l1"] + 1e-4), across_intervals(verts, axis, bend["l2"] - 1e-4))
     for face in bend["faces"]:
-        dom = _intersect(dom, face_extent(verts, c, face))
+        dom = _intersect(dom, face_extent(verts, c, face, flat))
     return dom
 
 
@@ -147,7 +161,7 @@ def domains(verts, chains, code):
     """Per bend: members [{'iv': {'L1': (v0, v1), 'L2': (v0, v1)}, 'ends': {...}}] plus corner pairs."""
     bends = all_bends(chains)
     for b in bends:
-        b["pre"] = pre_domain(verts, b)
+        b["pre"] = pre_domain(verts, b, flat=len(chains) == 1)
         if not b["pre"]:
             _fail(f"{code}: bend {b['id']} has no material on both faces")
     pairs = []

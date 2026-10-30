@@ -4,8 +4,7 @@ description: TrainAiCad sheet-metal CAD job — PDF / scan / customer DXF DATA �
 ---
 
 1. Read `JOB_CARD.md` in full and follow it; re-read it at the start of every stage (L0–L3).
-2. L0: `python tools/job.py init <JOB> --source <files>` (codes, customer per code, material, urgency come from the slip `<JOB>_依頼.xlsx`; `--codes` only to pick some). Work files go to `.work/<JOB>/make/`; a job with DWGs also `python tools/job.py qa` (`QA/`).
-3. Per code: read `rules/READ_SOURCE.md` + `rules/CENSUS.md`, set the census with `python tools/job.py census <code> --set HOLE=YES:<evidence> --rest NO ...`, then read only the cards it lists for the current stage.
-4. Write the ledger/spec of each code to its file as you go and record progress with `python tools/job.py set`. After a compaction, `python tools/job.py status` tells you where you are.
-5. Tables and arithmetic come from `tools/`; never write DXF with ezdxf yourself; a job never edits the repo.
-6. Delivery goes to `<input folder>/AI_L/` (never overwrites: `_v2`, `_v3`…). Urgent slip tag (Express / とても急ぎます): as soon as a code is drawn and reopened, `python tools/job.py deliver-code <code>` (easy codes first, PREVIEW too), the composite at the end. Default tag: `python tools/job.py deliver` once. Easy codes first: `python tools/job.py order`. Before a slow tool chain say what you are doing. After the job is delivered, follow-ups (a sample, a check, a correction) are answered unprompted in four parts: Xác nhận / Phản biện / Câu hỏi (only what is unclear) / Đề xuất cải thiện (repo fixes as proposals); no new DXF unless asked.
+2. L0: `python tools/job.py init <JOB> --source <files>` (codes, customer per code, material, urgency from the slip `<JOB>_依頼.xlsx`; `--codes` only to pick some). Work files go to `.work/<JOB>/make/`; a job with DWGs also `python tools/job.py qa` (`QA/`).
+3. Per code read only the cards `job.py census` lists for the current stage. Before a slow tool chain say what you are doing.
+4. Delivery goes to `<input folder>/AI_L/` (never overwrites: `_v2`, `_v3`…); `python tools/job.py status` prints the mode from the slip: urgent tag (Express / とても急ぎます) = `job.py order`, then `job.py deliver-code <code>` as soon as each code is reopened (PREVIEW too), composite at the end; default = `job.py deliver` once.
+5. After the job is delivered, follow-ups (a sample, a check, a correction) are answered unprompted in four parts: Xác nhận / Phản biện / Câu hỏi (only what is unclear) / Đề xuất cải thiện (repo fixes as proposals); no new DXF unless asked.

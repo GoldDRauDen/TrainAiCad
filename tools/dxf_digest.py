@@ -3,6 +3,7 @@
 
     python tools/dxf_digest.py file.dxf                       # summary: views top-to-bottom, holes by Ø, arc radii, colours
     python tools/dxf_digest.py data.dxf --out digest.json [--png views.png] [--profile auto|catia|generic] [--noise-mm 5]
+    python tools/dxf_digest.py show digest.json V11 [--box X0 Y0 X1 Y1] [--layer 0] [--color 7] [--png z.png --labels]
 
 The one DXF reader of the repo: customer DATA sheets, samples, and QA targets (an AI composite DXF gives one view per
 part, top-to-bottom).
@@ -439,7 +440,108 @@ def summary(d: dict) -> dict:
             "note": d["source"]["note"] + " Open ELLIPSE/SPLINE carry an exact `curve`; closed ones and other entities stay UNKNOWN."}
 
 
+def _pts(p):
+    return [q for q in (p.get("start"), p.get("end"), p.get("center"), p.get("point")) if q]
+
+
+def select(d: dict, views=(), box=None, layer=None, colors=None, ids=()) -> list[dict]:
+    """Pieces (and unsupported curves) of the given views / inside the box (any end/centre point) / of a layer/colour."""
+    homes = set(views)
+    want = set(ids)
+    out = []
+    for p in list(d["pieces"]) + [dict(u, type=u.get("type", "UNKNOWN")) for u in d.get("unsupported", [])]:
+        if want and p["id"] not in want:
+            continue
+        if homes and p.get("home") not in homes and not any(p["id"] in v["piece_ids"] for v in d["views"]
+                                                             if v["id"] in homes):
+            continue
+        if box and not any(box[0] <= q[0] <= box[2] and box[1] <= q[1] <= box[3] for q in _pts(p)):
+            continue
+        if layer is not None and p.get("layer") != layer:
+            continue
+        if colors and p.get("color") not in colors:
+            continue
+        out.append(p)
+    return out
+
+
+def describe(p: dict) -> str:
+    r = lambda v: "(" + ", ".join(f"{x:.3f}" for x in v) + ")"  # noqa: E731
+    head = f"{p['id']:<7} {p['type']:<7} L={p.get('layer')} c={p.get('color')} {p.get('linetype', '')} {p.get('home', '')}"
+    if p["type"] == "LINE":
+        return f"{head}  {r(p['start'])} -> {r(p['end'])}  len={math.dist(p['start'], p['end']):.3f}"
+    if p["type"] == "ARC":
+        return (f"{head}  c={r(p['center'])} R={p['radius']:.3f} {p['start_angle']:.2f}..{p['end_angle']:.2f}"
+                f"  {r(p['start'])} -> {r(p['end'])}")
+    if p["type"] == "CIRCLE":
+        return f"{head}  c={r(p['center'])} Ø={2 * p['radius']:.3f}"
+    if p["type"] == "POINT":
+        return f"{head}  {r(p['point'])}"
+    ends = [r(q) for q in (p.get("start"), p.get("end")) if q]
+    return f"{head}  {' -> '.join(ends) or p.get('note', '')}"
+
+
+def _show_png(sel, out, box=None, labels=False):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    style = {"CONTINUOUS": ("k", "-"), "DASHED": ("r", "--"), "HIDDEN": ("r", "--")}
+    fig, ax = plt.subplots(figsize=(14, 14), dpi=100)
+    for p in sel:
+        col, ls = style.get(str(p.get("linetype", "")).upper(), ("g", "-."))
+        if p["type"] == "LINE":
+            ax.plot(*zip(p["start"], p["end"]), color=col, linestyle=ls, linewidth=0.7)
+        elif p["type"] == "ARC":
+            a0, sw = p["start_angle"], (p["end_angle"] - p["start_angle"]) % 360
+            pts = [(p["center"][0] + p["radius"] * math.cos(math.radians(a0 + sw * k / 32)),
+                    p["center"][1] + p["radius"] * math.sin(math.radians(a0 + sw * k / 32))) for k in range(33)]
+            ax.plot(*zip(*pts), color=col, linestyle=ls, linewidth=0.7)
+        elif p["type"] == "CIRCLE":
+            ax.add_patch(plt.Circle(p["center"], p["radius"], fill=False, color=col, linestyle=ls, linewidth=0.7))
+        elif p["type"] == "POINT":
+            ax.plot(*p["point"], "b+")
+        if labels and _pts(p):
+            q = p.get("center") or [(a + b) / 2 for a, b in zip(p.get("start") or p["point"], p.get("end") or p["point"])]
+            ax.annotate(p["id"], q, fontsize=6, color="b")
+    if box:
+        ax.set_xlim(box[0], box[2])
+        ax.set_ylim(box[1], box[3])
+    else:
+        ax.autoscale()
+    ax.set_aspect("equal")
+    fig.savefig(out)
+
+
+def show(argv) -> int:
+    """`dxf_digest.py show digest.json [V11 ...] [--box X0 Y0 X1 Y1] [--layer 0] [--color 7 ...] [--ids P1 ...]
+    [--png zoom.png [--labels]]`: one line per piece (id, type, layer, colour, linetype, home, rounded geometry)."""
+    ap = argparse.ArgumentParser(prog="dxf_digest.py show", description=show.__doc__)
+    ap.add_argument("digest")
+    ap.add_argument("views", nargs="*")
+    ap.add_argument("--box", type=float, nargs=4)
+    ap.add_argument("--layer")
+    ap.add_argument("--color", type=int, nargs="+")
+    ap.add_argument("--ids", nargs="+", default=[])
+    ap.add_argument("--png")
+    ap.add_argument("--labels", action="store_true", help="write piece ids on the image")
+    a = ap.parse_args(argv)
+    d = json.loads(Path(a.digest).read_text(encoding="utf-8-sig"))
+    sel = select(d, a.views, a.box, a.layer, a.color, a.ids)
+    for v in d["views"]:
+        if v["id"] in a.views:
+            print(f"== {v['id']} {v['kind']} bbox={[round(x, 3) for x in v['bbox']]} pieces={len(v['piece_ids'])}")
+    for p in sorted(sel, key=lambda p: p["id"]):
+        print(describe(p))
+    print(f"-- {len(sel)} piece(s)")
+    if a.png:
+        _show_png(sel, a.png, a.box, a.labels)
+    return 0
+
+
 def main(argv=None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == "show":
+        return show(argv[1:])
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("dxf")
     ap.add_argument("--out", help="digest JSON to write (needed by tools/dxf_assemble.py)")

@@ -61,4 +61,4 @@ Replay the flat through the signed graph: face sizes, adjacency, the SAME attach
 Leg shorter than the selected V die's L_min/Z_min (`python tools/lookup.py tooling --material M --t T`) → WARN, never resize. SS t4.5 V18 is `要確認`.
 
 ## Lessons
-`regression/lessons/BEND/` — 520929-25 (order/domain/Z), 521005-02 (face evidence, local domain), 521006-18 (attachment edge, formed OD), 521016-13 (step from hole row), 521019-05 (projection, notch wall, stacked, C at bend), 521021-06 (ortho OD), 521023-14 (weld→bend), 521026-13 (end-face dims, leg), 520315-18 (inside view), 520925-03 HD1, 520317-09, 521030-10 (ear vs plate).
+`regression/lessons/BEND/` — 520929-25 (order/domain/Z), 521005-02 (face evidence, local domain), 521006-18 (attachment edge, formed OD), 521016-13 (step from hole row), 521019-05 (projection, notch wall, stacked, C at bend), 521021-06 (ortho OD), 521023-14 (weld→bend), 521026-13 (end-face dims, leg), 520315-18 (inside view), 520925-03 HD1, 520317-09, 521030-10 (ear vs plate), 521030-03 (mid-leg chamfer).

@@ -1,6 +1,6 @@
 # CENSUS — what is on the drawing → which cards to read (L1, always)
 
-One `census.json` per code (`python tools/resolve_rules.py --template > census.json`), then `python tools/resolve_rules.py census.json` prints the cards per stage and the customer's notes. States: `YES | NO | UNKNOWN`. **UNKNOWN ≠ NO**: YES and UNKNOWN both load. NO needs evidence (geometry, leaders, notes, revisions, sections, barcode cues, DATA) — a missing OCR keyword is not evidence. Re-run the resolver whenever a state changes.
+One `census_<code>.json` per code via `python tools/job.py census <code> --set HOLE=YES:<ev> --rest NO ..` (all codes: `--from census.yaml`); it prints the cards per stage and the customer's notes. States: `YES | NO | UNKNOWN`. **UNKNOWN ≠ NO**: YES and UNKNOWN both load. NO needs evidence (geometry, leaders, notes, revisions, sections, barcode cues, DATA) — a missing OCR keyword is not evidence. Re-run the resolver whenever a state changes.
 
 ## Trigger index
 | Family | Look for | Card |
@@ -21,19 +21,8 @@ One `census.json` per code (`python tools/resolve_rules.py --template > census.j
 
 Always: READ_SOURCE + CENSUS (L1; revisions/cancellation in READ_SOURCE §5), DATUM + CORNER_RC (L2; every corner, R/C callouts, Laser R), VALIDATE + OUTPUT (L3). Stepped/notched contours: DATUM §3 (flat) or BEND §7 (flange).
 
-## census.json fields
-```yaml
-part_code: "26-062288"                 # slip work number
-source_mode: PDF_ONLY | PDF_DATA_RAW | TRAIN_REFERENCE | DIRECT_EXISTING_DXF_AUDIT
-part_mode: FLAT_NO_BEND | BEND | MULTI_FACE | UNKNOWN
-reference_present: YES | NO | UNKNOWN
-multi_code_or_assembly: YES | NO | UNKNOWN
-customer_code: "851" | null            # numeric, JOB STATISTICS only
-source_manufacturing_notes: [{note_text, code_scope, candidate_family, resolution}]
-features: {HOLE: {state, evidence: [page/view/region or DATA ids]}, ...}   # every key from the template
-material_and_grain: {printed_grade, alias_resolved, hairline_HL: {state, grain_vector_part_relative: PROVED|UNPROVED|NOT_APPLICABLE}}
-# KH851 or any assembly/weld evidence: source_assembly_view_ids, source_weld_site_ids, weld_site_census (KEGAKI.md §2)
-```
+## census fields (`job.py census` flags / `--from` keys)
+`source_mode` PDF_ONLY | PDF_DATA_RAW | TRAIN_REFERENCE | DIRECT_EXISTING_DXF_AUDIT; `part_mode` FLAT_NO_BEND | BEND | MULTI_FACE | UNKNOWN; `reference_present`, `multi_code_or_assembly` YES | NO | UNKNOWN; `customer_code` numeric (JOB STATISTICS) or null; notes `{note_text, code_scope, candidate_family, resolution}`; `features`: every template key `{state, evidence: [page/view/region or DATA ids]}`; `material_and_grain` {printed_grade, alias_resolved, hairline_HL: {state, grain_vector_part_relative: PROVED|UNPROVED|NOT_APPLICABLE}}; KH851 / weld evidence: `source_assembly_view_ids`, `source_weld_site_ids`, `weld_site_census` (KEGAKI.md §2).
 Material/HL fields are not feature families. HL with grain `UNPROVED` forces REVIEW.
 
 ## Hard stops (drawing still happens, PASS does not)
