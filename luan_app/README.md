@@ -56,3 +56,29 @@ python -m pytest luan_app/tests -q          # Claude giả (tests/fake_claude.py
 python -m luan_app --no-tray --port 8766    # chạy thử; LUAN_CLAUDE_CMD="python luan_app/tests/fake_claude.py" để không gọi Claude thật
 ```
 Biến môi trường: `LUAN_DATA_DIR`, `LUAN_SLOTS_ROOT`, `LUAN_CLAUDE_CMD`. Log: `%LOCALAPPDATA%\LuanApp\app.log`.
+
+## Trạng thái và việc tiếp theo (30/10/2026)
+
+**Đã làm:**
+- Code xong theo `docs/superpowers/plans/2026-10-30-luan-app.md`, từ bước 0 đến 11.
+- Đã test trên laptop với Claude giả: 847 test của repo và app đều qua; đã xem giao diện trong trình duyệt.
+
+**Chưa kiểm tra trên máy thật:**
+1. Cài trên máy công ty bằng `install.cmd`: Task Scheduler, luật firewall, biểu tượng khay.
+2. Đọc/ghi `\VietNam2025\...` bằng tài khoản Windows chạy app.
+3. Máy khác trong LAN mở được link.
+4. **Bước 12:** chạy 1 job nhỏ thật bằng Claude thật. Cần xác nhận:
+   - `claude -p` nhận câu lệnh qua **stdin**. Nếu không nhận thì sửa `build_command` / `ClaudeProcess.start` trong `runner.py` để truyền câu lệnh thành tham số sau `-p`.
+   - DXF giao vào `AI_L\`, có `report.md` và `result.json`, trạng thái cuối đúng.
+   - Worktree `C:\TrainAiCad-slots\slotN` sạch sau job; `C:\TrainAiCad` không bị đổi.
+
+**Lưu ý:**
+- Nếu mạng có proxy kiểm tra HTTPS, Claude sẽ báo *self-signed certificate*. Khi đó nhờ IT cấp file chứng chỉ CA rồi đặt `NODE_EXTRA_CA_CERTS`. Không tắt kiểm tra TLS.
+
+**Lỗi nhỏ để lại (chưa sửa):**
+- Người dùng xóa cookie thì không lấy lại được tên cũ (chưa có chỗ để Admin quản lý người dùng).
+- CSV chưa chặn ô bắt đầu bằng `= + - @`.
+- Mục "Hôm nay" bỏ sót job vào hàng đợi trước 0 giờ nhưng xong sau 0 giờ.
+- Tên thư mục job có `[ ]` thì app không nhận ra DXF đã giao (dùng `glob`).
+
+**Giai đoạn 2:** pet trên desktop. Đã có sẵn API `/api/me/notifications`.
