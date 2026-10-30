@@ -21,7 +21,7 @@ def test_init_writes_state_census_templates_and_current_pointer(isolated):
     state = job.init("521019-05", ["26-061247", "26-061248"], ["521019-05.pdf"], "843", None)
     d = isolated / ".work" / "521019-05"
     assert (d / "job_state.json").is_file() and job.CURRENT.read_text().strip() == str(d.resolve())
-    census = json.loads((d / "census_26-061247.json").read_text(encoding="utf-8"))
+    census = json.loads((d / "make" / "census_26-061247.json").read_text(encoding="utf-8"))
     assert census["part_code"] == "26-061247" and census["customer_code"] == "843"
     assert all(v["state"] == "UNKNOWN" for v in census["features"].values())
     assert set(state["codes"]) == {"26-061247", "26-061248"}
@@ -32,12 +32,12 @@ def test_init_writes_state_census_templates_and_current_pointer(isolated):
 def test_census_records_cards_and_advances_to_l1(isolated):
     job.init("J1", ["26-000001"], [], None, None)
     d = isolated / ".work" / "J1"
-    c = json.loads((d / "census_26-000001.json").read_text(encoding="utf-8"))
+    c = json.loads((d / "make" / "census_26-000001.json").read_text(encoding="utf-8"))
     c.update(source_mode="PDF_ONLY", part_mode="BEND", reference_present="NO", multi_code_or_assembly="NO")
     for k in c["features"]:
         c["features"][k]["state"] = "NO"
     c["features"]["HOLE"]["state"] = "YES"
-    (d / "census_26-000001.json").write_text(json.dumps(c), encoding="utf-8")
+    (d / "make" / "census_26-000001.json").write_text(json.dumps(c), encoding="utf-8")
     out = job.census(None, "26-000001")
     assert "rules/BEND.md" in out["cards"]["L2_GEOMETRY"] and "rules/HOLE_TAP.md" in out["cards"]["L2_GEOMETRY"]
     text = job.summary()

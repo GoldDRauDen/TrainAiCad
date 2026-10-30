@@ -9,6 +9,7 @@ Outer closed, CCW, no self-intersection; cut-outs CW; every closed hole/slot ins
 - Origin/axis proved per view; datum path connected; dimension type classified; endpoint identity right; chain closes to the overall; reference dims keep their datum (`DATUM.md`).
 - Every explicit R/C matches the source tuple family + value + qty + corner class (C drawn as R = FAIL).
 - Slot length semantics and anchor (`SLOT.md`); each hole family counted and traced on its own.
+- Material = the slip's (`tools/slip.py`): a different FAMILY (SS/SUS/AL/CU) on the drawing → FLAG + note; the same family is silent.
 - `SLOT_WITNESS_FAIL` (a nearby number used as W/R/length) · `MIRROR_SCOPE_FAIL` (mirror without proof) · `DATUM_WITNESS_FAIL` (coordinate not from its proved datum) · `KEGAKI_SCOPE_FAIL` (CUT PASS never implies KEGAKI PASS) · `STALE_PREVIEW_FAIL` (resolved mark still Magenta).
 
 ## 3. Completeness

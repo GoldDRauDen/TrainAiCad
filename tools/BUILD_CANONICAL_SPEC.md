@@ -1,9 +1,9 @@
 # build_canonical spec (FLAT and single-axis BENT parts)
 
-`python tools/run_job.py spec_A.yaml spec_B.yaml [box.job.json] OUT/` = `build_canonical.py` → `export_canonical_dxf.py` → reopen/verify → report table. One file per code is fine: files merge in the given (page-1) order; canonical job JSON (`tools/boxmet_job.py`, hand parts) joins as-is; `job_id` / `customer_code` must agree.
+`python tools/run_job.py spec_A.yaml spec_B.yaml [box.job.json] OUT/` = `build_canonical.py` → `export_canonical_dxf.py` → reopen/verify → report table. One file per code is fine: files merge in the given (page-1) order; canonical job JSON (`tools/boxmet_job.py`, hand parts) joins as-is; `job_id` must agree (the customer may differ per file/part).
 Examples: `examples/flat_minimal.yaml` (its generated `examples/flat_minimal.job.json` is kept in sync by a test), `examples/bend_minimal.yaml`.
 
-Job level: `job_id`, optional `customer_code` (numeric, JOB STATISTICS) — its corner/hole policy from `data/customers.yaml` is applied to every part (e.g. KH768 sharp outside corners, KH712 C5, KH859 t≥19 corners FLAG).
+Job level: `job_id`, optional `customer_code` (numeric, JOB STATISTICS) — its corner/hole policy from `data/customers.yaml` is applied to every part (e.g. KH768 sharp outside corners, KH712 C5, KH859 t≥19 corners FLAG). A slip lists several customers: a part may carry its own `customer_code` (it wins over the job's; the built part keeps it, and the job-level code is written only when every file names the same one).
 
 ## Part
 | key | meaning |
@@ -14,7 +14,10 @@ Job level: `job_id`, optional `customer_code` (numeric, JOB STATISTICS) — its 
 | `envelope: [Ox, Oy]` | overall drawing/slip size; the nominal outline bbox must match (±0.5, `envelope_tol`) |
 | `outline` | corners **counter-clockwise**; items below |
 | `holes`, `slots` | features with their dimension chains |
-| `flags` | Vietnamese FLAG lines → status PREVIEW, outline Magenta (only for a real unknown, `rules/OUTPUT.md` §5) |
+| `flags` | Vietnamese FLAG lines → status PREVIEW; a note at the right of the part, the geometry keeps its colour (only for a real unknown, `rules/OUTPUT.md` §5) |
+| `drawing_material` | material printed on the drawing when `material` is the slip's: a different family (SS/SUS/AL/CU) adds the FLAG line automatically, the same family is silent |
+| `estimate: true` | the whole blank is an estimate (no printed size): outline Magenta; needs a `flags:` line |
+| `mirror_of: {code, axis, ev}` | 対称 / 反対勝手 partner: this part = the mirror of sibling `code` in the same file (`axis: y` → y' = H − y, `x` → x' = W − x); other keys of the partner replace the mirrored ones; `pair_consistency` runs on the pair. Bent: only across the flat axis perpendicular to the chain; slots, cut-outs, KEGAKI, notch patterns, DATA and two-axis parts are refused (`MIRROR_UNSUPPORTED`: hand part) |
 | `jlj_edge` | `auto` (default) / `top` / `bottom` |
 
 ## Outline items

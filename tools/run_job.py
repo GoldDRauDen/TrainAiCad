@@ -9,7 +9,7 @@
 * reopens the saved DXF and checks per code: closed outline chain, hole count, entity count;
 * prints the rules/OUTPUT.md §8 table (Vietnamese) with every FLAG and the run time.
 
-OUT receives only the DXF deliverable; job.json and report.md go to WORKDIR (default: the job's .work/ dir).
+OUT receives only the DXF deliverable; job.json and report.md go to WORKDIR (default: the job's .work/<JOB>/make/).
 """
 from __future__ import annotations
 
@@ -144,7 +144,7 @@ def main(argv=None):
     except BuildError as exc:
         print(f"BUILD_FAIL: {exc}", file=sys.stderr)
         return 2
-    work = a.work or default_work(job["job_id"])
+    work = a.work or job_state.make_dir(default_work(job["job_id"]))   # .work/<JOB>/make/ (QA/ is the check side)
     work.mkdir(parents=True, exist_ok=True)
     job_path = work / f"{job['job_id']}_job.json"
     job_path.write_text(json.dumps(job, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

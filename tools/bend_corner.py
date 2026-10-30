@@ -274,12 +274,14 @@ def end_step(verts, bend, v_end, s, web, code, reach=0.0):
             continue
         for lo, hi in _straight_runs(verts, axis, across):
             into_flange = lo < f_line - 1e-6 if d > 0 else hi > f_line + 1e-6
-            if into_flange and (best is None or off < best[0]):
-                best = (off, across, lo, hi)
+            # several collinear runs on one line (a tab edge flush with the web edge): the one nearest the zone is this end's
+            near = -hi if d > 0 else lo
+            if into_flange and (best is None or (off, near) < (best[0], best[4])):
+                best = (off, across, lo, hi, near)
     if best is None:
         _fail(f"{code}: bend {bend['id']} end at {v_end:g}: no straight flange side edge (R/C at the bend end?) "
               "— build by hand")
-    _, side, lo, hi = best
+    _, side, lo, hi, _ = best
     run = (lo, hi)
     u_b = run[1] if d > 0 else run[0]
     web_edge = _cross_edge(verts, axis, u_b, side, s) or _slanted_edge(verts, axis, u_b, side, s, d)

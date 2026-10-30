@@ -29,7 +29,7 @@ One code at a time; keep proved work per code (a failure never forces redoing a 
 
 ## Commands
 ```sh
-python tools/job.py init <JOB> --codes 26-061247 26-061248 [--source x.pdf] [--customer 843]   # then: status | set | census
+python tools/job.py init <JOB> [--source x.pdf]   # slip.py -> codes; then: status | set | census --set | qa | deliver | deliver-code
 python tools/pdf_views.py info|render|text|crop|pairs drawing.pdf --page 1 [--dims] [--cells C3:E5] [--dpi 600] --out x.png
 python tools/resolve_rules.py census.json [--bundle rules.md]  # cards per stage + customer notes (job.py census wraps it)
 python tools/dxf_digest.py file.dxf [--out digest.json] [--png v.png]   # any DXF: views top-to-bottom, holes by Ø, R, piece ids
