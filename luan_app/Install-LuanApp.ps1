@@ -72,12 +72,16 @@ if (-not (Get-NetFirewallRule -DisplayName $RuleName -ErrorAction SilentlyContin
 $Net = Get-NetConnectionProfile -ErrorAction SilentlyContinue | Where-Object { $_.NetworkCategory -ne 'Private' }
 if ($Net) { Write-Warning "Mạng '$($Net[0].Name)' đang là $($Net[0].NetworkCategory). Đổi sang Private để máy khác vào được." }
 
-# 5. Admin password (first time)
-$HasPw = & $Py -c "from luan_app.auth import Auth; from luan_app.store import Store; from luan_app.config import load_paths; print(Auth(Store(load_paths().db_path)).has_admin_password())"
-if ($HasPw -ne 'True') {
-    Push-Location $RepoRoot
-    try { Invoke-Checked $Py @('-m', 'luan_app', '--setup-password') } finally { Pop-Location }
-}
+# 5. Admin password (first time). Run from the repo root so `luan_app` imports; a failure here never stops the
+#    install: the password can also be set later in the browser on this machine (Đăng nhập Admin).
+Push-Location $RepoRoot
+try {
+    $HasPw = & $Py -c "from luan_app.auth import Auth; from luan_app.store import Store; from luan_app.config import load_paths; print(Auth(Store(load_paths().db_path)).has_admin_password())"
+    if ($HasPw -ne 'True') {
+        & $Py -m luan_app --setup-password
+        if ($LASTEXITCODE -ne 0) { Write-Warning "Chưa đặt mật khẩu Admin. Đặt sau: mở http://127.0.0.1:$Port trên máy này → bấm tên → Đăng nhập Admin." }
+    }
+} finally { Pop-Location }
 
 # 6. Start now
 Start-ScheduledTask -TaskName $TaskName

@@ -62,11 +62,61 @@ def _logging(paths) -> None:
         root.addHandler(logging.StreamHandler())
 
 
+def read_masked(prompt: str, getch, write, paste=None) -> str:
+    """Secret input that shows one * per character (getpass shows nothing, which looks like a frozen window).
+    Enter ends, Backspace deletes, Ctrl+V pastes (paste() -> clipboard text), Ctrl+C aborts."""
+    write(prompt)
+    buf: list[str] = []
+    while True:
+        ch = getch()
+        if ch in ("\r", "\n"):
+            write("\n")
+            return "".join(buf)
+        if ch == "\x03":
+            write("\n")
+            raise KeyboardInterrupt
+        if ch in ("\x00", "\xe0"):  # arrow / function key: second code follows, ignore both
+            getch()
+            continue
+        if ch == "\b":
+            if buf:
+                buf.pop()
+                write("\b \b")
+            continue
+        text = (paste() or "") if ch == "\x16" and paste else ch
+        text = "".join(c for c in text.splitlines()[0] if c.isprintable()) if text.strip() else ""
+        buf.extend(text)
+        write("*" * len(text))
+
+
+def _clipboard() -> str:
+    import subprocess
+    out = subprocess.run(["powershell.exe", "-NoProfile", "-Command", "Get-Clipboard -Raw"], capture_output=True,
+                         text=True, encoding="utf-8", errors="replace", timeout=10)
+    return out.stdout
+
+
+def _ask_secret(prompt: str) -> str:
+    if sys.platform == "win32" and sys.stdin and sys.stdin.isatty():
+        import msvcrt
+
+        def write(s):
+            sys.stdout.write(s)
+            sys.stdout.flush()
+        return read_masked(prompt, msvcrt.getwch, write, paste=_clipboard)
+    return getpass.getpass(prompt)
+
+
 def _setup_password(paths) -> int:
     auth = Auth(Store(paths.db_path))
+    print("Gõ mật khẩu rồi Enter (mỗi ký tự hiện một dấu *; Ctrl+V để dán).")
     for _ in range(3):
-        pw = getpass.getpass("Mật khẩu Admin mới (tối thiểu 6 ký tự): ")
-        if pw != getpass.getpass("Nhập lại: "):
+        try:
+            pw = _ask_secret("Mật khẩu Admin mới (tối thiểu 6 ký tự): ")
+            again = _ask_secret("Nhập lại: ")
+        except (KeyboardInterrupt, EOFError):
+            return 1
+        if pw != again:
             print("Hai lần nhập không khớp.")
             continue
         try:

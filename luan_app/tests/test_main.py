@@ -44,3 +44,25 @@ def test_lan_ip_is_ipv4():
 def test_keep_awake_is_safe_everywhere():
     winutil.keep_awake(True)
     winutil.keep_awake(False)
+
+
+def _keys(s):
+    it = iter(s)
+    return lambda: next(it)
+
+
+def test_read_masked_echoes_stars_and_handles_backspace():
+    from luan_app.__main__ import read_masked
+    out = []
+    pw = read_masked("Mật khẩu: ", _keys("ab\bcd\r"), out.append)
+    assert pw == "acd"
+    shown = "".join(out)
+    assert shown.startswith("Mật khẩu: ") and shown.count("*") == 4 and shown.endswith("\n")
+
+
+def test_read_masked_paste_and_ctrl_c():
+    import pytest
+    from luan_app.__main__ import read_masked
+    assert read_masked("", _keys("\x16\r"), lambda s: None, paste=lambda: "matkhau1\r\n") == "matkhau1"
+    with pytest.raises(KeyboardInterrupt):
+        read_masked("", _keys("a\x03"), lambda s: None)
