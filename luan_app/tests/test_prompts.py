@@ -25,3 +25,9 @@ def test_prompt_qa():
     t = build_prompt("QA", P, None, OUT)
     assert t.splitlines()[0] == f"QA {P}"
     assert "AI_L" in t and "Không sửa DXF được kiểm tra" in t
+
+
+def test_prompt_qa_single_dxf_limits_codes():
+    f = P + "\\gui\\26-064687.dxf"
+    t = build_prompt("QA", f, None, OUT)
+    assert "tất cả mã trong phiếu" not in t and "26-064687.dxf" in t

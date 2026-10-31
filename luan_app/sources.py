@@ -59,6 +59,24 @@ def _listdir(p: str) -> list[str]:
         raise SourceError("Không tìm thấy hoặc không đọc được thư mục.") from e
 
 
+def _job_folder_of(start: str, roots: list[str]) -> str:
+    """A DXF given for QA may sit in AI_L\\ or deeper (gui\\<job>\\<job>\\x.dxf): climb to the nearest folder that
+    holds the job's source (slip `*_依頼.xlsx` or a PDF) without leaving the allowed roots; else the DXF's folder."""
+    d = start
+    while is_allowed(d, roots):
+        try:
+            names = os.listdir(d)
+        except OSError:
+            break
+        if any(n.endswith("_依頼.xlsx") or n.lower().endswith(".pdf") for n in names):
+            return d
+        up = os.path.dirname(d)
+        if up == d:
+            break
+        d = up
+    return start
+
+
 def inspect(path: str, roots: list[str], kind: str = "RUN") -> dict:
     cleaned = clean(path)
     if not cleaned or "\n" in cleaned or "\r" in cleaned:
@@ -69,10 +87,7 @@ def inspect(path: str, roots: list[str], kind: str = "RUN") -> dict:
     if os.path.isfile(fs):
         if kind != "QA" or not fs.lower().endswith(".dxf"):
             raise SourceError("Cần đường dẫn thư mục job." if kind != "QA" else "QA nhận thư mục job hoặc một file .dxf.")
-        parent = os.path.dirname(fs)
-        if os.path.basename(parent).upper() == "AI_L":
-            parent = os.path.dirname(parent)
-        job_fs = parent
+        job_fs = _job_folder_of(os.path.dirname(fs), roots)
     elif os.path.isdir(fs):
         job_fs = fs
     else:

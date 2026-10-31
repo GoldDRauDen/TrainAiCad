@@ -1,7 +1,7 @@
 """Stand-in for `claude -p ... --output-format stream-json` in tests (no AI, no quota).
 
 Reads the prompt on stdin. Flags: the first `--add-dir` is the run's out dir, the second the job dir.
-Env: FAKE_MODE ok|preview|limit|hang|crash|garbage|touch|slow, FAKE_JOB, FAKE_CODES (comma list),
+Env: FAKE_MODE ok|preview|limit|hang|crash|garbage|touch|slow|nologin, FAKE_JOB, FAKE_CODES (comma list),
 FAKE_DELAY (s between events), FAKE_CHILD_PID_FILE (hang: where to write the child's pid).
 """
 import json
@@ -41,6 +41,11 @@ def main():
     tool("Bash", {"command": f"python tools/job.py init {job} --source {job_dir}"})
     time.sleep(delay)
 
+    if mode == "nologin":  # what 2.1.301 prints when `claude auth login` was never run
+        emit({"type": "assistant", "error": "authentication_failed", "is_api_error_message": True,
+              "message": {"model": "<synthetic>", "content": [{"type": "text", "text": "Not logged in · Please run /login"}]}})
+        emit({"type": "result", "subtype": "success", "is_error": True, "result": "Not logged in · Please run /login"})
+        sys.exit(1)
     if mode == "crash":
         sys.stderr.write("Traceback: boom\nRuntimeError: fake crash\n")
         sys.exit(3)

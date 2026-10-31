@@ -17,6 +17,8 @@ def build_prompt(kind: str, path: str, codes: list[str] | None, run_out: Path) -
     out = str(run_out)
     if codes:
         codes_line = f"Mã cần làm: {', '.join(codes)} (job.py init ... --codes {' '.join(codes)})"
+    elif kind == "QA" and path.lower().endswith(".dxf"):
+        codes_line = "Mã cần kiểm tra: chỉ các mã có trong file .dxf đã cho"
     else:
         codes_line = "Mã cần làm: tất cả mã trong phiếu"
     if kind == "QA":

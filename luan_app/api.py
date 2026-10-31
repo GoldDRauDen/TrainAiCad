@@ -321,6 +321,15 @@ def create_app(paths, store, auth, scheduler, serve_static: bool = True) -> Fast
                 out = subprocess.run(exe + ["--version"], capture_output=True, text=True, timeout=20,
                                      creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
                 val = {"ok": out.returncode == 0, "version": out.stdout.strip() or None}
+                if val["ok"]:
+                    auth_out = subprocess.run(exe + ["auth", "status"], capture_output=True, text=True, timeout=20,
+                                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                    try:
+                        val["logged_in"] = bool(json.loads(auth_out.stdout).get("loggedIn"))
+                    except (ValueError, AttributeError):
+                        val["logged_in"] = None  # older CLI without `auth status --json` output: unknown
+                    if val["logged_in"] is False:
+                        val["ok"] = False
             except Exception as e:
                 val = {"ok": False, "version": None, "error": str(e)}
         claude_check.update(at=time.time(), value=val)

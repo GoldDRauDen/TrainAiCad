@@ -150,6 +150,13 @@ def test_crash_is_error_with_stderr_tail(sched, store, user, job_dir):
     assert r["status"] == "ERROR" and "fake crash" in r["error"]
 
 
+def test_not_logged_in_says_so(sched, store, user, job_dir):
+    sched.extra_env["FAKE_MODE"] = "nologin"
+    rid = sched.submit(user, "RUN", str(job_dir), None, False, False)
+    r = wait_for(sched, store, rid, FINAL)
+    assert r["status"] == "ERROR" and "claude auth login" in r["summary"] and "Not logged in" in r["error"]
+
+
 def test_recover_on_start_kills_orphan(sched, store, user, paths, job_dir):
     sched.extra_env["FAKE_MODE"] = "hang"
     rid = sched.submit(user, "RUN", str(job_dir), None, False, False)

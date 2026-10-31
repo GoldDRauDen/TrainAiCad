@@ -227,7 +227,7 @@ function renderBoard() {
   const b = state.board; if (!b) return;
   const banners = [];
   if (b.paused_until) banners.push(`<div class="banner warn">${icon('pause')}<span class="sp">Hết hạn mức Claude — hàng đợi tạm dừng tới <b>${hhmm(b.paused_until)}</b>.</span>${b.me.is_admin ? '<button class="btn btn-sec" data-act="resume">Chạy tiếp ngay</button>' : ''}</div>`);
-  if (b.me.is_admin && b.claude && !b.claude.ok) banners.push(`<div class="banner err">${icon('alert')}<span class="sp">Không gọi được Claude CLI trên máy này. Kiểm tra <span class="mono">claude auth login</span>.</span></div>`);
+  if (b.me.is_admin && b.claude && !b.claude.ok) banners.push(`<div class="banner err">${icon('alert')}<span class="sp">${b.claude.logged_in === false ? 'Claude CLI trên máy này chưa đăng nhập. Mở cmd chạy' : 'Không gọi được Claude CLI trên máy này. Kiểm tra'} <span class="mono">claude auth login</span>.</span></div>`);
   if (b.me.is_admin && b.utilization != null) banners.push(`<div class="banner">${icon('clock')}<span class="sp">Hạn mức Claude 5 giờ đã dùng <b>${Math.round(b.utilization * 100)}%</b>.</span></div>`);
   $('#board-banners').innerHTML = banners.join('');
   const st = b.stats;
@@ -455,7 +455,7 @@ async function loadSettings() {
     <div class="btns"><button class="btn btn-pri" type="submit">Lưu cài đặt</button></div></form>
     <div class="form"><h3>Hàng đợi</h3><p class="sub" style="margin:0 0 12px">${b.paused_until ? `Đang tạm dừng tới ${hhmm(b.paused_until)} vì hết hạn mức Claude.` : 'Hàng đợi đang chạy bình thường.'}</p>
       <div class="btns" style="justify-content:flex-start"><button class="btn btn-sec" id="s-resume" ${b.paused_until ? '' : 'hidden'}>Chạy tiếp ngay</button></div>
-      ${b.claude ? `<p class="hint">Claude CLI: ${b.claude.ok ? esc(b.claude.version || 'OK') : 'không gọi được'}</p>` : ''}</div>
+      ${b.claude ? `<p class="hint">Claude CLI: ${b.claude.ok ? esc(b.claude.version || 'OK') : b.claude.logged_in === false ? esc(b.claude.version || '') + ' — chưa đăng nhập' : 'không gọi được'}</p>` : ''}</div>
     <form class="form" id="pw-form"><h3>Đổi mật khẩu Admin</h3>
       <div class="row"><label for="s-pw">Mật khẩu mới<small>Tối thiểu 6 ký tự.</small></label><input class="inp" id="s-pw" type="password" autocomplete="new-password"></div>
       <div class="btns"><button class="btn btn-sec" type="submit">Đổi mật khẩu</button></div></form>`;

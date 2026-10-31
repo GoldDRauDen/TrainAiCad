@@ -67,6 +67,27 @@ def test_inspect_qa_dxf_file(jobs_root, job_dir):
         inspect(str(f), [str(jobs_root)], kind="RUN")
 
 
+def test_inspect_qa_dxf_deep_in_job_finds_job_folder(jobs_root, job_dir):
+    deep = job_dir / "gui" / "521030-10" / "521030-10"
+    deep.mkdir(parents=True)
+    f = deep / "26-064689.dxf"
+    f.write_text("0\nEOF\n")
+    info = inspect(str(f), [str(jobs_root)], kind="QA")
+    assert os.path.normcase(info["job_dir"]) == os.path.normcase(str(job_dir))
+    assert info["has_slip"] and info["job"] == "521030-10"
+
+
+def test_inspect_qa_dxf_never_climbs_above_allowed_root(tmp_path):
+    root = tmp_path / "jobs"
+    loose = root / "x"
+    loose.mkdir(parents=True)
+    (tmp_path / "above.pdf").write_bytes(b"%PDF-1.4\n")  # outside the allowed root: must not be chosen
+    f = loose / "a.dxf"
+    f.write_text("0\nEOF\n")
+    info = inspect(str(f), [str(root)], kind="QA")
+    assert os.path.normcase(info["job_dir"]) == os.path.normcase(str(loose))
+
+
 def test_validate_codes(jobs_root, job_dir):
     info = inspect(str(job_dir), [str(jobs_root)])
     assert validate_codes(None, info) is None

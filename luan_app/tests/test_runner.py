@@ -33,6 +33,9 @@ def test_build_command_shape():
     for d in runner.DENIED:
         assert d in cmd
     assert cmd.count("--add-dir") == 2
+    # Without Git Bash the CLI only has the PowerShell tool: python must run and git stay blocked there too.
+    assert "Bash(python:*)" in cmd and "PowerShell(python:*)" in cmd
+    assert "Bash(git:*)" in runner.DENIED and "PowerShell(git:*)" in runner.DENIED
     assert build_command(["claude"], Path("/o"), "/j", model="sonnet")[-2:] == ["--model", "sonnet"]
 
 

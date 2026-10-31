@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from . import archive, progress, sources
 from .config import SLOTS_MAX, SLOTS_MIN, USAGE_PAUSE_MIN
 from .prompts import build_prompt
-from .runner import ClaudeProcess, build_command, claude_executable, kill_tree, same_program
+from .runner import NOT_LOGGED_IN, ClaudeProcess, build_command, claude_executable, kill_tree, same_program
 from .store import ACTIVE, FINAL, Duplicate, now_iso
 
 log = logging.getLogger("luan_app.scheduler")
@@ -300,8 +300,10 @@ class Scheduler:
                 self.store.set_settings(queue_paused_until=_iso(until))
             elif timed_out:
                 status, error = "ERROR", f"Quá thời gian ({float(self.store.get_settings()['timeout_min']):g} phút)"
+            elif proc.auth_failed:
+                status, error = "ERROR", NOT_LOGGED_IN + (f"\n{proc.error_text}" if proc.error_text else "")
             elif exit_code not in (0, None):
-                tail = proc.stderr_tail()
+                tail = "\n".join(t for t in (proc.error_text, proc.stderr_tail()) if t)
                 error = f"Claude thoát với mã {exit_code}" + (f"\n{tail}" if tail else "")
             elif status == "ERROR":
                 error = summary
@@ -319,8 +321,8 @@ class Scheduler:
                       summary=summary if not error or status != "ERROR" else (summary or error),
                       codes_status=rows, delivered=delivered, usage=proc.usage or None, error=error,
                       warnings=warnings, repo_touched=1 if touched else 0, activity=None)
-        if status == "ERROR" and error and error.startswith(("Hết hạn mức", "Quá thời gian")):
-            fields["summary"] = error
+        if status == "ERROR" and error and error.startswith(("Hết hạn mức", "Quá thời gian", NOT_LOGGED_IN)):
+            fields["summary"] = error.splitlines()[0]
         if self.store.finish_run(rid, **fields):
             self.store.index_run(rid, progress.search_text(run, rows, result))
             self._notify(run, status, fields["summary"])

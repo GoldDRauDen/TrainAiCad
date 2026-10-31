@@ -16,9 +16,12 @@ import threading
 import time
 from pathlib import Path
 
-ALLOWED = ["Read", "Glob", "Grep", "Write", "Edit", "TodoWrite", "Bash(python:*)", "Bash(ls:*)", "Bash(dir:*)"]
+# Without Git Bash on PATH the CLI offers PowerShell instead of Bash, so every shell rule exists for both.
+SHELLS = ("Bash", "PowerShell")
+ALLOWED = ["Read", "Glob", "Grep", "Write", "Edit", "TodoWrite"] + [f"{s}({c}:*)" for s in SHELLS for c in ("python", "ls", "dir")]
 PROTECTED = ("rules", "tools", "data", "templates", "tests", "examples", "regression", "luan_app", ".claude", ".github")
-DENIED = ["Bash(git:*)"] + [f"{t}({d}/**)" for t in ("Edit", "Write") for d in PROTECTED]
+DENIED = [f"{s}(git:*)" for s in SHELLS] + [f"{t}({d}/**)" for t in ("Edit", "Write") for d in PROTECTED]
+NOT_LOGGED_IN = "Claude CLI trên máy Admin chưa đăng nhập: mở cmd chạy `claude auth login` rồi chạy lại job."
 
 LIMIT_RE = re.compile(r"(usage|rate)[ _-]?limit|limit (reached|exceeded)|out of (extra )?usage", re.I)
 RESET_RE = re.compile(r"resets? (at|in)? ?[^.\n|]+|\b\d{1,2}(:\d{2})?\s?(am|pm)\b", re.I)
@@ -74,6 +77,7 @@ class ClaudeProcess:
         self.usage_limit, self.reset_at, self.reset_hint = False, None, None
         self.utilization: float | None = None
         self.usage: dict = {}
+        self.auth_failed = False
         self._reader: threading.Thread | None = None
         self._stderr_path: Path | None = None
 
@@ -125,6 +129,8 @@ class ClaudeProcess:
 
     def _event(self, ev: dict) -> None:
         t = ev.get("type")
+        if ev.get("error") == "authentication_failed":
+            self.auth_failed = True
         if t == "assistant":
             for c in (ev.get("message") or {}).get("content") or []:
                 if isinstance(c, dict) and c.get("type") == "tool_use":
@@ -142,9 +148,18 @@ class ClaudeProcess:
             self.result = ev
             self.usage = ev.get("usage") or {}
             if ev.get("is_error"):
-                hit, hint = detect_usage_limit(str(ev.get("result") or ""))
+                text = str(ev.get("result") or "")
+                hit, hint = detect_usage_limit(text)
                 if hit:
                     self.usage_limit, self.reset_hint = True, hint
+                if "not logged in" in text.lower():
+                    self.auth_failed = True
+
+    @property
+    def error_text(self) -> str:
+        """The CLI's own message when it ended with an error result ("Not logged in · Please run /login")."""
+        r = self.result or {}
+        return str(r.get("result") or "").strip() if r.get("is_error") else ""
 
     def poll(self) -> int | None:
         return self.proc.poll() if self.proc else None
