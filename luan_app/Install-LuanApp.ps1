@@ -47,7 +47,7 @@ if (-not (Test-Path $Py)) {
     Invoke-Checked $Base.Source ($BaseArgs + @('-c', 'import sys; assert sys.version_info >= (3, 11), "Cần Python 3.11+"'))
     Invoke-Checked $Base.Source ($BaseArgs + @('-m', 'venv', $Venv))
 }
-Write-Host 'Cài thư viện cho Luan App...'
+Write-Host 'Cài thư viện cho AI CAD...'
 Invoke-Checked $Py @('-m', 'pip', 'install', '--quiet', '--disable-pip-version-check', '-r', (Join-Path $AppDir 'requirements.txt'))
 
 # 2. Claude CLI
@@ -88,6 +88,6 @@ Start-ScheduledTask -TaskName $TaskName
 Start-Sleep -Seconds 3
 $Ip = (Get-NetIPAddress -AddressFamily IPv4 -PrefixOrigin Dhcp, Manual -ErrorAction SilentlyContinue | Where-Object { $_.IPAddress -notlike '169.254*' } | Select-Object -First 1).IPAddress
 Write-Host ''
-Write-Host "Luan App đang chạy:  http://127.0.0.1:$Port"
+Write-Host "AI CAD đang chạy:  http://127.0.0.1:$Port"
 if ($Ip) { Write-Host "Link cho mọi người:  http://${Ip}:$Port" }
 Start-Process "http://127.0.0.1:$Port"

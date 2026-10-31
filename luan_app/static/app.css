@@ -232,3 +232,9 @@ textarea.inp{height:auto;padding:10px 12px;font-family:var(--mono);font-size:13p
   .stat{padding:12px}.stat b{font-size:22px}.job-h{flex-wrap:wrap;gap:8px}.job .path{white-space:normal;word-break:break-all}
   .drawer-b{padding:16px}.kv{grid-template-columns:1fr}.toasts{left:16px;right:16px}
 }
+.fails{margin-top:4px;font-size:12px;line-height:1.5;color:var(--tx-2);white-space:normal}
+.fails .fl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fails .code{font-family:var(--mono)}
+.fails .f-err{color:var(--err);font-weight:600}
+.fails .f-warn{color:var(--warn);font-weight:600}
+.modal textarea.inp{height:auto;min-height:120px}

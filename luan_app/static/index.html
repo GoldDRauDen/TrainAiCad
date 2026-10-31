@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Luan · CAD jobs</title>
+<title>AI CAD · CAD jobs</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="app.css">
@@ -35,11 +35,13 @@
 </defs></svg>
 
 <header class="top"><div class="top-in">
-  <div class="brand"><span class="mark"><svg class="i"><use href="#i-layers"/></svg></span>Luan <small>CAD jobs</small></div>
+  <div class="brand"><span class="mark"><svg class="i"><use href="#i-layers"/></svg></span>AI CAD <small>CAD jobs</small></div>
   <nav id="nav">
     <a href="#/board" data-view="board"><svg class="i"><use href="#i-board"/></svg><span class="lbl">Bảng</span></a>
     <a href="#/history" data-view="history"><svg class="i"><use href="#i-clock"/></svg><span class="lbl">Lịch sử</span></a>
     <a href="#/review" data-view="review" id="nav-review" hidden><svg class="i"><use href="#i-inbox"/></svg><span class="lbl">Chờ duyệt</span> <span class="count" id="review-count" hidden>0</span></a>
+    <a href="guide.html" id="nav-guide" title="Hướng dẫn sử dụng"><svg class="i"><use href="#i-file"/></svg><span class="lbl">Hướng dẫn</span></a>
+    <a href="#/feedback" data-view="feedback" id="nav-feedback" title="Góp ý kiến — lưu và chờ Admin duyệt"><svg class="i"><use href="#i-inbox"/></svg><span class="lbl">Góp ý</span> <span class="count" id="feedback-count" hidden>0</span></a>
     <a href="#/settings" data-view="settings" id="nav-settings" hidden><svg class="i"><use href="#i-gear"/></svg><span class="lbl">Cài đặt</span></a>
   </nav>
   <div class="right">
@@ -95,6 +97,19 @@
     </div></div>
     <div id="review"></div>
     <input type="file" id="rv-file" accept=".dxf" hidden>
+  </section>
+
+  <section id="view-feedback" data-view="feedback" hidden>
+    <h1>Góp ý</h1><p class="sub" id="fb-sub">Góp ý của bạn được lưu và chờ Admin duyệt. Trạng thái: Mới → Đã xem → Đã làm (hoặc Bỏ qua).</p>
+    <div class="filters"><button class="btn btn-pri" id="fb-new">Gửi góp ý</button><div class="seg" id="fb-filter" hidden>
+      <button data-s="PENDING" class="on">Mới</button><button data-s="SEEN">Đã xem</button><button data-s="DONE">Đã làm</button><button data-s="DISMISSED">Bỏ qua</button><button data-s="">Tất cả</button>
+    </div></div>
+    <div id="feedback"></div>
+  </section>
+
+  <section id="view-admin-guide" data-view="admin-guide" hidden>
+    <h1>Hướng dẫn Admin</h1><p class="sub">Chỉ Admin thấy trang này. Phần cho người dùng: <a href="guide.html">Hướng dẫn</a>.</p>
+    <div id="admin-guide"></div>
   </section>
 
   <section id="view-settings" data-view="settings" hidden>

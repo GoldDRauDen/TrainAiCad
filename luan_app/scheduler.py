@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass, field
 
 from . import archive, progress, sources, staging
-from .config import SLOTS_MAX, SLOTS_MIN, USAGE_PAUSE_MIN
+from .config import DEFAULT_SETTINGS, SLOTS_MAX, SLOTS_MIN, USAGE_PAUSE_MIN
 from .prompts import build_prompt
 from .runner import NOT_LOGGED_IN, ClaudeProcess, build_command, child_env, claude_executable, kill_tree, same_program
 from .store import ACTIVE, FINAL, Duplicate, now_iso
@@ -35,6 +35,8 @@ class _Worker:
     cancel: threading.Event = field(default_factory=threading.Event)
     proc: ClaudeProcess | None = None
     thread: threading.Thread | None = None
+    effort: str = ""
+    peak: int = 1          # most runs at once while this one ran (>1: its five-hour delta is shared)
 
 
 def _iso(ts: float) -> str:
@@ -58,7 +60,7 @@ class Scheduler:
 
     # -- submit / cancel / rerun -----------------------------------------
     def submit(self, user: dict, kind: str, path: str, codes, confirm_rerun: bool, is_admin: bool,
-               rerun_of: int | None = None) -> int:
+               rerun_of: int | None = None, resume_of: int | None = None) -> int:
         if kind not in KINDS:
             raise ValueError("Loại job không hợp lệ.")
         if kind == "QA" and not is_admin:
@@ -73,7 +75,8 @@ class Scheduler:
             last = self.store.last_final_run(info["path_key"])
             if last:
                 raise NeedConfirm(last)
-        rid = self.store.insert_run(kind, info["path"], info["path_key"], info["job"], codes, user.get("id"), rerun_of)
+        rid = self.store.insert_run(kind, info["path"], info["path_key"], info["job"], codes, user.get("id"), rerun_of,
+                                    job_dir=info["job_dir"], resume_of=resume_of)
         self._wake.set()
         return rid
 
@@ -107,6 +110,18 @@ class Scheduler:
             raise ValueError("Job chưa kết thúc.")
         owner = self.store.user_by_id(run["user_id"]) or user  # an Admin rerun stays the original user's job
         return self.submit(owner, run["kind"], run["path"], run.get("codes"), True, is_admin, rerun_of=run_id)
+
+    def resume(self, run_id: int, user: dict, is_admin: bool) -> int:
+        """Continue a broken E2E run (Lỗi / Hủy / Quá giờ) from its archived .work: PASS codes are not redone."""
+        run = self.store.get_run(run_id)
+        if not run:
+            raise KeyError(run_id)
+        if not is_admin and run["user_id"] != user.get("id"):
+            raise PermissionError("Chỉ người chạy hoặc Admin được làm tiếp job này.")
+        if not archive.resumable(self.paths, run):
+            raise ValueError("Chỉ làm tiếp được job E2E bị Lỗi / Hủy / Quá giờ đã có job_state.json.")
+        owner = self.store.user_by_id(run["user_id"]) or user
+        return self.submit(owner, "RUN", run["path"], run.get("codes"), True, is_admin, rerun_of=run_id, resume_of=run_id)
 
     def resume_queue(self) -> None:
         self.store.set_settings(queue_paused_until=None)
@@ -231,15 +246,20 @@ class Scheduler:
             if w.cancel.is_set():
                 raise _Cancelled()
             st = staging.stage_in(sources.native(info["job_dir"]), sources.native(run["path"]), self.slots.path(k), run["job"])
+            if run.get("resume_of"):
+                archive.restore_work(archive.run_dir(self.paths, run["resume_of"]), self.slots.path(k), run["job"])
             if w.cancel.is_set():
                 raise _Cancelled()
             env = child_env(os.environ, dict(LUAN_RUN_DIR=str(od), **self.extra_env))
-            cmd = build_command(self._exe(settings), od, str(st.local_dir), settings.get("model") or "")
+            model = settings.get("model") or DEFAULT_SETTINGS["model"]   # "" saved by an older version = default
+            effort = settings.get("effort") or DEFAULT_SETTINGS["effort"]
+            cmd = build_command(self._exe(settings), od, str(st.local_dir), model, effort)
             proc = ClaudeProcess()
-            w.proc = proc
+            w.proc, w.effort = proc, effort
             started = now_iso()
             prompt = build_prompt(run["kind"], st.local_target, run.get("codes"), od,
-                                  share_path=run["path"], local_job_dir=str(st.local_dir))
+                                  share_path=run["path"], local_job_dir=str(st.local_dir), job=run["job"],
+                                  resume_of=run.get("resume_of"))
             proc.start(cmd, cwd=self.slots.path(k), env=env, prompt=prompt,
                        transcript=rd / "transcript.jsonl", stderr_log=rd / "stderr.log")
             self.store.update_run(rid, status="RUNNING", started_at=started, pid=proc.pid,
@@ -254,9 +274,13 @@ class Scheduler:
                 if now - last >= self.progress_s or exit_code is not None:
                     last = now
                     rows = progress.code_rows(progress.find_job_state(self.slots.path(k), run["job"]))
-                    self.store.update_run(rid, activity=proc.activity,
-                                          activity_at=_iso(proc.activity_at) if proc.activity_at else None,
-                                          codes_status=rows)
+                    live = dict(activity=proc.activity, activity_at=_iso(proc.activity_at) if proc.activity_at else None,
+                                codes_status=rows)
+                    if self._send(st, run["kind"], warnings, final=False):  # a code is drawn: on the share now
+                        live["delivered"] = st.copied
+                    w.peak = max(w.peak, self.active_count())
+                    live["usage"] = proc.usage_summary(effort, w.peak > 1)
+                    self.store.update_run(rid, **live)
                     if proc.utilization is not None:
                         self.utilization = proc.utilization
                 if exit_code is None and (w.cancel.is_set() or now > deadline):
@@ -290,15 +314,13 @@ class Scheduler:
             archive.archive_work(slot_dir, run["job"], rd)
         except OSError as e:
             warnings.append(f"Không lưu được .work: {e}")
-        if st is not None and run["kind"] == "RUN":
-            try:
-                staging.stage_out(st)
-            except OSError as e:
-                warnings.append(f"Không chép được DXF về AI_L trên server: {e}")
+        if st is not None:
+            self._send(st, run["kind"], warnings, final=True)
         state = progress.find_job_state(slot_dir, run["job"])
         rows = progress.code_rows(state)
         result = progress.read_result(od)
-        delivered = progress.delivered(info["job_dir"], started) if run["kind"] == "RUN" else []
+        delivered = (progress.delivered(info["job_dir"], started) if run["kind"] == "RUN"
+                     else sorted(st.copied) if st is not None else [])
         items, warns = progress.read_review_items(od)
         warnings += warns
         cancelled = w.cancel.is_set()
@@ -330,7 +352,8 @@ class Scheduler:
             self.store.add_review_items(rid, items)
         fields = dict(status=status, ended_at=now_iso(), exit_code=exit_code, verdict=(result or {}).get("verdict"),
                       summary=summary if not error or status != "ERROR" else (summary or error),
-                      codes_status=rows, delivered=delivered, usage=proc.usage or None, error=error,
+                      codes_status=rows, delivered=delivered, usage=proc.usage_summary(w.effort, w.peak > 1), error=error,
+                      result=progress.result_view(result, rows),
                       warnings=warnings, repo_touched=1 if touched else 0, activity=None)
         if status == "ERROR" and error and error.startswith(("Hết hạn mức", "Quá thời gian", NOT_LOGGED_IN)):
             fields["summary"] = error.splitlines()[0]
@@ -339,6 +362,17 @@ class Scheduler:
             self.store.index_run(rid, progress.search_text(run, rows, result))
             self._notify(run, status, fields["summary"])
         archive.write_meta(rd, self.store.get_run(rid) or run, {})
+
+    @staticmethod
+    def _send(st, kind, warnings, final) -> list[str]:
+        """New files of the copy's AI_L -> the share's AI_L (RUN: DXFs; QA: <JOB>_AI_QA.txt/.dxf)."""
+        try:
+            return staging.stage_out(st, kind, final=final)
+        except OSError as e:
+            msg = f"Không chép được file về AI_L trên server: {e}"
+            if msg not in warnings:
+                warnings.append(msg)
+            return []
 
     def _close(self, run, w, status, summary, error, warnings) -> None:
         rid = run["id"]

@@ -149,7 +149,7 @@ def main(argv=None) -> int:
     if not port_free(a.host, a.port):
         msg = f"Cổng {a.port} đang bị chương trình khác dùng."
         log.error(msg)
-        winutil.show_error("Luan App", msg)
+        winutil.show_error("AI CAD", msg)
         return 1
 
     import uvicorn
@@ -158,7 +158,7 @@ def main(argv=None) -> int:
     scheduler.start()
     server = uvicorn.Server(uvicorn.Config(app, host=a.host, port=a.port, log_config=None, access_log=False))
     lan_url = f"http://{winutil.lan_ip()}:{a.port}"
-    log.info("Luan App on %s (LAN %s), data %s", local_url, lan_url, paths.data_dir)
+    log.info("AI CAD on %s (LAN %s), data %s", local_url, lan_url, paths.data_dir)
     try:
         if a.no_tray:
             server.run()

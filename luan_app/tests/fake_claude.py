@@ -1,7 +1,7 @@
 """Stand-in for `claude -p ... --output-format stream-json` in tests (no AI, no quota).
 
 Reads the prompt on stdin. Flags: the first `--add-dir` is the run's out dir, the second the job dir.
-Env: FAKE_MODE ok|preview|limit|hang|crash|garbage|touch|slow|nologin, FAKE_JOB, FAKE_CODES (comma list),
+Env: FAKE_MODE ok|preview|limit|hang|crash|garbage|touch|slow|nologin|urgent (one DXF per code, FAKE_SLOW s apart), FAKE_JOB, FAKE_CODES (comma list),
 FAKE_DELAY (s between events), FAKE_CHILD_PID_FILE (hang: where to write the child's pid).
 """
 import json
@@ -76,14 +76,24 @@ def main():
     time.sleep(delay)
 
     is_qa = prompt.startswith("QA ")
-    if not is_qa:
-        ai_l = job_dir / "AI_L"
-        ai_l.mkdir(exist_ok=True)
+    ai_l = job_dir / "AI_L"
+    ai_l.mkdir(exist_ok=True)
+    if mode == "urgent":
+        for c in codes:
+            (ai_l / f"{c}.dxf").write_text(f"0\n{c}\nEOF\n", encoding="utf-8")
+            tool("Bash", {"command": f"python tools/job.py deliver-code {c}"})
+            time.sleep(float(os.environ.get("FAKE_SLOW", "1.5")))
+    if is_qa:
+        (ai_l / f"{job}_AI_QA.txt").write_text("ALL_PASS\n" if status == "PASS" else f"{codes[-1]} FAIL: R thiếu\n",
+                                               encoding="utf-8")
+    else:
         (ai_l / f"{job}_ALL.dxf").write_text("0\nEOF\n", encoding="utf-8")
     out_dir.mkdir(parents=True, exist_ok=True)
     verdict = "ISSUES" if status == "PREVIEW" else "OK"
     (out_dir / "result.json").write_text(json.dumps({"verdict": verdict, "summary": f"fake {mode}",
-                                                     "codes": {c: state["codes"][c]["status"] for c in codes}},
+                                                     "codes": {**{c: "PASS" for c in codes[:-1]},
+                                                               codes[-1]: {"status": status, "note": "" if status == "PASS" else "Nobi chưa rõ"}},
+                                                     "questions": [] if status == "PASS" else ["Lỗ 6 hay 6.5?"]},
                                                     ensure_ascii=False), encoding="utf-8")
     (out_dir / "report.md").write_text(f"# Báo cáo {job}\n\nfake {mode}\n", encoding="utf-8")
     items = [{"type": "NEW_LESSON", "code": codes[-1], "card": "rules/BEND.md", "title": "Kiểu gấp lạ",

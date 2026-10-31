@@ -1,4 +1,4 @@
-"""Paths and default settings of Luan App."""
+"""Paths and default settings of the AI CAD app (luan_app)."""
 from __future__ import annotations
 
 import os
@@ -11,7 +11,8 @@ DEFAULT_SETTINGS = {
     "slots": 3,                 # runs at the same time (1-6)
     "timeout_min": 120,
     "allowed_roots": [],        # job folders must live under one of these
-    "model": "",                # empty = the account's default model
+    "model": "sonnet",          # default for every run (empty in an old database = this default)
+    "effort": "high",           # claude --effort: low, medium, high, xhigh, max
     "git_ref": "origin/main",   # what every slot checks out before a run
     "queue_paused_until": None,  # ISO time; set when Claude's usage limit is hit
     "claude_cmd": None,         # override for the Claude CLI (tests: fake_claude)

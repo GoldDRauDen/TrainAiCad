@@ -37,6 +37,7 @@ def test_build_command_shape():
     assert "Bash(python:*)" in cmd and "PowerShell(python:*)" in cmd
     assert "Bash(git:*)" in runner.DENIED and "PowerShell(git:*)" in runner.DENIED
     assert build_command(["claude"], Path("/o"), "/j", model="sonnet")[-2:] == ["--model", "sonnet"]
+    assert build_command(["claude"], Path("/o"), "/j", "sonnet", "high")[-4:] == ["--model", "sonnet", "--effort", "high"]
 
 
 def test_run_ok_parses_activity_and_result(tmp_path):

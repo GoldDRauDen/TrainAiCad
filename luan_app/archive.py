@@ -54,6 +54,26 @@ def archive_work(slot_dir: Path, job: str | None, dest: Path) -> int:
     return n
 
 
+def resumable(paths, run: dict) -> bool:
+    """An E2E run that broke (Lỗi / Hủy / Quá giờ) and left its job_state.json in the archive."""
+    if run.get("kind") != "RUN" or run.get("status") not in ("ERROR", "CANCELLED") or not run.get("job"):
+        return False
+    return (paths.runs_dir / f"{int(run['id']):06d}" / "work" / run["job"] / "job_state.json").is_file()
+
+
+def restore_work(src_run_dir: Path, slot_dir: Path, job: str) -> int:
+    """Put an archived .work/<JOB> back into a slot (paths in job_state are slot-relative); the source copy is
+    staged fresh from the share, so the archived one is left out."""
+    src, dst, n = Path(src_run_dir) / "work" / job, Path(slot_dir) / ".work" / job, 0
+    for f in src.rglob("*"):
+        rel = f.relative_to(src)
+        if f.is_file() and rel.parts[0] != "source":
+            (dst / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(f, dst / rel)
+            n += 1
+    return n
+
+
 def write_meta(dest: Path, run: dict, extra: dict) -> None:
     meta = {k: v for k, v in run.items() if not isinstance(v, bytes)}
     meta.update(extra)

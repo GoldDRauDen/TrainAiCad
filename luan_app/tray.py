@@ -34,7 +34,7 @@ def run_tray(local_url: str, lan_url: str, scheduler, on_quit) -> None:
         running = [r for r in runs if r["status"] != "QUEUED"]
         if running:
             jobs = ", ".join(r["job"] for r in running)
-            if not winutil.ask_yes_no("Luan App", f"Đang chạy {len(running)} job ({jobs}). Thoát sẽ hủy chúng. Chắc chắn?"):
+            if not winutil.ask_yes_no("AI CAD", f"Đang chạy {len(running)} job ({jobs}). Thoát sẽ hủy chúng. Chắc chắn?"):
                 return
         on_quit()
         icon.stop()
@@ -45,4 +45,4 @@ def run_tray(local_url: str, lan_url: str, scheduler, on_quit) -> None:
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Thoát", quit_app),
     )
-    pystray.Icon("luan_app", _image(), "Luan App — CAD jobs", menu).run()
+    pystray.Icon("luan_app", _image(), "AI CAD — CAD jobs", menu).run()

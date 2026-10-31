@@ -150,16 +150,17 @@ def test_need_confirm_then_rerun(ctx, job_dir):
     assert c.post("/api/runs", json={"path": str(job_dir), "kind": "RUN", "confirm_rerun": True}).status_code == 201
 
 
-def test_history_scoped_to_user(ctx, jobs_root):
+def test_history_shows_everyone(ctx, jobs_root):
     a, b = named(ctx, "Hùng"), named(ctx, "Minh", ("10.0.0.41", 1))
     for c, n in ((a, "521005-01"), (b, "521005-02")):
         d = jobs_root / n
         d.mkdir()
         (d / "a.pdf").write_bytes(b"%PDF")
         c.post("/api/runs", json={"path": str(d), "kind": "RUN"})
-    assert [r["job"] for r in a.get("/api/runs").json()["runs"]] == ["521005-01"]
-    other_id = b.get("/api/runs").json()["runs"][0]["id"]
-    # History lists only your runs, but anyone may open any run's details (DXF path, report) from the board.
+    # Everyone sees everyone's history and may open any run's details (DXF path, report); filter by who ran it.
+    assert sorted(r["job"] for r in a.get("/api/runs").json()["runs"]) == ["521005-01", "521005-02"]
+    assert [r["job"] for r in a.get("/api/runs?user=Minh").json()["runs"]] == ["521005-02"]
+    other_id = a.get("/api/runs?user=Minh").json()["runs"][0]["id"]
     d = a.get(f"/api/runs/{other_id}")
     assert d.status_code == 200 and d.json()["mine"] is False and d.json()["can_cancel"] is False
     assert d.json()["can_rerun"] is False

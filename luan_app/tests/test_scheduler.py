@@ -43,7 +43,9 @@ def wait_for(sched, store, rid, statuses, timeout=30):
         sched.tick()
         r = store.get_run(rid)
         if r["status"] in statuses:
-            return r
+            while sched.active_count() and time.time() < end:  # the worker notifies right after the final state
+                time.sleep(0.05)
+            return store.get_run(rid)
         time.sleep(0.1)
     raise AssertionError(f"run {rid} stuck in {store.get_run(rid)['status']}")
 

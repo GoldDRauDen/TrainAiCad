@@ -15,8 +15,8 @@ from fastapi import FastAPI, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from . import archive, sources
-from .config import ADMIN_SESSION_S, BOARD_CACHE_S, SLOTS_MAX, SLOTS_MIN, USER_COOKIE_S
+from . import archive, handler, sources
+from .config import ADMIN_SESSION_S, BOARD_CACHE_S, DEFAULT_SETTINGS, SLOTS_MAX, SLOTS_MIN, USER_COOKIE_S
 from .runner import claude_executable
 from .scheduler import NeedConfirm
 from .sources import SourceError
@@ -25,10 +25,14 @@ from .store import ACTIVE, FINAL, Duplicate, NameTaken
 STATIC = Path(__file__).with_name("static")
 LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
 REVIEW_STATUSES = {"PENDING", "COPIED", "DONE", "DISMISSED"}
+FEEDBACK_STATUSES = {"PENDING", "SEEN", "DONE", "DISMISSED"}   # Mới / Đã xem / Đã làm / Bỏ qua
+ADMIN_GUIDE = Path(__file__).with_name("admin_guide.html")     # not under static/: served to Admin only
 MAX_ATTACH = 50 * 1024 * 1024
 RUN_PUBLIC = ("id", "kind", "job", "path", "status", "slot", "queued_at", "started_at", "ended_at", "summary", "error",
               "codes", "codes_status", "activity", "activity_at", "verdict", "repo_touched", "rerun_of", "cancelled_by",
-              "warnings", "delivered", "commit")
+              "warnings", "delivered", "commit", "result", "usage", "resume_of")
+EFFORTS = ("low", "medium", "high", "xhigh", "max")
+MAX_FEEDBACK = 4000
 
 
 class ApiError(Exception):
@@ -41,8 +45,14 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else ""
 
 
+def ai_l_dir(r: dict) -> str:
+    """The job's AI_L folder on the share (runs from before job_dir was stored: the folder, or a QA'd DXF's folder)."""
+    d = r.get("job_dir") or (os.path.dirname(r["path"]) if r["path"].lower().endswith(".dxf") else r["path"])
+    return sources.clean(d) + "\\AI_L"
+
+
 def create_app(paths, store, auth, scheduler, serve_static: bool = True) -> FastAPI:
-    app = FastAPI(title="Luan App", docs_url=None, redoc_url=None, openapi_url=None)
+    app = FastAPI(title="AI CAD", docs_url=None, redoc_url=None, openapi_url=None)
     board_cache: dict = {}
     board_lock = threading.Lock()
     claude_check = {"at": 0.0, "value": None}
@@ -110,9 +120,11 @@ def create_app(paths, store, auth, scheduler, serve_static: bool = True) -> Fast
     def run_view(r: dict, user: dict | None, adm: bool) -> dict:
         v = {k: r.get(k) for k in RUN_PUBLIC}
         v["user"] = r.get("user_name")
+        v["ai_l"] = ai_l_dir(r)
         v["mine"] = bool(user and r.get("user_id") == user.get("id"))
         v["can_cancel"] = r["status"] in ACTIVE and (adm or v["mine"])
         v["can_rerun"] = r["status"] in FINAL and (adm or v["mine"]) and (r["kind"] != "QA" or adm)
+        v["can_resume"] = (adm or v["mine"]) and archive.resumable(paths, r)
         return v
 
     def get_run_checked(run_id: int, request: Request) -> tuple[dict, dict, bool]:
@@ -227,7 +239,7 @@ def create_app(paths, store, auth, scheduler, serve_static: bool = True) -> Fast
 
     def _filters(request: Request, user: dict, adm: bool) -> dict:
         q = request.query_params
-        return dict(user_id=None if adm else user.get("id"), status=q.get("status") or None, kind=q.get("kind") or None,
+        return dict(user_id=None, status=q.get("status") or None, kind=q.get("kind") or None,
                     date_from=q.get("from") or None, date_to=q.get("to") or None, q=q.get("q") or None,
                     limit=min(int(q.get("limit") or 200), 1000))
 
@@ -235,7 +247,7 @@ def create_app(paths, store, auth, scheduler, serve_static: bool = True) -> Fast
     def list_runs(request: Request):
         user, adm = actor(request)
         f = _filters(request, user, adm)
-        if adm and request.query_params.get("user"):
+        if request.query_params.get("user"):  # everyone sees every run; filter by who ran it
             u = next((x for x in store._q("SELECT * FROM users WHERE name = ? COLLATE NOCASE",
                                           (request.query_params["user"],))), None)
             f["user_id"] = u["id"] if u else -1
@@ -275,6 +287,23 @@ def create_app(paths, store, auth, scheduler, serve_static: bool = True) -> Fast
         except Duplicate as e:
             raise ApiError(409, "Job này đang chạy.", run={"id": e.run["id"]})
 
+    @app.post("/api/runs/{run_id}/resume", status_code=201)
+    def resume(run_id: int, request: Request):
+        user, adm = actor(request)
+        try:
+            return {"id": scheduler.resume(run_id, user, adm)}
+        except Duplicate as e:
+            raise ApiError(409, "Job này đang chạy.", run={"id": e.run["id"]})
+
+    @app.get("/api/open-handler.cmd")
+    def open_handler(request: Request):
+        """Per-user installer of the `aicad-open:` link that opens a job folder in File Explorer (no admin rights)."""
+        uninstall = request.query_params.get("uninstall") == "1"
+        text = handler.build_installer(store.get_settings()["allowed_roots"], uninstall=uninstall)
+        name = "AI-CAD-go-mo-thu-muc.cmd" if uninstall else "AI-CAD-mo-thu-muc.cmd"
+        return Response(text.encode("utf-8"), media_type="application/octet-stream",
+                        headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
     @app.get("/api/runs/{run_id}/transcript")
     def transcript(run_id: int, request: Request):
         need_admin(request)
@@ -295,16 +324,26 @@ def create_app(paths, store, auth, scheduler, serve_static: bool = True) -> Fast
 
     @app.post("/api/open-folder")
     async def open_folder(request: Request):
-        need_admin(request)
-        if _client_ip(request) not in LOCAL_HOSTS:
+        _user, adm = actor(request)
+        if _client_ip(request) not in LOCAL_HOSTS:  # other machines use the aicad-open: link (or copy the path)
             raise ApiError(403, "Chỉ mở được thư mục trên máy Admin.")
-        r = store.get_run(int((await request.json()).get("run_id") or 0))
+        body = await request.json()
+        r = store.get_run(int(body.get("run_id") or 0))
         if not r:
             raise ApiError(404, "Không tìm thấy job.")
-        info = sources.inspect(r["path"], store.get_settings()["allowed_roots"], r["kind"])
-        target = os.path.join(info["job_dir"], "AI_L")
+        if body.get("what") == "run":  # the archived run: transcript, out/, work/
+            if not adm:
+                raise ApiError(403, "Chỉ Admin.")
+            target = str(archive.run_dir(paths, r["id"]))
+            if os.name == "nt":
+                os.startfile(target)  # noqa: S606 - admin-only, local request, the app's own data folder
+            return {"ok": True, "path": target}
+        target = ai_l_dir(r)
+        if not sources.is_allowed(target, store.get_settings()["allowed_roots"]):
+            raise ApiError(403, "Thư mục không nằm trong thư mục được phép.")
+        target = sources.native(target)
         if not os.path.isdir(target):
-            target = info["job_dir"]
+            target = os.path.dirname(target)
         if os.name == "nt":
             os.startfile(target)  # noqa: S606 - admin-only, local request, path from an allowed root
         return {"ok": True, "path": target}
@@ -356,6 +395,7 @@ def create_app(paths, store, auth, scheduler, serve_static: bool = True) -> Fast
             "claude": _claude_status() if adm else None,
             "utilization": scheduler.utilization if adm else None,
             "review_pending": store.review_pending_count() if adm else 0,
+            "feedback_new": store.feedback_new_count() if adm else 0,
         }
 
     @app.get("/api/board")
@@ -373,13 +413,59 @@ def create_app(paths, store, auth, scheduler, serve_static: bool = True) -> Fast
             return Response(status_code=304, headers={"ETag": etag})
         return Response(body, media_type="application/json", headers={"ETag": etag, "Cache-Control": "no-cache"})
 
-    # -- review items -----------------------------------------------------
+    # -- feedback / review items ---------------------------------------
+    @app.post("/api/feedback", status_code=201)
+    async def feedback(request: Request):
+        user, _adm = actor(request)
+        body = await request.json()
+        text = str(body.get("text") or "").strip()
+        if not text:
+            raise ApiError(400, "Nhập nội dung góp ý.")
+        if len(text) > MAX_FEEDBACK:
+            raise ApiError(400, f"Góp ý tối đa {MAX_FEEDBACK} ký tự.")
+        run_id = body.get("run_id")
+        if run_id is not None and not store.get_run(int(run_id)):
+            raise ApiError(404, "Không tìm thấy job.")
+        fid = store.add_feedback(user.get("name") or "Admin", text, int(run_id) if run_id is not None else None,
+                                 str(body.get("code") or "").strip() or None, author_id=user.get("id"))
+        board_cache.clear()
+        return {"id": fid}
+
+    @app.get("/api/feedback")
+    def feedback_list(request: Request):
+        """Admin: everyone's feedback; a user: their own, with the status Admin gave it."""
+        user, adm = actor(request)
+        items = store.list_feedback(None if adm else (user.get("id") or -1))
+        for it in items:
+            if adm:
+                where = f" — job {it['job']}" if it.get("job") else ""
+                it["copy_text"] = f"GÓP Ý từ {it.get('author') or '?'}{where}:\n{it.get('detail') or ''}"
+        return {"items": items}
+
+    @app.patch("/api/feedback/{item_id}")
+    async def feedback_update(item_id: int, request: Request):
+        need_admin(request)
+        status = (await request.json()).get("status")
+        it = store.get_review_item(item_id)
+        if not it or it.get("type") != "FEEDBACK":
+            raise ApiError(404, "Không tìm thấy.")
+        if status not in FEEDBACK_STATUSES:
+            raise ApiError(400, "Trạng thái không hợp lệ.")
+        store.update_review_item(item_id, status=status)
+        board_cache.clear()
+        return store.get_review_item(item_id)
+
     def _copy_text(it: dict) -> str:
         lines = [f"DUYỆT bài học: {it['title']} — job {it.get('job')}, mã {it.get('code') or '?'}, thẻ {it.get('card') or '?'}",
                  it.get("detail") or "", f"Bằng chứng: {it.get('evidence') or '?'}", f"Nguồn: {it.get('path')}"]
         if it.get("attachment"):
             lines.append(f"Mẫu DXF: {it['attachment']}")
         return "\n".join(x for x in lines if x)
+
+    @app.get("/api/admin/guide")
+    def admin_guide(request: Request):
+        need_admin(request)
+        return Response(ADMIN_GUIDE.read_text(encoding="utf-8"), media_type="text/html; charset=utf-8")
 
     @app.get("/api/review-items")
     def review_items(request: Request):
@@ -452,6 +538,13 @@ def create_app(paths, store, auth, scheduler, serve_static: bool = True) -> Fast
         for key in ("model", "git_ref"):
             if key in body:
                 upd[key] = str(body[key] or "").strip()
+        if "effort" in body:
+            e = str(body["effort"] or "").strip()
+            if e not in EFFORTS:
+                raise ApiError(400, "Effort: low, medium, high, xhigh hoặc max.")
+            upd["effort"] = e
+        if upd.get("model") == "":
+            upd["model"] = DEFAULT_SETTINGS["model"]
         if upd.get("git_ref") == "":
             upd["git_ref"] = "origin/main"
         store.set_settings(**upd)

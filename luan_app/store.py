@@ -28,12 +28,12 @@ CREATE TABLE IF NOT EXISTS runs(
   "commit" TEXT, queued_at TEXT, started_at TEXT, ended_at TEXT, exit_code INTEGER, error TEXT,
   verdict TEXT, summary TEXT, codes_status_json TEXT, repo_touched INTEGER DEFAULT 0,
   cancelled_by TEXT, rerun_of INTEGER, activity TEXT, activity_at TEXT, delivered_json TEXT,
-  usage_json TEXT, warnings_json TEXT, pid_name TEXT);
+  usage_json TEXT, warnings_json TEXT, pid_name TEXT, result_json TEXT, job_dir TEXT, resume_of INTEGER);
 CREATE INDEX IF NOT EXISTS runs_key_status ON runs(path_key, status);
 CREATE VIRTUAL TABLE IF NOT EXISTS run_search USING fts5(run_id UNINDEXED, search_text);
 CREATE TABLE IF NOT EXISTS review_items(
   id INTEGER PRIMARY KEY, run_id INTEGER, type TEXT, code TEXT, card TEXT, title TEXT, detail TEXT,
-  evidence TEXT, status TEXT DEFAULT 'PENDING', attachment TEXT, created_at TEXT, updated_at TEXT);
+  evidence TEXT, status TEXT DEFAULT 'PENDING', attachment TEXT, created_at TEXT, updated_at TEXT, author TEXT, author_id INTEGER);
 CREATE TABLE IF NOT EXISTS notifications(
   id INTEGER PRIMARY KEY, user_id INTEGER, run_id INTEGER, kind TEXT, text TEXT, created_at TEXT, seen_at TEXT);
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value_json TEXT);
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS admin_sessions(token_hash TEXT PRIMARY KEY, created_a
 """
 
 JSON_COLS = {"codes_json": "codes", "codes_status_json": "codes_status", "delivered_json": "delivered",
-             "usage_json": "usage", "warnings_json": "warnings", "prefs_json": "prefs"}
+             "usage_json": "usage", "warnings_json": "warnings", "prefs_json": "prefs", "result_json": "result"}
 
 
 class NameTaken(Exception):
@@ -74,10 +74,11 @@ class Store:
         self.db_path = str(db_path)
         self._local = threading.local()
         self._conn().executescript(SCHEMA)  # executescript commits on its own
-        have = {r[1] for r in self._conn().execute("PRAGMA table_info(runs)")}
-        for col in ("pid_name",):  # columns added after a database was created
-            if col not in have:
-                self._conn().execute(f"ALTER TABLE runs ADD COLUMN {col} TEXT")
+        for table, cols in (("runs", ("pid_name", "result_json", "job_dir", "resume_of")), ("review_items", ("author", "author_id"))):
+            have = {r[1] for r in self._conn().execute(f"PRAGMA table_info({table})")}
+            for col in cols:  # columns added after a database was created
+                if col not in have:
+                    self._conn().execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
 
     # -- connection -------------------------------------------------------
     def _conn(self) -> sqlite3.Connection:
@@ -170,15 +171,16 @@ class Store:
         self._conn().execute("UPDATE users SET prefs_json = ? WHERE uid = ?", (json.dumps(prefs, ensure_ascii=False), uid))
 
     # -- runs -------------------------------------------------------------
-    def insert_run(self, kind, path, path_key, job, codes, user_id, rerun_of=None) -> int:
+    def insert_run(self, kind, path, path_key, job, codes, user_id, rerun_of=None, job_dir=None, resume_of=None) -> int:
         with self._tx() as c:
             hit = c.execute(f"SELECT * FROM runs WHERE path_key = ? AND status IN ({','.join('?' * len(ACTIVE))})",
                             (path_key, *ACTIVE)).fetchone()
             if hit is not None:
                 raise Duplicate(_row(hit))
-            cur = c.execute("INSERT INTO runs(kind, path, path_key, job, codes_json, user_id, status, queued_at, rerun_of) "
-                            "VALUES(?, ?, ?, ?, ?, ?, 'QUEUED', ?, ?)",
-                            (kind, path, path_key, job, json.dumps(codes) if codes else None, user_id, now_iso(), rerun_of))
+            cur = c.execute("INSERT INTO runs(kind, path, path_key, job, codes_json, user_id, status, queued_at, rerun_of, job_dir, resume_of) "
+                            "VALUES(?, ?, ?, ?, ?, ?, 'QUEUED', ?, ?, ?, ?)",
+                            (kind, path, path_key, job, json.dumps(codes) if codes else None, user_id, now_iso(), rerun_of,
+                             job_dir, resume_of))
             return cur.lastrowid
 
     def get_run(self, run_id: int) -> dict | None:
@@ -276,10 +278,30 @@ class Store:
                 ids.append(cur.lastrowid)
         return ids
 
+    def add_feedback(self, author: str, text: str, run_id: int | None = None, code: str | None = None,
+                     author_id: int | None = None) -> int:
+        """A user's suggestion: only stored; Admin reads it on the Góp ý page (Mới / Đã xem / Đã làm / Bỏ qua)."""
+        title = text.strip().splitlines()[0][:120]
+        cur = self._conn().execute("INSERT INTO review_items(run_id, type, code, title, detail, author, author_id, created_at, "
+                                   "updated_at) VALUES(?, 'FEEDBACK', ?, ?, ?, ?, ?, ?, ?)",
+                                   (run_id, code, title, text.strip(), author, author_id, now_iso(), now_iso()))
+        return cur.lastrowid
+
+    def list_feedback(self, author_id: int | None = None) -> list[dict]:
+        sql = "SELECT i.*, r.job FROM review_items i LEFT JOIN runs r ON r.id = i.run_id WHERE i.type = 'FEEDBACK'"
+        if author_id is not None:
+            return self._q(sql + " AND i.author_id = ? ORDER BY i.id DESC", (author_id,))
+        return self._q(sql + " ORDER BY i.id DESC")
+
+    def feedback_new_count(self) -> int:
+        return self._conn().execute("SELECT COUNT(*) FROM review_items WHERE type = 'FEEDBACK' AND status = 'PENDING'").fetchone()[0]
+
     def list_review_items(self, status=None) -> list[dict]:
-        sql = ("SELECT i.*, r.job, r.path, r.kind FROM review_items i LEFT JOIN runs r ON r.id = i.run_id")
+        """Lessons and sample-DXF requests from runs (feedback has its own page)."""
+        sql = ("SELECT i.*, r.job, r.path, r.kind FROM review_items i LEFT JOIN runs r ON r.id = i.run_id "
+               "WHERE i.type != 'FEEDBACK'")
         if status:
-            return self._q(sql + " WHERE i.status = ? ORDER BY i.id DESC", (status,))
+            return self._q(sql + " AND i.status = ? ORDER BY i.id DESC", (status,))
         return self._q(sql + " ORDER BY i.id DESC")
 
     def get_review_item(self, item_id: int) -> dict | None:
@@ -292,7 +314,8 @@ class Store:
         self._conn().execute(f"UPDATE review_items SET {cols} WHERE id = ?", (*fields.values(), item_id))
 
     def review_pending_count(self) -> int:
-        return self._conn().execute("SELECT COUNT(*) FROM review_items WHERE status IN ('PENDING', 'COPIED')").fetchone()[0]
+        return self._conn().execute("SELECT COUNT(*) FROM review_items WHERE status IN ('PENDING', 'COPIED') "
+                                    "AND type != 'FEEDBACK'").fetchone()[0]
 
     # -- notifications ----------------------------------------------------
     def notify(self, user_id, run_id, kind, text) -> int:

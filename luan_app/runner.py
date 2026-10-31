@@ -51,11 +51,11 @@ def claude_executable(override: str | None) -> list[str]:
     return [exe]
 
 
-def build_command(exe: list[str], out_dir: Path, job_dir: str, model: str) -> list[str]:
+def build_command(exe: list[str], out_dir: Path, job_dir: str, model: str, effort: str = "") -> list[str]:
     cmd = list(exe) + ["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk",
                        "--allowedTools", *ALLOWED, "--disallowedTools", *DENIED,
                        "--add-dir", str(out_dir), "--add-dir", str(job_dir)]
-    return cmd + (["--model", model] if model else [])
+    return cmd + (["--model", model] if model else []) + (["--effort", effort] if effort else [])
 
 
 def detect_usage_limit(text: str) -> tuple[bool, str | None]:
@@ -86,6 +86,8 @@ class ClaudeProcess:
         self.result: dict | None = None
         self.usage_limit, self.reset_at, self.reset_hint = False, None, None
         self.utilization: float | None = None
+        self.utilization_start: float | None = None   # five-hour window at the first rate_limit_event
+        self.model: str | None = None                 # what the CLI actually ran (system init event)
         self.usage: dict = {}
         self.auth_failed = False
         self._reader: threading.Thread | None = None
@@ -141,7 +143,9 @@ class ClaudeProcess:
         t = ev.get("type")
         if ev.get("error") == "authentication_failed":
             self.auth_failed = True
-        if t == "assistant":
+        if t == "system" and ev.get("subtype") == "init" and ev.get("model"):
+            self.model = str(ev["model"])
+        elif t == "assistant":
             for c in (ev.get("message") or {}).get("content") or []:
                 if isinstance(c, dict) and c.get("type") == "tool_use":
                     self.activity, self.activity_at = _activity(c), time.time()
@@ -150,6 +154,8 @@ class ClaudeProcess:
             five = ((info.get("unifiedWindows") or {}).get("five_hour") or {}).get("utilization")
             if five is not None:
                 self.utilization = float(five)
+                if self.utilization_start is None:
+                    self.utilization_start = self.utilization
             status = str(info.get("status") or "")
             if status and not status.startswith("allowed"):
                 self.usage_limit = True
@@ -164,6 +170,16 @@ class ClaudeProcess:
                     self.usage_limit, self.reset_hint = True, hint
                 if "not logged in" in text.lower():
                     self.auth_failed = True
+
+    def usage_summary(self, effort: str = "", parallel: bool = False) -> dict | None:
+        """What the app shows per run: model + effort, turns, tokens, list-price cost (a quota proxy on a
+        subscription), and the account's five-hour window at start/end (shared by parallel runs, so approximate)."""
+        r = self.result or {}
+        if not (r or self.model or self.utilization is not None):
+            return None
+        return {**self.usage, "model": self.model, "effort": effort or None, "num_turns": r.get("num_turns"),
+                "cost_usd": r.get("total_cost_usd"), "duration_ms": r.get("duration_ms"),
+                "five_hour": [self.utilization_start, self.utilization], "parallel": parallel}
 
     @property
     def error_text(self) -> str:

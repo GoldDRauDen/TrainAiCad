@@ -1,0 +1,127 @@
+<!-- Admin guide: a fragment the app loads into its Hướng dẫn Admin page through /api/admin/guide (Admin only). -->
+<div class="form guide" id="ag-dang-nhap">
+  <h3>1. Đăng nhập Admin</h3>
+  <ol>
+    <li>Bấm tên ở góc phải → <b>Đăng nhập Admin</b> → nhập mật khẩu. Phiên Admin giữ 12 giờ.</li>
+    <li>Sai mật khẩu 5 lần thì khóa 5 phút. Đổi mật khẩu ở <b>Cài đặt → Đổi mật khẩu Admin</b>.</li>
+    <li>Mật khẩu lần đầu chỉ đặt được trên chính máy chạy app (máy Admin).</li>
+  </ol>
+</div>
+
+<div class="form guide" id="ag-khoi-dong">
+  <h3>2. Bật, tắt, khởi động lại app</h3>
+  <ol>
+    <li>App tự chạy khi đăng nhập Windows trên máy Admin. Biểu tượng ở khay hệ thống: <i>Mở app · Copy link LAN · Thoát</i>.</li>
+    <li><b>Sau mỗi lần cập nhật code (git pull / merge) phải khởi động lại app</b>: khay → Thoát, rồi chạy lại tác vụ
+      <span class="mono">Luan App</span> trong Task Scheduler (hoặc đăng xuất / đăng nhập Windows).
+      Chưa khởi động lại thì giao diện mới đã hiện nhưng máy chủ vẫn là bản cũ — nút mới sẽ báo
+      "Máy chủ báo lỗi 405/404".</li>
+    <li>Thoát khi đang có job chạy: app hỏi lại; job đang chạy thành <i>Lỗi</i> và có nút <b>Làm tiếp</b>.</li>
+    <li>Link cho mọi người: khay → Copy link LAN (dạng <span class="mono">http://192.168.x.x:8765</span>).</li>
+  </ol>
+</div>
+
+<div class="form guide" id="ag-qa">
+  <h3>3. QA (chỉ Admin)</h3>
+  <ol>
+    <li>Dán thư mục job, hoặc một file <span class="mono">.dxf</span>, vào ô trên Bảng rồi bấm <b>QA</b>. File nằm sâu
+      (<span class="mono">gui\&lt;job&gt;\&lt;job&gt;\x.dxf</span>) thì app tự tìm lên thư mục có phiếu 依頼 / PDF.</li>
+    <li>QA chỉ đi <b>bắt lỗi</b> bản người vẽ đã làm (file DWG và các DXF xuất từng mã trong
+      <span class="mono">gui\&lt;job&gt;\</span> — đây là bản của người vẽ, không phải DATA của khách), so với nguồn
+      của khách. QA không vẽ lại.</li>
+    <li>Chỉ xét biên dạng sản xuất. Ghi chú, kiểu chữ trong DWG không phải lỗi. <span class="mono">dx</span> /
+      <span class="mono">hl</span> chỉ xét nghĩa: đối xứng / có hướng vân.</li>
+    <li>Kết quả nằm trong <span class="mono">AI_L\</span> của job:
+      <span class="mono">&lt;JOB&gt;_AI_QA.txt</span> (mỗi mã <i>PASS</i> hoặc <i>FAIL: lý do</i>; pass hết chỉ ghi
+      <i>ALL_PASS</i>) và, khi có mã lỗi, <span class="mono">&lt;JOB&gt;_AI_QA.dxf</span>: biên dạng lỗi được chép ra,
+      khoanh tròn đỏ + leader + note.</li>
+  </ol>
+</div>
+
+<div class="form guide" id="ag-ket-qua">
+  <h3>4. Đọc kết quả một job</h3>
+  <ol>
+    <li>Dưới mỗi job trên Bảng / Lịch sử: mã chưa PASS và lý do ngắn.</li>
+    <li>Bấm job để xem: <b>Kết quả</b> từng mã, <b>Câu hỏi cho khách</b>, FLAG, DXF đã giao, báo cáo ngắn.</li>
+    <li><b>Model / hạn mức</b>: model, effort, số lượt AI, giá API quy đổi (chỉ để so độ tốn giữa các job — gói thuê bao
+      không tính tiền thật) và hạn mức 5 giờ của tài khoản lúc bắt đầu → lúc xong. Khi có job chạy song song, phần trăm
+      này là chung cho cả các job đó.</li>
+    <li>Trạng thái: <i>Xong</i> = mọi mã PASS và đã giao; <i>Cần xem</i> = còn PREVIEW / FLAG / FAIL; <i>Lỗi</i> = job
+      không chạy hết (xem dòng Lỗi trong chi tiết).</li>
+  </ol>
+</div>
+
+<div class="form guide" id="ag-lam-tiep">
+  <h3>5. Job bị ngắt: Làm tiếp</h3>
+  <ol>
+    <li>Job E2E <i>Lỗi</i> / <i>Đã hủy</i> / <i>Quá thời gian</i> có nút <b>Làm tiếp</b> trong chi tiết (người chạy và
+      Admin bấm được).</li>
+    <li>App chép phần đã làm của lượt đó về suất chạy; AI chạy <span class="mono">job.py status</span> rồi làm tiếp từ
+      bước đang dừng. Mã đã PASS và đã giao không làm lại.</li>
+    <li>Job đã <i>Xong</i> / <i>Cần xem</i> thì dùng <b>Chạy lại</b> (làm lại từ đầu, bản giao mới thành _v2, _v3).</li>
+    <li>Hết hạn mức Claude: hàng đợi tự dừng tới giờ hạn mức mở lại; muốn chạy ngay thì bấm <b>Chạy tiếp ngay</b>.</li>
+  </ol>
+</div>
+
+<div class="form guide" id="ag-luot-cu">
+  <h3>6. Tìm lại job cũ (để xem, để AI học, để nâng cấp repo)</h3>
+  <ol>
+    <li>Mỗi lượt chạy được lưu ở <span class="mono">%LOCALAPPDATA%\LuanApp\runs\&lt;số lượt&gt;\</span>:
+      <span class="mono">transcript.jsonl</span> (toàn bộ việc AI đã làm), <span class="mono">out\</span>
+      (report, result, review_items), <span class="mono">work\&lt;JOB&gt;\</span> (job_state, make / QA, bản chép
+      nguồn), <span class="mono">meta.json</span>. Thư mục <span class="mono">C:\TrainAiCad-slots\slotN\.work</span>
+      chỉ giữ job đang / vừa chạy.</li>
+    <li>Trên máy Admin: chi tiết job → <b>Thư mục lượt chạy</b> mở thẳng thư mục đó.</li>
+    <li>Trong Claude Code hoặc cmd ở thư mục repo:
+      <span class="mono">python -m luan_app.runs 521031-03</span> (tìm theo job, mã, chữ trong FLAG / tóm tắt) và
+      <span class="mono">python -m luan_app.runs --id 4</span> (đường dẫn transcript, report, work, job_state, kết quả,
+      model, hạn mức). Đưa các đường dẫn đó cho Claude Code khi muốn nó phân tích một job.</li>
+    <li>Lịch sử → chi tiết job → <b>Xuất gói lỗi</b>: file zip của lượt chạy để gửi / phân tích. <b>Transcript</b>: xem
+      nhanh trong trình duyệt.</li>
+    <li>Lịch sử → <b>CSV</b>: xuất danh sách job theo bộ lọc.</li>
+  </ol>
+</div>
+
+<div class="form guide" id="ag-cho-duyet">
+  <h3>7. Chờ duyệt (bài học, cần mẫu DXF)</h3>
+  <ol>
+    <li>Job đề xuất <i>Bài học mới</i> khi rule chưa bao / cho kết quả sai, và <i>Cần mẫu DXF</i> khi không biết cách vẽ.
+      Thiếu kích thước, chờ xác nhận Nobi, câu hỏi cho khách không nằm ở đây.</li>
+    <li><b>Chép để duyệt</b> → dán vào Claude Code; muốn sửa rule thì nói <b>DUYỆT</b> trong Claude Code. App không sửa
+      repo.</li>
+    <li><b>Đính kèm mẫu DXF</b> cho mục cần mẫu. <b>Đã xử lý</b> / <b>Bỏ qua</b> để dọn danh sách.</li>
+  </ol>
+</div>
+
+<div class="form guide" id="ag-gop-y">
+  <h3>8. Góp ý của mọi người</h3>
+  <ol>
+    <li>Trang <b>Góp ý</b> trên thanh trên (số đỏ = góp ý mới). Admin không gửi góp ý, chỉ đọc và đổi trạng thái:
+      <i>Mới → Đã xem → Đã làm</i> hoặc <i>Bỏ qua</i>. Người gửi thấy trạng thái này trên trang Góp ý của họ.</li>
+    <li>Góp ý chỉ được lưu, không tự đổi gì. Muốn làm theo: <b>Chép</b> → dán vào Claude Code.</li>
+  </ol>
+</div>
+
+<div class="form guide" id="ag-cai-dat">
+  <h3>9. Cài đặt</h3>
+  <ol>
+    <li><b>Số job chạy cùng lúc</b> (1–6, mặc định 3): nhiều hơn thì nhanh hơn nhưng hết hạn mức nhanh hơn.</li>
+    <li><b>Thời gian tối đa</b> mỗi job (mặc định 120 phút): quá thì tự hủy, có nút Làm tiếp.</li>
+    <li><b>Thư mục gốc được phép</b>: mỗi dòng một đường dẫn (ví dụ <span class="mono">\\VietNam2025\d\LASER</span>).
+      Job ngoài các thư mục này bị từ chối; bộ mở thư mục của người dùng cũng chỉ mở trong các thư mục này (cài lại
+      bộ mở thư mục sau khi đổi danh sách).</li>
+    <li><b>Model</b> (Sonnet / Opus / Haiku, mặc định Sonnet) và <b>Effort</b> (mặc định high): áp cho mọi job từ lượt
+      sau. Opus tốn hạn mức nhiều nhất; Haiku ít nhất nhưng kém chính xác với bản vẽ khó.</li>
+    <li><b>Bản repo</b> (mặc định <span class="mono">origin/main</span>): mỗi job lấy bản mới nhất trước khi chạy.</li>
+  </ol>
+</div>
+
+<div class="form guide" id="ag-loi">
+  <h3>10. Khi có lỗi</h3>
+  <ol>
+    <li>Banner đỏ "Claude CLI chưa đăng nhập": mở cmd trên máy Admin chạy <span class="mono">claude auth login</span>.</li>
+    <li>Nút nào cũng báo "Máy chủ báo lỗi 404/405": app chưa khởi động lại sau khi cập nhật (mục 2).</li>
+    <li>Trong Lịch sử có nhãn đỏ <i>repo</i>: job đã sửa file repo, app đã tự khôi phục — xem gói lỗi.</li>
+    <li>Log của app: <span class="mono">%LOCALAPPDATA%\LuanApp\app.log</span>.</li>
+  </ol>
+</div>

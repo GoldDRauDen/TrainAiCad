@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="vi" data-theme="system">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI CAD · Hướng dẫn</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="app.css">
+<script>try{var t=localStorage.getItem('luan-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<style>
+.guide{max-width:760px;margin:0 auto}
+.guide .form{max-width:none}
+.guide .form h3{display:flex;align-items:baseline;gap:10px}
+.guide .form h3 .n{font:500 12px var(--mono);color:var(--tx-3)}
+.guide p,.guide li{color:var(--tx-2);font-size:13.5px;line-height:1.65}
+.guide p+p,.guide p+ol,.guide p+ul,.guide ol+p,.guide ul+p,.guide ol+.btns,.guide p+.btns{margin-top:10px}
+.guide ol,.guide ul{padding-left:20px}
+.guide li+li{margin-top:4px}
+.guide b{color:var(--tx);font-weight:600}
+.guide code{font:400 12.5px var(--mono);background:var(--sunk);border:1px solid var(--line);border-radius:5px;padding:0 5px;word-break:break-all}
+.guide .btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.guide .note{margin-top:12px;background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.guide .ok{color:var(--ok-tx);font-size:13px}
+.guide .small{font-size:12.5px;color:var(--tx-3)}
+.top .back{margin-left:auto;font-size:13.5px;font-weight:500;color:var(--tx-2);text-decoration:none;padding:6px 10px;border-radius:8px;white-space:nowrap}
+.top .back:hover{background:var(--sunk);color:var(--tx)}
+@media (max-width:600px){.guide .form{padding:16px}.guide .btns .btn{flex:1 1 100%}}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <div class="brand"><span class="mark"><svg class="i" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></span>AI CAD</div>
+  <a class="back" href="/">← Về bảng job</a>
+</div></header>
+
+<main class="guide">
+  <h1>Hướng dẫn dùng AI CAD</h1>
+  <p class="sub">Đọc một lần là dùng được. Có gì chưa rõ thì bấm Góp ý.</p>
+
+  <section class="form" id="bat-dau">
+    <h3><span class="n">1</span>Bắt đầu</h3>
+    <ol>
+      <li>Lần đầu mở app: nhập tên của bạn.</li>
+      <li>Dán đường dẫn thư mục job (có PDF, DXF DATA, phiếu 依頼) vào ô trên <b>Bảng</b>.</li>
+      <li>App tick sẵn mọi mã. Bỏ tick mã không làm.</li>
+      <li>Bấm <b>Chạy</b>. Theo dõi tiến độ trên Bảng.</li>
+    </ol>
+  </section>
+
+  <section class="form" id="ket-qua">
+    <h3><span class="n">2</span>Kết quả</h3>
+    <p>Dưới mỗi job hiện các mã chưa PASS và lý do ngắn.</p>
+    <p>Bấm vào job để xem từng mã, câu hỏi cho khách, FLAG, DXF đã giao, model và hạn mức đã dùng.</p>
+    <p>DXF được giao vào thư mục <code>AI_L\</code> trong thư mục job. Phiếu <b>GẤP</b>: mã nào xong có DXF là giao mã đó ngay, không chờ cả job.</p>
+  </section>
+
+  <section class="form" id="mo-thu-muc">
+    <h3><span class="n">3</span>Mở thư mục AI_L bằng một cú bấm</h3>
+    <p>Trình duyệt không tự mở được thư mục trên máy chủ. Cài bộ mở thư mục một lần là bấm nút thư mục ở job sẽ mở thẳng File Explorer.</p>
+    <div class="btns">
+      <a class="btn btn-pri" href="/api/open-handler.cmd" download>Tải bộ cài mở thư mục</a>
+    </div>
+    <ol style="margin-top:12px">
+      <li>Tải file về.</li>
+      <li>Mở file vừa tải. Chrome có thể hỏi có giữ file không: chọn <b>Giữ lại</b>. Nếu Windows SmartScreen chặn: bấm <b>Thông tin thêm</b> → <b>Vẫn chạy</b>.</li>
+      <li>Thấy dòng “Đã cài bộ mở thư mục AI CAD…” là xong. Bấm phím bất kỳ để đóng.</li>
+      <li>Quay lại app, bấm nút thư mục ở một job. Trình duyệt hỏi mở “AI CAD open folder”: tick <b>Luôn cho phép</b> rồi bấm <b>Mở</b>.</li>
+    </ol>
+    <div class="note">
+      <p>Không cần quyền Administrator. Chỉ cài cho tài khoản Windows đang dùng. Chỉ mở được thư mục nằm trong các thư mục gốc của công ty.</p>
+      <p>Chưa cài thì nút thư mục chỉ copy đường dẫn — dán vào thanh địa chỉ File Explorer.</p>
+    </div>
+    <div class="btns" style="margin-top:14px">
+      <button class="btn btn-sec" id="mark-installed" type="button">Tôi đã cài xong</button>
+      <span class="ok" id="mark-msg" role="status" hidden>Đã ghi nhớ trên trình duyệt này.</span>
+    </div>
+    <p class="small" style="margin-top:10px"><a href="/api/open-handler.cmd?uninstall=1" id="uninstall" download>Gỡ cài</a></p>
+  </section>
+
+  <section class="form" id="lich-su">
+    <h3><span class="n">4</span>Lịch sử</h3>
+    <p>Mọi người xem được lịch sử của mọi job. Tìm theo số job, mã hoặc FLAG.</p>
+  </section>
+
+  <section class="form" id="gop-y">
+    <h3><span class="n">5</span>Góp ý</h3>
+    <p>Trang <b>Góp ý</b> ở thanh trên → <b>Gửi góp ý</b>, hoặc nút Góp ý trong chi tiết một job. Góp ý chỉ được lưu lại và chờ Admin duyệt, chưa thay đổi gì ngay. Trên trang Góp ý bạn thấy trạng thái từng góp ý: <i>Mới → Đã xem → Đã làm</i> (hoặc <i>Bỏ qua</i>).</p>
+  </section>
+
+  <section class="form" id="job-bi-ngat">
+    <h3><span class="n">6</span>Job bị ngắt</h3>
+    <p>Job <b>Lỗi</b>, <b>Đã hủy</b> hoặc <b>Quá thời gian</b> có nút <b>Làm tiếp</b>. App làm tiếp từ chỗ dừng; mã đã PASS không làm lại.</p>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  var KEY = 'aicad-open-handler';
+  var btn = document.getElementById('mark-installed');
+  var msg = document.getElementById('mark-msg');
+  var un = document.getElementById('uninstall');
+  function installed() { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
+  if (installed()) msg.hidden = false;
+  btn.addEventListener('click', function () {
+    try { localStorage.setItem(KEY, '1'); } catch (e) { /* storage blocked: nothing to remember */ }
+    msg.hidden = false;
+  });
+  un.addEventListener('click', function () {
+    try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+    msg.hidden = true;
+  });
+})();
+</script>
+</body>
+</html>

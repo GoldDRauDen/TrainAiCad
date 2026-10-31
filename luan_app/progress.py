@@ -64,6 +64,24 @@ def read_result(out_dir) -> dict | None:
     return None
 
 
+def result_view(result: dict | None, rows: list[dict] | None = None) -> dict | None:
+    """What the app shows: every code with its status and, when it is not PASS, the short reason; customer questions.
+    result.json "codes" may be {"<code>": "PASS"} or {"<code>": {"status": "FAIL", "note": "..."}}; job_state rows fill
+    codes the result left out (their FLAG texts are the reason)."""
+    if not result and not rows:
+        return None
+    codes, seen = [], set()
+    for code, v in ((result or {}).get("codes") or {}).items():
+        st, note = (v.get("status"), v.get("note")) if isinstance(v, dict) else (v, None)
+        codes.append({"code": str(code), "status": str(st or "?").upper(), "note": str(note or "").strip()})
+        seen.add(str(code))
+    for r in rows or []:
+        if r["code"] not in seen:
+            codes.append({"code": r["code"], "status": r.get("status") or "?", "note": "; ".join(r.get("flag_texts") or [])})
+    qs = (result or {}).get("questions") or []
+    return {"codes": codes, "questions": [str(q) for q in qs if str(q).strip()] if isinstance(qs, list) else [str(qs)]}
+
+
 def read_review_items(out_dir) -> tuple[list[dict], list[str]]:
     f = Path(out_dir) / "review_items.json"
     if not f.is_file():
@@ -120,6 +138,7 @@ def final_status(kind, job_state, result, delivered_files, exit_code, cancelled)
 
 def search_text(run: dict, rows: list[dict], result: dict | None) -> str:
     parts = [run.get("job") or "", run.get("kind") or "", (result or {}).get("summary") or ""]
+    parts += [c["note"] for c in (result_view(result) or {}).get("codes", []) if c["note"]]
     for r in rows:
         parts.append(r["code"])
         parts.extend(r["flag_texts"])
