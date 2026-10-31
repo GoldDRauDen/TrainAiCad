@@ -120,8 +120,8 @@ def create_app(paths, store, auth, scheduler, serve_static: bool = True) -> Fast
         r = store.get_run(run_id)
         if not r:
             raise ApiError(404, "Không tìm thấy job.")
-        if not adm and r["user_id"] != user.get("id"):
-            raise ApiError(403, "Không có quyền xem job này.")
+        # Anyone named may read a run (the board shows everyone's jobs and others need the DXF path);
+        # cancel / rerun / transcript keep their own checks.
         return r, user, adm
 
     # -- me / admin -------------------------------------------------------

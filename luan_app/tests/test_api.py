@@ -159,8 +159,21 @@ def test_history_scoped_to_user(ctx, jobs_root):
         c.post("/api/runs", json={"path": str(d), "kind": "RUN"})
     assert [r["job"] for r in a.get("/api/runs").json()["runs"]] == ["521005-01"]
     other_id = b.get("/api/runs").json()["runs"][0]["id"]
-    assert a.get(f"/api/runs/{other_id}").status_code == 403
+    # History lists only your runs, but anyone may open any run's details (DXF path, report) from the board.
+    d = a.get(f"/api/runs/{other_id}")
+    assert d.status_code == 200 and d.json()["mine"] is False and d.json()["can_cancel"] is False
+    assert d.json()["can_rerun"] is False
+    assert a.get(f"/api/runs/{other_id}/transcript").status_code == 403
     assert len(admin(ctx).get("/api/runs").json()["runs"]) == 2
+
+
+def test_admin_rerun_stays_with_original_user(ctx, job_dir):
+    c = named(ctx, "Phát", ("10.0.0.42", 1))
+    rid = c.post("/api/runs", json={"path": str(job_dir), "kind": "RUN"}).json()["id"]
+    wait_final(ctx, rid)
+    new_id = admin(ctx).post(f"/api/runs/{rid}/rerun").json()["id"]
+    assert ctx["store"].get_run(new_id)["user_name"] == "Phát"
+    assert [r["id"] for r in c.get("/api/runs").json()["runs"]] == [new_id, rid]
 
 
 def test_run_detail_has_report(ctx, job_dir):

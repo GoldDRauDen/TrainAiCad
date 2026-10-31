@@ -105,7 +105,8 @@ class Scheduler:
             raise PermissionError("Chỉ người chạy hoặc Admin được chạy lại job này.")
         if run["status"] not in FINAL:
             raise ValueError("Job chưa kết thúc.")
-        return self.submit(user, run["kind"], run["path"], run.get("codes"), True, is_admin, rerun_of=run_id)
+        owner = self.store.user_by_id(run["user_id"]) or user  # an Admin rerun stays the original user's job
+        return self.submit(owner, run["kind"], run["path"], run.get("codes"), True, is_admin, rerun_of=run_id)
 
     def resume_queue(self) -> None:
         self.store.set_settings(queue_paused_until=None)

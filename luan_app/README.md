@@ -25,7 +25,7 @@ Gỡ cài: `luan_app\install.cmd -Uninstall`. Dữ liệu vẫn nằm ở `%LOCA
 
 ## Dùng
 
-- **Mọi người:** nhập tên lần đầu. Dán đường dẫn job, app đọc phiếu `依頼` và tick sẵn mọi mã, bỏ tick mã không làm, rồi bấm **Chạy**. Theo dõi trên **Bảng**; xem lại ở **Lịch sử**. Chỉ hủy và chạy lại được job của mình.
+- **Mọi người:** nhập tên lần đầu. Dán đường dẫn job, app đọc phiếu `依頼` và tick sẵn mọi mã, bỏ tick mã không làm, rồi bấm **Chạy**. Theo dõi trên **Bảng**; xem lại ở **Lịch sử**. Bấm job bất kỳ trên Bảng để xem chi tiết và copy đường dẫn DXF; chỉ hủy và chạy lại được job của mình (Admin chạy lại giúp thì job vẫn là của người chạy ban đầu).
 - **Admin:** bấm tên ở góc phải → **Đăng nhập Admin**.
   - **QA:** dán thư mục job hoặc một file `.dxf`. File nằm sâu (`gui\<job>\<job>\x.dxf`) thì app tự lên tới thư mục có phiếu `依頼`/PDF, không vượt thư mục gốc được phép.
   - **Chờ duyệt:** dùng *Chép để duyệt*, rồi dán vào Claude Code.
