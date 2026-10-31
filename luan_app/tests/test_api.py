@@ -68,9 +68,18 @@ def test_name_then_board_304(ctx):
     assert c.get("/api/board", headers={"If-None-Match": etag}).status_code == 304
 
 
-def test_name_taken(ctx):
+def test_name_reclaim_after_cookie_lost(ctx):
+    first = named(ctx, "Hùng")
+    uid = first.cookies.get("luan_uid")
+    c = client(ctx, ("10.0.0.22", 5000))  # new browser, no luan_uid cookie
+    r = c.post("/api/me", json={"name": "hùng"})
+    assert r.status_code == 200 and r.json()["user"]["name"] == "Hùng"
+    assert c.cookies.get("luan_uid") == uid
+
+
+def test_rename_to_taken_name_refused(ctx):
     named(ctx, "Hùng")
-    c = client(ctx, ("10.0.0.22", 5000))
+    c = named(ctx, "Minh", ("10.0.0.22", 5000))
     r = c.post("/api/me", json={"name": "hùng"})
     assert r.status_code == 400 and "Tên" in r.json()["error"]
 

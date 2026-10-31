@@ -137,7 +137,8 @@ def create_app(paths, store, auth, scheduler, serve_static: bool = True) -> Fast
         name = str((await request.json()).get("name") or "")
         u = current_user(request)
         try:
-            u = store.rename_user(u["uid"], name) if u else store.create_user(name)
+            # A browser without our cookie that types an existing name takes that name back (cookie lost, new browser).
+            u = store.rename_user(u["uid"], name) if u else (store.user_by_name(name) or store.create_user(name))
         except NameTaken:
             raise ApiError(400, "Tên đã có người dùng hoặc không hợp lệ. Chọn tên khác.")
         resp = JSONResponse({"user": {"name": u["name"], "prefs": u.get("prefs") or {}}})
@@ -331,8 +332,7 @@ def create_app(paths, store, auth, scheduler, serve_static: bool = True) -> Fast
         active = store.active_runs()
         running = [r for r in active if r["status"] != "QUEUED"]
         queue = [r for r in active if r["status"] == "QUEUED"]
-        done_today = store.list_runs(final_only=True, date_from=today, limit=30)
-        ended_today = [r for r in done_today if (r.get("ended_at") or "") >= today]
+        ended_today = store.list_runs(final_only=True, ended_from=today, limit=30)
         return {
             "me": {"name": (user or {}).get("name") or "Admin", "is_admin": adm},
             "slots": {"used": len(running), "total": int(settings["slots"])},

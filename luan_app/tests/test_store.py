@@ -75,3 +75,18 @@ def test_notifications_since(store):
     store.notify(u["id"], rid, "ERROR", "lỗi")
     got = store.notifications(u["id"], since_id=first)
     assert [n["text"] for n in got] == ["lỗi"]
+
+
+def test_list_runs_ended_from_includes_runs_queued_before(store):
+    u = store.create_user("Hùng")
+    rid = store.insert_run("RUN", "p", "p", "J", None, u["id"])
+    store.update_run(rid, status="DONE", queued_at="2026-10-30T23:50:00", ended_at="2026-10-31T00:10:00")
+    today = "2026-10-31T00:00:00"
+    assert [r["id"] for r in store.list_runs(final_only=True, ended_from=today)] == [rid]
+    assert store.list_runs(final_only=True, date_from=today) == []
+
+
+def test_user_by_name_case_insensitive(store):
+    u = store.create_user("Hùng")
+    assert store.user_by_name(" hùng ")["uid"] == u["uid"]
+    assert store.user_by_name("Minh") is None

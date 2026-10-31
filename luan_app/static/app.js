@@ -88,7 +88,7 @@ function modal({title, text = '', input = null, okLabel = 'OK', cancelLabel = 'K
 async function askName(required) {
   let msg = '';
   for (;;) {
-    const p = modal({title: 'Bạn là ai?', text: 'Nhập tên để mọi người biết ai đang chạy job. Trình duyệt sẽ nhớ tên này.',
+    const p = modal({title: 'Bạn là ai?', text: 'Nhập tên để mọi người biết ai đang chạy job. Trình duyệt sẽ nhớ tên này. Đã dùng app trên trình duyệt khác? Nhập đúng tên cũ để lấy lại lịch sử.',
                      input: state.me && state.me.user ? state.me.user.name : '', okLabel: 'Lưu tên', noCancel: required});
     if (msg) setTimeout(() => $('#modal-root').setError && $('#modal-root').setError(msg), 0);
     const name = await p;

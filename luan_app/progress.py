@@ -25,7 +25,7 @@ def find_job_state(slot_dir: Path, job: str | None) -> dict | None:
         if isinstance(named, dict):
             return named
     found = []
-    for f in glob.glob(str(work / "*" / "job_state.json")):
+    for f in glob.glob(os.path.join(glob.escape(str(work)), "*", "job_state.json")):
         d = _load(f)
         if isinstance(d, dict):
             found.append((os.path.getmtime(f), d))
@@ -48,7 +48,7 @@ def code_rows(job_state: dict | None) -> list[dict]:
 def delivered(job_dir: str, since_iso: str | None) -> list[str]:
     since = dt.datetime.fromisoformat(since_iso).timestamp() if since_iso else 0
     out = []
-    for f in glob.glob(os.path.join(job_dir, "AI_L", "*.dxf")):
+    for f in glob.glob(os.path.join(glob.escape(job_dir), "AI_L", "*.dxf")):
         try:
             if os.path.getmtime(f) >= since:
                 out.append(f)

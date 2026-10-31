@@ -95,3 +95,14 @@ def test_delivered_since(tmp_path):
 def test_search_text():
     t = pg.search_text({"job": "J1", "kind": "RUN"}, pg.code_rows(ONE_PREVIEW), {"summary": "Nobi"})
     assert "J1" in t and "B" in t and "Nobi chưa rõ" in t
+
+
+def test_glob_tolerates_brackets_in_paths(tmp_path):
+    job = tmp_path / "521028-04 [gấp]"
+    (job / "AI_L").mkdir(parents=True)
+    (job / "AI_L" / "a.dxf").write_text("0")
+    assert [os.path.basename(p) for p in pg.delivered(str(job), None)] == ["a.dxf"]
+    slot = tmp_path / "slot[1]"
+    (slot / ".work" / "J1").mkdir(parents=True)
+    (slot / ".work" / "J1" / "job_state.json").write_text('{"job": "J1"}', encoding="utf-8")
+    assert pg.find_job_state(slot, "J9")["job"] == "J1"

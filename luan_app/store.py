@@ -147,6 +147,10 @@ class Store:
     def user_by_uid(self, uid: str | None) -> dict | None:
         return self._one("SELECT * FROM users WHERE uid = ?", (uid,)) if uid else None
 
+    def user_by_name(self, name: str | None) -> dict | None:
+        n = " ".join((name or "").split())
+        return self._one("SELECT * FROM users WHERE name = ?", (n,)) if n else None
+
     def user_by_id(self, user_id: int | None) -> dict | None:
         return self._one("SELECT * FROM users WHERE id = ?", (user_id,)) if user_id else None
 
@@ -233,7 +237,7 @@ class Store:
         return rows[0] if rows else None
 
     def list_runs(self, user_id=None, status=None, kind=None, date_from=None, date_to=None, q=None,
-                  limit=200, final_only=False) -> list[dict]:
+                  limit=200, final_only=False, ended_from=None) -> list[dict]:
         where, args = ["1=1"], []
         if user_id is not None:
             where.append("r.user_id = ?"); args.append(user_id)
@@ -247,6 +251,8 @@ class Store:
             where.append("r.queued_at >= ?"); args.append(date_from)
         if date_to:
             where.append("r.queued_at < ?"); args.append(date_to)
+        if ended_from:
+            where.append("r.ended_at >= ?"); args.append(ended_from)
         if q:
             terms = " ".join('"' + t.replace('"', '') + '"*' for t in q.split() if t.replace('"', ''))
             if terms:

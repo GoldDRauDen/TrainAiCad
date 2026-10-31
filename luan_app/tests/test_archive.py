@@ -47,3 +47,12 @@ def test_csv_has_bom_and_header():
                               "summary": "4/4 PASS", "queued_at": "t", "started_at": "t", "ended_at": "t", "commit": "c"}])
     assert text.startswith("﻿id,kind,job,path,user,status,summary")
     assert "Hùng" in text
+
+
+def test_csv_neutralizes_formula_cells():
+    text = archive.runs_csv([{"id": 2, "kind": "RUN", "job": "=HYPERLINK(\"x\")", "path": "+1", "user_name": "@me",
+                              "status": "DONE", "summary": "-2", "queued_at": "	t", "started_at": "t", "ended_at": "t",
+                              "commit": "c"}])
+    row = text.splitlines()[1]
+    assert "'=HYPERLINK" in row and "'+1" in row and "'@me" in row and "'-2" in row and "'	t" in row
+    assert row.startswith("2,RUN,")  # numbers stay numbers

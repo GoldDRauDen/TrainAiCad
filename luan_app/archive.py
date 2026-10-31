@@ -70,10 +70,19 @@ def bundle_zip(dest: Path) -> Path:
     return z
 
 
+def _cell(v):
+    """Excel runs a text cell starting with = + - @ (or tab/CR) as a formula; a leading ' keeps it text."""
+    if v is None:
+        return ""
+    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + v
+    return v
+
+
 def runs_csv(rows: list[dict]) -> str:
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator="\r\n")
     w.writerow([c for c, _ in CSV_COLS])
     for r in rows:
-        w.writerow(["" if r.get(k) is None else r.get(k) for _, k in CSV_COLS])
+        w.writerow([_cell(r.get(k)) for _, k in CSV_COLS])
     return "﻿" + buf.getvalue()
