@@ -114,3 +114,14 @@ def test_detect_usage_limit_patterns(text, hit):
 
 def test_claude_executable_override():
     assert runner.claude_executable('"C:\\Py\\python.exe" C:\\x\\fake.py') == ["C:\\Py\\python.exe", "C:\\x\\fake.py"]
+
+
+def test_child_env_puts_this_python_first_on_path():
+    # Task Scheduler gives the app the bare Windows PATH, where `python` may be missing (only the `py` launcher);
+    # Claude's `python tools/...` must find the app's interpreter, which has the repo requirements.
+    import os
+    import sys
+    env = runner.child_env({"PATH": r"C:\Windows\system32"}, {"X": "1"})
+    first = env["PATH"].split(os.pathsep)[0]
+    assert os.path.normcase(first) == os.path.normcase(os.path.dirname(sys.executable))
+    assert env["X"] == "1" and env["PYTHONUTF8"] == "1"

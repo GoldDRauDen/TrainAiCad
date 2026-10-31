@@ -72,6 +72,8 @@ Biến môi trường: `LUAN_DATA_DIR`, `LUAN_SLOTS_ROOT`, `LUAN_CLAUDE_CMD`. Lo
 - Lượt QA đầu bị chặn hết vì đường dẫn `\\VietNam2025` → thêm bước chép job về `.work` (trên).
 - **QA thật** `26-063784.dxf` (job 521028-04): DONE trong 2 phút 20 giây, $1.06; `report.md` / `result.json` đúng; server không bị ghi; worktree sạch. Claude chưa so được với DWG mẫu vì gọi `job.py qa` trước `job.py init` (thứ tự trong rule QA, không phải lỗi app).
 
+- Job E2E đầu tiên sau khi cài (521030-01) lỗi: PATH của Windows chỉ có `py` launcher, không có `python` (ở terminal có là nhờ Git Bash). App giờ đặt thư mục Python của chính nó (`luan_app\.venv\Scripts`, đủ thư viện repo) lên đầu PATH khi chạy Claude.
+
 **Chưa kiểm tra trên máy thật:**
 1. Cài bằng `install.cmd`: Task Scheduler, luật firewall, biểu tượng khay.
 2. Máy khác trong LAN mở được link.

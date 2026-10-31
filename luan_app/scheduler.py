@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from . import archive, progress, sources, staging
 from .config import SLOTS_MAX, SLOTS_MIN, USAGE_PAUSE_MIN
 from .prompts import build_prompt
-from .runner import NOT_LOGGED_IN, ClaudeProcess, build_command, claude_executable, kill_tree, same_program
+from .runner import NOT_LOGGED_IN, ClaudeProcess, build_command, child_env, claude_executable, kill_tree, same_program
 from .store import ACTIVE, FINAL, Duplicate, now_iso
 
 log = logging.getLogger("luan_app.scheduler")
@@ -232,7 +232,7 @@ class Scheduler:
             st = staging.stage_in(sources.native(info["job_dir"]), sources.native(run["path"]), self.slots.path(k), run["job"])
             if w.cancel.is_set():
                 raise _Cancelled()
-            env = dict(os.environ, PYTHONUTF8="1", LUAN_RUN_DIR=str(od), **self.extra_env)
+            env = child_env(os.environ, dict(LUAN_RUN_DIR=str(od), **self.extra_env))
             cmd = build_command(self._exe(settings), od, str(st.local_dir), settings.get("model") or "")
             proc = ClaudeProcess()
             w.proc = proc

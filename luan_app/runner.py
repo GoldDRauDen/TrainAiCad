@@ -12,6 +12,7 @@ import shlex
 import shutil
 import signal
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -29,6 +30,15 @@ RESET_RE = re.compile(r"resets? (at|in)? ?[^.\n|]+|\b\d{1,2}(:\d{2})?\s?(am|pm)\
 
 class RunnerError(Exception):
     pass
+
+
+def child_env(base: dict, extra: dict) -> dict:
+    """Environment for `claude -p`: this interpreter's folder first on PATH, so the job's `python tools/...` runs the
+    app's Python (it has the repo requirements) even when Task Scheduler's PATH only knows the `py` launcher."""
+    env = dict(base, PYTHONUTF8="1", **extra)
+    here = os.path.dirname(sys.executable)
+    env["PATH"] = os.pathsep.join(p for p in (here, env.get("PATH") or "") if p)
+    return env
 
 
 def claude_executable(override: str | None) -> list[str]:
