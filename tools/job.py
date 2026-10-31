@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Job state on disk, so a compacted or resumed session continues from files, not memory.
 
-    python tools/job.py init 521019-05 [--codes 26-061247 26-061248] [--slip FOLDER|FILE.xlsx] [--source x.pdf ...] [--customer 843] [--work DIR]
+    python tools/job.py init 521019-05 [--codes 26-061247 26-061248] [--slip FOLDER|FILE.xlsx] [--source x.pdf ...] [--customer 843] [--work DIR] [--qa]
                                                    # --slip (default: the *_依頼.xlsx next to --source) fills codes, customer per code, material, urgency
+                                                   # --qa: QA-only job (rules/QA_REVERSE.md): census in QA/, no make/, no deliver
     python tools/job.py status [JOB|DIR]           # compact summary + next step (default: current job)
     python tools/job.py set CODE [--job JOB] [--stage L2] [--status PREVIEW] [--flag "..."] [--file spec=spec.yaml] [--note "..."]
     python tools/job.py census CODE [--job JOB] [--set HOLE=YES[:evidence] ...] [--rest NO] [--source-mode PDF_ONLY] [--part-mode BEND]
@@ -18,6 +19,7 @@
 Work dir default: `.work/<JOB>/` in the repo (git-ignored); `.work/CURRENT` names the current job.
 Layout: job_state.json; make/ = everything we build (census_<code>.json, ledger_<code>.md, spec_<code>.yaml, <JOB>_job.json, report,
 out/); QA/ (only when the job has DWGs) = copies of the DWG, their DXF, digests and roles.json.
+A QA-only job (`init --qa`, job_state "mode": "QA") has no make/: its census_<code>.json, renders and scratch live in QA/.
 """
 from __future__ import annotations
 
@@ -49,6 +51,12 @@ NEXT = {
     "L3": "Report: rules/OUTPUT.md §8",
     "DONE": "nothing left for this code",
 }
+QA_NEXT = {
+    "L0": "QA: read the source, fill census_<code>.json, run `job.py census <code>` (cards to judge by)",
+    "DONE": "nothing left for this code",
+}
+QA_NEXT_DEFAULT = ("QA: audit the drafter's DWG / gui exports against the source with the routed cards; "
+                   "<JOB>_AI_QA.txt (+ <JOB>_AI_QA.dxf via tools/qa_markup.py) into AI_L")
 
 
 def _now() -> str:
@@ -90,8 +98,13 @@ def make_dir(d: Path) -> Path:
     return m
 
 
+def is_qa(state: dict) -> bool:
+    return state.get("mode") == "QA"
+
+
 def init(job: str, codes: list[str], sources: list[str], customer: str | None, work: str | None,
-         slip: str | None = None) -> dict:
+         slip: str | None = None, qa: bool = False) -> dict:
+    """qa=True: a QA-only job (audit, never build): census skeletons go to QA/, no make/ is created."""
     d = Path(work) if work else WORK_ROOT / job
     d.mkdir(parents=True, exist_ok=True)
     f = d / "job_state.json"
@@ -112,16 +125,22 @@ def init(job: str, codes: list[str], sources: list[str], customer: str | None, w
              "sources": sources, "codes": {}}
     if slip_data:
         state.update(slip=slip_data["file"], urgent=slip_data["urgent"], delivery_tag=slip_data["tag"])
-    make = make_dir(d)
+    if qa:
+        state["mode"] = "QA"
+        sub = QA
+        (d / QA).mkdir(exist_ok=True)
+    else:
+        sub = MAKE
+        make_dir(d)
     for code in codes:
         row = rows.get(code, {})
         cust = row.get("customer_code") or customer
         census = census_template()
         census["part_code"] = code
         census["customer_code"] = cust
-        _write(make / f"census_{code}.json", census)
+        _write(d / sub / f"census_{code}.json", census)
         state["codes"][code] = {"stage": "L0", "status": "OPEN", "flags": [], "notes": [],
-                                "files": {"census": f"{MAKE}/census_{code}.json"}}
+                                "files": {"census": f"{sub}/census_{code}.json"}}
         if row:
             state["codes"][code]["slip"] = {k: row.get(k) for k in (
                 "customer_code", "customer_name", "material_text", "family", "surface", "t", "size_x", "size_y")}
@@ -193,9 +212,14 @@ def edit_census(c: dict, sets=(), rest=None, source_mode=None, part_mode=None, r
     return c
 
 
+def census_path(d: Path, state: dict, code: str) -> Path:
+    """files.census of the code; default make/census_<code>.json (QA/ for a QA-only job)."""
+    return d / state["codes"][code]["files"].get("census", f"{QA if is_qa(state) else MAKE}/census_{code}.json")
+
+
 def census(job: str | None, code: str, **edits) -> dict:
     d, state = load(job)
-    f = d / state["codes"][code]["files"].get("census", f"{MAKE}/census_{code}.json")
+    f = census_path(d, state, code)
     data = json.loads(f.read_text(encoding="utf-8-sig"))
     if any(edits.get(k) for k in ("sets", "rest", "source_mode", "part_mode", "reference", "multi", "customer", "notes")):
         data = edit_census(data, **edits)
@@ -243,7 +267,7 @@ def census_batch(job: str | None, path: str) -> list[dict]:
                                              else "not a code of this job"))
         raw = {k: e[k] for k in RAW_CENSUS_KEYS if k in e}
         if raw:
-            f = d / state["codes"][code]["files"].get("census", f"{MAKE}/census_{code}.json")
+            f = census_path(d, state, code)
             c = json.loads(f.read_text(encoding="utf-8-sig"))
             c.update(raw)
             _write(f, c)
@@ -356,9 +380,16 @@ def _put(src: Path, target_dir: Path, stem: str) -> Path | None:
     return out
 
 
+def _no_make(state: dict) -> None:
+    if is_qa(state):
+        raise SystemExit(f"{state['job']} is a QA-only job: nothing is built or delivered "
+                         "(QA output: <JOB>_AI_QA.txt / <JOB>_AI_QA.dxf in AI_L, rules/QA_REVERSE.md)")
+
+
 def deliver(job: str | None, dxf: str | None = None, dest: str | None = None) -> Path | None:
     """Copy the composite DXF to <input folder>/AI_L; never overwrite (_v2, _v3 ...), never repeat identical content."""
     d, state = load(job)
+    _no_make(state)
     name_re = re.compile(rf"{re.escape(state['job'])}_ALL(_REVIEW_ONLY)?\.dxf")
     if dxf:
         src = Path(dxf)
@@ -388,6 +419,7 @@ def deliver_code(job: str | None, code: str, dest: str | None = None) -> Path | 
     """Urgent jobs (Express / とても急ぎます): the DXF of ONE code, in the same form as the composite (PREVIEW codes too),
     straight into AI_L as <CODE>.dxf as soon as it is drawn; a changed redraw becomes <CODE>_v2.dxf."""
     d, state = load(job)
+    _no_make(state)
     if code not in state["codes"]:
         raise SystemExit(f"{code} is not in job {state['job']} (codes: {', '.join(state['codes'])})")
     data = json.loads(job_json_path(d, state["job"]).read_text(encoding="utf-8-sig"))
@@ -461,7 +493,7 @@ def order(job: str | None = None) -> list[dict]:
     d, state = load(job)
     rows = []
     for i, (code, c) in enumerate(state["codes"].items()):
-        f = d / c["files"].get("census", f"{MAKE}/census_{code}.json")
+        f = census_path(d, state, code)
         try:
             score, why = difficulty(json.loads(f.read_text(encoding="utf-8-sig")))
         except OSError:
@@ -476,14 +508,19 @@ def order(job: str | None = None) -> list[dict]:
 def summary(job: str | None = None) -> str:
     d, state = load(job)
     head = _head()
+    qa = is_qa(state)
     lines = [f"JOB {state['job']}  work={d}  customer={state.get('customer_code')}"]
-    if "urgent" in state:
+    if qa:
+        lines.append("QA JOB (audit only, rules/QA_REVERSE.md): no make/, no build, no deliver; census, renders and "
+                     "scratch in QA/; `job.py qa` for the DWGs; output <JOB>_AI_QA.txt (+ .dxf) in AI_L")
+    elif "urgent" in state:
         lines.append("DELIVERY: " + ("URGENT (%s): deliver each code as soon as it is drawn (`job.py deliver-code CODE`), easy codes "
                                      "first, composite at the end" % state.get("delivery_tag")
                                      if state["urgent"] else "default: one composite (`job.py deliver`) into AI_L"))
     if state.get("commit") and head and head != state["commit"]:
         lines.append(f"WARNING: repo HEAD {head[:9]} != pinned {state['commit'][:9]} (do not change rules mid-job)")
-    lines.append("Re-read JOB_CARD.md, then the cards listed for the current stage.")
+    lines.append("Re-read rules/QA_REVERSE.md, then the cards routed by the census." if qa else
+                 "Re-read JOB_CARD.md, then the cards listed for the current stage.")
     for code, c in state["codes"].items():
         files = ", ".join(f"{k}={v}" for k, v in c["files"].items())
         sl = c.get("slip")
@@ -497,7 +534,7 @@ def summary(job: str | None = None) -> str:
             lines.append(f"    FLAG: {fl}")
         if c["notes"]:
             lines.append(f"    note: {c['notes'][-1]}")
-        lines.append(f"    next: {NEXT[c['stage']]}")
+        lines.append(f"    next: {QA_NEXT.get(c['stage'], QA_NEXT_DEFAULT) if qa else NEXT[c['stage']]}")
     return "\n".join(lines)
 
 
@@ -523,6 +560,7 @@ def main(argv=None) -> int:
     i.add_argument("--source", nargs="*", default=[])
     i.add_argument("--customer", help="numeric customer code from JOB STATISTICS")
     i.add_argument("--work", help="work directory (default .work/<JOB>)")
+    i.add_argument("--qa", action="store_true", help="QA-only job: census in QA/, no make/ (rules/QA_REVERSE.md)")
     s = sub.add_parser("status")
     s.add_argument("job", nargs="?")
     t = sub.add_parser("set")
@@ -569,7 +607,7 @@ def main(argv=None) -> int:
             print(text)
         return 0
     if a.cmd == "init":
-        init(a.job, a.codes, a.source, a.customer, a.work, a.slip)
+        init(a.job, a.codes, a.source, a.customer, a.work, a.slip, qa=a.qa)
         print(summary(a.work or a.job))
     elif a.cmd == "deliver":
         deliver(a.job, a.dxf, a.dest)

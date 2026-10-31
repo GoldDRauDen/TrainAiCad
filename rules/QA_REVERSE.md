@@ -4,9 +4,11 @@ Never loaded by E2E. Intent unclear between creating and auditing → say so bef
 
 ## 1. Role
 `ROLE = QA_AUDITOR`; the DXF is the `AUDIT_TARGET`, never evidence of itself. SELF_QA: freeze the exact saved file first, do not edit it during the audit. Default: READ → COMPARE → CHALLENGE → REPORT; no replacement DXF, no rule change, no push unless asked separately.
+QA = error hunter: judge the drafter's job against the source (PDF / customer DATA) with the make rules the census routes; never build, redraw or fix. Only the production profile counts: notes and text style in the drafter's DWG are not errors; `dx`/`hl` only by meaning (dx = mirrored pair, hl = grain direction).
 
 ## 2. Sequence
-A `.dwg` target/sample: `python tools/job.py qa` (→ `QA/`, roles in `REFERENCE.md` §5); audit the unchecked DWG against the PDF and the checked sample.
+Start: `python tools/job.py init <JOB> --source ... --qa` (census in `QA/`, no `make/`); renders and scratch files also go to `QA/`.
+A `.dwg` target/sample: `python tools/job.py qa` (→ `QA/`, roles in `REFERENCE.md` §5); audit the unchecked DWG against the PDF and the checked sample. Target = the drafter's DWG + its per-code exports `gui\<job>\*.dxf` (drafter output, not customer DATA).
 Read the source (PDF/image/DATA) → decode DATA curves (`DATA_DXF.md` §1) → map code ⟷ view ⟷ DATA cluster ⟷ target cluster → note/group/member expectation → census + `resolve_rules.py` → read the routed cards → expected state → decode the target (`tools/dxf_digest.py`) → reverse diff per feature → holistic challenge (`VALIDATE.md` §5) → result.
 
 ## 3. Acceptance
@@ -16,3 +18,7 @@ Read the source (PDF/image/DATA) → decode DATA curves (`DATA_DXF.md` §1) → 
 
 ## 4. Result
 First line `QA RESULT: PASS | FAIL | FLAGGED`. Then per code only the defects: `CODE | FEATURE | EXPECTED | ACTUAL | DELTA | WHY | SEVERITY` (CRITICAL = wrong topology/identity/attachment, missing/extra feature, DATA change, duplicate path; MAJOR = wrong R/C, hole/tap, slot, Nobi/bend position, material rule, numeric error over the threshold; MINOR = other numeric deviation). Not understood → say so, name the blocker class, ask; disagree with the user when the evidence says so.
+Files into the job's `AI_L\`: `<JOB>_AI_QA.txt` = one line per code `<code> PASS` or `<code> FAIL: <short reason>` (all pass → the single line `ALL_PASS`); any FAIL → `<JOB>_AI_QA.dxf` by `python tools/qa_markup.py ISSUES.json OUT.dxf` (items `{code, src, bbox, note, marks: [{x, y, note}]}`: failing profile copied out, red circle + leader + note per faulty spot; note only when a spot cannot be pointed at).
+
+## Lessons
+`regression/lessons/QA_REVERSE/` — 521031-03 (QA only: `init --qa`, no make/; error hunter, AI_QA files).
