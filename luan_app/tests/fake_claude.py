@@ -28,7 +28,8 @@ def main():
     job_dir = Path(add[1]) if len(add) > 1 else Path.cwd()
     prompt = sys.stdin.read()
     mode = os.environ.get("FAKE_MODE", "ok")
-    job = os.environ.get("FAKE_JOB") or job_dir.name
+    # The app hands over its copy <slot>/.work/<JOB>/source; the job is named after the folder above it.
+    job = os.environ.get("FAKE_JOB") or (job_dir.parent.name if job_dir.name == "source" else job_dir.name)
     codes = [c for c in os.environ.get("FAKE_CODES", "26-000001,26-000002").split(",") if c]
     delay = float(os.environ.get("FAKE_DELAY", "0.05"))
 

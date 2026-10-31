@@ -43,7 +43,8 @@ Gỡ cài: `luan_app\install.cmd -Uninstall`. Dữ liệu vẫn nằm ở `%LOCA
 ## Cách chạy job
 
 - Mỗi suất là một git worktree riêng ở `C:\TrainAiCad-slots\slotN`. Trước mỗi job, worktree được đưa về `origin/main` mới nhất. Repo của Admin (thư mục chứa `luan_app`, ví dụ `C:\AI\TrainAiCad`) không bị đụng.
-- Claude chạy với `--permission-mode dontAsk`. Nó được đọc, chạy `python …` (qua Bash, hoặc PowerShell khi máy không có Git Bash) và ghi vào `.work/`, thư mục job và thư mục kết quả. Nó bị chặn sửa `rules/ tools/ data/ …` và chạy `git`. Sau mỗi job app kiểm tra `git status`; nếu có file repo bị sửa thì gắn cờ trong Lịch sử và khôi phục.
+- Claude Code không mở được đường dẫn `\\server\...` ở chế độ `dontAsk` (kể cả có `--add-dir` hay luật allow). Vì vậy trước mỗi lượt app chép thư mục job về `.work/<JOB>/source/` của suất (bỏ `.bak`, `Thumbs.db`, `~$*`) và Claude chỉ làm trên bản chép. Bản chép được lưu cùng lượt chạy (`runs\<id>\work\`) để đối chiếu / train / xác nhận bài học. Job E2E: DXF mới trong `AI_L\` của bản chép được chép về `AI_L\` trên server — không đè file có sẵn (`_v2`…), không chép lại file trùng nội dung. QA không ghi gì lên server.
+- Claude chạy với `--permission-mode dontAsk`. Nó được đọc, chạy `python …` (qua Bash, hoặc PowerShell khi máy không có Git Bash) và ghi vào `.work/` và thư mục kết quả. Lệnh shell ghép (`New-Item …; python …`) bị chặn, nên câu lệnh của app dặn mỗi lệnh chỉ một `python`. Nó bị chặn sửa `rules/ tools/ data/ …` và chạy `git`. Sau mỗi job app kiểm tra `git status`; nếu có file repo bị sửa thì gắn cờ trong Lịch sử và khôi phục.
 - Mỗi lượt chạy được lưu ở `%LOCALAPPDATA%\LuanApp\runs\<id>\`: `transcript.jsonl`, `stderr.log`, `out/` (report.md, result.json, review_items.json), `work/`, `meta.json`.
 - Khi hết hạn mức Claude, hàng đợi tạm dừng tới giờ hạn mức mở lại.
 - Nếu app hoặc máy khởi động lại, job đang chạy chuyển thành *Lỗi* và có nút *Chạy lại*; job đang chờ giữ nguyên thứ tự.
@@ -67,15 +68,14 @@ Biến môi trường: `LUAN_DATA_DIR`, `LUAN_SLOTS_ROOT`, `LUAN_CLAUDE_CMD`. Lo
 - Đọc `\\VietNam2025\d\LASER\...` được; app nhận QA một file DXF trong `gui\` và tìm đúng thư mục job.
 - `claude` CLI của tài khoản Windows này **chưa đăng nhập** → job báo lỗi rõ "chưa đăng nhập" (Admin thấy cả ở banner và Cài đặt).
 - Máy không có Git for Windows (chỉ có git đi kèm hermes) → `claude -p` chỉ có công cụ PowerShell, không có Bash; quyền giờ cấp cho cả hai.
+- Sau `claude auth login` (Pro): probe xác nhận `claude -p` nhận câu lệnh qua **stdin**; `PowerShell(python:*)` chạy được, `git` và sửa `rules/` bị chặn, worktree sạch.
+- Lượt QA đầu bị chặn hết vì đường dẫn `\\VietNam2025` → thêm bước chép job về `.work` (trên).
+- **QA thật** `26-063784.dxf` (job 521028-04): DONE trong 2 phút 20 giây, $1.06; `report.md` / `result.json` đúng; server không bị ghi; worktree sạch. Claude chưa so được với DWG mẫu vì gọi `job.py qa` trước `job.py init` (thứ tự trong rule QA, không phải lỗi app).
 
 **Chưa kiểm tra trên máy thật:**
 1. Cài bằng `install.cmd`: Task Scheduler, luật firewall, biểu tượng khay.
 2. Máy khác trong LAN mở được link.
-3. **Bước 12** (sau `claude auth login`): chạy 1 QA/job nhỏ bằng Claude thật. Cần xác nhận:
-   - `claude -p` nhận câu lệnh qua **stdin**. Nếu không nhận thì sửa `build_command` / `ClaudeProcess.start` trong `runner.py` để truyền câu lệnh thành tham số sau `-p`.
-   - Luật `PowerShell(python:*)` / `PowerShell(git:*)` có tác dụng như bản Bash.
-   - DXF giao vào `AI_L\`, có `report.md` và `result.json`, trạng thái cuối đúng.
-   - Worktree `C:\TrainAiCad-slots\slotN` sạch sau job; repo của Admin không bị đổi.
+3. Một job **E2E** thật: DXF giao vào `AI_L\` của bản chép rồi được chép về `AI_L\` trên server, trạng thái cuối đúng.
 
 **Lưu ý:**
 - Nếu mạng có proxy kiểm tra HTTPS, Claude sẽ báo *self-signed certificate*. Khi đó nhờ IT cấp file chứng chỉ CA rồi đặt `NODE_EXTRA_CA_CERTS`. Không tắt kiểm tra TLS.

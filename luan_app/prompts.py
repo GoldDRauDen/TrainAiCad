@@ -13,8 +13,12 @@ review_items.json — mảng JSON (mảng rỗng [] nếu không có gì). Mỗi
   (những thứ đó để ở FLAG và report.md như bình thường)."""
 
 
-def build_prompt(kind: str, path: str, codes: list[str] | None, run_out: Path) -> str:
+def build_prompt(kind: str, path: str, codes: list[str] | None, run_out: Path,
+                 share_path: str | None = None, local_job_dir: str | None = None) -> str:
     out = str(run_out)
+    staged = ([f"Bản gốc trên server: {share_path}. App đã chép thư mục job về {local_job_dir} (Claude Code không mở được "
+               "đường dẫn \\\\server). Chỉ đọc/ghi bản chép; app tự chép DXF mới trong AI_L\\ của bản chép về server."]
+              if share_path and local_job_dir else [])
     if codes:
         codes_line = f"Mã cần làm: {', '.join(codes)} (job.py init ... --codes {' '.join(codes)})"
     elif kind == "QA" and path.lower().endswith(".dxf"):
@@ -25,15 +29,17 @@ def build_prompt(kind: str, path: str, codes: list[str] | None, run_out: Path) -
         head = [f"QA {path}",
                 "Đối tượng: DXF mới nhất trong AI_L\\ của thư mục job (hoặc chính file .dxf đã cho), so với nguồn của job.",
                 codes_line,
-                "Không sửa DXF được kiểm tra."]
+                "Không sửa DXF được kiểm tra."] + staged
         verdict = '"OK" nếu không có điểm sai, "ISSUES" nếu có'
     else:
-        head = [f"E2E {path}", codes_line]
+        head = [f"E2E {path}", codes_line] + staged
         verdict = '"OK" nếu mọi mã PASS và đã giao, "ISSUES" nếu còn PREVIEW/FLAG/FAIL'
     body = [
         "Chạy qua Luan App, không có người trả lời:",
         "- Không hỏi lại. Mọi câu hỏi và điểm chưa rõ ghi vào báo cáo (JOB_CARD §5: luôn vẽ, không dừng).",
         "- Không sửa file nào của repo, không chạy git. File làm việc ở .work/ như bình thường.",
+        "- Mỗi lệnh shell chỉ một lệnh `python ...` (không ghép `;`/`&&` với lệnh khác, không gán biến, không New-Item/mkdir:"
+        " sẽ bị chặn). Tạo file/thư mục bằng Write; file tạm để trong .work/, không dùng thư mục scratchpad.",
         "- Giao DXF bằng job.py deliver / deliver-code theo chế độ của phiếu như bình thường." if kind != "QA"
         else "- Báo cáo QA theo rules/QA_REVERSE.md.",
         f"Khi xong ghi vào thư mục {out}:",

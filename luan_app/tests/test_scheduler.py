@@ -56,6 +56,9 @@ def test_full_run_done(sched, store, user, paths, job_dir):
     rd = archive.run_dir(paths, rid)
     assert (rd / "transcript.jsonl").is_file() and (rd / "work" / "521030-10" / "job_state.json").is_file()
     assert (rd / "meta.json").is_file()
+    # Claude worked on a copy in .work (the CLI refuses UNC paths); the copy is archived, the delivery copied back.
+    assert (rd / "work" / "521030-10" / "source" / "521030-10.pdf").is_file()
+    assert (job_dir / "AI_L" / "521030-10_ALL.dxf").is_file()
     assert [n["kind"] for n in store.notifications(user["id"])] == ["DONE"]
     assert Slots(paths.repo_root, paths.slots_root).touched(r["slot"]) == []
 

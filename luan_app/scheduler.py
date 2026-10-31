@@ -8,7 +8,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 
-from . import archive, progress, sources
+from . import archive, progress, sources, staging
 from .config import SLOTS_MAX, SLOTS_MIN, USAGE_PAUSE_MIN
 from .prompts import build_prompt
 from .runner import NOT_LOGGED_IN, ClaudeProcess, build_command, claude_executable, kill_tree, same_program
@@ -229,12 +229,17 @@ class Scheduler:
             self.store.update_run(rid, commit=sha, warnings=warnings)
             if w.cancel.is_set():
                 raise _Cancelled()
+            st = staging.stage_in(sources.native(info["job_dir"]), sources.native(run["path"]), self.slots.path(k), run["job"])
+            if w.cancel.is_set():
+                raise _Cancelled()
             env = dict(os.environ, PYTHONUTF8="1", LUAN_RUN_DIR=str(od), **self.extra_env)
-            cmd = build_command(self._exe(settings), od, info["job_dir"], settings.get("model") or "")
+            cmd = build_command(self._exe(settings), od, str(st.local_dir), settings.get("model") or "")
             proc = ClaudeProcess()
             w.proc = proc
             started = now_iso()
-            proc.start(cmd, cwd=self.slots.path(k), env=env, prompt=build_prompt(run["kind"], run["path"], run.get("codes"), od),
+            prompt = build_prompt(run["kind"], st.local_target, run.get("codes"), od,
+                                  share_path=run["path"], local_job_dir=str(st.local_dir))
+            proc.start(cmd, cwd=self.slots.path(k), env=env, prompt=prompt,
                        transcript=rd / "transcript.jsonl", stderr_log=rd / "stderr.log")
             self.store.update_run(rid, status="RUNNING", started_at=started, pid=proc.pid,
                                   pid_name=os.path.basename(cmd[0]))
@@ -259,7 +264,7 @@ class Scheduler:
                     exit_code = proc.wait(15)
                     if exit_code is None:
                         exit_code = -1
-            self._finish(run, w, info, proc, exit_code, timed_out, started, warnings)
+            self._finish(run, w, info, proc, exit_code, timed_out, started, warnings, st)
         except _Cancelled:
             self._close(run, w, "CANCELLED", "Đã hủy", None, warnings)
         except Exception as e:  # SourceError, SlotError, RunnerError, unexpected
@@ -275,7 +280,7 @@ class Scheduler:
             self._changed()
             self._wake.set()
 
-    def _finish(self, run, w, info, proc, exit_code, timed_out, started, warnings) -> None:
+    def _finish(self, run, w, info, proc, exit_code, timed_out, started, warnings, st=None) -> None:
         rid, k = run["id"], w.slot
         self.store.update_run(rid, status="FINISHING")
         rd, od = archive.run_dir(self.paths, rid), archive.out_dir(self.paths, rid)
@@ -284,6 +289,11 @@ class Scheduler:
             archive.archive_work(slot_dir, run["job"], rd)
         except OSError as e:
             warnings.append(f"Không lưu được .work: {e}")
+        if st is not None and run["kind"] == "RUN":
+            try:
+                staging.stage_out(st)
+            except OSError as e:
+                warnings.append(f"Không chép được DXF về AI_L trên server: {e}")
         state = progress.find_job_state(slot_dir, run["job"])
         rows = progress.code_rows(state)
         result = progress.read_result(od)
@@ -323,6 +333,7 @@ class Scheduler:
                       warnings=warnings, repo_touched=1 if touched else 0, activity=None)
         if status == "ERROR" and error and error.startswith(("Hết hạn mức", "Quá thời gian", NOT_LOGGED_IN)):
             fields["summary"] = error.splitlines()[0]
+        archive.write_meta(rd, {**(self.store.get_run(rid) or run), **fields}, {})  # on disk before the run looks final
         if self.store.finish_run(rid, **fields):
             self.store.index_run(rid, progress.search_text(run, rows, result))
             self._notify(run, status, fields["summary"])
