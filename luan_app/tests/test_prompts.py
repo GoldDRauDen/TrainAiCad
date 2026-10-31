@@ -1,0 +1,39 @@
+from pathlib import Path
+
+from luan_app.prompts import build_prompt
+
+OUT = Path("C:/LuanApp/runs/000007/out")
+P = "\\\\VietNam2025\\banve\\521030-10"
+
+
+def test_prompt_run_all_codes():
+    t = build_prompt("RUN", P, None, OUT)
+    assert t.splitlines()[0] == f"E2E {P}"
+    assert "Mã cần làm: tất cả mã trong phiếu" in t
+    assert t.count(P) == 1 and str(OUT) in t
+    for s in ("Không hỏi lại", "NEED_SAMPLE_DXF", "NEW_LESSON", "chờ xác nhận Nobi", "result.json", "report.md",
+              "review_items.json", "Không sửa file nào của repo", "Mỗi lệnh shell chỉ một lệnh `python"):
+        assert s in t
+
+
+def test_prompt_run_subset():
+    t = build_prompt("RUN", P, ["26-064687", "26-064643"], OUT)
+    assert "Mã cần làm: 26-064687, 26-064643 (job.py init ... --codes 26-064687 26-064643)" in t
+
+
+def test_prompt_qa():
+    t = build_prompt("QA", P, None, OUT)
+    assert t.splitlines()[0] == f"QA {P}"
+    assert "AI_L" in t and "Không sửa DXF được kiểm tra" in t
+
+
+def test_prompt_names_the_local_copy():
+    local = "C:\\TrainAiCad-slots\\slot1\\.work\\521030-10\\source"
+    t = build_prompt("RUN", local, None, OUT, share_path=P, local_job_dir=local)
+    assert t.splitlines()[0] == f"E2E {local}" and P in t and "bản chép" in t
+
+
+def test_prompt_qa_single_dxf_limits_codes():
+    f = P + "\\gui\\26-064687.dxf"
+    t = build_prompt("QA", f, None, OUT)
+    assert "tất cả mã trong phiếu" not in t and "26-064687.dxf" in t

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="vi" data-theme="system">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI CAD · CAD jobs</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="app.css">
+<script>try{var t=localStorage.getItem('luan-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<svg style="display:none" aria-hidden="true"><defs>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></symbol>
+<symbol id="i-board" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+<symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4v16l14-8L6 4Z"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+<symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+<symbol id="i-redo" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+<symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+</defs></svg>
+
+<header class="top"><div class="top-in">
+  <div class="brand"><span class="mark"><svg class="i"><use href="#i-layers"/></svg></span>AI CAD <small>CAD jobs</small></div>
+  <nav id="nav">
+    <a href="#/board" data-view="board"><svg class="i"><use href="#i-board"/></svg><span class="lbl">Bảng</span></a>
+    <a href="#/history" data-view="history"><svg class="i"><use href="#i-clock"/></svg><span class="lbl">Lịch sử</span></a>
+    <a href="#/review" data-view="review" id="nav-review" hidden><svg class="i"><use href="#i-inbox"/></svg><span class="lbl">Chờ duyệt</span> <span class="count" id="review-count" hidden>0</span></a>
+    <a href="guide.html" id="nav-guide" title="Hướng dẫn sử dụng"><svg class="i"><use href="#i-file"/></svg><span class="lbl">Hướng dẫn</span></a>
+    <a href="#/feedback" data-view="feedback" id="nav-feedback" title="Góp ý kiến — lưu và chờ Admin duyệt"><svg class="i"><use href="#i-inbox"/></svg><span class="lbl">Góp ý</span> <span class="count" id="feedback-count" hidden>0</span></a>
+    <a href="#/settings" data-view="settings" id="nav-settings" hidden><svg class="i"><use href="#i-gear"/></svg><span class="lbl">Cài đặt</span></a>
+  </nav>
+  <div class="right">
+    <div class="slots" id="slots" title="Suất đang dùng"></div>
+    <div class="theme" role="group" aria-label="Giao diện" id="theme">
+      <button data-t="light" aria-label="Sáng" title="Sáng"><svg class="i"><use href="#i-sun"/></svg></button>
+      <button data-t="dark" aria-label="Tối" title="Tối"><svg class="i"><use href="#i-moon"/></svg></button>
+      <button data-t="system" aria-label="Theo hệ thống" title="Theo hệ thống"><svg class="i"><use href="#i-monitor"/></svg></button>
+    </div>
+    <a class="me" href="#/me" id="me" title="Cài đặt cá nhân"><span class="av" id="me-av">?</span><span class="nm" id="me-name"></span><span class="role" id="me-role" hidden>Admin</span></a>
+  </div>
+</div></header>
+
+<main>
+  <section id="view-board" data-view="board">
+    <div id="board-banners"></div>
+    <div class="cmd">
+      <label class="field"><svg class="i"><use href="#i-folder"/></svg>
+        <input id="path" placeholder="\\VietNam2025\banve\2026\521031-02" aria-label="Đường dẫn thư mục job" autocomplete="off" spellcheck="false"><kbd>Enter</kbd></label>
+      <button class="btn lg btn-pri" id="btn-run"><svg class="i"><use href="#i-play"/></svg><span id="btn-run-label">Chạy job</span></button>
+      <button class="btn lg btn-sec" id="btn-qa" hidden><svg class="i"><use href="#i-check"/></svg>QA</button>
+    </div>
+    <p class="hint" id="path-hint">Dán đường dẫn thư mục job có PDF, DXF DATA và phiếu 依頼. DXF giao vào <span class="mono">AI_L\</span> trong thư mục đó.</p>
+    <div class="picker" id="picker" hidden></div>
+    <section class="stats" id="stats"></section>
+    <div class="grid">
+      <section><h2>Đang chạy <span class="n" id="running-n">0</span></h2><div id="running"></div></section>
+      <aside>
+        <h2>Hàng đợi <span class="n" id="queue-n">0</span></h2><div class="list" id="queue"></div>
+        <h2>Hôm nay <span class="n" id="today-n">0</span></h2><div class="list" id="today"></div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="view-history" data-view="history" hidden>
+    <h1>Lịch sử</h1><p class="sub" id="history-sub">Các job bạn đã chạy.</p>
+    <div class="filters">
+      <input class="inp" id="h-q" placeholder="Tìm job, mã, FLAG…" style="flex:1;min-width:200px">
+      <select class="sel" id="h-status"><option value="">Mọi trạng thái</option><option value="DONE">Xong</option><option value="REVIEW">Cần xem</option><option value="ERROR">Lỗi</option><option value="CANCELLED">Đã hủy</option><option value="RUNNING">Đang chạy</option><option value="QUEUED">Đang chờ</option></select>
+      <select class="sel" id="h-kind"><option value="">RUN + QA</option><option value="RUN">RUN</option><option value="QA">QA</option></select>
+      <input class="inp" id="h-user" placeholder="Người chạy" style="width:140px" hidden>
+      <input class="inp" type="date" id="h-from" title="Từ ngày">
+      <input class="inp" type="date" id="h-to" title="Đến ngày">
+      <button class="btn btn-sec" id="h-csv" hidden><svg class="i"><use href="#i-download"/></svg>CSV</button>
+    </div>
+    <div class="tbl" id="history"></div>
+  </section>
+
+  <section id="view-review" data-view="review" hidden>
+    <h1>Chờ duyệt</h1><p class="sub">Bài học mới và kỹ thuật cần mẫu DXF do các job đề xuất. Thiếu dữ liệu bản vẽ không nằm ở đây.</p>
+    <div class="filters"><div class="seg" id="rv-filter">
+      <button data-s="open" class="on">Đang chờ</button><button data-s="DONE">Đã xử lý</button><button data-s="DISMISSED">Bỏ qua</button><button data-s="">Tất cả</button>
+    </div></div>
+    <div id="review"></div>
+    <input type="file" id="rv-file" accept=".dxf" hidden>
+  </section>
+
+  <section id="view-feedback" data-view="feedback" hidden>
+    <h1>Góp ý</h1><p class="sub" id="fb-sub">Góp ý của bạn được lưu và chờ Admin duyệt. Trạng thái: Mới → Đã xem → Đã làm (hoặc Bỏ qua).</p>
+    <div class="filters"><button class="btn btn-pri" id="fb-new">Gửi góp ý</button><div class="seg" id="fb-filter" hidden>
+      <button data-s="PENDING" class="on">Mới</button><button data-s="SEEN">Đã xem</button><button data-s="DONE">Đã làm</button><button data-s="DISMISSED">Bỏ qua</button><button data-s="">Tất cả</button>
+    </div></div>
+    <div id="feedback"></div>
+  </section>
+
+  <section id="view-admin-guide" data-view="admin-guide" hidden>
+    <h1>Hướng dẫn Admin</h1><p class="sub">Chỉ Admin thấy trang này. Phần cho người dùng: <a href="guide.html">Hướng dẫn</a>.</p>
+    <div id="admin-guide"></div>
+  </section>
+
+  <section id="view-settings" data-view="settings" hidden>
+    <h1>Cài đặt hệ thống</h1><p class="sub">Chỉ Admin thấy trang này.</p>
+    <div id="settings"></div>
+  </section>
+
+  <section id="view-me" data-view="me" hidden>
+    <h1>Cài đặt cá nhân</h1><p class="sub">Áp dụng cho trình duyệt này.</p>
+    <div id="mepage"></div>
+  </section>
+</main>
+
+<div id="drawer-root"></div>
+<div id="modal-root"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

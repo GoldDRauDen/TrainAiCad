@@ -4,3 +4,6 @@
 *.dxf -text
 *.png binary
 *.pdf binary
+# Luan App: Windows batch needs CRLF; fonts are binary.
+luan_app/*.cmd text eol=crlf
+*.woff2 binary
